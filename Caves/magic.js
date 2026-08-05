@@ -7,382 +7,390 @@
  */
 
 async function castSpell(spellId) {
-    
-    if (gameState.player.isMounted) {
-        gameState.player.isMounted = false;
-        logMessage(`{orange:You leap from your mount to cast a spell!}`);
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
-        gameState.mapDirty = true;
-        if (typeof render === 'function') render();
-    }
+    // 🚨 BUG FIX: Lock the engine to prevent hotkey-spam race conditions!
+    if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
+    isProcessingMove = true;
 
-    const player = gameState.player;
-    const spellData = typeof SPELL_DATA !== 'undefined' ? SPELL_DATA[spellId] : null;
+    try {
+        if (gameState.player.isMounted) {
+            gameState.player.isMounted = false;
+            logMessage(`{orange:You leap from your mount to cast a spell!}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+            gameState.mapDirty = true;
+            if (typeof render === 'function') render();
+        }
 
-    if (!spellData) {
-        logMessage("{red:Unknown spell. (No spell data found)}");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
+        const player = gameState.player;
+        const spellData = typeof SPELL_DATA !== 'undefined' ? SPELL_DATA[spellId] : null;
 
-    if (player.cooldowns && player.cooldowns[spellId] > 0) {
-        logMessage(`{blue:The arcane energies are still gathering! (${player.cooldowns[spellId]} turns left)}`);
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
-
-    const spellLevel = player.spellbook[spellId] || 0;
-
-    if (spellLevel === 0) {
-        logMessage("{gray:You don't know that spell.}");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
-
-    // --- 1. Check Resource Cost ---
-
-    let cost = spellData.cost;
-    // --- ARCHMAGE: MANA FLOW ---
-    if (spellData.costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
-        cost = Math.floor(cost * 0.8);
-    }
-
-    const costType = spellData.costType;
-
-    // --- COST CHECK ---
-    if (costType === 'health') {
-        if (player[costType] <= cost) {
-            logMessage("{red:You are too weak to sacrifice your life-force.}");
+        if (!spellData) {
+            logMessage("{red:Unknown spell. (No spell data found)}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
         }
-    } else if (player[costType] < cost) {
-        logMessage(`{red:You don't have enough ${costType} to cast that.}`);
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        
-        // JUICE & PERFORMANCE: Cached DOM lookup for flashing
-        const displayEl = typeof statDisplays !== 'undefined' ? statDisplays[costType] : document.getElementById(`${costType}Display`);
-        if (displayEl && typeof triggerStatFlash === 'function') {
-            // Flash the bar red so the user knows exactly why it failed
-            displayEl.classList.remove('stat-flash-red');
-            void displayEl.offsetWidth;
-            displayEl.classList.add('stat-flash-red');
-        }
-        return;
-    }
 
-    // --- 2. Handle Targeting ---
-    if (spellData.target === 'aimed') {
-        gameState.isAiming = true;
-        gameState.abilityToAim = spellId;
-        
-        const spellModal = document.getElementById('spellModal');
-        if (spellModal) spellModal.classList.add('hidden');
-        
-        logMessage(`{blue:${spellData.name}: Press an arrow key or WASD to fire. (Esc) to cancel.}`);
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playHover();
-        return;
-
-    } else if (spellData.target === 'self') {
-        // --- Self-Cast Spells ---
-        player[costType] -= cost; 
-        let spellCastSuccessfully = false;
-        let updates = {}; 
-
-        // --- 3. Execute Spell Effect ---
-        switch (spellId) {
-
-            case 'stoneSkin': {
-                const skinBonus = 3 + Math.floor(player.constitution * 0.2);
-                player.defenseBonus = (player.defenseBonus || 0) + skinBonus;
-                player.defenseBonusTurns = spellData.duration;
-
-                logMessage(`{gray:Your skin turns to granite! (+${skinBonus} Defense)}`);
-                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.health, 'stat-pulse-gray'); 
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "🛡️", "#9ca3af");
-
-                updates.defenseBonus = player.defenseBonus;
-                updates.defenseBonusTurns = player.defenseBonusTurns;
-                spellCastSuccessfully = true;
-                break;
-            }
-
-            case 'thornSkin': {
-                const reflectAmount = spellData.baseReflect + (player.intuition * spellLevel);
-                player.thornsValue = reflectAmount;
-                player.thornsTurns = spellData.duration;
-                logMessage(`{green:Your skin hardens into iron-like thorns! (Reflect ${reflectAmount} dmg)}`);
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "🌿", "#4ade80");
-
-                updates.thornsValue = reflectAmount;
-                updates.thornsTurns = spellData.duration;
-                spellCastSuccessfully = true;
-                break;
-            }
-
-            case 'candlelight': {
-                if (player.candlelightTurns > 0) {
-                    logMessage("{yellow:You renew the magical light.}");
-                } else {
-                    logMessage("{yellow:A warm, floating orb of light appears above you.}");
-                }
-
-                player.candlelightTurns = spellData.duration;
-
-                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.mana, 'stat-pulse-yellow');
-                if (typeof ParticleSystem !== 'undefined') {
-                    ParticleSystem.createFloatingText(player.x, player.y, "💡", "#facc15");
-                }
-
-                updates.candlelightTurns = player.candlelightTurns;
-                spellCastSuccessfully = true;
-                break;
-            }
-
-            case 'divineLight': {
-                // Dynamic cure messaging with atmospheric text
-                let ailmentsCured = false;
-                if (player.madnessTurns > 0) { logMessage("{gold:The maddening whispers are banished from your mind.}"); ailmentsCured = true; }
-                if (player.poisonTurns > 0) { logMessage("{gold:The foul toxins are purged from your blood.}"); ailmentsCured = true; }
-                if (player.frostbiteTurns > 0) { logMessage("{gold:The supernatural chill leaves your bones.}"); ailmentsCured = true; }
-                if (player.burnTurns > 0) { logMessage("{gold:The searing flames are extinguished.}"); ailmentsCured = true; }
-                
-                const healedFor = typeof window.modifyVital === 'function' ? window.modifyVital('health', player.maxHealth) : 0;
-                
-                player.poisonTurns = 0;
-                player.frostbiteTurns = 0;
-                player.madnessTurns = 0; 
-                player.rootTurns = 0;
-                player.burnTurns = 0;
-
-                // Only cast if you actually NEED healing or curing!
-                if (healedFor === 0 && !ailmentsCured) {
-                    logMessage("{gray:The Light shines brightly, but you are already perfectly whole.}");
-                    spellCastSuccessfully = false;
-                    break;
-                }
-
-                logMessage("{gold:A holy light bathes you. You are fully restored!}");
-                
-                if (typeof ParticleSystem !== 'undefined') {
-                    ParticleSystem.createExplosion(player.x, player.y, '#facc15', 30); // Massive golden explosion
-                    ParticleSystem.createLevelUp(player.x, player.y); 
-                }
-
-                // Holy Nova
-                // Instantly scorch nearby undead and demons when casting Divine Light!
-                const novaRadius = 2;
-                const holyDamage = 20 + (player.wits * spellLevel);
-                let hitUnholy = false;
-                let batchedPayload = {};
-                const novaPromises = []; // Array to hold our network promises
-                
-                for (let y = player.y - novaRadius; y <= player.y + novaRadius; y++) {
-                    for (let x = player.x - novaRadius; x <= player.x + novaRadius; x++) {
-                        if (x === player.x && y === player.y) continue;
-                        
-                        let tileAt;
-                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                            if (typeof chunkManager !== 'undefined') tileAt = chunkManager.getTile(x, y);
-                        } else if (gameState.mapMode === 'dungeon') {
-                            if (typeof chunkManager !== 'undefined') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[y]?.[x];
-                        } else if (gameState.mapMode === 'castle') {
-                            if (typeof chunkManager !== 'undefined') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[y]?.[x];
-                        }
-
-                        const eData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tileAt] : null;
-                        const tags = eData ? (eData.tags || []) : [];
-                        if (eData && (tags.includes("undead") || tags.includes("demon") || tags.includes("void"))) {
-                            // Push the asynchronous calculation into our array!
-                            novaPromises.push(
-                                applySpellDamage(x, y, holyDamage, 'divineLight', true).then(res => {
-                                    if (res && res.hit) {
-                                        Object.assign(batchedPayload, res.payload);
-                                        hitUnholy = true;
-                                    }
-                                })
-                            );
-                        }
-                    }
-                }
-                
-                // Wait for every single calculation to finish flawlessly!
-                await Promise.all(novaPromises);
-                
-                // Now we safely commit the mass scorching to the database
-                if (hitUnholy) logMessage("{gold:The blinding light sears the nearby darkness!}");
-                if (Object.keys(batchedPayload).length > 0 && typeof rtdb !== 'undefined') {
-                    rtdb.ref().update(batchedPayload).catch(e => console.error("Nova Batch Error:", e));
-                }
-
-                updates.health = player.health;
-                updates.poisonTurns = 0;
-                updates.frostbiteTurns = 0;
-                updates.madnessTurns = 0;
-                updates.rootTurns = 0;
-                updates.burnTurns = 0;
-                spellCastSuccessfully = true;
-                break;
-            }
-
-            case 'lesserHeal': {
-                const effectiveWits = player.wits + (player.witsBonus || 0);
-                const healAmount = spellData.baseHeal + (effectiveWits * spellLevel);
-                const healedFor = typeof window.modifyVital === 'function' ? window.modifyVital('health', healAmount) : 0;
-
-                if (healedFor > 0) {
-                    logMessage(`You cast Lesser Heal and recover {green:${healedFor} health}.`);
-                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `+${healedFor}`, '#22c55e'); 
-                    updates.health = player.health;
-                    spellCastSuccessfully = true;
-                } else {
-                    logMessage("{gray:You cast Lesser Heal, but you're already at full health.}");
-                    spellCastSuccessfully = false;
-                }
-                break;
-            }
-
-            case 'arcaneShield': {
-                if (player.shieldTurns > 0) {
-                    logMessage("{gray:You already have an active shield!}");
-                    spellCastSuccessfully = false;
-                    break;
-                }
-
-                const effWitsShield = player.wits + (player.witsBonus || 0);
-                const shieldAmount = spellData.baseShield + (effWitsShield * spellLevel);
-                player.shieldValue = shieldAmount;
-                player.shieldTurns = spellData.duration;
-
-                logMessage(`{blue:You conjure an Arcane Shield, absorbing ${shieldAmount} damage!}`);
-                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.health, 'stat-pulse-blue');
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "💠", "#3b82f6");
-
-                updates.shieldValue = player.shieldValue;
-                updates.shieldTurns = player.shieldTurns;
-                spellCastSuccessfully = true;
-                break;
-            }
-
-            case 'clarity': {
-                if (gameState.mapMode !== 'dungeon') {
-                    // The Void Gazes Back
-                    // If they cast mind-expanding magic in a corrupted realm, they suffer!
-                    if (gameState.currentRealm !== 0) {
-                        logMessage("{purple:You cast your senses into the Void... Something vast and cold looks back.}");
-                        logMessage("{red:You are afflicted with Madness!}");
-                        player.madnessTurns = (player.madnessTurns || 0) + 2;
-                        updates.madnessTurns = player.madnessTurns;
-                        
-                        gameState.screenShake = 15;
-                        if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
-                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#a855f7', 20);
-                        spellCastSuccessfully = true;
-                        break;
-                    } else {
-                        logMessage("{gray:You can only feel for secret walls in enclosed caves.}");
-                        spellCastSuccessfully = false;
-                        break;
-                    }
-                }
-
-                const map = typeof chunkManager !== 'undefined' ? chunkManager.caveMaps[gameState.currentCaveId] : null;
-                const theme = (typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES[gameState.currentCaveTheme] : null) || { floor: '.' };
-                const secretWallTile = theme.secretWall;
-                let foundWall = false;
-
-                // Also check if we are casting it in the Void Dungeon
-                if (gameState.currentCaveTheme === 'VOID') {
-                    logMessage("{purple:Your mind brushes against the walls of this place... it feels alive.}");
-                    player.madnessTurns = (player.madnessTurns || 0) + 1;
-                    updates.madnessTurns = player.madnessTurns;
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
-                }
-
-                if (map && secretWallTile) {
-                    for (let y = -1; y <= 1; y++) {
-                        for (let x = -1; x <= 1; x++) {
-                            if (x === 0 && y === 0) continue;
-                            const checkX = player.x + x;
-                            const checkY = player.y + y;
-
-                            if (map[checkY] && map[checkY][checkX] === secretWallTile) {
-                                map[checkY][checkX] = theme.floor;
-                                foundWall = true;
-                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(checkX, checkY, '#a855f7', 10);
-                            }
-                        }
-                    }
-                }
-
-                if (foundWall) {
-                    logMessage("{purple:You focus your mind... and a hidden passage is revealed!}");
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-                    if (typeof render === 'function') render();
-                } else {
-                    logMessage("{gray:You focus, but the stone around you holds no secrets.}");
-                }
-                
-                if (typeof triggerStatAnimation !== 'undefined' && typeof statDisplays !== 'undefined') triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
-                spellCastSuccessfully = true; // Still costs mana even if you didn't find anything
-                break;
-            }
-
-            case 'darkPact': {
-                const manaRestored = spellData.baseRestore + (player.willpower * spellLevel);
-                const actualRestore = typeof window.modifyVital === 'function' ? window.modifyVital('mana', manaRestored) : 0;
-
-                if (actualRestore > 0) {
-                    logMessage(`You sacrifice {red:${cost} health} to restore {blue:${actualRestore} mana}.`);
-                    
-                    if (typeof triggerStatAnimation !== 'undefined' && typeof statDisplays !== 'undefined') {
-                        triggerStatAnimation(statDisplays.health, 'stat-pulse-red'); 
-                    }
-                    
-                    // JUICE WIN: Visceral feedback for dark magic
-                    gameState.screenShake = 12;
-                    if (typeof ParticleSystem !== 'undefined') {
-                        ParticleSystem.createExplosion(player.x, player.y, '#be123c', 15);
-                        ParticleSystem.createFloatingText(player.x, player.y, `-${cost}`, '#ef4444');
-                    }
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playHit(); // Add a crunch!
-                    spellCastSuccessfully = true;
-                } else {
-                    logMessage("{gray:You cast Dark Pact, but your mana is already full.}");
-                    spellCastSuccessfully = false;
-                }
-                updates.health = player.health; 
-                updates.mana = player.mana;   
-                break;
-            }
+        if (player.cooldowns && player.cooldowns[spellId] > 0) {
+            logMessage(`{blue:The arcane energies are still gathering! (${player.cooldowns[spellId]} turns left)}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
         }
 
-        // --- 4. Finalize Self-Cast Turn ---
-        if (spellCastSuccessfully) {
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+        const spellLevel = player.spellbook[spellId] || 0;
 
-            updates[costType] = player[costType]; 
-            if (typeof playerRef !== 'undefined' && playerRef) playerRef.update(updates); 
+        if (spellLevel === 0) {
+            logMessage("{gray:You don't know that spell.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
+        // --- 1. Check Resource Cost ---
+
+        let cost = spellData.cost;
+        // --- ARCHMAGE: MANA FLOW ---
+        if (spellData.costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
+            cost = Math.floor(cost * 0.8);
+        }
+
+        const costType = spellData.costType;
+
+        // --- COST CHECK ---
+        if (costType === 'health') {
+            if (player[costType] <= cost) {
+                logMessage("{red:You are too weak to sacrifice your life-force.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return;
+            }
+        } else if (player[costType] < cost) {
+            logMessage(`{red:You don't have enough ${costType} to cast that.}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             
-            const spellModal = document.getElementById('spellModal');
-            if (spellModal) spellModal.classList.add('hidden');
-
-            triggerAbilityCooldown(spellId);
-
-            if (typeof endPlayerTurn === 'function') endPlayerTurn();
-            if (typeof renderStats === 'function') renderStats();
-        } else {
-            // Refund the cost if the spell failed (e.g., shield already active)
-            player[costType] += cost;
-            // Also flash the bar red to show it failed
+            // JUICE & PERFORMANCE: Cached DOM lookup for flashing
             const displayEl = typeof statDisplays !== 'undefined' ? statDisplays[costType] : document.getElementById(`${costType}Display`);
             if (displayEl && typeof triggerStatFlash === 'function') {
+                // Flash the bar red so the user knows exactly why it failed
                 displayEl.classList.remove('stat-flash-red');
                 void displayEl.offsetWidth;
                 displayEl.classList.add('stat-flash-red');
             }
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
         }
+
+        // --- 2. Handle Targeting ---
+        if (spellData.target === 'aimed') {
+            gameState.isAiming = true;
+            gameState.abilityToAim = spellId;
+            
+            const spellModal = document.getElementById('spellModal');
+            if (spellModal) spellModal.classList.add('hidden');
+            
+            logMessage(`{blue:${spellData.name}: Press an arrow key or WASD to fire. (Esc) to cancel.}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playHover();
+            return;
+
+        } else if (spellData.target === 'self') {
+            // --- Self-Cast Spells ---
+            player[costType] -= cost; 
+            let spellCastSuccessfully = false;
+            let updates = {}; 
+
+            // --- 3. Execute Spell Effect ---
+            switch (spellId) {
+
+                case 'stoneSkin': {
+                    const skinBonus = 3 + Math.floor(player.constitution * 0.2);
+                    player.defenseBonus = (player.defenseBonus || 0) + skinBonus;
+                    player.defenseBonusTurns = spellData.duration;
+
+                    logMessage(`{gray:Your skin turns to granite! (+${skinBonus} Defense)}`);
+                    if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.health, 'stat-pulse-gray'); 
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "🛡️", "#9ca3af");
+
+                    updates.defenseBonus = player.defenseBonus;
+                    updates.defenseBonusTurns = player.defenseBonusTurns;
+                    spellCastSuccessfully = true;
+                    break;
+                }
+
+                case 'thornSkin': {
+                    const reflectAmount = spellData.baseReflect + (player.intuition * spellLevel);
+                    player.thornsValue = reflectAmount;
+                    player.thornsTurns = spellData.duration;
+                    logMessage(`{green:Your skin hardens into iron-like thorns! (Reflect ${reflectAmount} dmg)}`);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "🌿", "#4ade80");
+
+                    updates.thornsValue = reflectAmount;
+                    updates.thornsTurns = spellData.duration;
+                    spellCastSuccessfully = true;
+                    break;
+                }
+
+                case 'candlelight': {
+                    if (player.candlelightTurns > 0) {
+                        logMessage("{yellow:You renew the magical light.}");
+                    } else {
+                        logMessage("{yellow:A warm, floating orb of light appears above you.}");
+                    }
+
+                    player.candlelightTurns = spellData.duration;
+
+                    if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.mana, 'stat-pulse-yellow');
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createFloatingText(player.x, player.y, "💡", "#facc15");
+                    }
+
+                    updates.candlelightTurns = player.candlelightTurns;
+                    spellCastSuccessfully = true;
+                    break;
+                }
+
+                case 'divineLight': {
+                    // Dynamic cure messaging with atmospheric text
+                    let ailmentsCured = false;
+                    if (player.madnessTurns > 0) { logMessage("{gold:The maddening whispers are banished from your mind.}"); ailmentsCured = true; }
+                    if (player.poisonTurns > 0) { logMessage("{gold:The foul toxins are purged from your blood.}"); ailmentsCured = true; }
+                    if (player.frostbiteTurns > 0) { logMessage("{gold:The supernatural chill leaves your bones.}"); ailmentsCured = true; }
+                    if (player.burnTurns > 0) { logMessage("{gold:The searing flames are extinguished.}"); ailmentsCured = true; }
+                    
+                    const healedFor = typeof window.modifyVital === 'function' ? window.modifyVital('health', player.maxHealth) : 0;
+                    
+                    player.poisonTurns = 0;
+                    player.frostbiteTurns = 0;
+                    player.madnessTurns = 0; 
+                    player.rootTurns = 0;
+                    player.burnTurns = 0;
+
+                    // Only cast if you actually NEED healing or curing!
+                    if (healedFor === 0 && !ailmentsCured) {
+                        logMessage("{gray:The Light shines brightly, but you are already perfectly whole.}");
+                        spellCastSuccessfully = false;
+                        break;
+                    }
+
+                    logMessage("{gold:A holy light bathes you. You are fully restored!}");
+                    
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createExplosion(player.x, player.y, '#facc15', 30); // Massive golden explosion
+                        ParticleSystem.createLevelUp(player.x, player.y); 
+                    }
+
+                    // Holy Nova
+                    // Instantly scorch nearby undead and demons when casting Divine Light!
+                    const novaRadius = 2;
+                    const holyDamage = 20 + (player.wits * spellLevel);
+                    let hitUnholy = false;
+                    let batchedPayload = {};
+                    const novaPromises = []; // Array to hold our network promises
+                    
+                    for (let y = player.y - novaRadius; y <= player.y + novaRadius; y++) {
+                        for (let x = player.x - novaRadius; x <= player.x + novaRadius; x++) {
+                            if (x === player.x && y === player.y) continue;
+                            
+                            let tileAt;
+                            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                                if (typeof chunkManager !== 'undefined') tileAt = chunkManager.getTile(x, y);
+                            } else if (gameState.mapMode === 'dungeon') {
+                                if (typeof chunkManager !== 'undefined') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[y]?.[x];
+                            } else if (gameState.mapMode === 'castle') {
+                                if (typeof chunkManager !== 'undefined') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[y]?.[x];
+                            }
+
+                            const eData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tileAt] : null;
+                            const tags = eData ? (eData.tags || []) : [];
+                            if (eData && (tags.includes("undead") || tags.includes("demon") || tags.includes("void"))) {
+                                // Push the asynchronous calculation into our array!
+                                novaPromises.push(
+                                    applySpellDamage(x, y, holyDamage, 'divineLight', true).then(res => {
+                                        if (res && res.hit) {
+                                            Object.assign(batchedPayload, res.payload);
+                                            hitUnholy = true;
+                                        }
+                                    })
+                                );
+                            }
+                        }
+                    }
+                    
+                    // Wait for every single calculation to finish flawlessly!
+                    await Promise.all(novaPromises);
+                    
+                    // Now we safely commit the mass scorching to the database
+                    if (hitUnholy) logMessage("{gold:The blinding light sears the nearby darkness!}");
+                    if (Object.keys(batchedPayload).length > 0 && typeof rtdb !== 'undefined') {
+                        rtdb.ref().update(batchedPayload).catch(e => console.error("Nova Batch Error:", e));
+                    }
+
+                    updates.health = player.health;
+                    updates.poisonTurns = 0;
+                    updates.frostbiteTurns = 0;
+                    updates.madnessTurns = 0;
+                    updates.rootTurns = 0;
+                    updates.burnTurns = 0;
+                    spellCastSuccessfully = true;
+                    break;
+                }
+
+                case 'lesserHeal': {
+                    const effectiveWits = player.wits + (player.witsBonus || 0);
+                    const healAmount = spellData.baseHeal + (effectiveWits * spellLevel);
+                    const healedFor = typeof window.modifyVital === 'function' ? window.modifyVital('health', healAmount) : 0;
+
+                    if (healedFor > 0) {
+                        logMessage(`You cast Lesser Heal and recover {green:${healedFor} health}.`);
+                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `+${healedFor}`, '#22c55e'); 
+                        updates.health = player.health;
+                        spellCastSuccessfully = true;
+                    } else {
+                        logMessage("{gray:You cast Lesser Heal, but you're already at full health.}");
+                        spellCastSuccessfully = false;
+                    }
+                    break;
+                }
+
+                case 'arcaneShield': {
+                    if (player.shieldTurns > 0) {
+                        logMessage("{gray:You already have an active shield!}");
+                        spellCastSuccessfully = false;
+                        break;
+                    }
+
+                    const effWitsShield = player.wits + (player.witsBonus || 0);
+                    const shieldAmount = spellData.baseShield + (effWitsShield * spellLevel);
+                    player.shieldValue = shieldAmount;
+                    player.shieldTurns = spellData.duration;
+
+                    logMessage(`{blue:You conjure an Arcane Shield, absorbing ${shieldAmount} damage!}`);
+                    if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.health, 'stat-pulse-blue');
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "💠", "#3b82f6");
+
+                    updates.shieldValue = player.shieldValue;
+                    updates.shieldTurns = player.shieldTurns;
+                    spellCastSuccessfully = true;
+                    break;
+                }
+
+                case 'clarity': {
+                    if (gameState.mapMode !== 'dungeon') {
+                        // The Void Gazes Back
+                        // If they cast mind-expanding magic in a corrupted realm, they suffer!
+                        if (gameState.currentRealm !== 0) {
+                            logMessage("{purple:You cast your senses into the Void... Something vast and cold looks back.}");
+                            logMessage("{red:You are afflicted with Madness!}");
+                            player.madnessTurns = (player.madnessTurns || 0) + 2;
+                            updates.madnessTurns = player.madnessTurns;
+                            
+                            gameState.screenShake = 15;
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#a855f7', 20);
+                            spellCastSuccessfully = true;
+                            break;
+                        } else {
+                            logMessage("{gray:You can only feel for secret walls in enclosed caves.}");
+                            spellCastSuccessfully = false;
+                            break;
+                        }
+                    }
+
+                    const map = typeof chunkManager !== 'undefined' ? chunkManager.caveMaps[gameState.currentCaveId] : null;
+                    const theme = (typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES[gameState.currentCaveTheme] : null) || { floor: '.' };
+                    const secretWallTile = theme.secretWall;
+                    let foundWall = false;
+
+                    // Also check if we are casting it in the Void Dungeon
+                    if (gameState.currentCaveTheme === 'VOID') {
+                        logMessage("{purple:Your mind brushes against the walls of this place... it feels alive.}");
+                        player.madnessTurns = (player.madnessTurns || 0) + 1;
+                        updates.madnessTurns = player.madnessTurns;
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
+                    }
+
+                    if (map && secretWallTile) {
+                        for (let y = -1; y <= 1; y++) {
+                            for (let x = -1; x <= 1; x++) {
+                                if (x === 0 && y === 0) continue;
+                                const checkX = player.x + x;
+                                const checkY = player.y + y;
+
+                                if (map[checkY] && map[checkY][checkX] === secretWallTile) {
+                                    map[checkY][checkX] = theme.floor;
+                                    foundWall = true;
+                                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(checkX, checkY, '#a855f7', 10);
+                                }
+                            }
+                        }
+                    }
+
+                    if (foundWall) {
+                        logMessage("{purple:You focus your mind... and a hidden passage is revealed!}");
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                        if (typeof render === 'function') render();
+                    } else {
+                        logMessage("{gray:You focus, but the stone around you holds no secrets.}");
+                    }
+                    
+                    if (typeof triggerStatAnimation !== 'undefined' && typeof statDisplays !== 'undefined') triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+                    spellCastSuccessfully = true; // Still costs mana even if you didn't find anything
+                    break;
+                }
+
+                case 'darkPact': {
+                    const manaRestored = spellData.baseRestore + (player.willpower * spellLevel);
+                    const actualRestore = typeof window.modifyVital === 'function' ? window.modifyVital('mana', manaRestored) : 0;
+
+                    if (actualRestore > 0) {
+                        logMessage(`You sacrifice {red:${cost} health} to restore {blue:${actualRestore} mana}.`);
+                        
+                        if (typeof triggerStatAnimation !== 'undefined' && typeof statDisplays !== 'undefined') {
+                            triggerStatAnimation(statDisplays.health, 'stat-pulse-red'); 
+                        }
+                        
+                        // JUICE WIN: Visceral feedback for dark magic
+                        gameState.screenShake = 12;
+                        if (typeof ParticleSystem !== 'undefined') {
+                            ParticleSystem.createExplosion(player.x, player.y, '#be123c', 15);
+                            ParticleSystem.createFloatingText(player.x, player.y, `-${cost}`, '#ef4444');
+                        }
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playHit(); // Add a crunch!
+                        spellCastSuccessfully = true;
+                    } else {
+                        logMessage("{gray:You cast Dark Pact, but your mana is already full.}");
+                        spellCastSuccessfully = false;
+                    }
+                    updates.health = player.health; 
+                    updates.mana = player.mana;   
+                    break;
+                }
+            }
+
+            // --- 4. Finalize Self-Cast Turn ---
+            if (spellCastSuccessfully) {
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+
+                updates[costType] = player[costType]; 
+                if (typeof playerRef !== 'undefined' && playerRef) playerRef.update(updates); 
+                
+                const spellModal = document.getElementById('spellModal');
+                if (spellModal) spellModal.classList.add('hidden');
+
+                triggerAbilityCooldown(spellId);
+
+                if (typeof endPlayerTurn === 'function') endPlayerTurn();
+                if (typeof renderStats === 'function') renderStats();
+            } else {
+                // Refund the cost if the spell failed (e.g., shield already active)
+                player[costType] += cost;
+                // Also flash the bar red to show it failed
+                const displayEl = typeof statDisplays !== 'undefined' ? statDisplays[costType] : document.getElementById(`${costType}Display`);
+                if (displayEl && typeof triggerStatFlash === 'function') {
+                    displayEl.classList.remove('stat-flash-red');
+                    void displayEl.offsetWidth;
+                    displayEl.classList.add('stat-flash-red');
+                }
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            }
+        }
+    } finally {
+        // Always unlock the engine when the spell finishes or fails!
+        isProcessingMove = false;
     }
 }
 
