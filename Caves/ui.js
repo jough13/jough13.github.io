@@ -1404,6 +1404,10 @@ window.toggleModal = (modalEl, openFunc, closeFunc) => {
         if (closeFunc) closeFunc();
         else modalEl.classList.add('hidden');
         returnFocusToCanvas(); // Ensure focus returns!
+        
+        // Reset the Auto-Tick timer when closing a menu so 
+        // you have a 1.2-second grace period before the world starts moving again!
+        window._lastAutoTickTime = Date.now();
     } else {
         openFunc();
     }
