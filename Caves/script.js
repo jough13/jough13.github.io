@@ -174,7 +174,10 @@ function flushPendingSave(updates = null) {
             }
 
             // Write to subcollection docs (Using strict JS Spread Limits)
-            const MAX_SPREAD = 1000;
+            // Lowered MAX_SPREAD from 1000 to 250.
+            // Older mobile browsers (iOS Safari) have very low Call Stack limits for the Spread Operator (...slice).
+            // A limit of 250 guarantees no crashes while still keeping Firebase writes highly optimized!
+            const MAX_SPREAD = 250;
 
             for (const sector in sectorUpdates) {
                 const docRef = playerRef.collection('map_data').doc(sector);
