@@ -507,11 +507,14 @@ function handleInput(key) {
         let newX = gameState.player.x + dirX;
         let newY = gameState.player.y + dirY;
 
-        // JUICE: Store facing direction for rendering
+        // Store facing direction for rendering
         if (newX > gameState.player.x) gameState.player.facing = 'right';
         else if (newX < gameState.player.x) gameState.player.facing = 'left';
 
+        // Reset timers on ANY movement attempt, even if they hit a wall!
         lastActionTime = Date.now(); 
+        window._lastAutoTickTime = Date.now(); 
+        
         if (typeof attemptMovePlayer === 'function') attemptMovePlayer(newX, newY);
         return;
     }
