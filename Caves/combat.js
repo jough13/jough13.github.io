@@ -1253,6 +1253,41 @@ async function processOverworldEnemyTurns() {
     return nearestEnemyDir;
 }
 
+// ==========================================
+// REAL-TIME LOCAL AI LOOP (Dungeons & Castles)
+// ==========================================
+function runLocalAiTurns() {
+    // Only execute if the player is in an instanced, local map
+    if (gameState.mapMode !== 'dungeon' && gameState.mapMode !== 'castle') return;
+
+    const now = Date.now();
+    const AI_INTERVAL = 600; // 600ms tick rate to match overworld speed
+
+    // Client-side throttle
+    if (now - (window.lastLocalInstanceAIAttempt || 0) < AI_INTERVAL) return;
+    window.lastLocalInstanceAIAttempt = now;
+
+    // Stop processing if player is dead
+    if (gameState.player.health <= 0) return;
+
+    // 1. Process local entities
+    processFriendlyTurns();
+    const nearestEnemyDir = processEnemyTurns();
+
+    // 2. Alert the engine to redraw the map since entities likely moved
+    gameState.mapDirty = true;
+
+    // 3. Client-side intuition feedback
+    if (nearestEnemyDir) {
+        const player = gameState.player;
+        const intuitChance = Math.min(player.intuition * 0.005, 0.5);
+        if (Math.random() < intuitChance) {
+            const dirString = typeof getDirectionString === 'function' ? getDirectionString(nearestEnemyDir) : "nearby";
+            logMessage(`{gray:You sense a hostile presence to the ${dirString}!}`);
+        }
+    }
+}
+
 function processEnemyTurns() {
     if (gameState.mapMode !== 'dungeon' && gameState.mapMode !== 'castle') return null;
 
