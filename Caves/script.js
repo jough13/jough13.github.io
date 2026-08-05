@@ -3203,15 +3203,17 @@ function gameLoop(timestamp) {
     // 2. Update Particles smoothly
     if (typeof ParticleSystem !== 'undefined') ParticleSystem.update();
 
-    // --- 🚨 BUG FIX WIN: REAL-TIME MMO AI ---
+    // --- REAL-TIME MMO AI ---
     // Because this function has a 600ms internal throttle, it is safe to call at 60fps.
     // This allows overworld enemies to roam and attack even if the host is standing still/AFK.
     if (typeof runSharedAiTurns === 'function') runSharedAiTurns();
+    if (typeof runLocalAiTurns === 'function') runLocalAiTurns(); // Local Dungeon AI
 
     // --- 🚨 REAL-TIME PLAYER AUTO-TICK ---
-    // If the player stands perfectly still in the overworld for 1.2 seconds, 
+    // If the player stands perfectly still for 1.2 seconds, 
     // force a turn to pass so that Pets attack autonomously and Status Effects tick!
-    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+    const validModes = ['overworld', 'underworld', 'dungeon', 'castle'];
+    if (validModes.includes(gameState.mapMode)) { // Now works in all areas!
         const now = Date.now();
         if (!window._lastAutoTickTime) window._lastAutoTickTime = now;
         
