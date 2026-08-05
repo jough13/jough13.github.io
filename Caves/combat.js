@@ -523,11 +523,12 @@ async function processOverworldEnemyTurns() {
         if (processedIdsThisFrame.has(enemyId)) continue;
 
         const enemy = gameState.sharedEnemies[enemyId];
-        if (!enemy || typeof enemy.x !== 'number' || typeof enemy.y !== 'number') {
+        // Ensure health > 0 so dead enemies don't take a turn while awaiting deletion!
+        if (!enemy || enemy.health <= 0 || typeof enemy.x !== 'number' || typeof enemy.y !== 'number') {
             continue;
         }
 
-        // --- 🚨 FIX: NEAREST TARGET SELECTION ---
+        // --- NEAREST TARGET SELECTION ---
         let target = null;
         let targetDistSq = Infinity;
 
@@ -1264,9 +1265,9 @@ function processEnemyTurns() {
     const enemiesToMove = [...gameState.instancedEnemies];
 
     enemiesToMove.forEach(enemy => {
-        // --- Stop processing enemies if the player is already dead! ---
         if (gameState.player.health <= 0) return;
-        if (!enemy) return; // 🚨 GHOST GUARD
+        // Ensure health > 0 so dead enemies don't take a turn!
+        if (!enemy || enemy.health <= 0) return; 
 
         if (enemy.rootTurns > 0) {
             enemy.rootTurns--;
