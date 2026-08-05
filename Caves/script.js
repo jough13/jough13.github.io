@@ -3259,14 +3259,39 @@ function gameLoop(timestamp) {
         handleInput(key);
     }
 
-    // 4. Force continuous rendering while sliding
+    // 4. Smart Rendering (Battery & CPU Saver)
     if (gameState.mapMode) {
+        let needsRender = false;
+
+        // Is the camera currently sliding?
         if (Math.abs(p.x - p.visualX) > 0.01 || Math.abs(p.y - p.visualY) > 0.01) {
-            render(); 
+            needsRender = true;
         } else {
-            // Snap to exact coordinates to save CPU when standing still
-            p.visualX = p.x;
-            p.visualY = p.y;
+            // Snap to exact coordinates if we finished sliding
+            if (p.visualX !== p.x || p.visualY !== p.y) {
+                p.visualX = p.x;
+                p.visualY = p.y;
+                needsRender = true; // Needs one final frame to snap perfectly into place
+            }
+        }
+
+        // Are there active particle effects that need animating?
+        if (typeof ParticleSystem !== 'undefined' && ParticleSystem.activeParticles.length > 0) {
+            needsRender = true;
+        }
+        
+        // Are there animated tiles (Water, Lava, Void Rifts) on screen?
+        if (gameState.visibleAnimatedTiles && gameState.visibleAnimatedTiles.length > 0) {
+            needsRender = true;
+        }
+        
+        // Did the engine explicitly request a redraw? (e.g. Enemy spawned/moved)
+        if (gameState.mapDirty) {
+            needsRender = true;
+        }
+
+        // Only redraw the canvas if something is actually moving!
+        if (needsRender) {
             render();
         }
     }
