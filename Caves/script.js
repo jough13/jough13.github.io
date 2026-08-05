@@ -719,6 +719,7 @@ function triggerAtmosphericFlavor(tile) {
 // ==========================================
 // DETERMINISTIC HOST ELECTION (LOCALIZED)
 // ==========================================
+
 window.isServerHost = function() {
     const myId = typeof player_id !== 'undefined' ? player_id : null;
     if (!myId) return false; 
@@ -1382,6 +1383,9 @@ function getBaseTerrain(worldX, worldY) {
 
 function endPlayerTurn(turnUpdates = {}) {
     
+    // Reset the Auto-Tick AFK timer so it doesn't fire immediately after a manual move!
+    window._lastAutoTickTime = Date.now();
+    
     // Inherit any updates passed in from movement/interactions!
     let updates = { ...turnUpdates }; 
 
@@ -1826,11 +1830,7 @@ function endPlayerTurn(turnUpdates = {}) {
         renderStats();
     }
 
-    processFriendlyTurns();
-
     runCompanionTurn();
-
-    processEnemyTurns();
 
     // We merge the specific status updates (poison, buffs) with the core stats.
     // This ensures XP, Quests, and Health are saved together, preventing the reset bug.
