@@ -396,54 +396,6 @@ async function wakeUpNearbyEnemies() {
     }
 }
 
-async function runSharedAiTurns() {
-    if (gameState.mapMode !== 'overworld' && gameState.mapMode !== 'underworld') return; 
-
-    const now = Date.now();
-    const AI_INTERVAL = 600; // 600ms AI tick rate
-
-    // --- CLIENT-SIDE THROTTLE ---
-    if (now - (window.lastLocalAIAttempt || 0) < AI_INTERVAL) return;
-    window.lastLocalAIAttempt = now;
-
-    // --- ANTI-DEADLOCK HEARTBEAT ---
-    if (now - (window.lastHeartbeatPush || 0) > 5000) {
-        window.lastHeartbeatPush = now;
-        if (typeof onlinePlayerRef !== 'undefined' && onlinePlayerRef && typeof firebase !== 'undefined') {
-            onlinePlayerRef.update({ lastHeartbeat: firebase.database.ServerValue.TIMESTAMP }).catch(()=>{});
-        }
-    }
-
-    // Use centralized host checking
-    if (typeof window.isServerHost === 'function' && !window.isServerHost()) {
-        return; // We are not the host, abort.
-    }
-
-    // --- 🚨 HOST TICK: WAKE UP NEARBY ENEMIES ---
-    // Ensure enemies spawn continuously even if the host player is standing completely still!
-    if (now - (window.lastWakeAttempt || 0) > 3000) { // Check every 3 seconds
-        window.lastWakeAttempt = now;
-        wakeUpNearbyEnemies();
-    }
-
-    // --- WE ARE THE HOST: Process AI ---
-    try {
-        const nearestEnemyDir = await processOverworldEnemyTurns();
-
-        // Client-side intuition feedback
-        if (nearestEnemyDir) {
-            const player = gameState.player;
-            const intuitChance = Math.min(player.intuition * 0.005, 0.5);
-            if (Math.random() < intuitChance) {
-                const dirString = typeof getDirectionString === 'function' ? getDirectionString(nearestEnemyDir) : "nearby";
-                logMessage(`{gray:You sense a hostile presence to the ${dirString}!}`);
-            }
-        }
-    } catch (err) {
-        console.error("AI Processing Error:", err);
-    }
-}
-
 /**
  * Asynchronously runs the AI turns for shared maps.
  * Uses Deterministic Host Election to ensure only ONE client runs the AI 
