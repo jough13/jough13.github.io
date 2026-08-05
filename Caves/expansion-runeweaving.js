@@ -410,7 +410,13 @@ window.ExpansionManager.register({
             const spellData = window.SPELL_DATA[spellId];
             
             if (spellData && spellData.isCustom && spellData.customForm === 'nova') {
-                if (gameState.player.isMounted) {
+                
+                // 🚨 BUG FIX: Apply the Mutex Lock here too!
+                if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
+                isProcessingMove = true;
+
+                try {
+                    if (gameState.player.isMounted) {
                     gameState.player.isMounted = false;
                     logMessage(`{orange:You leap from your mount to cast a spell!}`);
                 }
@@ -471,12 +477,17 @@ window.ExpansionManager.register({
                 if (typeof triggerAbilityCooldown === 'function') triggerAbilityCooldown(spellId);
                 if (typeof endPlayerTurn === 'function') endPlayerTurn();
                 if (typeof render === 'function') render();
-                return;
+                
+            } finally {
+                // 🚨 BUG FIX: Unlock!
+                isProcessingMove = false;
             }
+            return;
+        }
             
-            // If not a custom nova, pass to original
-            return origCastSpell(spellId);
-        };
+        // If not a custom nova, pass to original
+        return origCastSpell(spellId);
+    };
 
         // C. Intercept executeAimedSpell for Custom Projectiles (Pierce & Chain)
         const origExecuteAimedSpell = window.executeAimedSpell;
