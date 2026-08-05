@@ -480,10 +480,14 @@ async function processOverworldEnemyTurns() {
     const pathsClaimedThisFrame = new Set(); 
     const SPATIAL_CHUNK_SIZE = 16; 
 
-    // --- 🚨 FIX: GLOBAL TARGET ACQUISITION ---
+    // --- GLOBAL TARGET ACQUISITION ---
     // Gather all valid targets (The Host + All Online Players in the same realm)
-    const validTargets = [{ id: 'HOST', x: gameState.player.x, y: gameState.player.y, isHost: true, stealth: gameState.player.stealthTurns || 0 }];
-    
+    const validTargets = [];
+    // Only add the host if they are actually alive to prevent corpse-swarming!
+    if (gameState.player.health > 0 && !gameState.isDead) {
+        validTargets.push({ id: 'HOST', x: gameState.player.x, y: gameState.player.y, isHost: true, stealth: gameState.player.stealthTurns || 0 });
+    }
+
     if (typeof otherPlayers !== 'undefined') {
         for (const pid in otherPlayers) {
             const op = otherPlayers[pid];
