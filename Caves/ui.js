@@ -156,7 +156,7 @@ const FORMAT_REGEXES = [
     { rx: /{ethereal:(.*?)}/g, repl: '<span class="text-teal-300 italic drop-shadow-md">$1</span>' }
 ];
 
-const logMessage = (text) => {
+function logMessage(text) {
     if (!text || !messageLog) return; 
 
     // 1. SANITIZE: Turn "<script>" into "&lt;script&gt;"
@@ -284,7 +284,7 @@ function showAreaDiscoveredBanner(areaName) {
 }
 
 // --- CORE STAT RENDERING ---
-const renderStats = () => {
+function renderStats() {
     renderStatusEffects();
     updateWeatherUI(); // Ensure weather/events are displayed
 
@@ -617,7 +617,7 @@ window.sortInventory = function() {
 };
 
 // --- INVENTORY RENDERING (Optimized with DocumentFragment) ---
-const renderInventory = () => {
+function renderInventory() {
     inventoryModalList.innerHTML = '';
     const titleElement = document.querySelector('#inventoryModal h2');
 
@@ -845,7 +845,7 @@ function initInventoryListeners() {
 }
 
 // --- EQUIPMENT RENDERING & TOOLTIPS ---
-const renderEquipment = () => {
+function renderEquipment() {
     const player = gameState.player;
     const equip = player.equipment;
 
