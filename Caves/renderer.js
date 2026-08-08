@@ -961,7 +961,7 @@ function renderTerrainCache(startX, startY) {
     terrainCtx.restore();
 }
 
-const render = () => {
+function render() {
     if (!gameState.mapMode) return;
 
     // --- SETUP ---
