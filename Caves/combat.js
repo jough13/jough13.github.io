@@ -2191,6 +2191,20 @@ function registerKill(enemy) {
     }
 
     if (typeof updateQuestProgress === 'function') updateQuestProgress(tile);
+
+    // Ensure all background kills (Pets, Thorns, Poison, AoE) save progress!
+    if (typeof triggerDebouncedSave === 'function') {
+        triggerDebouncedSave({
+            xp: gameState.player.xp,
+            level: gameState.player.level,
+            statPoints: gameState.player.statPoints,
+            killCounts: gameState.player.killCounts,
+            metrics: gameState.player.metrics,
+            health: gameState.player.health,
+            mana: gameState.player.mana,
+            quests: gameState.player.quests
+        });
+    }
 }
 
 function calculateHitChance(player, enemy) {
