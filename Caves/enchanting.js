@@ -182,12 +182,16 @@ function renderEnchantingModal() {
                 const cost = UPGRADE_COSTS[currentRarity];
                 const canAfford = dustAmount >= cost;
                 
-                let targetColorTheme = 'green';
-                if (currentRarity === 'uncommon') targetColorTheme = 'purple';
-                if (currentRarity === 'rare') targetColorTheme = 'red';
-                if (currentRarity === 'epic') targetColorTheme = 'yellow';
+                // Hardcoded string maps prevent Tailwind JIT from purging classes!
+                const colorThemes = {
+                    'normal': { btn: 'bg-green-600 hover:bg-green-500 border-green-900', border: 'hover:border-green-500' },
+                    'uncommon': { btn: 'bg-purple-600 hover:bg-purple-500 border-purple-900', border: 'hover:border-purple-500' },
+                    'rare': { btn: 'bg-red-600 hover:bg-red-500 border-red-900', border: 'hover:border-red-500' },
+                    'epic': { btn: 'bg-yellow-600 hover:bg-yellow-500 border-yellow-900', border: 'hover:border-yellow-500' }
+                };
                 
-                const btnClass = canAfford ? `bg-${targetColorTheme}-600 hover:bg-${targetColorTheme}-500 border-${targetColorTheme}-900 text-white` : 'bg-gray-700 border-gray-900 opacity-50 cursor-not-allowed text-gray-400';
+                const theme = colorThemes[currentRarity] || colorThemes['normal'];
+                const btnClass = canAfford ? `${theme.btn} text-white` : 'bg-gray-700 border-gray-900 opacity-50 cursor-not-allowed text-gray-400';
                 
                 let nameColor = 'text-gray-200';
                 if (currentRarity === 'uncommon') nameColor = 'text-green-400';
@@ -195,7 +199,7 @@ function renderEnchantingModal() {
                 if (currentRarity === 'epic') nameColor = 'text-red-400';
 
                 const li = document.createElement('li');
-                li.className = `shop-item bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 hover:border-${targetColorTheme}-500 transition-all duration-150 cursor-help`;
+                li.className = `shop-item bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 ${theme.border} transition-all duration-150 cursor-help`;
                 li.title = generateTooltip(item);
                 li.innerHTML = `
                     <div>
