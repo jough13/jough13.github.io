@@ -611,7 +611,7 @@ function getInterpolatedDayCycleColor(hour, minute) {
     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
-const renderTime = () => {
+function renderTime() {
     const time = gameState.time;
     const dayOfWeek = DAYS_OF_WEEK[(time.day - 1) % DAYS_OF_WEEK.length];
     const month = MONTHS_OF_YEAR[Math.floor((time.day - 1) / DAYS_IN_MONTH) % MONTHS_OF_YEAR.length];
