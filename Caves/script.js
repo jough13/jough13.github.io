@@ -2675,16 +2675,22 @@ async function enterGame(playerData) {
             character: playerData.character || '@'
         };
 
+        // Ensure we pull the saved bed location before respawning!
+        const safeRespawn = playerData.respawnPoint || { x: 0, y: 0 };
+        const rx = safeRespawn.x !== undefined ? safeRespawn.x : 0;
+        const ry = safeRespawn.y !== undefined ? safeRespawn.y : 0;
+
         // Merge logic for respawn
         playerData = {
             ...defaultState,
             ...preservedStats,
-            x: 0,
-            y: 0,
+            respawnPoint: safeRespawn, // Preserve the bed for next time!
+            x: rx,
+            y: ry,
             currentRealm: 0,      // Ensure hard-reloads pull you to the Prime Realm
             realmMutators: [],    // Clear mutators
             mapMode: 'overworld', // Force overworld mode
-            mapId: null,          // Clear dungeon instances
+
             health: preservedStats.maxHealth,
             mana: preservedStats.maxMana,
             stamina: preservedStats.maxStamina,
@@ -2738,39 +2744,6 @@ async function enterGame(playerData) {
 
     recalculateDerivedStats(); 
 
-    // --- Anti-Stuck Logic (Safe spot search) ---
-    if (gameState.mapMode === 'overworld') {
-        const currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
-        const blockedTiles = ['^', '▓', '▒', '🧱'];
-        if (!gameState.player.isBoating && (currentTile === '~' || currentTile === '≈')) {
-            blockedTiles.push('~', '≈'); 
-        }
-
-        if (blockedTiles.includes(currentTile)) {
-            console.warn("Player loaded inside obstacle. Finding safe spot...");
-            let found = false;
-            for (let r = 1; r <= 5; r++) { 
-                if (found) break;
-                for (let dy = -r; dy <= r; dy++) {
-                    for (let dx = -r; dx <= r; dx++) {
-                        const tx = gameState.player.x + dx;
-                        const ty = gameState.player.y + dy;
-                        const t = chunkManager.getTile(tx, ty);
-                        if (['.', 'F', 'd', 'D'].includes(t)) {
-                            gameState.player.x = tx;
-                            gameState.player.y = ty;
-                            found = true;
-                            logMessage("You woke up in a safer spot.");
-                            playerRef.update({ x: tx, y: ty });
-                            break;
-                        }
-                    }
-                    if (found) break;
-                }
-            }
-        }
-    }
-
     if (playerData.activeTreasure) {
         gameState.activeTreasure = playerData.activeTreasure;
         logMessage(`You recall a location marked on your map: (${gameState.activeTreasure.x}, ${-gameState.activeTreasure.y})`);
@@ -2798,6 +2771,8 @@ async function enterGame(playerData) {
         } else {
             // Failsafe: Kick them to the overworld if the cave ID was corrupted
             gameState.mapMode = 'overworld';
+            gameState.player.x = playerData.overworldExit ? playerData.overworldExit.x : 0;
+            gameState.player.y = playerData.overworldExit ? playerData.overworldExit.y : 0;
         }
     } else if (gameState.mapMode === 'castle') {
         gameState.currentCastleId = playerData.mapId;
@@ -2812,6 +2787,8 @@ async function enterGame(playerData) {
             gameState.friendlyNpcs = JSON.parse(JSON.stringify(chunkManager.friendlyNpcs?.[gameState.currentCastleId] || []));
         } else {
             gameState.mapMode = 'overworld';
+            gameState.player.x = playerData.overworldExit ? playerData.overworldExit.x : 0;
+            gameState.player.y = playerData.overworldExit ? playerData.overworldExit.y : 0;
         }
     }
     
@@ -3086,6 +3063,39 @@ async function enterGame(playerData) {
     Promise.all([waitForWorldData, waitForEnemies]).then(() => {
         if (gameState.mapMode === 'overworld') {
             wakeUpNearbyEnemies(); 
+            
+            // Run Anti-Stuck here AFTER Firebase has loaded player-built bridges/floors!
+            const currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
+            const blockedTiles = ['^', '▓', '▒', '🧱'];
+            if (!gameState.player.isBoating && (currentTile === '~' || currentTile === '≈')) {
+                blockedTiles.push('~', '≈'); 
+            }
+
+            if (blockedTiles.includes(currentTile)) {
+                console.warn("Player loaded inside obstacle. Finding safe spot...");
+                let found = false;
+                for (let r = 1; r <= 5; r++) { 
+                    if (found) break;
+                    for (let dy = -r; dy <= r; dy++) {
+                        for (let dx = -r; dx <= r; dx++) {
+                            const tx = gameState.player.x + dx;
+                            const ty = gameState.player.y + dy;
+                            const t = chunkManager.getTile(tx, ty);
+                            if (['.', 'F', 'd', 'D'].includes(t)) {
+                                gameState.player.x = tx;
+                                gameState.player.y = ty;
+                                gameState.player.visualX = tx; // Snap camera instantly
+                                gameState.player.visualY = ty;
+                                found = true;
+                                logMessage("{gray:You woke up in a safer spot.}");
+                                if (typeof playerRef !== 'undefined') playerRef.update({ x: tx, y: ty });
+                                break;
+                            }
+                        }
+                        if (found) break;
+                    }
+                }
+            }
         }
 
         // Final tiny buffer to ensure the DOM has processed the new data
