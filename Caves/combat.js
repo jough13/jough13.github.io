@@ -1213,9 +1213,14 @@ async function processOverworldEnemyTurns() {
 // ==========================================
 // REAL-TIME LOCAL AI LOOP (Dungeons & Castles)
 // ==========================================
+
 function runLocalAiTurns() {
     // Only execute if the player is in an instanced, local map
     if (gameState.mapMode !== 'dungeon' && gameState.mapMode !== 'castle') return;
+
+    // Pause Dungeon AI while the player is looking at menus!
+    // Prevents enemies from slaughtering players in real-time while they sort their inventory.
+    if (typeof _modalCache !== 'undefined' && _modalCache.isAnyOpen()) return;
 
     const now = Date.now();
     const AI_INTERVAL = 600; // 600ms tick rate to match overworld speed
