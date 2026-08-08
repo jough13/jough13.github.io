@@ -350,7 +350,14 @@ window.ExpansionManager.register({
                 ammo: null
             };
 
-            // 🚨 BUG FIX WIN: The Spire Ghost Fix & Map Protection
+            // Apply stats for the newly equipped gear!
+            if (typeof applyStatBonuses === 'function') {
+                if (player.equipment.weapon) applyStatBonuses(player.equipment.weapon, 1);
+                if (player.equipment.armor) applyStatBonuses(player.equipment.armor, 1);
+                if (player.equipment.accessory) applyStatBonuses(player.equipment.accessory, 1);
+            }
+
+            // The Spire Ghost Fix & Map Protection
             // Ensure pre-prestige gear isn't accidentally restored if they die in the Spire!
             delete player.spireBackupInv;
             delete player.spireBackupEquip;
