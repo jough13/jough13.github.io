@@ -234,12 +234,19 @@ function handleInput(key) {
             window.inputQueue.length = 0; // Force clear the queue
             lastActionTime = Date.now();  // Record the action time to enforce the throttle!
             
-            // Advance the turn safely
-            if (typeof endPlayerTurn === 'function') endPlayerTurn();
+            // Advance the turn with Mutex Lock
+            if (typeof endPlayerTurn === 'function' && !isProcessingMove) {
+                isProcessingMove = true;
+                try {
+                    endPlayerTurn();
+                } finally {
+                    isProcessingMove = false;
+                }
+            }
         }
         
         // Always return to block the actual keypress, even if the cooldown blocked the turn from ticking
-        return; 
+        return;
     }
 
     // --- STATE CANCELLATION ---
@@ -461,7 +468,14 @@ function handleInput(key) {
 
     // --- UTILITY KEYS ---
     if (lowerKey === 'q') {
-        if (typeof drinkFromSource === 'function') drinkFromSource();
+        // Add Mutex Lock
+        if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
+        isProcessingMove = true;
+        try {
+            if (typeof drinkFromSource === 'function') drinkFromSource();
+        } finally {
+            isProcessingMove = false;
+        }
         return;
     }
 
@@ -494,8 +508,15 @@ function handleInput(key) {
     }
 
     if (lowerKey === 'r') {
-        if (typeof restPlayer === 'function') restPlayer();
-        lastActionTime = Date.now(); 
+        // Add Mutex Lock
+        if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
+        isProcessingMove = true;
+        try {
+            if (typeof restPlayer === 'function') restPlayer();
+            lastActionTime = Date.now(); 
+        } finally {
+            isProcessingMove = false;
+        }
         return;
     }
 
