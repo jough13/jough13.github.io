@@ -334,16 +334,18 @@ const chunkManager = {
 
                         // --- GHOST TILE LOGIC ---
                         if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tileToPlace]) {
-                            // 1. If it's an enemy, set the underlying map tile to FLOOR
-                            map[mapY][mapX] = theme.floor;
+                            // 🚨 BUG FIX: Leave the enemy tile on the map so the PRNG doesn't stack multiple enemies here!
+                            map[mapY][mapX] = tileToPlace;
 
                             // 2. Create the Entity
                             const enemyTemplate = ENEMY_DATA[tileToPlace];
                             
-                            // Generate scaled stats based on cave coordinates
-                            let scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyTemplate, cX, cY) : { ...enemyTemplate };
+                            // Convert chunk coords to world coords so dungeon enemies scale properly!
+                            const worldCaveX = cX * this.CHUNK_SIZE;
+                            const worldCaveY = cY * this.CHUNK_SIZE;
+                            let scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyTemplate, worldCaveX, worldCaveY) : { ...enemyTemplate };
                             
-                            // JUICE WIN: Dynamic Depth Scaling!
+                            // Dynamic Depth Scaling!
                             // Deeper floors organically generate much harder enemies and better XP!
                             if (floorZ > 1) {
                                 scaledStats.maxHealth = Math.floor(scaledStats.maxHealth * (1 + (floorZ * 0.2)));
@@ -515,7 +517,10 @@ const chunkManager = {
                     const enemyTemplate = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[enemyTile] : null;
 
                     if (enemyTemplate) {
-                        let scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyTemplate, cX, cY) : { ...enemyTemplate };
+                        // 🚨 BUG FIX: Convert chunk coords to world coords
+                        const worldCaveX = cX * this.CHUNK_SIZE;
+                        const worldCaveY = cY * this.CHUNK_SIZE;
+                        let scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyTemplate, worldCaveX, worldCaveY) : { ...enemyTemplate };
                         
                         // Boost stats based on Floor Depth!
                         if (floorZ > 1) {
@@ -529,6 +534,9 @@ const chunkManager = {
                         this.caveEnemies[caveId].push(
                             this._createInstancedEnemy(uniqueId, randX, randY, enemyTile, scaledStats, enemyTemplate)
                         );
+                        
+                        // Stamp the enemy onto the physical map!
+                        map[randY][randX] = enemyTile;
                     }
                 }
             }
@@ -881,18 +889,23 @@ const chunkManager = {
                     const enemyTemplate = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[enemyTile] : null;
 
                     if (enemyTemplate) {
-                        // Scale them up based on the distance from the center of the world
-                        const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyTemplate, cX, cY) : { ...enemyTemplate };
+                        // Convert chunk coords to world coords
+                        const worldCastleX = cX * this.CHUNK_SIZE;
+                        const worldCastleY = cY * this.CHUNK_SIZE;
+                        const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyTemplate, worldCastleX, worldCastleY) : { ...enemyTemplate };
 
                         const uniqueId = `${castleId}:proc_enemy_${randX}_${randY}_${i}`;
                         this.castleEnemies[castleId].push(
                             this._createInstancedEnemy(uniqueId, randX, randY, enemyTile, scaledStats, enemyTemplate)
                         );
+                        
+                        // Stamp the enemy onto the map to prevent stacking!
+                        map[randY][randX] = enemyTile;
                     }
                 }
             }
 
-            // GAMEPLAY WIN: Dark Castles are now extremely rewarding to raid!
+            // Dark Castles are now extremely rewarding to raid!
             // Scatter 2-4 Loot Chests in the dark castle!
             const chestCount = 2 + Math.floor(random() * 3);
             for(let c = 0; c < chestCount; c++) {
