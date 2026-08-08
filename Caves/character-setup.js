@@ -790,8 +790,20 @@ async function finalizeCharacterCreation() {
     // 6. Auto-Equip
     const weapon = player.inventory.find(i => i && i.type === 'weapon'); // 🚨 GHOST GUARD
     const armor = player.inventory.find(i => i && i.type === 'armor'); // 🚨 GHOST GUARD
-    if (weapon) { player.equipment.weapon = weapon; weapon.isEquipped = true; }
-    if (armor) { player.equipment.armor = armor; armor.isEquipped = true; }
+    
+    if (weapon) { 
+        player.equipment.weapon = weapon; 
+        weapon.isEquipped = true; 
+        // 🚨 CRITICAL BUG FIX: Apply weapon stats
+        if (typeof applyStatBonuses === 'function') applyStatBonuses(weapon, 1); 
+    }
+    
+    if (armor) { 
+        player.equipment.armor = armor; 
+        armor.isEquipped = true; 
+        // Apply armor stats
+        if (typeof applyStatBonuses === 'function') applyStatBonuses(armor, 1); 
+    }
 
     // 7. Save and Start
     try {
