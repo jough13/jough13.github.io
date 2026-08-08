@@ -3230,10 +3230,14 @@ function gameLoop(timestamp) {
             // Only auto-tick if no menus are open and the player is alive
             if (typeof _modalCache !== 'undefined' && !_modalCache.isAnyOpen() && gameState.player.health > 0) {
                 
-                // Optional QoL: Don't auto-tick if we are actively aiming a spell
-                if (!gameState.isAiming && typeof endPlayerTurn === 'function') {
-                    // We pass a flag indicating this was an AFK tick
-                    endPlayerTurn({ isAutoTick: true });
+                // Respect and set the global engine lock!
+                if (!gameState.isAiming && typeof endPlayerTurn === 'function' && !isProcessingMove) {
+                    isProcessingMove = true;
+                    try {
+                        endPlayerTurn({ isAutoTick: true });
+                    } finally {
+                        isProcessingMove = false;
+                    }
                 }
             }
         }
