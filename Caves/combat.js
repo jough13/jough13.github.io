@@ -527,7 +527,7 @@ async function processOverworldEnemyTurns() {
         if (processedIdsThisFrame.has(enemyId)) continue;
 
         const enemy = gameState.sharedEnemies[enemyId];
-        // Ensure health > 0 so dead enemies don't take a turn while awaiting deletion!
+        // Ensure health > 0 so dead enemies don't take a turn!
         if (!enemy || enemy.health <= 0 || typeof enemy.x !== 'number' || typeof enemy.y !== 'number') {
             continue;
         }
@@ -1269,7 +1269,9 @@ function processEnemyTurns() {
     const enemiesToMove = [...gameState.instancedEnemies];
 
     enemiesToMove.forEach(enemy => {
+        // --- Stop processing enemies if the player is already dead! ---
         if (gameState.player.health <= 0) return;
+        
         // Ensure health > 0 so dead enemies don't take a turn!
         if (!enemy || enemy.health <= 0) return; 
 
