@@ -535,7 +535,7 @@ function grantLoreDiscovery(mapTileId, codexEntryId = null) {
     if (!gameState.pendingMapSaves) gameState.pendingMapSaves = { chunks: new Set(), lore: new Set(), looted: {} };
     gameState.pendingMapSaves.lore.add(mapTileId);
 
-    grantXp(25); // Base XP for reading
+    if (typeof window.grantXp === 'function') window.grantXp(25); // Base XP for reading
     logMessage("New Codex Entry added.");
 
     // 2. Track the actual item key (e.g., "📜1") for the Library
@@ -1584,7 +1584,7 @@ function endPlayerTurn(turnUpdates = {}) {
     }
 
     gameState.playerTurnCount++;
-    updateWeather();
+    if (typeof window.updateWeather === 'function') window.updateWeather();
 
     // --- DISTRIBUTED ENEMY GARBAGE COLLECTION ---
     // Every 50 turns, have this client sweep the area to delete abandoned enemies and clear memory leaks
@@ -1833,7 +1833,7 @@ function endPlayerTurn(turnUpdates = {}) {
         renderStats();
     }
 
-    runCompanionTurn();
+    if (typeof window.runCompanionTurn === 'function') window.runCompanionTurn();
 
     // We merge the specific status updates (poison, buffs) with the core stats.
     // This ensures XP, Quests, and Health are saved together, preventing the reset bug.
@@ -2477,7 +2477,7 @@ chatInput.addEventListener('keydown', (event) => {
         chatInput.value = ''; 
 
         if (message.startsWith('/')) {
-            handleChatCommand(message);
+            if (typeof window.handleChatCommand === 'function') window.handleChatCommand(message);
             chatInput.blur(); 
             return; // Don't send commands to global chat
         }
