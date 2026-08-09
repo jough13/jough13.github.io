@@ -291,8 +291,9 @@ window.ExpansionManager.register({
                 return;
             }
 
-            isProcessingMove = true;
+            if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
             try {
+                isProcessingMove = true;
                 player.stamina -= skillData.cost;
                 logMessage(`{yellow:You push the ${weapon.name} past its limits! It hums violently!}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
