@@ -3242,8 +3242,8 @@ function gameLoop(timestamp) {
                 
                 // Respect and set the global engine lock!
                 if (!gameState.isAiming && typeof endPlayerTurn === 'function' && !isProcessingMove) {
-                    isProcessingMove = true;
                     try {
+                        isProcessingMove = true;
                         endPlayerTurn({ isAutoTick: true });
                     } finally {
                         isProcessingMove = false;
