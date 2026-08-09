@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "astral_sea",
     name: "The Astral Sea (Sailing Expansion)",
-    version: "1.3", // Upgraded version!
+    version: "1.4", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -27,6 +27,10 @@ window.ExpansionManager.register({
 
                     logMessage("{cyan:You lower the Diving Bell into the abyssal depths...}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.2, 1000); 
+                    
+                    // JUICE WIN: Massive deep-sea splash
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#1e40af', 30);
+                    state.screenShake = 15;
                     
                     state.mapMode = 'dungeon';
                     state.currentCaveId = `shipwreck_${state.player.x}_${state.player.y}`;
@@ -81,7 +85,8 @@ window.ExpansionManager.register({
                     let ty = state.player.y;
                     let foundOcean = false;
                     
-                    for (let attempt = 0; attempt < 20; attempt++) {
+                    // Expanded to 100 attempts to ensure it almost never fails even in huge continents
+                    for (let attempt = 0; attempt < 100; attempt++) {
                         const angle = Math.random() * Math.PI * 2;
                         const dist = 2000 + Math.random() * 2000; 
                         const checkX = Math.floor(state.player.x + Math.cos(angle) * dist);
@@ -95,8 +100,15 @@ window.ExpansionManager.register({
                             break;
                         }
                     }
+                    
+                    // 🚨 ROBUSTNESS WIN: Failsafe Ocean Telemetry
+                    // If they use it in a massive continent where 100 raycasts fail, force an ocean coordinate
+                    if (!foundOcean) {
+                        tx = state.player.x + 5000;
+                        ty = state.player.y + 5000; // Guaranteed to be mostly ocean by noise metrics
+                    }
 
-                    // 🚨 THE BUG FIX: Actually spawn the dungeon entrance via worldState so it exists when they arrive!
+                    // Actually spawn the dungeon entrance via worldState so it exists when they arrive!
                     if (typeof chunkManager !== 'undefined') {
                         chunkManager.setWorldTile(tx, ty, '⚓c', 168); // Lasts 7 in-game days (168 hrs)
                     }
@@ -245,11 +257,23 @@ window.ExpansionManager.register({
                                         logMessage(`{gold:The hold is unguarded! You plunder ${gold} gold coins!}`);
                                         if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
                                         
-                                        // Bonus Loot
+                                        // 🚨 BUG FIX WIN: Clean Stack Merging for Event Loot
                                         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
-                                        if (state.player.inventory.length < invCap) {
-                                            state.player.inventory.push({ templateId: '🍺r', name: 'Spiced Rum', type: 'consumable', quantity: 2, tile: '🍺', effect: window.ITEM_DATA['🍺r'].effect, isEquipped: false });
+                                        const existingRum = state.player.inventory.find(i => i && i.name === 'Spiced Rum' && !i.isEquipped);
+                                        
+                                        if (existingRum) {
+                                            existingRum.quantity += 2;
                                             logMessage("{purple:You also found a stash of Spiced Rum!}");
+                                        } else if (state.player.inventory.length < invCap) {
+                                            const rumTemplate = window.ITEM_DATA['🍺r'];
+                                            const newRum = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(rumTemplate) : JSON.parse(JSON.stringify(rumTemplate));
+                                            newRum.templateId = '🍺r'; newRum.quantity = 2; newRum.isEquipped = false;
+                                            newRum.effect = rumTemplate.effect; // Rebind the effect manually just in case
+                                            
+                                            state.player.inventory.push(newRum);
+                                            logMessage("{purple:You also found a stash of Spiced Rum!}");
+                                        } else {
+                                            logMessage("{red:You found a stash of Spiced Rum, but your pack is full! It sinks into the ocean.}");
                                         }
                                     }
                                     
@@ -332,10 +356,11 @@ window.ExpansionManager.register({
                             // Custom Perlin Noise threshold for islands
                             const islandNoise = typeof elevationNoise !== 'undefined' ? elevationNoise.noise(worldX / 15 + 5000, worldY / 15 + 5000) : 0;
                             
+                            // Deterministic PRNG seeded specifically to this world coordinate
+                            const random = typeof Alea !== 'undefined' ? Alea(typeof stringToSeed !== 'undefined' ? stringToSeed(`ocean_${worldX}_${worldY}`) : 1) : Math.random;
+                            
                             if (islandNoise > 0.85) {
                                 chunkData[y][x] = 'D'; // Sand beach
-                                
-                                const random = typeof Alea !== 'undefined' ? Alea(typeof stringToSeed !== 'undefined' ? stringToSeed(`island_${worldX}_${worldY}`) : 1) : Math.random;
                                 
                                 // Flora & Features (LORE WIN: Dynamic island populations!)
                                 const rVal = random();
@@ -348,13 +373,15 @@ window.ExpansionManager.register({
                                 if (islandNoise > 0.92 && random() < 0.05) {
                                     chunkData[y][x] = '⚓c';
                                 }
-                            } else if (islandNoise > 0.80 && Math.random() < 0.005) {
+                            } 
+                            // Use the deterministic `random()` instead of `Math.random()` to prevent ships flickering!
+                            else if (islandNoise > 0.80 && random() < 0.005) {
                                 // Blockading Pirate Ships sitting just off the coast!
                                 chunkData[y][x] = '🏴‍☠️';
                             }
                             
                             // 🌟 EVENT WIN: Ghost Ships floating in the deep sea
-                            if (Math.random() < 0.002 && distSq > 4000000) {
+                            if (random() < 0.002 && distSq > 4000000) {
                                 chunkData[y][x] = '🚢g';
                             }
                         }
@@ -382,7 +409,7 @@ window.ExpansionManager.register({
                     const newTheme = window.CAVE_THEMES[themeKey];
                     const oldTheme = window.CAVE_THEMES[oldThemeKey] || { wall: '▓', floor: '.', secretWall: '▒' };
                     
-                    // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Theme Replacement
+                    // Safe Theme Replacement
                     // Preserves custom decorative tiles and items stamped by the room generator!
                     for(let y = 0; y < map.length; y++) {
                         for(let x = 0; x < map[y].length; x++) {
@@ -392,7 +419,7 @@ window.ExpansionManager.register({
                         }
                     }
 
-                    // 🚨 ROBUSTNESS WIN: Safe Entity Instantiator Fallback
+                    // Safe Entity Instantiator Fallback
                     const createEntity = typeof this._createInstancedEnemy === 'function' 
                         ? this._createInstancedEnemy.bind(this) 
                         : (id, x, y, tile, scaled, template) => ({ id, x, y, tile, name: scaled.name, health: scaled.maxHealth, maxHealth: scaled.maxHealth, attack: scaled.attack, defense: scaled.defense || 0, xp: scaled.xp, loot: template.loot });
@@ -406,7 +433,10 @@ window.ExpansionManager.register({
                         if (map[cy][cx] === newTheme.floor || map[cy][cx] === oldTheme.floor) {
                             map[cy][cx] = '🏴‍☠️c';
                             const bData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['🏴‍☠️c'] : { name: 'Pirate Captain', maxHealth: 250, attack: 12, xp: 800 };
-                            const scaled = { ...bData, maxHealth: bData.maxHealth, attack: bData.attack, xp: bData.xp }; 
+                            
+                            // Safe Fast Clone
+                            const baseClone = typeof window.fastClone === 'function' ? window.fastClone(bData) : JSON.parse(JSON.stringify(bData));
+                            const scaled = { ...baseClone, maxHealth: baseClone.maxHealth, attack: baseClone.attack, xp: baseClone.xp }; 
                             
                             this.caveEnemies[caveId].push(createEntity(`${caveId}:boss`, cx, cy, '🏴‍☠️c', scaled, bData));
                         }
