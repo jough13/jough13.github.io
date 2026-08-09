@@ -7,11 +7,11 @@
  */
 
 async function castSpell(spellId) {
-    // 🚨 BUG FIX: Lock the engine to prevent hotkey-spam race conditions!
+    // Lock the engine to prevent hotkey-spam race conditions!
     if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
-    isProcessingMove = true;
 
     try {
+        isProcessingMove = true;
         if (gameState.player.isMounted) {
             gameState.player.isMounted = false;
             logMessage(`{orange:You leap from your mount to cast a spell!}`);
