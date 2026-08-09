@@ -411,11 +411,11 @@ window.ExpansionManager.register({
             
             if (spellData && spellData.isCustom && spellData.customForm === 'nova') {
                 
-                // 🚨 BUG FIX: Apply the Mutex Lock here too!
+                // Apply the Mutex Lock here too!
                 if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
-                isProcessingMove = true;
 
                 try {
+                    isProcessingMove = true;
                     if (gameState.player.isMounted) {
                     gameState.player.isMounted = false;
                     logMessage(`{orange:You leap from your mount to cast a spell!}`);
@@ -479,7 +479,7 @@ window.ExpansionManager.register({
                 if (typeof render === 'function') render();
                 
             } finally {
-                // 🚨 BUG FIX: Unlock!
+                // Unlock!
                 isProcessingMove = false;
             }
             return;
@@ -495,9 +495,10 @@ window.ExpansionManager.register({
             const spellData = window.SPELL_DATA[spellId];
             
             if (spellData && spellData.isCustom && spellData.customForm === 'bolt') {
-                isProcessingMove = true;
+                if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
                 
                 try {
+                    isProcessingMove = true;
                     if (gameState.player.mana < spellData.cost) {
                         logMessage(`{red:You don't have enough mana to cast that.}`);
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
