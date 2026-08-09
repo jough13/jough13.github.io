@@ -949,7 +949,6 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     }
                 }
 
-                // --- 🚨 REPLACE THE PROMISE LOOP WITH THIS ---
                 const batchedPayload = {}; 
                 
                 for (let y = my - spellData.radius; y <= my + spellData.radius; y++) {
@@ -959,8 +958,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                         if (x === player.x && y === player.y) {
                             logMessage("{red:You were caught in your own meteor strike! (-15 HP)}");
                             window.modifyVital('health', -15);
-                            if (player.health <= 0) break; 
-                            continue;
+                            continue; // Let the rest of the meteor hit surrounding enemies!
                         }
                         
                         // Pass 'true' to trigger batch mode!
@@ -1127,6 +1125,9 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 [spellData.costType]: player[spellData.costType] // Update mana or psyche
             });
         }
+
+        // Prevent rendering alive UI if the spell killed you!
+        if (player.health <= 0 || gameState.isDead) return;
 
         // Only pulse the UI bar if resources were actually spent
         if (hitSomething) {
