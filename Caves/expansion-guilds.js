@@ -180,10 +180,19 @@ window.ExpansionManager.register({
                 if (typeof renderInventory === 'function') renderInventory();
             },
 
-            deposit: async function(inventoryIndex) {
+            deposit: async function(inventoryIndex, expectedName) {
                 if (this.isProcessing) return;
                 
-                const item = gameState.player.inventory[inventoryIndex];
+                let actualIndex = inventoryIndex;
+                let item = gameState.player.inventory[actualIndex];
+                
+                // 🚨 BUG FIX: Verify index matches the item to prevent UI desync shifting
+                if (expectedName && (!item || item.name !== expectedName)) {
+                    actualIndex = gameState.player.inventory.findIndex(i => i && i.name === expectedName && !i.isEquipped);
+                    if (actualIndex === -1) return;
+                    item = gameState.player.inventory[actualIndex];
+                }
+
                 if (!item || item.isEquipped || item.type === 'quest') {
                     logMessage("{red:You cannot deposit this item.}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -204,18 +213,23 @@ window.ExpansionManager.register({
                     // Safe Clone
                     const itemClone = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(item) : JSON.parse(JSON.stringify(item));
                     
+                    // Remove from inventory BEFORE awaiting Firebase
+                    // This guarantees that if a background process runs while Firebase is saving, the index cannot shift!
+                    gameState.player.inventory.splice(actualIndex, 1);
+                    this.renderUI(); // Update UI instantly to show it's gone locally
+                    
                     // Generate a unique push ID for this item
                     const newItemRef = this.vaultRef.push();
                     await newItemRef.set(itemClone);
 
-                    // Remove from player
-                    gameState.player.inventory.splice(inventoryIndex, 1);
-                    
                     if (typeof triggerDebouncedSave === 'function') {
                         triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory });
                     }
                 } catch (e) {
                     console.error("Vault Deposit Error:", e);
+                    // Rollback on failure
+                    gameState.player.inventory.push(item);
+                    this.renderUI();
                 } finally {
                     this.isProcessing = false;
                 }
@@ -286,7 +300,7 @@ window.ExpansionManager.register({
                     li.className = `p-2 bg-gray-800 rounded border border-gray-700 flex justify-between items-center ${item.isEquipped ? 'opacity-50 grayscale' : 'hover:border-blue-500 cursor-pointer'}`;
                     li.innerHTML = `
                         <span class="text-sm font-bold text-gray-300">${item.tile || '🎒'} ${item.name} <span class="text-xs text-gray-500">x${item.quantity}</span></span>
-                        ${!item.isEquipped ? `<button data-deposit="${index}" class="text-[10px] bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 uppercase font-bold border-b-2 border-green-900 active:border-b-0 active:mt-0.5">Deposit</button>` : `<span class="text-[9px] font-bold text-yellow-500 bg-black bg-opacity-40 px-2 py-1 rounded uppercase tracking-widest border border-yellow-800 shadow-inner">Equipped</span>`}
+                        ${!item.isEquipped ? `<button data-deposit="${index}" data-name="${item.name}" class="text-[10px] bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 uppercase font-bold border-b-2 border-green-900 active:border-b-0 active:mt-0.5">Deposit</button>` : `<span class="text-[9px] font-bold text-yellow-500 bg-black bg-opacity-40 px-2 py-1 rounded uppercase tracking-widest border border-yellow-800 shadow-inner">Equipped</span>`}
                     `;
                     playerList.appendChild(li);
                 });
@@ -322,7 +336,7 @@ window.ExpansionManager.register({
 
         document.getElementById('guildVaultModal').addEventListener('click', (e) => {
             const depBtn = e.target.closest('button[data-deposit]');
-            if (depBtn) window.GuildManager.deposit(parseInt(depBtn.dataset.deposit));
+            if (depBtn) window.GuildManager.deposit(parseInt(depBtn.dataset.deposit), depBtn.dataset.name);
 
             const withBtn = e.target.closest('button[data-withdraw]');
             if (withBtn) window.GuildManager.withdraw(withBtn.dataset.withdraw);
