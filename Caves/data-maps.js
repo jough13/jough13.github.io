@@ -1402,8 +1402,12 @@ window.TILE_DATA = {
                 }
                 
                 if (!foundSafeSpot) {
+                    // ANTI-SOFTLOCK FALLBACK
                     state.player.x = 0;
                     state.player.y = 0;
+                    state.currentRealm = 0;
+                    state.realmMutators = [];
+                    logMessage("{red:The Fae magic spiraled out of control! You awake back at the Safe Haven.}");
                 }
                 
                 state.mapDirty = true;
