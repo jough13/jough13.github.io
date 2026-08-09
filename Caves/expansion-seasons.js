@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "seasons_of_the_realm",
     name: "Seasons of the Realm (Dynamic Live-Ops)",
-    version: "1.2", // Upgraded version!
+    version: "1.3", // Upgraded version!
     
     data: {
         // --- 1. SEASONAL ITEMS ---
@@ -103,7 +103,7 @@ window.ExpansionManager.register({
         },
 
         // --- 4. SEASONAL RECIPES ---
-        // 🌟 EXPANDABILITY WIN: Native dictionary injection!
+        // Native dictionary injection!
         craftingRecipes: {
             "Sun-Forged Blade": { materials: { "Summer Ember": 1, "Iron Sword": 1, "Arcane Dust": 5 }, xp: 150, level: 5 },
             "Glacial Axe": { materials: { "Winter Core": 1, "Greataxe": 1, "Arcane Dust": 5 }, xp: 150, level: 5 }
@@ -115,6 +115,7 @@ window.ExpansionManager.register({
         // ==========================================
         // 1. THE SEASONAL CLOCK ENGINE
         // ==========================================
+
         window.OVERRIDE_SEASON = null; // Use /season [name] in chat to override for testing!
 
         window.getCurrentSeason = function() {
@@ -132,6 +133,7 @@ window.ExpansionManager.register({
         // ==========================================
         // 2. UI INJECTION (Time Panel & Chat Commands)
         // ==========================================
+
         const origRenderTime = window.renderTime;
         window.renderTime = function() {
             if (origRenderTime) origRenderTime();
@@ -160,7 +162,7 @@ window.ExpansionManager.register({
                 const command = parts[0].toLowerCase();
                 
                 if (command === 'season' && parts[1]) {
-                    // 🚨 SECURITY WIN: Admin Guard
+                    // Admin Guard
                     const ADMIN_EMAILS = ["your.email@gmail.com", "admin@cavesandcastles.com"];
                     if (!auth.currentUser || !ADMIN_EMAILS.includes(auth.currentUser.email)) {
                         logMessage("{red:Unauthorized. The Time Weavers ignore you.}");
@@ -181,7 +183,7 @@ window.ExpansionManager.register({
                     
                     logMessage(`{purple:The Time Weavers violently shift the timeline. It is now ${window.getCurrentSeason()}.}`);
                     
-                    // JUICE WIN: Massive Temporal Shift Effects
+                    // Massive Temporal Shift Effects
                     if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playTimelineShift === 'function') {
                         AudioSystem.playTimelineShift();
                     }
@@ -210,6 +212,7 @@ window.ExpansionManager.register({
         // ==========================================
         // 3. TERRAIN MUTATIONS (Winter Ice & Spring Blooms)
         // ==========================================
+
         if (typeof chunkManager !== 'undefined' && chunkManager.generateChunk) {
             const origGenerateChunk = chunkManager.generateChunk;
             
@@ -259,6 +262,7 @@ window.ExpansionManager.register({
         // ==========================================
         // 4. WEATHER SKEWING
         // ==========================================
+
         if (typeof window.updateWeather === 'function') {
             const origUpdateWeather = window.updateWeather;
             window.updateWeather = function() {
@@ -295,6 +299,7 @@ window.ExpansionManager.register({
         // ==========================================
         // 5. SEASONAL SURVIVAL MECHANICS
         // ==========================================
+
         if (typeof window.endPlayerTurn === 'function') {
             const origEndPlayerTurn = window.endPlayerTurn;
             window.endPlayerTurn = function(updates = {}) {
@@ -313,7 +318,8 @@ window.ExpansionManager.register({
                     } 
                     else if (season === 'Winter') {
                         // Biting Cold: Drains stamina unless you have fire resistance or a torch!
-                        const hasTorch = p.inventory.some(i => i && !i.isEquipped && (i.name === 'Torch' || i.name === 'Ever-Burning Candle'));
+                        // Removed !i.isEquipped so holding a torch in an off-hand slot protects you!
+                        const hasTorch = p.inventory.some(i => i && (i.name === 'Torch' || i.name === 'Ever-Burning Candle'));
                         if (p.fireResistTurns <= 0 && !hasTorch) {
                             if (typeof window.modifyVital === 'function') window.modifyVital('stamina', -1);
                             else p.stamina = Math.max(0, p.stamina - 1);
@@ -341,7 +347,7 @@ window.ExpansionManager.register({
                     }
                 }
                 
-                // 🚨 STABILITY WIN: Use .apply to safely pass all original arguments forward!
+                // Use .apply to safely pass all original arguments forward!
                 if (origEndPlayerTurn) origEndPlayerTurn.apply(this, arguments);
             };
         }
@@ -349,6 +355,7 @@ window.ExpansionManager.register({
         // ==========================================
         // 6. ENEMY MIGRATIONS
         // ==========================================
+
         if (typeof chunkManager !== 'undefined' && chunkManager.getEnemySpawn) {
             const origGetEnemySpawn = chunkManager.getEnemySpawn;
             
@@ -370,53 +377,69 @@ window.ExpansionManager.register({
         // ==========================================
         // 7. HOMESTEAD HARVEST BONUSES
         // ==========================================
+
         if (typeof window.harvestPlot === 'function') {
             const origHarvestPlot = window.harvestPlot;
             
             window.harvestPlot = function(plotIndex) {
                 const p = gameState.player;
-                const plot = p.gardenPlots ? p.gardenPlots[plotIndex] : null;
                 
-                if (plot) {
-                    const turnsPassed = gameState.playerTurnCount - plot.plantedAt;
-                    const seedData = typeof window.FARMING_DATA !== 'undefined' ? window.FARMING_DATA.seeds[plot.seedName] : null;
+                // 1. Capture the plot state BEFORE the original function runs and potentially wipes it
+                const plotBefore = p.gardenPlots ? p.gardenPlots[plotIndex] : null;
+                
+                let seedData = null;
+                let isFullyGrown = false;
+                
+                if (plotBefore) {
+                    const turnsPassed = gameState.playerTurnCount - plotBefore.plantedAt;
+                    seedData = typeof window.FARMING_DATA !== 'undefined' ? window.FARMING_DATA.seeds[plotBefore.seedName] : null;
                     
                     if (seedData && (turnsPassed / seedData.turnsToGrow) * 100 >= 100) {
-                        const season = window.getCurrentSeason();
-                        
-                        // In Autumn, crops yield an extra clone of themselves!
-                        if (season === 'Autumn') {
-                            // 🚀 PERFORMANCE WIN: High-speed cross-expansion integration!
-                            // Looks up the homestead crop cache first instead of iterating global dictionary.
-                            let templateId = null;
-                            if (typeof getFarmItemKey === 'function') {
-                                templateId = getFarmItemKey(seedData.yields);
-                            } else {
-                                templateId = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === seedData.yields);
-                            }
-                            
-                            const template = window.ITEM_DATA[templateId];
-                            const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(p) : 9;
-                            
-                            if (templateId && template && p.inventory.length < invCap) {
-                                let bonusItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
-                                bonusItem.templateId = templateId;
-                                bonusItem.quantity = 1;
-                                bonusItem.isEquipped = false;
-                                p.inventory.push(bonusItem);
-                                
-                                logMessage(`{orange:Autumn Harvest Bonus! (+1 ${seedData.yields})}`);
-                                
-                                // Sparkles!
-                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, "BONUS", "#f97316");
-                                if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
-                            }
-                        }
+                        isFullyGrown = true;
                     }
                 }
                 
-                // Call original logic to handle standard harvesting and XP
+                // 2. Call original logic to handle standard harvesting, XP, and inventory capacity checks
                 origHarvestPlot(plotIndex);
+                
+                const plotAfter = p.gardenPlots ? p.gardenPlots[plotIndex] : null;
+                
+                // Infinite Harvest Prevention
+                // We only grant the bonus if the original function actually SUCCEEDED and cleared the plot!
+                // Previously, players could trigger the harvest with a full inventory, abort the base 
+                // harvest, but still receive the Autumn bonus indefinitely!
+                if (plotBefore && plotAfter === null && isFullyGrown && seedData) {
+                    const season = window.getCurrentSeason();
+                    
+                    // In Autumn, crops yield an extra clone of themselves!
+                    if (season === 'Autumn') {
+                        // 🚀 PERFORMANCE WIN: High-speed cross-expansion integration!
+                        // Looks up the homestead crop cache first instead of iterating global dictionary.
+                        let templateId = null;
+                        if (typeof getFarmItemKey === 'function') {
+                            templateId = getFarmItemKey(seedData.yields);
+                        } else if (typeof window.ITEM_DATA !== 'undefined') {
+                            templateId = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === seedData.yields);
+                        }
+                        
+                        const template = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA[templateId] : null;
+                        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(p) : 9;
+                        
+                        if (templateId && template && p.inventory.length < invCap) {
+                            let bonusItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
+                            bonusItem.templateId = templateId;
+                            bonusItem.quantity = 1;
+                            bonusItem.isEquipped = false;
+                            p.inventory.push(bonusItem);
+                            
+                            logMessage(`{orange:Autumn Harvest Bonus! (+1 ${seedData.yields})}`);
+                            
+                            // Sparkles!
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, "BONUS", "#f97316");
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+                        }
+                    }
+                }
             };
         }
     }
