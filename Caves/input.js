@@ -7,7 +7,7 @@
 // --- GLOBALS & SAFETY ---
 window.inputQueue = window.inputQueue || []; // Guarantee queue exists regardless of load order
 
-// PERFORMANCE WIN: O(1) Directional Mapping
+// O(1) Directional Mapping
 // Replaces massive if/else and switch statements with a single instant dictionary lookup
 const MOVEMENT_MAP = {
     // Cardinals
