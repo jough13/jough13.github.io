@@ -2258,9 +2258,14 @@ function handlePlayerDeath() {
     // Engage the lock!
     gameState.isDead = true;
 
-    if (saveTimeout) {
+    // Nuke ANY pending saves from the event that killed them!
+    // This prevents the debouncer from resurrecting the player 3 minutes later.
+    if (typeof saveTimeout !== 'undefined' && saveTimeout) {
         clearTimeout(saveTimeout);
         saveTimeout = null;
+    }
+    if (typeof pendingSaveData !== 'undefined') {
+        pendingSaveData = null; // Clear the actual data buffer!
     }
 
     const player = gameState.player;
