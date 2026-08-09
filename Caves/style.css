@@ -395,12 +395,15 @@ canvas {
     border-radius: 8px;
     transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     
-    /* PERFORMANCE WIN: Skip rendering off-screen inventory items entirely! */
+    /* Skip rendering off-screen inventory items entirely! */
     content-visibility: auto;
     contain-intrinsic-size: 56px;
     contain: layout paint style;
     /* Force GPU layer so hovering it doesn't repaint the modal */
     transform: translateZ(0);
+    
+    /* Prevent iOS double-tap-to-zoom on rapid tapping */
+    touch-action: manipulation;
 }
 
 .inventory-slot:hover {
@@ -410,7 +413,7 @@ canvas {
     z-index: 10; 
 }
 
-/* JUICE WIN: Tactile click compression for items */
+/* Tactile click compression for items */
 .inventory-slot:active {
     transform: translateY(-2px) scale(0.95) translateZ(0);
     box-shadow: 0 4px 8px rgba(0,0,0,0.2), 0 0 5px rgba(79, 70, 229, 0.2);
@@ -486,6 +489,9 @@ canvas {
     transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     contain: layout paint;
     transform: translateZ(0); /* GPU Layer */
+    
+    /* Prevent iOS double-tap-to-zoom */
+    touch-action: manipulation;
 }
 
 .equipment-slot:hover {
@@ -639,6 +645,7 @@ kbd {
 /* ==========================================================================
    LIST ITEMS (Shops, Quests, Crafting)
    ========================================================================== */
+
 .shop-item, .spell-item, .skill-item, .quest-item, .crafting-item {
     display: flex;
     justify-content: space-between;
@@ -647,13 +654,16 @@ kbd {
     background-color: var(--bg-page);
     border-radius: 8px;
     border: 1px solid var(--border-color);
-    border-left-width: 5px; /* JUICE WIN: Thicker left edge for selection feel */
+    border-left-width: 5px; /* Thicker left edge for selection feel */
     transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s, border-color 0.2s;
     
-    /* PERFORMANCE WIN: Skip rendering completely if scrolled off-screen! */
+    /* Skip rendering completely if scrolled off-screen! */
     content-visibility: auto;
     contain-intrinsic-size: 70px;
     contain: layout paint style;
+    
+    /* Prevent iOS double-tap-to-zoom */
+    touch-action: manipulation;
 }
 
 .spell-item:hover, .skill-item:hover, .shop-item:hover, .crafting-item:hover, .quest-item:hover {
