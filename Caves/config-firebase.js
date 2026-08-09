@@ -37,15 +37,15 @@ if (typeof firebase === 'undefined') {
         set: async () => {},
         update: async () => {},
         delete: async () => {},
-        // 🚨 PREVENTS CRASH ON TIME SYNC
+        // PREVENTS CRASH ON TIME SYNC
         onSnapshot: (cb) => { cb({ exists: false, data: () => ({}) }); return () => {}; }
     };
 
     // PREVENTS CRASH ON BATCH SAVES
     const dummyBatch = {
-        set: function() { return this; },
-        update: function() { return this; },
-        delete: function() { return this; },
+        set: function(docRef, data, options) { return this; },
+        update: function(docRef, data) { return this; },
+        delete: function(docRef) { return this; },
         commit: async () => {}
     };
 
