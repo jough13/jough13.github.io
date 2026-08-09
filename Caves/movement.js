@@ -157,11 +157,11 @@ async function attemptMovePlayer(newX, newY) {
         return;
     }
 
-    // 🚨 GLOBAL ENGINE LOCK
+    // GLOBAL ENGINE LOCK
     if (isProcessingMove) return;
-    isProcessingMove = true;
 
     try {
+        isProcessingMove = true;
         // Capture previous coordinates immediately at the top of the function to prevent ReferenceErrors
         const prevX = gameState.player.x;
         const prevY = gameState.player.y;
