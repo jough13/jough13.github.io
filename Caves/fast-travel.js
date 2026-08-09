@@ -555,7 +555,7 @@ window.handleFastTravel = async function (targetX, targetY) {
         gameState.currentCastleId = null;
         gameState.instancedEnemies = [];
         
-        // --- LORE WIN: DIMENSIONAL BLEED ---
+        // --- DIMENSIONAL BLEED ---
         // If the player is suffering from Madness, the teleport becomes unstable!
         let finalX = targetX;
         let finalY = targetY;
@@ -583,7 +583,18 @@ window.handleFastTravel = async function (targetX, targetY) {
                     if (foundSafeSpot) break;
                 }
             }
+
+            // ANTI-SOFTLOCK FALLBACK
+            // If the madness scattered them into an infinitely dense mountain, eject them to spawn!
+            if (!foundSafeSpot) {
+                finalX = 0;
+                finalY = 0;
+                gameState.currentRealm = 0;
+                gameState.realmMutators = [];
+                logMessage("{red:The leylines violently reject your destination. You are thrown back to the Safe Haven.}");
+            }
         }
+
 
         // Move Player
         player.x = finalX;
