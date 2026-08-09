@@ -447,6 +447,9 @@ window.ExpansionManager.register({
                 
                 // Finalize Turn
                 gameState.isAiming = false;
+
+                // Prevent rendering alive UI if splashed by your own lethal potion!
+                if (gameState.player.health <= 0 || gameState.isDead) return;
                 
                 // Push newly acquired debuffs/buffs via debouncer
                 if (typeof triggerDebouncedSave === 'function') {
