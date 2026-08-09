@@ -3095,6 +3095,22 @@ async function enterGame(playerData) {
                         if (found) break;
                     }
                 }
+                
+                // ANTI-SOFTLOCK FALLBACK
+                // If the entire 11x11 area around the player is solid rock/lava, teleport them to spawn!
+                if (!found) {
+                    gameState.player.x = 0;
+                    gameState.player.y = 0;
+                    gameState.player.visualX = 0;
+                    gameState.player.visualY = 0;
+                    gameState.currentRealm = 0; // Force them to Prime Realm
+                    gameState.realmMutators = [];
+                    logMessage("{red:The terrain collapsed around you. You awaken back at the Safe Haven.}");
+                    
+                    if (typeof playerRef !== 'undefined') {
+                        playerRef.update({ x: 0, y: 0, currentRealm: 0, realmMutators: [] });
+                    }
+                }
             }
         }
 
