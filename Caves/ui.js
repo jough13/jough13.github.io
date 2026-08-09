@@ -139,10 +139,10 @@ const statBarElements = {
 window.currentZoom = 20; // The absolute source of truth for TILE_SIZE
 
 // --- CHAT & MESSAGE LOG SYSTEM ---
-// PERFORMANCE WIN: Cache Regexes so the V8 engine doesn't recompile them on every log
+// Cache Regexes so the V8 engine doesn't recompile them on every log
 const CRIT_REGEX = /\b(CRITICAL HIT!|CRITICAL|AMBUSH!|LEVEL UP!|NEW RECORD!|MAXED)\b/g;
 
-// LORE WIN: Added explicit Void and Ethereal parsing colors for future-proof lore formatting!
+// Added explicit Void and Ethereal parsing colors for future-proof lore formatting!
 const FORMAT_REGEXES = [
     { rx: /{red:(.*?)}/g, repl: '<span class="text-red-500 font-bold drop-shadow-md">$1</span>' },
     { rx: /{green:(.*?)}/g, repl: '<span class="text-green-500 font-bold drop-shadow-md">$1</span>' },
