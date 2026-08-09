@@ -1,12 +1,13 @@
-:// --- START OF FILE expansion-exploration.js ---
+// --- START OF FILE expansion-exploration.js ---
 
 window.ExpansionManager.register({
     id: "exploration_expanded",
     name: "Expanded Exploration",
-    version: "1.3", // Upgraded version!
+    version: "1.4", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
+        
         items: {
             '🕸️g': { 
                 name: 'Gossamer Silk', type: 'trade', tile: '🕸️', 
@@ -25,8 +26,13 @@ window.ExpansionManager.register({
                         logMessage("You are completely refreshed.");
                         return false;
                     }
-                    window.modifyVital('thirst', 50);
-                    window.modifyVital('health', 5);
+                    if (typeof window.modifyVital === 'function') {
+                        window.modifyVital('thirst', 50);
+                        window.modifyVital('health', 5);
+                    } else {
+                        state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 50);
+                        state.player.health = Math.min(state.player.maxHealth, state.player.health + 5);
+                    }
                     logMessage("{blue:The water is perfectly crisp and restorative. (+50 Thirst, +5 HP)}");
                     if (typeof triggerStatAnimation !== 'undefined') {
                         triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
@@ -38,6 +44,7 @@ window.ExpansionManager.register({
         },
 
         // --- 2. NEW MICRO-DUNGEON ENTRANCES ---
+
         tiles: {
             '🕸️b': {
                 type: 'dungeon_entrance',
@@ -72,6 +79,7 @@ window.ExpansionManager.register({
         },
 
         // --- 3. CUSTOM MICRO-DUNGEON ROOMS ---
+
         roomTemplates: {
             "Micro Spider Den": {
                 width: 5, height: 5,
@@ -97,9 +105,11 @@ window.ExpansionManager.register({
     },
 
     init: function() {
+
         // ==========================================
         // FEATURE 1: MICRO-DUNGEON GENERATION
         // ==========================================
+
         // We safely intercept the cave generator. If it's a "micro" dungeon, we 
         // generate a single 5x5 room instead of a massive procedural maze!
         
@@ -152,7 +162,7 @@ window.ExpansionManager.register({
                     
                     this.caveEnemies[caveId] = [];
                     
-                    // 🚨 ROBUSTNESS WIN: Safe Entity Instantiator Fallback
+                    // Safe Entity Instantiator Fallback
                     const createEntity = typeof this._createInstancedEnemy === 'function' 
                         ? this._createInstancedEnemy.bind(this) 
                         : (id, x, y, tile, scaled, template) => ({ id, x, y, tile, name: scaled.name, health: scaled.maxHealth, maxHealth: scaled.maxHealth, attack: scaled.attack, defense: scaled.defense || 0, xp: scaled.xp, loot: template.loot });
@@ -170,7 +180,13 @@ window.ExpansionManager.register({
                                 const tData = window.ENEMY_DATA[t];
                                 const eId = `${caveId}:${rx+1},${ry+1}`;
                                 
-                                const scaled = { ...tData, maxHealth: Math.floor((tData.maxHealth || 10) * 1.5), xp: (tData.xp || 5) * 2 };
+                                // 🚨 PERFORMANCE WIN: Use fastClone to sever memory references
+                                const baseClone = typeof window.fastClone === 'function' ? window.fastClone(tData) : JSON.parse(JSON.stringify(tData));
+                                const scaled = { 
+                                    ...baseClone, 
+                                    maxHealth: Math.floor((Number(baseClone.maxHealth) || 10) * 1.5), 
+                                    xp: Math.floor((Number(baseClone.xp) || 5) * 2) 
+                                };
                                 this.caveEnemies[caveId].push(createEntity(eId, rx+1, ry+1, t, scaled, tData));
                             }
                             
@@ -182,13 +198,14 @@ window.ExpansionManager.register({
                     map[Math.floor(mapHeight/2)][Math.floor(mapWidth/2)] = bossTile;
                     const bData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA[bossTile] : null;
                     if (bData) {
+                        const bossClone = typeof window.fastClone === 'function' ? window.fastClone(bData) : JSON.parse(JSON.stringify(bData));
                         const bossScaled = { 
-                            ...bData, 
+                            ...bossClone, 
                             isBoss: true, 
                             isElite: true, 
-                            maxHealth: (bData.maxHealth || 20) * 3, 
-                            attack: (bData.attack || 5) + 2, 
-                            xp: (bData.xp || 20) * 4 
+                            maxHealth: Math.floor((Number(bossClone.maxHealth) || 20) * 3), 
+                            attack: (Number(bossClone.attack) || 5) + 2, 
+                            xp: Math.floor((Number(bossClone.xp) || 20) * 4) 
                         };
                         
                         // Inject unique drops onto the boss based on the dungeon type
@@ -205,6 +222,8 @@ window.ExpansionManager.register({
                     // The Entrance/Exit is always at the bottom center
                     map[mapHeight-1][Math.floor(mapWidth/2)] = '>';
                     
+                    // Actually save the newly generated map into the engine cache!
+                    // Without this, the engine re-generates the room every single time the player moves a tile!
                     this.caveMaps[caveId] = map;
                     return map;
                 }
@@ -216,6 +235,7 @@ window.ExpansionManager.register({
         // ==========================================
         // FEATURE 2: NATURAL WORLD SPAWNING
         // ==========================================
+
         if (typeof chunkManager !== 'undefined' && chunkManager.generateChunk) {
             const origGenerateChunk = chunkManager.generateChunk;
             chunkManager.generateChunk = function(chunkX, chunkY) {
@@ -237,7 +257,7 @@ window.ExpansionManager.register({
                     const ry = Math.floor(random() * 14) + 1;
                     const tile = chunkData[ry][rx];
                     
-                    // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Terrain Overwrite Guard
+                    // Safe Terrain Overwrite Guard
                     // Prevents deleting Obelisks, NPCs, or Villages!
                     const allowedTerrain = ['F', '🌳', '≈', '❄️', '🧊', 'D', 'd'];
                     if (!allowedTerrain.includes(tile)) return;
@@ -255,6 +275,7 @@ window.ExpansionManager.register({
         // ==========================================
         // FEATURE 3: DYNAMIC WEATHER PHYSICS
         // ==========================================
+
         if (typeof window.endPlayerTurn === 'function') {
             const origEndPlayerTurn = window.endPlayerTurn;
             window.endPlayerTurn = function(turnUpdates = {}) {
@@ -274,7 +295,7 @@ window.ExpansionManager.register({
                                 const tx = p.x + dx;
                                 const ty = p.y + dy;
                                 
-                                // 🚨 BUG FIX WIN: The "Trapped in Ice" Boat Fix
+                                // The "Trapped in Ice" Boat Fix
                                 if (tx === p.x && ty === p.y && (p.isBoating || p.isSailing)) continue;
                                 
                                 const tile = chunkManager.getTile(tx, ty);
@@ -285,6 +306,7 @@ window.ExpansionManager.register({
                                     chunkManager.setWorldTile(tx, ty, '🧊', 1);
                                     mapUpdatedLocally = true;
                                     
+                                    // SAFE FALLBACK: Check if ParticleSystem exists before spawning effects
                                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tx, ty, '#e0f2fe', 3);
                                     if (typeof AudioSystem !== 'undefined' && Math.random() < 0.05) AudioSystem.playTone(800, 'square', 0.1, 0.05, false, 100);
                                 }
