@@ -8,11 +8,11 @@
 // and breaking Firebase document size limits.
 window.MAX_STASH_SLOTS = 50; 
 
-// PERFORMANCE WIN: O(1) Item Lookup Cache for Withdrawing
+// Item Lookup Cache for Withdrawing
 // Attaching directly to 'window' makes it 100% immune to hot-reload SyntaxErrors!
 window._stashItemKeyCache = window._stashItemKeyCache || {};
 
-// PERFORMANCE WIN: Static Sorting Weights Cache
+// Static Sorting Weights Cache
 // Prevents the V8 engine from re-allocating this dictionary every time the stash is sorted.
 const STASH_TYPE_WEIGHTS = { 
     'weapon': 1, 'armor': 2, 'accessory': 3, 'ammo': 4, 
@@ -20,12 +20,12 @@ const STASH_TYPE_WEIGHTS = {
     'treasure_map': 9, 'quest': 10, 'trade': 11, 'ingredient': 12, 'seed': 13, 'junk': 14 
 };
 
-// 🚨 BUG FIX WIN: Mutex Lock to prevent UI Desync & Index Shifting!
+// Mutex Lock to prevent UI Desync & Index Shifting!
 // Rapidly clicking deposit/withdraw would cause array splices to misalign indexes mid-processing,
 // moving the wrong items or crashing the client. This enforces sequential transaction safety!
 let isStashProcessing = false;
 
-// LORE WIN: Atmospheric Vault Whispers
+// Atmospheric Vault Whispers
 // The vault feels like a living, breathing entity tied to the Void.
 const VAULT_WHISPERS = [
     "Space and time fold inside this heavy iron box.",
@@ -47,10 +47,10 @@ function getStashItemKey(name) {
 }
 
 // Helper to determine if an item is allowed to merge quantities
-// 🚨 BUG FIX: Added 'seed' so Homesteading crops stack properly!
+// Added 'seed' so Homesteading crops stack properly!
 window.isStackableItem = (type) => ['junk', 'consumable', 'trade', 'ingredient', 'ammo', 'seed'].includes(type);
 
-// PERFORMANCE & BUG FIX WIN: High-speed, robust deep cloning for stash transfers
+// High-speed, robust deep cloning for stash transfers
 // Prevents accidentally copying an item Reference which would cause deleting it from 
 // the stash to also delete it from the player's inventory!
 window.cloneItemSafely = (item) => {
@@ -61,7 +61,7 @@ window.cloneItemSafely = (item) => {
     return JSON.parse(JSON.stringify(item));
 };
 
-// JUICE WIN: Dynamic Audio based on the item being transferred
+// Dynamic Audio based on the item being transferred
 function playStashAudio(item) {
     if (typeof AudioSystem === 'undefined') return;
     
@@ -586,17 +586,18 @@ function renderStash() {
         let tKey = item.templateId || getStashItemKey(item.name);
         const template = typeof window.ITEM_DATA !== 'undefined' && tKey ? window.ITEM_DATA[tKey] : null;
         if (template && template.description) {
-            // ROBUSTNESS: Strip out internal {color:} tags for a completely clean native tooltip
+            // Strip out internal {color:} tags for a completely clean native tooltip
             const cleanDesc = typeof stripColorTags === 'function' ? stripColorTags(template.description) : template.description.replace(/\{[a-zA-Z0-9_-]+:(.*?)\}/ig, '$1');
             tooltip += `\n\n${cleanDesc}`;
         }
 
         // --- EXPANSION: Show Base Weapon/Armor Stats in Tooltip ---
+        // 🚨 BUG FIX WIN: Strict Number coercion
         if (item.type === 'weapon' && item.damage !== undefined) {
-            tooltip += `\nDamage: +${item.damage}`;
+            tooltip += `\nDamage: +${Number(item.damage) || 0}`;
         }
         if (item.type === 'armor' && item.defense !== undefined) {
-            tooltip += `\nDefense: +${item.defense}`;
+            tooltip += `\nDefense: +${Number(item.defense) || 0}`;
         }
 
         if (item.statBonuses) {
@@ -701,10 +702,10 @@ function renderStash() {
             li.className = 'shop-item hover:border-blue-500 transition-colors duration-150';
             li.title = generateTooltip(item); 
             
-            // 🚨 SECURITY WIN: Escape dynamic user data
+            // Escape dynamic user data
             const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(item.name || "Unknown") : (item.name || "Unknown");
 
-            // JUICE: Highlight Magic Items
+            // Highlight Magic Items
             let nameColor = item.statBonuses ? 'text-fuchsia-400 font-bold' : 'text-gray-200';
             
             if (item._rarity === 'rare') nameColor = 'text-purple-400 font-bold';
@@ -794,7 +795,7 @@ function openStashModal() {
     
     renderStash();
     
-    // LORE WIN: Flavor text explaining how stashes work globally, picking a random whisper
+    // Flavor text explaining how stashes work globally, picking a random whisper
     const title = document.querySelector('#stashModal h2');
     if (title) {
         const whisper = VAULT_WHISPERS[Math.floor(Math.random() * VAULT_WHISPERS.length)];
