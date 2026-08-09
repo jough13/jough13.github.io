@@ -1,4 +1,4 @@
-// --- START OF FILE expansion-exploration.js ---
+:// --- START OF FILE expansion-exploration.js ---
 
 window.ExpansionManager.register({
     id: "exploration_expanded",
@@ -328,6 +328,7 @@ window.ExpansionManager.register({
         // ==========================================
         // FEATURE 4: MINIMAP INTEGRATION
         // ==========================================
+        
         // Inject the newly generated tiles into the global TILE_COLOR_MAP
         if (typeof window.TILE_COLOR_MAP !== 'undefined') {
             window.TILE_COLOR_MAP['🕸️b'] = [15, 23, 42, 255];     // Very Dark Blue/Grey
