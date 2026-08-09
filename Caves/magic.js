@@ -716,10 +716,11 @@ async function executeAimedSpell(spellId, dirX, dirY) {
     if (!spellData) return;
     const spellLevel = player.spellbook[spellId] || 1;
 
-    // --- 🚨 LOCK THE ENGINE ---
-    isProcessingMove = true;
+    // --- LOCK THE ENGINE ---
+    if (isProcessingMove) return;
 
     try {
+        isProcessingMove = true;
         // --- 1. Calculate Cost ---
         let cost = spellData.cost;
         if (spellData.costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
