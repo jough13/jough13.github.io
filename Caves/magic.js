@@ -743,9 +743,13 @@ async function executeAimedSpell(spellId, dirX, dirY) {
             return; // Abort execution
         }
 
+        // Deduct cost immediately to prevent "Free Radar" exploit
+        player[spellData.costType] -= cost;
+
         if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
 
         let hitSomething = false;
+
         let finalTargetX = player.x;
         let finalTargetY = player.y;
 
@@ -1115,9 +1119,6 @@ async function executeAimedSpell(spellId, dirX, dirY) {
             if (typeof ParticleSystem !== 'undefined') {
                 ParticleSystem.createFloatingText(finalTargetX, finalTargetY, "Fizzle...", "#9ca3af");
             }
-        } else {
-            // BUG FIX WIN: Only deduct the cost if the spell actually hit a target or fired successfully!
-            player[spellData.costType] -= cost;
         }
 
         // --- 3. Finalize Turn ---
