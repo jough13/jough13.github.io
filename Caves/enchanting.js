@@ -8,12 +8,12 @@ const DUST_YIELDS = { 'uncommon': 1, 'rare': 3, 'epic': 8, 'legendary': 25 };
 const UPGRADE_COSTS = { 'normal': 5, 'uncommon': 15, 'rare': 30, 'epic': 75 };
 const PURIFY_COST = 40; // Flat cost to cleanse cursed items
 
-// PERFORMANCE WIN: Cached Regexes for O(1) string matching without recompiling in loops!
+// Cached Regexes for O(1) string matching without recompiling in loops!
 const CURSE_REGEX_I = /Cursed|Doomed|Forsaken|Blood-Starved|Whispering|Blighted/i;
 const CURSE_REGEX_GI = /Cursed|Doomed|Forsaken|Blood-Starved|Whispering|Blighted/gi;
 const ENCHANT_PREFIX_REGEX = /^(Fine|Mystic|Flawless|Peerless|Exquisite|Masterwork|Divine)\s/i;
 
-// PERFORMANCE WIN: O(1) Item Lookup Cache for Enchanting
+// O(1) Item Lookup Cache for Enchanting
 // Decouples this file from trade.js and speeds up tooltip generation!
 window._enchantItemKeyCache = window._enchantItemKeyCache || {};
 function getEnchantItemKey(name) {
@@ -24,7 +24,7 @@ function getEnchantItemKey(name) {
     return key;
 }
 
-// PERFORMANCE WIN: Cache DOM lookups for the Enchanting UI
+// Cache DOM lookups for the Enchanting UI
 const _enchantDOMCache = {
     disenchantList: null,
     enchantList: null,
@@ -36,12 +36,12 @@ const _enchantDOMCache = {
     getTitle: () => _enchantDOMCache.title || (document.getElementById('enchantingTitle') && (_enchantDOMCache.title = document.getElementById('enchantingTitle')))
 };
 
-// PERFORMANCE & BUG FIX WIN: Operation Lock
+// Operation Lock
 // Prevents players from double-clicking the upgrade/destroy buttons and corrupting 
 // the inventory array or draining their dust into negative numbers!
 let isEnchantingBusy = false;
 
-// LORE WIN: The Altar Whispers
+// The Altar Whispers
 // Adds dynamic, randomized atmospheric text to the UI to make the world feel alive.
 const ALTAR_WHISPERS = [
     "The obsidian stone feels unnaturally cold.",
@@ -77,23 +77,23 @@ function renderEnchantingModal() {
     const dustItem = player.inventory.find(i => i && i.name === 'Arcane Dust');
     const dustAmount = dustItem ? dustItem.quantity : 0;
 
-    // LORE WIN: Dynamic Altar UI Flavor
+    // Dynamic Altar UI Flavor
     if (enchantingTitle) {
         const whisper = ALTAR_WHISPERS[Math.floor(Math.random() * ALTAR_WHISPERS.length)];
         enchantingTitle.innerHTML = `Enchanting Altar <span class="block text-xs font-normal text-gray-400 mt-1 italic tracking-normal font-serif">"${whisper}"</span>`;
     }
 
-    // JUICE WIN: Pulsing color if you have a lot of dust
+    // Pulsing color if you have a lot of dust
     const dustColorClass = dustAmount > 50 ? 'text-fuchsia-400 animate-pulse' : 'text-purple-400';
     if (dustDisplay) {
         dustDisplay.innerHTML = `Arcane Dust: <span class="${dustColorClass} drop-shadow-md">${dustAmount}</span>`;
     }
 
-    // PERFORMANCE WIN: DocumentFragments prevent layout thrashing
+    // DocumentFragments prevent layout thrashing
     const disFrag = document.createDocumentFragment();
     const enchFrag = document.createDocumentFragment();
 
-    // QoL WIN: Interactive Tooltips so players know exactly what they are enchanting/shattering!
+    // Interactive Tooltips so players know exactly what they are enchanting/shattering!
     const generateTooltip = (item) => {
         let tooltip = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
         
@@ -105,8 +105,9 @@ function renderEnchantingModal() {
             tooltip += `\n\n${cleanDesc}`;
         }
 
-        if (item.type === 'weapon' && item.damage !== undefined) tooltip += `\nDamage: +${item.damage}`;
-        if (item.type === 'armor' && item.defense !== undefined) tooltip += `\nDefense: +${item.defense}`;
+        // Strict Number coercion
+        if (item.type === 'weapon' && item.damage !== undefined) tooltip += `\nDamage: +${Number(item.damage) || 0}`;
+        if (item.type === 'armor' && item.defense !== undefined) tooltip += `\nDefense: +${Number(item.defense) || 0}`;
 
         if (item.statBonuses) {
             const bonuses = Object.entries(item.statBonuses).map(([k,v]) => `+${v} ${k.substring(0,3).toUpperCase()}`).join(', ');
@@ -115,7 +116,7 @@ function renderEnchantingModal() {
         return tooltip;
     };
 
-    // UI WIN: Category tags matching the inventory style
+    // Category tags matching the inventory style
     const generateTypeTag = (item) => {
         const type = item.type;
         const isMagic = item.statBonuses && Object.keys(item.statBonuses).length > 0;
@@ -219,7 +220,7 @@ function renderEnchantingModal() {
     if (enchFrag.childNodes.length === 0) enchantList.innerHTML = '<li class="italic text-gray-500 text-sm p-4 text-center border border-gray-700 rounded-lg bg-black bg-opacity-20 shadow-inner font-serif">No unequipped weapons or armor to enchant.</li>';
     else enchantList.appendChild(enchFrag);
 
-    // --- QoL EXPANSION: Inject Batch Shatter Button into Header ---
+    // --- Inject Batch Shatter Button into Header ---
     const disListContainer = disenchantList.parentElement;
     const disHeader = disListContainer.querySelector('h3');
 
@@ -253,7 +254,7 @@ function handleDisenchant(index) {
         
         const isCursed = CURSE_REGEX_I.test(item.name);
 
-        // --- LORE WIN: Cursed Shattering Explosion ---
+        // --- Cursed Shattering Explosion ---
         // If a player tries to destroy a cursed item to harvest dust instead of purifying it, 
         // the Altar recoils violently!
         if (isCursed) {
@@ -363,7 +364,7 @@ function handleShatterMinor() {
                 player.inventory.push({ templateId: '&', name: 'Arcane Dust', type: 'junk', quantity: totalDust, tile: '✨' });
             }
             
-            // UX WIN: Concise, consolidated summary of what was actually destroyed!
+            // Concise, consolidated summary of what was actually destroyed!
             const summary = Object.entries(shatteredNamesCount).map(([name, qty]) => `${name}${qty > 1 ? ` (x${qty})` : ''}`).join(', ');
             logMessage(`{gray:Shattered: ${summary}}`);
             logMessage(`{purple:You destroyed ${itemsShattered} minor items, extracting ${totalDust} Arcane Dust.}`);
@@ -412,7 +413,7 @@ function handleEnchant(index) {
         player.inventory[dustIdx].quantity -= cost;
         if (player.inventory[dustIdx].quantity <= 0) player.inventory.splice(dustIdx, 1);
 
-        // 🚨 THE EXPLOIT FIX: Stack Splitting Failsafe
+        // Stack Splitting Failsafe
         // If the item somehow has a quantity > 1 (due to old save files or bypasses), 
         // we isolate ONE item to enchant, leaving the rest of the stack alone.
         let targetItem = item;
@@ -423,7 +424,7 @@ function handleEnchant(index) {
             player.inventory.push(targetItem);
         }
 
-        // 🚨 BUG FIX & ROBUSTNESS WIN: Detach statBonuses from Global Template!
+        // Detach statBonuses from Global Template
         // Prevents modifying `targetItem.statBonuses` from unintentionally bleeding backwards into ITEM_DATA.
         if (!targetItem.statBonuses) targetItem.statBonuses = {};
         else targetItem.statBonuses = typeof fastClone === 'function' ? fastClone(targetItem.statBonuses) : JSON.parse(JSON.stringify(targetItem.statBonuses));
@@ -440,7 +441,7 @@ function handleEnchant(index) {
         if (newRarity === 'uncommon') {
             targetItem.name = `Fine ${targetItem.name}`;
             
-            // 🚨 BUG FIX: Ensure we don't accidentally concatenate strings if damage/defense was corrupted
+            // Ensure we don't accidentally concatenate strings if damage/defense was corrupted
             if (targetItem.type === 'weapon') targetItem.damage = (Number(targetItem.damage) || 0) + 1;
             if (targetItem.type === 'armor') targetItem.defense = (Number(targetItem.defense) || 0) + 1;
             
@@ -528,7 +529,7 @@ function handleEnchant(index) {
     }
 }
 
-// --- NEW FEATURE: Purify Curse ---
+// --- Purify Curse ---
 function handlePurify(index) {
     if (isEnchantingBusy) return;
     isEnchantingBusy = true;
@@ -554,7 +555,7 @@ function handlePurify(index) {
         player.inventory[dustIdx].quantity -= PURIFY_COST;
         if (player.inventory[dustIdx].quantity <= 0) player.inventory.splice(dustIdx, 1);
 
-        // 🚨 THE EXPLOIT FIX: Stack Splitting Failsafe
+        // Stack Splitting Failsafe
         let targetItem = item;
         if (item.quantity > 1) {
             item.quantity--;
