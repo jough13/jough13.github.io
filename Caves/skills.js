@@ -8,9 +8,9 @@
 
 async function useSkill(skillId) {
     if (isProcessingMove) return;
-    isProcessingMove = true;
 
     try {
+        isProcessingMove = true;
         const player = gameState.player;
         const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA[skillId] : null;
 
@@ -327,11 +327,12 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
         }
     }
 
-    // --- 🚨 LOCK THE ENGINE ---
-    isProcessingMove = true;
+    // --- LOCK THE ENGINE ---
+    if (isProcessingMove) return;
 
     try {
-        // 🚨 SECURITY FIX: Re-verify resource cost!
+        isProcessingMove = true;
+        // Re-verify resource cost!
         if (player[skillData.costType] < skillData.cost) {
             logMessage(`{red:You lack the ${skillData.costType} to execute this skill!}`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -528,11 +529,12 @@ async function executeRangedAttack(dirX, dirY) {
         return;
     }
 
-    // --- 🚨 LOCK THE ENGINE ---
-    isProcessingMove = true;
+    // --- LOCK THE ENGINE ---
+    if (isProcessingMove) return;
 
     try {
-        // 🚨 SECURITY FIX: Re-verify resource cost!
+        isProcessingMove = true;
+        // Re-verify resource cost!
         if (player.stamina < skillData.cost) {
             logMessage(`{red:You lack the stamina to draw the string!}`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -831,11 +833,12 @@ async function executeLunge(dirX, dirY) {
     let hit = false;
     if (!skillData) return;
 
-    // --- 🚨 LOCK THE ENGINE ---
-    isProcessingMove = true;
+    // --- LOCK THE ENGINE ---
+    if (isProcessingMove) return;
 
     try {
-        // 🚨 SECURITY FIX: Re-verify resource cost!
+        isProcessingMove = true;
+        // SECURITY FIX: Re-verify resource cost!
         if (player.stamina < skillData.cost) {
             logMessage(`{red:You lack the stamina to lunge!}`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -1395,14 +1398,16 @@ function executeInflictMadness(dirX, dirY) {
 /**
  * Throws a stick of Dwarven TNT. Deals massive damage and destroys cracked walls.
  */
+
 async function executeThrowTNT(dirX, dirY) {
     const player = gameState.player;
     
-    // --- 🚨 LOCK THE ENGINE ---
-    isProcessingMove = true;
+    // --- LOCK THE ENGINE ---
+    if (isProcessingMove) return;
 
     try {
-        // 1. Consume the TNT from Inventory (🚨 GHOST GUARD added)
+        isProcessingMove = true;
+        // 1. Consume the TNT from Inventory (GHOST GUARD added)
         const invIndex = player.inventory.findIndex(i => i && i.name === 'Dwarven TNT' && !i.isEquipped);
         if (invIndex > -1) {
             player.inventory[invIndex].quantity--;
