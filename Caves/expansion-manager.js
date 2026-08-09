@@ -5,10 +5,10 @@
 // ==========================================
 
 window.ExpansionManager = {
-    // 🚨 ARCHITECTURE WIN: Track full metadata, not just strings!
+    // Track full metadata, not just strings!
     expansions: new Map(),
     
-    // 🌟 EXPANDABILITY WIN: Global Event Bus for Lifecycle Hooks
+    // Global Event Bus for Lifecycle Hooks
     // Allows expansions to passively listen to core game events without monkey-patching!
     activeHooks: {},
 
@@ -17,16 +17,18 @@ window.ExpansionManager = {
         return this.expansions.has(expansionId);
     },
 
-    // 🌟 EXPANDABILITY WIN: Centralized Hook Trigger
+    // Centralized Hook Trigger with Veto Power
     // The core engine can call ExpansionManager.triggerHook('onPlayerDeath', gameState) 
-    // and all listening expansions will fire automatically.
+    // If ANY hook returns explicit 'false', the chain is broken (useful for intercepting deaths/moves).
     triggerHook: function(hookName, context = {}) {
         if (!this.activeHooks[hookName]) return context;
         
         for (let i = 0; i < this.activeHooks[hookName].length; i++) {
             const hook = this.activeHooks[hookName][i];
             try {
-                hook.func(context);
+                const result = hook.func(context);
+                // Allow hooks to explicitly veto/cancel an action by returning false
+                if (result === false) return false;
             } catch (err) {
                 console.error(`%c[AKASHIC ENGINE] Hook Execution Failed in '${hook.id}' for event '${hookName}':`, "color: #ef4444;", err);
             }
@@ -41,7 +43,7 @@ window.ExpansionManager = {
             return;
         }
 
-        // 🚨 ROBUSTNESS WIN: Version Conflict Guard
+        // Version Conflict Guard
         if (this.has(exp.id)) {
             const existing = this.expansions.get(exp.id);
             if (parseFloat(exp.version || 0) <= parseFloat(existing.version || 0)) {
@@ -69,17 +71,22 @@ window.ExpansionManager = {
         const data = exp.data || {};
 
         // --- 2. LORE & ATMOSPHERE INJECTION ---
-        // 🌟 LORE WIN: Dynamically append new color-coded keywords to the game's auto-tagging system!
+        // Dynamically append new color-coded keywords to the game's auto-tagging system!
         if (data.loreKeywords && typeof window.LORE_KEYWORDS !== 'undefined') {
             Object.assign(window.LORE_KEYWORDS, data.loreKeywords);
             
             // Safely push to the compiled regex cache so it works instantly without a reload
             if (typeof window._COMPILED_LORE_REGEXES !== 'undefined' && Array.isArray(window._COMPILED_LORE_REGEXES)) {
                 for (const [keyword, color] of Object.entries(data.loreKeywords)) {
-                    window._COMPILED_LORE_REGEXES.push({
-                        rx: new RegExp(`\\b(${keyword}s?)\\b`, 'gi'),
-                        color: color
-                    });
+                    try {
+                        window._COMPILED_LORE_REGEXES.push({
+                            rx: new RegExp(`\\b(${keyword}s?)\\b`, 'gi'),
+                            color: color
+                        });
+                    } catch (regexErr) {
+                        // 🚨 SECURITY WIN: Prevent malformed strings in expansions from crashing the text parser
+                        console.warn(`%c[AKASHIC ENGINE] Invalid regex ignored for lore keyword: ${keyword}`, "color: #facc15;");
+                    }
                 }
             }
         }
@@ -107,9 +114,15 @@ window.ExpansionManager = {
         };
 
         for (const [localKey, globalKey] of Object.entries(dictionaries)) {
-            if (data[localKey]) {
+            if (data[localKey] && typeof data[localKey] === 'object') {
                 if (typeof window[globalKey] === 'undefined') window[globalKey] = {};
-                Object.assign(window[globalKey], data[localKey]);
+                
+                // Safe merge preventing prototype pollution
+                for (const key in data[localKey]) {
+                    if (Object.prototype.hasOwnProperty.call(data[localKey], key)) {
+                        window[globalKey][key] = data[localKey][key];
+                    }
+                }
                 
                 // 🚨 PERFORMANCE FIX: Clear the room cache so the new rooms are actually pulled into the generator!
                 if (localKey === 'roomTemplates') window.CACHED_ROOM_TEMPLATES = null; 
@@ -145,9 +158,11 @@ window.ExpansionManager = {
             }
         }
 
-        // --- 5. INJECT SHOPS (With Smart Deduplication) ---
+        // --- 5. INJECT SHOPS (With Smart Deduplication & Protection) ---
         if (data.shops) {
             for (const shopKey in data.shops) {
+                if (!Object.prototype.hasOwnProperty.call(data.shops, shopKey)) continue;
+
                 const targetGlobal = shopKey === 'general' ? 'SHOP_INVENTORY' : `${shopKey.toUpperCase()}_INVENTORY`;
                 
                 if (typeof window[targetGlobal] === 'undefined' || !Array.isArray(window[targetGlobal])) {
@@ -155,9 +170,11 @@ window.ExpansionManager = {
                 }
 
                 data.shops[shopKey].forEach(newItem => {
+                    if (!newItem || !newItem.name) return;
+
                     const existingItem = window[targetGlobal].find(i => i.name === newItem.name);
                     if (existingItem) {
-                        // Accumulate stock gracefully instead of rendering duplicates
+                        // 🚨 ECONOMY GUARD: Accumulate stock gracefully, but do NOT overwrite original prices!
                         existingItem.stock = (existingItem.stock || 0) + (newItem.stock || 0);
                     } else {
                         // Safe clone to prevent memory leaks from the expansion object bleeding into live shops
@@ -170,10 +187,13 @@ window.ExpansionManager = {
 
         // --- 6. REGISTER LIFECYCLE HOOKS ---
         if (exp.hooks) {
-            for (const [hookName, hookFunc] of Object.entries(exp.hooks)) {
-                if (typeof hookFunc === 'function') {
-                    if (!this.activeHooks[hookName]) this.activeHooks[hookName] = [];
-                    this.activeHooks[hookName].push({ id: exp.id, func: hookFunc });
+            for (const hookName in exp.hooks) {
+                if (Object.prototype.hasOwnProperty.call(exp.hooks, hookName)) {
+                    const hookFunc = exp.hooks[hookName];
+                    if (typeof hookFunc === 'function') {
+                        if (!this.activeHooks[hookName]) this.activeHooks[hookName] = [];
+                        this.activeHooks[hookName].push({ id: exp.id, func: hookFunc });
+                    }
                 }
             }
         }
@@ -203,6 +223,9 @@ window.ExpansionManager = {
             version: exp.version || '1.0',
             timestamp: Date.now()
         });
+
+        // 🌟 TRIGGER GLOBAL EVENT: Allows other expansions to react to this one loading!
+        this.triggerHook('onExpansionLoaded', { id: exp.id, name: exp.name, version: exp.version });
     }
 };
 
