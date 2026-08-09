@@ -27,9 +27,13 @@ let lastMapTouchTime = 0; // For mobile double-tap detection
 
 // --- MINIMAP CACHE (With Memory Leak Protection) ---
 const mapChunkCache = new Map();
-const MAX_CACHED_CHUNKS = 500; // Optimal limit for smooth panning on modern devices
 
-// PERFORMANCE WIN: Pre-compiled RGB Arrays
+// Dynamically scale the chunk cache limit based on device width!
+// 500 chunks on an iPhone 15 Pro will blow out Safari's VRAM limits and crash the tab.
+// 150 chunks is perfectly safe for mobile, while desktops can handle 500 for buttery smooth panning.
+const MAX_CACHED_CHUNKS = window.innerWidth <= 1024 ? 150 : 500;
+
+// Pre-compiled RGB Arrays
 // Bypasses the incredibly expensive parseInt(hex, 16) operation inside the 16x16 loop!
 const MAP_COLORS = {
     WHITE: [248, 250, 252, 255],
