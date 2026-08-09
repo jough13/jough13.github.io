@@ -318,16 +318,23 @@ function handleBuyItem(itemName, amount = 1) {
     }
 }
 
-function handleSellItem(itemIndex, amount = 1) {
+function handleSellItem(itemIndex, amount = 1, expectedName = null) {
     if (isTradingBusy) return;
     isTradingBusy = true;
 
     try {
         const player = gameState.player;
-        if (itemIndex < 0 || itemIndex >= player.inventory.length) return;
+        let actualIndex = itemIndex;
+        let itemToSell = player.inventory[actualIndex];
         
-        const itemToSell = player.inventory[itemIndex];
-        if (!itemToSell) return; // 🚨 GHOST GUARD
+        // Verify index matches the item to prevent UI desync shifting
+        if (expectedName && (!itemToSell || itemToSell.name !== expectedName)) {
+            actualIndex = player.inventory.findIndex(i => i && i.name === expectedName && !i.isEquipped);
+            if (actualIndex === -1) return;
+            itemToSell = player.inventory[actualIndex];
+        }
+
+        if (!itemToSell) return; // GHOST GUARD
 
         if (itemToSell.isEquipped) {
             logMessage("{red:You cannot sell an item you are wearing!}");
@@ -335,7 +342,7 @@ function handleSellItem(itemIndex, amount = 1) {
             return;
         }
         
-        // BUG FIX: Prevent selling quest items!
+        // Prevent selling quest items!
         if (itemToSell.type === 'quest') {
             logMessage("{red:You cannot sell crucial quest artifacts!}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -344,7 +351,7 @@ function handleSellItem(itemIndex, amount = 1) {
 
         const { sellPrice, basePrice, regionMult } = calculateItemValue(itemToSell, player);
 
-        // UX WIN: Safety prompt for Magical/Valuable Gear!
+        // Safety prompt for Magical/Valuable Gear!
         if ((itemToSell.statBonuses && Object.keys(itemToSell.statBonuses).length > 0) || basePrice >= 100) {
             if (!confirm(`Are you sure you want to sell your ${itemToSell.name}? This is a rare or highly valuable item.`)) {
                 return; 
@@ -356,7 +363,7 @@ function handleSellItem(itemIndex, amount = 1) {
         else if (regionMult <= 0.5) logMessage(`{red:The merchant sneers. Complete market oversaturation.}`);
         else if (regionMult < 1.0) logMessage(`{red:Market flooded. Low demand.}`);
 
-        // 🚨 SECURITY WIN: Determine quantity to sell safely
+        // Determine quantity to sell safely
         const qtyToSell = amount === 'all' ? itemToSell.quantity : Math.max(1, parseInt(amount) || 1);
         const safeQty = Math.min(itemToSell.quantity, qtyToSell);
         const totalValue = sellPrice * safeQty;
@@ -377,16 +384,16 @@ function handleSellItem(itemIndex, amount = 1) {
             ParticleSystem.createExplosion(player.x, player.y, '#facc15', pSize);
         }
         
-        // JUICE WIN: Play a lighter, rustling sound for selling to contrast with the heavy buying sound
+        // Play a lighter, rustling sound for selling to contrast with the heavy buying sound
         if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 2000); 
 
         // Remove from inventory
         itemToSell.quantity -= safeQty;
         if (itemToSell.quantity <= 0) {
-            player.inventory.splice(itemIndex, 1);
+            player.inventory.splice(actualIndex, 1);
         }
 
-        // 🚨 FIREBASE OPTIMIZATION
+        // FIREBASE OPTIMIZATION
         if (typeof triggerDebouncedSave === 'function') {
             triggerDebouncedSave({
                 coins: player.coins,
@@ -413,7 +420,7 @@ function handleSellAllItems() {
         let goldGained = 0;
         let soldNames = new Set(); // UX WIN: Track names of items sold for the summary
 
-        // 🚀 PERFORMANCE WIN: Replace manual `.splice()` looping with a clean `.filter()` block.
+        // Replace manual `.splice()` looping with a clean `.filter()` block.
         // Array.splice() is an O(N) operation that shifts all subsequent elements. Doing it in a loop
         // makes it O(N^2), causing massive lag spikes if selling 50 items. This approach is O(N)!
         const remainingInventory = [];
@@ -421,7 +428,7 @@ function handleSellAllItems() {
         for (let i = 0; i < player.inventory.length; i++) {
             const item = player.inventory[i];
             
-            if (!item) continue; // 🚨 GHOST GUARD
+            if (!item) continue; // GHOST GUARD
 
             // Explicitly protect equipped gear and Quest items
             if (item.isEquipped || item.type === 'quest') {
@@ -725,10 +732,10 @@ function renderShop() {
             const template = window.ITEM_DATA ? window.ITEM_DATA[tKey] : null;
             li.title = generateTooltip(item, template);
             
-            let actionsHtml = `<button data-sell-index="${index}" data-amount="1" style="transform: translateZ(0);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50 font-bold" ${item.isEquipped ? 'disabled title="Unequip first"' : ''}>Sell 1</button>`;
+            let actionsHtml = `<button data-sell-index="${index}" data-name="${safeItemName}" data-amount="1" style="transform: translateZ(0);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50 font-bold" ${item.isEquipped ? 'disabled title="Unequip first"' : ''}>Sell 1</button>`;
             
             if (item.quantity > 1 && !item.isEquipped) {
-                actionsHtml += `<button data-sell-index="${index}" data-amount="all" style="transform: translateZ(0);" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs font-bold">All (${item.quantity})</button>`;
+                actionsHtml += `<button data-sell-index="${index}" data-name="${safeItemName}" data-amount="all" style="transform: translateZ(0);" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs font-bold">All (${item.quantity})</button>`;
             } else if (item.isEquipped) {
                 actionsHtml = `<span class="text-[10px] font-bold text-yellow-500 bg-black bg-opacity-40 px-2 py-1 rounded uppercase tracking-widest border border-yellow-800 shadow-inner">Equipped</span>`;
             }
@@ -872,7 +879,7 @@ function initShopListeners() {
             // Sell Button
             const sellBtn = e.target.closest('button[data-sell-index]');
             if (sellBtn && !sellBtn.disabled) {
-                handleSellItem(parseInt(sellBtn.dataset.sellIndex, 10), sellBtn.dataset.amount || 1);
+                handleSellItem(parseInt(sellBtn.dataset.sellIndex, 10), sellBtn.dataset.amount || 1, sellBtn.dataset.name);
                 return;
             }
 
