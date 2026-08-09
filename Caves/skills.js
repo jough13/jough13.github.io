@@ -1428,12 +1428,10 @@ async function executeThrowTNT(dirX, dirY) {
 
         const tntPayload = {};
 
-        // 🚨 BUG FIX WIN: Check if the player is caught in their own explosion!
+        // Check if the player is caught in their own explosion!
         if (Math.abs(targetX - player.x) <= 1 && Math.abs(targetY - player.y) <= 1) {
             logMessage("{red:You were caught in your own blast! (-15 HP)}");
             window.modifyVital('health', -15);
-            // If the player dies, stop executing the rest of the function!
-            if (player.health <= 0) return;
         }
 
         // 3. Detonate in a 3x3 Area
@@ -1478,6 +1476,10 @@ async function executeThrowTNT(dirX, dirY) {
         
         // Finalize Turn
         gameState.isAiming = false;
+        
+        // Prevent rendering alive UI or clearing death states if the blast killed you!
+        if (player.health <= 0 || gameState.isDead) return;
+
         if (typeof endPlayerTurn === 'function') endPlayerTurn();
         if (typeof render === 'function') render();
         if (typeof renderInventory === 'function') renderInventory();
