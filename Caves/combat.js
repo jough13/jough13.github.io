@@ -2249,7 +2249,6 @@ function getPlayerDamageModifier(baseDamage) {
 function handlePlayerDeath() {
     if (window.inputQueue) window.inputQueue.length = 0; // Clear input queue to prevent ghost walking!
     
-    // --- 🚨 ADD THE DEATH LOCK HERE ---
     if (gameState.isDead) return false; 
     
     if (gameState.godMode) return false; 
@@ -2258,14 +2257,16 @@ function handlePlayerDeath() {
     // Engage the lock!
     gameState.isDead = true;
 
-    // Nuke ANY pending saves from the event that killed them!
-    // This prevents the debouncer from resurrecting the player 3 minutes later.
-    if (typeof saveTimeout !== 'undefined' && saveTimeout) {
-        clearTimeout(saveTimeout);
-        saveTimeout = null;
+    // Obliterate ALL Pending Saves!
+    // We must physically reach into the global namespace (where script.js defines these) 
+    // and wipe them so a delayed timeout doesn't push a "Health: 15" payload to Firebase 
+    // two minutes after the player has already died and reset!
+    if (typeof window.saveTimeout !== 'undefined' && window.saveTimeout) {
+        clearTimeout(window.saveTimeout);
+        window.saveTimeout = null;
     }
-    if (typeof pendingSaveData !== 'undefined') {
-        pendingSaveData = null; // Clear the actual data buffer!
+    if (typeof window.pendingSaveData !== 'undefined') {
+        window.pendingSaveData = null; 
     }
 
     const player = gameState.player;
