@@ -85,7 +85,7 @@ function playStashAudio(item) {
 }
 
 // Added 'amount' parameter to support partial stack transfers!
-window.handleStashTransfer = function (action, index, amountStr = 'all') {
+window.handleStashTransfer = function (action, index, amountStr = 'all', expectedName = null) {
     if (isStashProcessing) return;
     isStashProcessing = true;
 
@@ -93,8 +93,17 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
         const player = gameState.player;
         if (!player.bank) player.bank = [];
 
+        let actualIndex = index;
+
         if (action === 'deposit') {
-            const item = player.inventory[index];
+            let item = player.inventory[actualIndex];
+            
+            // Verify index matches the item to prevent UI desync shifting
+            if (expectedName && (!item || item.name !== expectedName)) {
+                actualIndex = player.inventory.findIndex(i => i && i.name === expectedName && !i.isEquipped);
+                if (actualIndex === -1) return;
+                item = player.inventory[actualIndex];
+            }
 
             if (!item || item.isEquipped) {
                 logMessage("{red:You must unequip that item before stashing it.}");
@@ -105,7 +114,6 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
             const isStackable = window.isStackableItem(item.type);
             const existingBankItem = isStackable ? player.bank.find(i => i.name === item.name) : null;
             
-            // 🚨 SECURITY WIN: Prevent negative quantity DOM exploits and clamp to max available
             let amountToMove = 1;
             if (amountStr === 'all') {
                 amountToMove = item.quantity;
@@ -113,9 +121,7 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
                 amountToMove = Math.max(1, Math.min(parseInt(amountStr) || 1, item.quantity));
             }
 
-            // Capacity Check (Only applies if it requires a new slot)
             if (!existingBankItem && player.bank.length >= window.MAX_STASH_SLOTS) {
-                // LORE WIN: Thematic overload warning
                 logMessage(`{red:The fabric of the vault groans under the weight of your possessions! (Max ${window.MAX_STASH_SLOTS} slots)}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 return;
@@ -131,7 +137,7 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
             
             item.quantity -= amountToMove;
             if (item.quantity <= 0) {
-                player.inventory.splice(index, 1);
+                player.inventory.splice(actualIndex, 1);
             }
             
             const qtyString = amountToMove > 1 ? `${amountToMove}x ` : '';
@@ -140,19 +146,24 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
             logMessage(`You push ${qtyString}${nameFormatted} into the void.`);
             
             playStashAudio(item);
-            
-            // JUICE WIN: Purple particle effect representing the Void Vault receiving the item
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, item.tile || '📦', '#c084fc');
 
         }
         else if (action === 'withdraw') {
-            const item = player.bank[index];
+            let item = player.bank[actualIndex];
+            
+            // Verify index matches the item to prevent UI desync shifting
+            if (expectedName && (!item || item.name !== expectedName)) {
+                actualIndex = player.bank.findIndex(i => i && i.name === expectedName);
+                if (actualIndex === -1) return;
+                item = player.bank[actualIndex];
+            }
+            
             if (!item) return;
 
             const isStackable = window.isStackableItem(item.type);
             const existingInvItem = isStackable ? player.inventory.find(i => i.name === item.name && !i.isEquipped) : null;
 
-            // 🚨 SECURITY WIN: Prevent negative quantity DOM exploits
             let amountToMove = 1;
             if (amountStr === 'all') {
                 amountToMove = item.quantity;
@@ -160,7 +171,6 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
                 amountToMove = Math.max(1, Math.min(parseInt(amountStr) || 1, item.quantity));
             }
 
-            // Inventory Capacity Check
             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
             if (!existingInvItem && player.inventory.length >= invCap) { 
                 logMessage("{red:Your inventory is full!}");
@@ -174,14 +184,12 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
                 let withdrawnItem = window.cloneItemSafely(item);
                 withdrawnItem.quantity = amountToMove;
 
-                // PERFORMANCE & ROBUSTNESS: O(1) Cached Rebind Effect Logic
                 let templateKey = withdrawnItem.templateId;
                 if (!templateKey) {
                     templateKey = getStashItemKey(withdrawnItem.name);
                     if (templateKey) withdrawnItem.templateId = templateKey; 
                 }
                 
-                // Rehydrate properties that can't be saved in the database
                 if (templateKey && typeof window.ITEM_DATA !== 'undefined' && window.ITEM_DATA[templateKey]) {
                     const t = window.ITEM_DATA[templateKey];
                     withdrawnItem.effect = t.effect;
@@ -189,10 +197,7 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
                     withdrawnItem.procChance = t.procChance;
                     withdrawnItem.inflicts = t.inflicts;
                     withdrawnItem.inflictChance = t.inflictChance;
-                    // BUG FIX: Hydrate tags so weapons function correctly!
                     if (t.tags) withdrawnItem.tags = [...t.tags]; 
-                    
-                    // 🚨 ROBUSTNESS WIN: Prevent string concatenation bugs from corrupted DB saves
                     if (withdrawnItem.damage !== undefined) withdrawnItem.damage = Number(withdrawnItem.damage) || 0;
                     if (withdrawnItem.defense !== undefined) withdrawnItem.defense = Number(withdrawnItem.defense) || 0;
                 }
@@ -202,7 +207,7 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
             
             item.quantity -= amountToMove;
             if (item.quantity <= 0) {
-                player.bank.splice(index, 1);
+                player.bank.splice(actualIndex, 1);
             }
             
             const qtyString = amountToMove > 1 ? `${amountToMove}x ` : '';
@@ -211,12 +216,9 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
             logMessage(`You pull ${qtyString}${nameFormatted} from the vault.`);
             
             playStashAudio(item);
-            
-            // JUICE WIN: Blue particle effect representing the player's Bag receiving the item
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, item.tile || '🎒', '#60a5fa');
         }
 
-        // 🚨 FIREBASE OPTIMIZATION: Push to the debouncer instead of instantaneous save!
         if (typeof triggerDebouncedSave === 'function') {
             triggerDebouncedSave({ 
                 inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
@@ -662,17 +664,17 @@ function renderStash() {
                 extraInfo += ` <span class="text-[9px] text-yellow-500 font-bold bg-black bg-opacity-40 px-1 rounded ml-1 uppercase tracking-widest border border-yellow-800 shadow-inner relative -top-0.5">[EQP]</span>`;
             }
 
-            // PERFORMANCE WIN: Event Delegation Data Attributes
+            // Event Delegation Data Attributes
             let buttonsHtml = '';
             if (item.isEquipped) {
                 buttonsHtml = `<button class="text-xs bg-gray-800 text-gray-500 px-3 py-1 rounded shadow-sm opacity-50 cursor-not-allowed border border-gray-700" disabled>Equipped</button>`;
             } else if (item.quantity > 1 && window.isStackableItem(item.type)) {
                 buttonsHtml = `
-                    <button data-action="deposit" data-index="${index}" data-amount="1" class="text-[10px] bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold" style="transform: translateZ(0);">Dep 1</button>
-                    <button data-action="deposit" data-index="${index}" data-amount="all" class="text-[10px] bg-green-600 hover:bg-green-500 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold ml-1" style="transform: translateZ(0);">All</button>
+                    <button data-action="deposit" data-index="${index}" data-name="${safeItemName}" data-amount="1" class="text-[10px] bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold" style="transform: translateZ(0);">Dep 1</button>
+                    <button data-action="deposit" data-index="${index}" data-name="${safeItemName}" data-amount="all" class="text-[10px] bg-green-600 hover:bg-green-500 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold ml-1" style="transform: translateZ(0);">All</button>
                 `;
             } else {
-                buttonsHtml = `<button data-action="deposit" data-index="${index}" data-amount="all" class="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded shadow-sm transition-all active:scale-95" style="transform: translateZ(0);">Deposit</button>`;
+                buttonsHtml = `<button data-action="deposit" data-index="${index}" data-name="${safeItemName}" data-amount="all" class="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded shadow-sm transition-all active:scale-95" style="transform: translateZ(0);">Deposit</button>`;
             }
 
             li.innerHTML = `
@@ -712,15 +714,15 @@ function renderStash() {
             let extraInfo = item.statBonuses ? ` <span class="text-xs text-purple-400 drop-shadow-md">✨</span>` : '';
             extraInfo += generateTypeTag(item);
 
-            // PERFORMANCE WIN: Event Delegation Data Attributes
+            // Event Delegation Data Attributes
             let buttonsHtml = '';
             if (item.quantity > 1 && window.isStackableItem(item.type)) {
                 buttonsHtml = `
-                    <button data-action="withdraw" data-index="${index}" data-amount="1" class="text-[10px] bg-blue-700 hover:bg-blue-600 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold" style="transform: translateZ(0);">Take 1</button>
-                    <button data-action="withdraw" data-index="${index}" data-amount="all" class="text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold ml-1" style="transform: translateZ(0);">All</button>
+                    <button data-action="withdraw" data-index="${index}" data-name="${safeItemName}" data-amount="1" class="text-[10px] bg-blue-700 hover:bg-blue-600 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold" style="transform: translateZ(0);">Take 1</button>
+                    <button data-action="withdraw" data-index="${index}" data-name="${safeItemName}" data-amount="all" class="text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold ml-1" style="transform: translateZ(0);">All</button>
                 `;
             } else {
-                buttonsHtml = `<button data-action="withdraw" data-index="${index}" data-amount="all" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded shadow-sm transition-all active:scale-95" style="transform: translateZ(0);">Withdraw</button>`;
+                buttonsHtml = `<button data-action="withdraw" data-index="${index}" data-name="${safeItemName}" data-amount="all" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded shadow-sm transition-all active:scale-95" style="transform: translateZ(0);">Withdraw</button>`;
             }
 
             li.innerHTML = `
@@ -804,8 +806,9 @@ function openStashModal() {
 }
 
 // ==========================================
-// SECURITY & PERFORMANCE WIN: Event Delegation
+// Event Delegation
 // ==========================================
+
 // Attaches exactly ONE event listener to the entire modal to handle all Stash clicks.
 function initStashListeners() {
     const stashModalEl = document.getElementById('stashModal');
@@ -835,8 +838,9 @@ function initStashListeners() {
         else if (action === 'deposit' || action === 'withdraw') {
             const index = parseInt(btn.dataset.index, 10);
             const amount = btn.dataset.amount;
+            const name = btn.dataset.name;
             if (!isNaN(index) && typeof window.handleStashTransfer === 'function') {
-                window.handleStashTransfer(action, index, amount);
+                window.handleStashTransfer(action, index, amount, name);
             }
         }
     });
