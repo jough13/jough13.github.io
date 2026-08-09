@@ -236,8 +236,8 @@ function handleInput(key) {
             
             // Advance the turn with Mutex Lock
             if (typeof endPlayerTurn === 'function' && !isProcessingMove) {
-                isProcessingMove = true;
                 try {
+                    isProcessingMove = true;
                     endPlayerTurn();
                 } finally {
                     isProcessingMove = false;
