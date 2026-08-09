@@ -709,8 +709,9 @@ function renderInventory() {
                 
                 if (equippedItem) {
                     const statName = isWpn ? 'damage' : 'defense';
-                    const myStat = item[statName] || 0;
-                    const eqStat = equippedItem[statName] || 0;
+                    // Force math evaluation for comparison
+                    const myStat = Number(item[statName]) || 0;
+                    const eqStat = Number(equippedItem[statName]) || 0;
                     const diff = myStat - eqStat;
                     
                     if (diff > 0) title += `\n[ ▲ Better than equipped: +${diff} ${statName} ]`;
@@ -893,9 +894,10 @@ function renderEquipment() {
     };
 
     // --- DAMAGE CALCULATION ---
-    const playerStrength = player.strength + (player.strengthBonus || 0); 
-    const weaponDamage = weapon.damage || 0;
-    const ammoDamage = ammo ? (ammo.damage || 0) : 0;
+    // Strict Number coercion
+    const playerStrength = Number(player.strength) + Number(player.strengthBonus || 0); 
+    const weaponDamage = Number(weapon.damage) || 0;
+    const ammoDamage = ammo ? (Number(ammo.damage) || 0) : 0;
     const totalDamage = playerStrength + weaponDamage + ammoDamage;
 
     let weaponString = `Wpn: <span class="${wRarity}">${safeWpnName}</span> (+${weaponDamage})`;
@@ -922,7 +924,7 @@ function renderEquipment() {
         weaponString += ` <span class="text-green-500 drop-shadow-sm">[+${player.strengthBonus} Str (${player.strengthBonusTurns}t)]</span>`;
     }
     
-    // PERFORMANCE WIN: Cache innerHTML check
+    // Cache innerHTML check
     if (_uiCache.equipMain !== weaponString) {
         equippedWeaponDisplay.innerHTML = weaponString;
         _uiCache.equipMain = weaponString;
@@ -932,13 +934,14 @@ function renderEquipment() {
     statDisplays.strength.textContent = `Strength: ${player.strength} (Dmg: ${totalDamage})`;
 
     // --- DEFENSE CALCULATION ---
-    const baseDefense = Math.floor((player.dexterity || 1) / 3);
-    const armorDefense = armor.defense || 0;
-    const offhandDefense = offhand ? (offhand.defense || 0) : 0;
-    const accDefense = acc ? (acc.defense || 0) : 0;
-    const buffDefense = player.defenseBonus || 0;
+    // Strict Number coercion
+    const baseDefense = Math.floor((Number(player.dexterity) || 1) / 3);
+    const armorDefense = Number(armor.defense) || 0;
+    const offhandDefense = offhand ? (Number(offhand.defense) || 0) : 0;
+    const accDefense = acc ? (Number(acc.defense) || 0) : 0;
+    const buffDefense = Number(player.defenseBonus) || 0;
     const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
-    const conBonus = Math.floor((player.constitution || 1) * 0.1); 
+    const conBonus = Math.floor((Number(player.constitution) || 1) * 0.1); 
     
     const totalDefense = baseDefense + armorDefense + offhandDefense + accDefense + buffDefense + conBonus + talentDefense;
 
