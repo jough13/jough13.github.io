@@ -234,11 +234,11 @@ window.ExpansionManager.register({
                         const hasPickaxe = gameState.player.inventory.some(i => i && !i.isEquipped && (i.name === 'Pickaxe' || i.name === 'Diamond Tipped Pickaxe'));
                         
                         if (hasPickaxe) {
-                            // 🚨 THE EXPLOIT FIX: Engage the global engine lock!
+                            // Engage the global engine lock!
                             if (isProcessingMove) return;
-                            isProcessingMove = true;
 
                             try {
+                                isProcessingMove = true;
                                 if (gameState.player.stamina < 2) {
                                     logMessage("{red:You are too exhausted to mine through solid rock.}");
                                     if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
