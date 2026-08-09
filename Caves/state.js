@@ -3,13 +3,14 @@
 // ============================================================================
 // GLOBAL CONFIGURATION CONSTANTS
 // ============================================================================
+
 window.MAX_INVENTORY_SLOTS = 9;
 const ABSOLUTE_MAX_INVENTORY_SLOTS = 50; // 🚨 DB GUARD: Prevents Firebase 1MB Doc blowout
 
-// PERFORMANCE WIN: Pre-allocate and Freeze array to prevent GC churn and mutation checks
+// Pre-allocate and Freeze array to prevent GC churn and mutation checks
 const _EQUIPMENT_SLOTS = Object.freeze(['weapon', 'armor', 'offhand', 'accessory', 'ammo']);
 
-// EXPANDABILITY WIN: Data-Driven Capacity Check
+// Data-Driven Capacity Check
 // Automatically scales if the player equips items with a `carryCapacity` stat bonus!
 window.getInventoryCap = function(player) {
     // 🚨 GHOST GUARD: Prevent TypeError if called during engine boot before player exists
@@ -17,7 +18,7 @@ window.getInventoryCap = function(player) {
 
     let cap = window.MAX_INVENTORY_SLOTS;
     
-    // 🚨 PERFORMANCE & ROBUSTNESS WIN: Hardcoded pre-allocated slot array.
+    // Hardcoded pre-allocated slot array.
     // Bypasses the slow `for...in` loop and prevents iterating over corrupted prototype properties.
     if (player.equipment) {
         for (let i = 0; i < _EQUIPMENT_SLOTS.length; i++) {
@@ -90,7 +91,7 @@ window._statCapCache = {
     thirst: 'maxThirst'
 };
 
-// PERFORMANCE WIN: O(1) Cache for Stat Bar UI pulses
+// O(1) Cache for Stat Bar UI pulses
 window._statColorCache = {
     health: 'stat-pulse-green',
     hunger: 'stat-pulse-green',
@@ -104,7 +105,7 @@ window._statColorCache = {
 // MASTER GAME STATE (THE "SINGLE SOURCE OF TRUTH")
 // ============================================================================
 
-// 🚨 V8 MEMORY OPTIMIZATION: Strict Object Shape
+// V8 MEMORY OPTIMIZATION: Strict Object Shape
 // Every possible variable the player or world could ever have is pre-defined here.
 // This locks the Hidden Class in the browser's JavaScript engine, making state lookups incredibly fast.
 const gameState = {
@@ -113,7 +114,7 @@ const gameState = {
     initialEnemiesLoaded: false,
     mapDirty: true,
     
-    // 🚨 BUG FIX WIN: The Double-Death Lock!
+    // The Double-Death Lock!
     isDead: false, 
     
     screenShake: 0,           
@@ -308,7 +309,7 @@ const gameState = {
         companion: null,       
         tutorialProgress: 0,   
         
-        // 🌟 EXPANDABILITY WIN: Comprehensive Lifetime Metrics for Anti-Cheat & Achievements
+        // Comprehensive Lifetime Metrics for Anti-Cheat & Achievements
         achievements: [],
         playtime: 0,          
         metrics: {
@@ -407,7 +408,7 @@ const gameState = {
 // CENTRALIZED STATE DISPATCHER (Vitals Management)
 // ============================================================================
 
-// 🌟 EXPANDABILITY WIN: Centralized Vital Clamping
+// Centralized Vital Clamping
 // Exposed so other scripts (like unequipping cursed items) can cleanly normalize pools!
 window.clampAllVitals = function() {
     const p = gameState.player;
@@ -416,15 +417,19 @@ window.clampAllVitals = function() {
     p.mana = Math.max(0, Math.min(p.maxMana || 10, p.mana));
     p.stamina = Math.max(0, Math.min(p.maxStamina || 10, p.stamina));
     p.psyche = Math.max(0, Math.min(p.maxPsyche || 10, p.psyche));
+    
+    // 🚨 BUG FIX: Added absolute ceilings for survival stats so they don't over-fill UI bars!
+    p.hunger = Math.max(0, Math.min(p.maxHunger || 100, p.hunger));
+    p.thirst = Math.max(0, Math.min(p.maxThirst || 100, p.thirst));
 };
 
 window.modifyVital = function(vital, rawAmount) {
     const p = gameState.player;
     
-    // 🚨 GHOST GUARD: Prevent TypeError if called before engine is fully loaded
+    // Prevent TypeError if called before engine is fully loaded
     if (!p) return 0;
     
-    // 🚨 SECURITY, STABILITY & BUG FIX WIN: The NaN Firewall & Floating Point Fix
+    // The NaN Firewall & Floating Point Fix
     // Guarantees that corrupted spell damage, corrupted items, or missing properties 
     // never inject a NaN into the player's health, and Math.round prevents fractional decimal bugs!
     let amount = Math.round(Number(rawAmount));
@@ -435,7 +440,7 @@ window.modifyVital = function(vital, rawAmount) {
     
     if (amount === 0) return 0;
     
-    // 🚨 BUG FIX & EXPANDABILITY WIN: Centralized God Mode
+    // Centralized God Mode
     // Universally intercepts ALL negative vital changes. This prevents the player from dying 
     // to edge-cases like falling off the skyrealm, drowning, or starving while debugging!
     // We ALSO block hunger/thirst drains so the UI doesn't spam the dev with starvation warnings!
@@ -443,36 +448,49 @@ window.modifyVital = function(vital, rawAmount) {
         return 0;
     }
 
-    // 🚨 MECHANIC WIN: Universal Shield Absorption
+    // Universal Shield Absorption
     // Environmental damage (Lava, Poison, Fall Damage, Traps) previously bypassed the Arcane Shield.
     // Now, any negative health change automatically tests against the shield first!
     if (vital === 'health' && amount < 0 && p.shieldValue > 0) {
-        const dmgAbsorbed = Math.min(p.shieldValue, Math.abs(amount));
-        p.shieldValue -= dmgAbsorbed;
-        amount += dmgAbsorbed; // Reduce the negative health hit by the absorbed amount
         
-        if (typeof logMessage !== 'undefined' && dmgAbsorbed > 0) {
-            // Only log it here if we aren't in combat, otherwise combat.js handles the logging natively
-            if (typeof isProcessingMove === 'undefined' || !isProcessingMove) {
-                logMessage(`{cyan:Arcane Shield absorbs ${dmgAbsorbed} damage!}`);
+        // Shields shouldn't absorb drowning damage or suffocation!
+        let isSuffocating = false;
+        if (typeof chunkManager !== 'undefined') {
+            const tileAt = chunkManager.getTile(p.x, p.y);
+            // If they are taking damage while standing in deep water without gills/boat, it's suffocation
+            if (tileAt === '~' && !p.isBoating && !p.isSailing && p.waterBreathingTurns <= 0) {
+                isSuffocating = true;
             }
         }
 
-        // JUICE WIN: Shield Shatter Audio & Visuals
-        if (p.shieldValue <= 0) {
-            p.shieldValue = 0;
-            p.shieldTurns = 0;
-            if (typeof logMessage !== 'undefined') logMessage("{cyan:Your Arcane Shield has shattered!}");
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playDisenchant(); 
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#3b82f6', 15);
-            gameState.screenShake = Math.max(gameState.screenShake || 0, 5);
+        if (!isSuffocating) {
+            const dmgAbsorbed = Math.min(p.shieldValue, Math.abs(amount));
+            p.shieldValue -= dmgAbsorbed;
+            amount += dmgAbsorbed; // Reduce the negative health hit by the absorbed amount
+            
+            if (typeof logMessage !== 'undefined' && dmgAbsorbed > 0) {
+                // Only log it here if we aren't in combat, otherwise combat.js handles the logging natively
+                if (typeof isProcessingMove === 'undefined' || !isProcessingMove) {
+                    logMessage(`{cyan:Arcane Shield absorbs ${dmgAbsorbed} damage!}`);
+                }
+            }
+
+            // Shield Shatter Audio & Visuals
+            if (p.shieldValue <= 0) {
+                p.shieldValue = 0;
+                p.shieldTurns = 0;
+                if (typeof logMessage !== 'undefined') logMessage("{cyan:Your Arcane Shield has shattered!}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playDisenchant(); 
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#3b82f6', 15);
+                gameState.screenShake = Math.max(gameState.screenShake || 0, 5);
+            }
+            
+            // If the shield absorbed the entire hit, abort the rest of the function!
+            if (amount === 0) return 0; 
         }
-        
-        // If the shield absorbed the entire hit, abort the rest of the function!
-        if (amount === 0) return 0; 
     }
     
-    // 🚨 ROBUSTNESS WIN: True I-Frames & AoE Hit Overlap Fix
+    // True I-Frames & AoE Hit Overlap Fix
     // If multiple attacks hit the player in the exact same 100ms window (e.g. an explosion + an arrow),
     // we take the LARGEST of the hits, and explicitly refund the smaller hit so they don't stack unfairly!
     if (vital === 'health' && amount < 0) {
@@ -517,8 +535,9 @@ window.modifyVital = function(vital, rawAmount) {
     }
 
     // ==========================================
-    // LORE & JUICE WIN: VITAL EVENTS
+    // VITAL EVENTS
     // ==========================================
+
     if (actualChange < 0) {
         // Prevent division by zero mathematically if maxVal is somehow 0
         const pctLost = maxVal > 0 ? Math.abs(actualChange) / maxVal : 0;
@@ -590,15 +609,19 @@ window.modifyVital = function(vital, rawAmount) {
         }
     }
 
-    // 🚨 BUG FIX WIN: The Death Lock Check
+    // The Death Lock Check
     // Triggers exactly once to execute the death sequence gracefully.
     // Includes a debouncer flag (_isDying) to prevent double-firing if two systems hit 
     // the player synchronously before the handlePlayerDeath timeout resolves.
-    if (vital === 'health' && p.health <= 0 && !gameState.isDead && !p._isDying) {
+    
+    // Check if the backup process is actively overwriting the state right now to prevent corruption
+    const isRestoring = typeof isBackupOperationRunning !== 'undefined' && isBackupOperationRunning;
+
+    if (!isRestoring && vital === 'health' && p.health <= 0 && !gameState.isDead && !p._isDying) {
         p._isDying = true;
         gameState.screenFlash = { color: '#991b1b', alpha: 1.0, decay: 0.01 };
         
-        // 🎨 LORE WIN: Inject custom death quotes dynamically into the combat.js loop if active!
+        // Inject custom death quotes dynamically into the combat.js loop if active!
         if (gameState.realmMutators && gameState.realmMutators.length > 0) {
             p._fatalMutators = [...gameState.realmMutators];
         }
