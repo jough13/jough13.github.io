@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "core_delver",
     name: "The Core Delver (Underworld Sandbox)",
-    version: "1.2", // Upgraded version!
+    version: "1.3",
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -53,7 +53,7 @@ window.ExpansionManager.register({
         },
 
         // --- 5. RECIPES ---
-        // 🌟 EXPANDABILITY WIN: Defined natively inside the expansion data payload!
+        // Defined natively inside the expansion data payload!
         craftingRecipes: {
             "Minecart Track": { materials: { "Iron Ore": 2 }, xp: 20, level: 3, yield: 5 },
             "Minecart": { materials: { "Iron Ore": 5, "Wood Log": 2 }, xp: 50, level: 3 },
@@ -68,6 +68,7 @@ window.ExpansionManager.register({
         // ==========================================
         // 1. MINE-CART RIDING OVERHAUL (WITH TRAMPLE!)
         // ==========================================
+
         // Upgrade the original TILE_DATA['🛒'] to support smart track-following and enemy trampling!
         if (typeof window.TILE_DATA !== 'undefined' && window.TILE_DATA['🛒']) {
             window.TILE_DATA['🛒'].onInteract = (state, x, y) => {
@@ -90,7 +91,7 @@ window.ExpansionManager.register({
                     return chunkManager.castleMaps[state.currentCastleId]?.[ty]?.[tx] || '▓';
                 };
 
-                // 🚨 PERFORMANCE WIN: Batch enemy trample updates!
+                // Batch enemy trample updates!
                 const batchedPayload = {};
                 let traveled = 0;
                 
@@ -102,12 +103,16 @@ window.ExpansionManager.register({
                     // --- GAMEPLAY WIN: THE TRAMPLE MECHANIC! ---
                     // If we hit an enemy while rolling, we crush them and keep going!
                     if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[t]) {
+                        let enemySurvived = false;
+                        let enemyName = "Monster";
+
                         if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
                             const enemyId = `overworld:${nX},${-nY}`;
                             const liveEnemy = state.sharedEnemies[enemyId];
                             
                             if (liveEnemy) {
-                                logMessage(`{red:CRUNCH! You ran over the ${liveEnemy.name}!}`);
+                                enemyName = liveEnemy.name;
+                                logMessage(`{red:CRUNCH! You ran over the ${enemyName}!}`);
                                 if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
                                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(nX, nY, '#ef4444', 20);
                                 state.screenShake = 10;
@@ -126,6 +131,7 @@ window.ExpansionManager.register({
                                     batchedPayload[EnemyNetworkManager.getPath(nX, nY, enemyId)] = null; // Delete
                                     delete state.sharedEnemies[enemyId];
                                 } else {
+                                    enemySurvived = true;
                                     batchedPayload[EnemyNetworkManager.getPath(nX, nY, enemyId)] = JSON.parse(JSON.stringify(liveEnemy));
                                 }
                             }
@@ -133,17 +139,28 @@ window.ExpansionManager.register({
                             // Instanced Dungeon Trample Fallback
                             const enemy = state.instancedEnemies.find(e => e && e.x === nX && e.y === nY && e.health > 0);
                             if (enemy) {
-                                logMessage(`{red:CRUNCH! You ran over the ${enemy.name}!}`);
+                                enemyName = enemy.name;
+                                logMessage(`{red:CRUNCH! You ran over the ${enemyName}!}`);
                                 if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
                                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(nX, nY, '#ef4444', 20);
                                 state.screenShake = 10;
                                 enemy.health -= 100;
+
                                 if (enemy.health <= 0) {
                                     if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, nX, nY);
+                                } else {
+                                    enemySurvived = true;
                                 }
                             }
                         }
                         
+                        // Boss Trample Crash!
+                        // If the enemy survived 100 damage (e.g. a Raid Boss), the minecart physically crashes and stops!
+                        if (enemySurvived) {
+                            logMessage(`{orange:The minecart crashes violently into the massive ${enemyName} and comes to a dead stop!}`);
+                            break; 
+                        }
+
                         // We successfully crushed the obstacle, keep rolling forward!
                         curX = nX; curY = nY;
                         traveled++;
@@ -166,7 +183,7 @@ window.ExpansionManager.register({
                             curX += vX; curY += vY;
                         } else {
                             // 3. No tracks found. Try to slide on open floor, otherwise crash/stop!
-                            // 🚨 BUG FIX: Wall Clipping
+                            // Wall Clipping
                             // Only update curX and curY if the tile is explicitly walkable.
                             // If it's not, we break the loop so the player lands on the last safe tile!
                             if (['.', 'F', 'd', 'D'].includes(t)) {
@@ -206,20 +223,60 @@ window.ExpansionManager.register({
                     state.player.inventory.push({ templateId: '🛒', name: 'Minecart', type: 'constructible', quantity: 1, tile: '🛒', isEquipped: false });
                 } else {
                     logMessage("{red:Your pack is full! The Minecart drops to the ground.}");
-                    if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(curX, curY, '🛒', 24);
+
+                    // Safe Outward Spiral Drop
+                    // Ensures dropping the minecart doesn't permanently overwrite stairs or waystones
+                    let placed = false;
+                    let validFloor = '.';
+                    if (state.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[state.currentCaveTheme]) {
+                        validFloor = CAVE_THEMES[state.currentCaveTheme].floor;
+                    }
+
+                    if (typeof chunkManager !== 'undefined') {
+                        for (let r = 0; r <= 2 && !placed; r++) {
+                            for (let dy = -r; dy <= r && !placed; dy++) {
+                                for (let dx = -r; dx <= r && !placed; dx++) {
+                                    const tx = curX + dx;
+                                    const ty = curY + dy;
+                                    let tileAt;
+                                    if (state.mapMode === 'overworld' || state.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
+                                    else if (state.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[state.currentCaveId]?.[ty]?.[tx];
+                                    else if (state.mapMode === 'castle') tileAt = chunkManager.castleMaps[state.currentCastleId]?.[ty]?.[tx];
+
+                                    if (tileAt === validFloor || tileAt === '.') {
+                                        if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(tx, ty, '🛒', 24);
+                                        else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][ty][tx] = '🛒';
+                                        else if (state.mapMode === 'castle') chunkManager.castleMaps[state.currentCastleId][ty][tx] = '🛒';
+                                        placed = true;
+                                    }
+                                }
+                            }
+                        }
+                        if (!placed) { // Absolute fallback
+                            if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(curX, curY, '🛒', 24);
+                            else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][curY][curX] = '🛒';
+                            else if (state.mapMode === 'castle') chunkManager.castleMaps[state.currentCastleId][curY][curX] = '🛒';
+                        }
+                    }
                 }
 
                 logMessage("{gray:The minecart grinds to a halt. You pocket it.}");
                 state.mapDirty = true;
                 if (typeof renderInventory === 'function') renderInventory();
 
-                return { x: curX, y: curY };
+                // Ensure the inventory changes are synced back to the main game loop!
+                return { 
+                    x: curX, 
+                    y: curY,
+                    inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory
+                };
             };
         }
 
         // ==========================================
         // 2. UNDERWORLD MINING (SANDBOX TERRAIN)
         // ==========================================
+
         // We monkey-patch the attemptMovePlayer function to intercept bumping into walls!
         
         if (typeof window.attemptMovePlayer === 'function') {
@@ -248,7 +305,7 @@ window.ExpansionManager.register({
                                 gameState.player.stamina -= 2;
                                 if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('staminaDisplay'), false);
                                 
-                                // 🎨 JUICE WIN: Dynamic particle color based on the wall's biome color!
+                                // Dynamic particle color based on the wall's biome color!
                                 let explosionColor = '#4b5563'; // Dark Gray (Default Rock)
                                 const realmOffset = (gameState.currentRealm || 0) * 100;
                                 const elev = typeof elevationNoise !== 'undefined' ? elevationNoise.noise(newX / 70, newY / 70, realmOffset) : 0.5;
@@ -291,7 +348,7 @@ window.ExpansionManager.register({
                                     
                                     gameState.sharedEnemies[eId] = { ...scaled, tile: '🐛d', x: newX, y: newY, spawnTime: Date.now() };
                                     
-                                    // 🚨 BUG FIX: Instantly register it to the AI grid so it attacks immediately!
+                                    // Instantly register it to the AI grid so it attacks immediately!
                                     if (typeof updateSpatialMap === 'function') updateSpatialMap(eId, null, null, newX, newY);
                                     
                                     if (typeof EnemyNetworkManager !== 'undefined' && typeof rtdb !== 'undefined') {
@@ -325,6 +382,7 @@ window.ExpansionManager.register({
         // ==========================================
         // 3. THE SUFFOCATING DARKNESS
         // ==========================================
+
         // Monkey-patch the turn-ender to apply damage if the player doesn't carry a light source!
         
         if (typeof window.endPlayerTurn === 'function') {
@@ -333,8 +391,9 @@ window.ExpansionManager.register({
             window.endPlayerTurn = function(updates = {}) {
                 if (gameState.mapMode === 'underworld') {
                     // Check if player has an active light buff OR a light item in their bag
+                    // Removed !i.isEquipped so holding a torch in an off-hand slot (if modded) still protects you!
                     const hasLight = gameState.player.candlelightTurns > 0 || 
-                                     gameState.player.inventory.some(i => i && !i.isEquipped && (i.name === 'Torch' || i.name === 'Ever-Burning Candle'));
+                                     gameState.player.inventory.some(i => i && (i.name === 'Torch' || i.name === 'Ever-Burning Candle'));
                     
                     if (!hasLight) {
                         // 25% chance per turn in the dark to take Psyche and Health damage
@@ -353,7 +412,7 @@ window.ExpansionManager.register({
                     }
                 }
                 
-                // 🚨 BUG FIX: Explicitly pass the updates object via .call()!
+                // Explicitly pass the updates object via .call()!
                 if (origEndPlayerTurn) origEndPlayerTurn.call(this, updates);
             };
         }
@@ -361,6 +420,7 @@ window.ExpansionManager.register({
         // ==========================================
         // 4. MINIMAP INTEGRATION
         // ==========================================
+
         if (typeof window.TILE_COLOR_MAP !== 'undefined') {
             window.TILE_COLOR_MAP['🛤️'] = [100, 116, 139, 255]; // Grey tracks
             window.TILE_COLOR_MAP['🛒'] = [100, 116, 139, 255]; // Grey cart
