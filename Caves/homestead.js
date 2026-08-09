@@ -461,10 +461,39 @@ window.ExpansionManager.register({
                     player.inventory.push({ templateId: '🫙', name: 'Empty Bottle', type: 'consumable', quantity: 1, tile: '🫙' });
                 } else {
                     if (typeof logMessage === 'function') logMessage("{red:Inventory full! The empty bottle falls to the ground.}");
+                    
+                    // Safe Outward Spiral Drop
+                    let placed = false;
+                    let validFloor = '.';
+                    if (gameState.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[gameState.currentCaveTheme]) {
+                        validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
+                    }
+
                     if (typeof chunkManager !== 'undefined') {
-                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(player.x, player.y, '🫙', 24);
-                        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = '🫙';
-                        else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = '🫙';
+                        for (let r = 0; r <= 2 && !placed; r++) {
+                            for (let dy = -r; dy <= r && !placed; dy++) {
+                                for (let dx = -r; dx <= r && !placed; dx++) {
+                                    const tx = player.x + dx;
+                                    const ty = player.y + dy;
+                                    let tileAt;
+                                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
+                                    else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
+                                    else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
+
+                                    if (tileAt === validFloor || tileAt === '.') {
+                                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(tx, ty, '🫙', 24);
+                                        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = '🫙';
+                                        else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = '🫙';
+                                        placed = true;
+                                    }
+                                }
+                            }
+                        }
+                        if (!placed) { // Absolute fallback
+                            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(player.x, player.y, '🫙', 24);
+                            else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = '🫙';
+                            else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = '🫙';
+                        }
                         gameState.mapDirty = true;
                     }
                 }
