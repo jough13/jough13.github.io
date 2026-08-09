@@ -949,7 +949,7 @@
     <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     
-    <!-- DATA MODULES -->
+    <!-- 1. DATA MODULES -->
     <script defer src="utils.js?v=9"></script>   
     <script defer src="renderer.js?v=9"></script>
     <script defer src="events.js?v=9"></script> 
@@ -958,7 +958,7 @@
     <script defer src="data-entities.js?v=9"></script>
     <script defer src="data-lore.js?v=9"></script>
 
-    <!-- ENGINE LOGIC -->
+    <!-- 2. CORE ENGINE LOGIC -->
     <script defer src="state.js?v=9"></script>
     <script defer src="config-firebase.js?v=9"></script>
     <script defer src="world.js?v=9"></script>
@@ -972,17 +972,27 @@
     <script defer src="magic.js?v=9"></script>
     <script defer src="items.js?v=9"></script>
 
-    <!-- EXPANSIONS -->
-    <script defer src="expansion-manager.js?v=1"></script>
-
-    <script defer src="homestead.js?v=9"></script>
-    <script defer src="alchemy.js?v=9"></script>
-    <script defer src="fishing.js?v=9"></script>
+    <!-- 3. MENUS, UI, & ECONOMY (Must load before Expansions!) -->
+    <script defer src="menus.js?v=9"></script>
+    <script defer src="trade.js?v=9"></script>
+    <script defer src="crafting.js?v=9"></script>
+    <script defer src="stash.js?v=9"></script>
+    <script defer src="enchanting.js?v=9"></script>
     <script defer src="worldmap.js?v=9"></script>
     <script defer src="settings-backup.js?v=9"></script>
     <script defer src="fast-travel.js?v=9"></script>
     <script defer src="character-setup.js?v=9"></script>
 
+    <!-- 4. MAIN ENTRY POINT (Must exist so Expansions can hook into it) -->
+    <script defer src="script.js?v=9"></script>
+
+    <!-- 5. EXPANSION MANAGER -->
+    <script defer src="expansion-manager.js?v=1"></script>
+
+    <!-- 6. EXPANSIONS (Now safely monkey-patching existing functions) -->
+    <script defer src="homestead.js?v=9"></script>
+    <script defer src="alchemy.js?v=9"></script>
+    <script defer src="fishing.js?v=9"></script>
     <script defer src="expansion-seasons.js?v=1"></script>
     <script defer src="expansion-clockwork.js?v=1"></script>
     <script defer src="expansion-exploration.js?v=1"></script>
@@ -1002,19 +1012,10 @@
     <script defer src="expansion-heist.js?v=1"></script>
     <script defer src="expansion-monster-hunter.js?v=1"></script>
 
-    <!-- MENUS & ECONOMY -->
-    <script defer src="menus.js?v=9"></script>
-    <script defer src="trade.js?v=9"></script>
-    <script defer src="crafting.js?v=9"></script>
-    <script defer src="stash.js?v=9"></script>
-    <script defer src="enchanting.js?v=9"></script>
-
-    <!-- MAIN ENTRY POINT -->
-    <script defer src="script.js?v=9"></script>
-
     <!-- ========================================== -->
     <!-- INLINE BOOTLOADER LOGIC                    -->
     <!-- ========================================== -->
+     
     <script>
         (function initBootloader() {
             const barEl = document.getElementById('loaderBar');
