@@ -199,10 +199,11 @@ window.ExpansionManager.register({
             const player = gameState.player;
             const potionName = abilityId.replace('throwPotion_', '');
             
-            // 🚨 LOCK THE ENGINE
-            isProcessingMove = true;
+            // LOCK THE ENGINE
+            if (isProcessingMove) return;
 
             try {
+                isProcessingMove = true;
                 // 1. Consume the Potion from Inventory
                 const invIndex = player.inventory.findIndex(i => i && i.name === potionName && !i.isEquipped);
                 let potionTemplate = null;
