@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "pioneer_town",
     name: "The Pioneer (Town Builder)",
-    version: "1.2", // Upgraded version!
+    version: "1.3", // Upgraded version!
     
     data: {
         // --- 1. NEW MAP TILES & NPCs ---
@@ -66,7 +66,7 @@ window.ExpansionManager.register({
                                 text: "Smash the cage open.",
                                 // Requires 5 Strength OR any heavy tool
                                 req: (player) => {
-                                    const effStr = player.strength + (player.strengthBonus || 0);
+                                    const effStr = Number(player.strength) + (Number(player.strengthBonus) || 0);
                                     if (effStr >= 5) return true;
                                     return player.inventory.some(i => i && !i.isEquipped && (i.name.includes("Pickaxe") || i.name.includes("Hammer") || i.name.includes("Axe")));
                                 },
@@ -95,7 +95,12 @@ window.ExpansionManager.register({
                                             const gems = ['💎r', '💎s', '💎d'];
                                             const gId = gems[Math.floor(Math.random() * gems.length)];
                                             const gName = gId === '💎r' ? 'Raw Ruby' : (gId === '💎s' ? 'Raw Sapphire' : 'Raw Diamond');
-                                            state.player.inventory.push({ templateId: gId, name: gName, type: 'trade', quantity: 1, tile: '💎', isEquipped: false });
+                                            
+                                            // 🚨 BUG FIX & ROBUSTNESS WIN: Safe clone to prevent memory leaks from the global dictionary
+                                            const template = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA[gId] : null;
+                                            const newItem = template && typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : { templateId: gId, name: gName, type: 'trade', quantity: 1, tile: '💎', isEquipped: false };
+                                            
+                                            state.player.inventory.push(newItem);
                                             logMessage(`{purple:You received a ${gName} and 100 Gold!}`);
                                             if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
                                         } else {
@@ -363,14 +368,16 @@ window.ExpansionManager.register({
                     // Deduct the gold
                     p.coins -= 50;
                     
-                    p.strengthBonus = 3;
-                    p.strengthBonusTurns = 500;
+                    // 🚨 BUG FIX WIN: Ensure we don't accidentally override a massive 1000 turn buff down to 500!
+                    p.strengthBonus = Math.max(p.strengthBonus || 0, 3);
+                    p.strengthBonusTurns = Math.max(p.strengthBonusTurns || 0, 500);
+                    
                     if (typeof logMessage === 'function') logMessage("{red:The Blacksmith hones your weapons! (+3 Strength for 500 turns)}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#ef4444', 15);
                     if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('strengthDisplay'), 'stat-pulse-green');
                     
-                    if (typeof playerRef !== 'undefined') playerRef.update({ coins: p.coins, strengthBonus: 3, strengthBonusTurns: 500 });
+                    if (typeof playerRef !== 'undefined') playerRef.update({ coins: p.coins, strengthBonus: p.strengthBonus, strengthBonusTurns: p.strengthBonusTurns });
                     if (typeof renderEquipment === 'function') renderEquipment();
                     if (typeof renderStats === 'function') renderStats(); // Update gold UI
                     loreModal.classList.add('hidden');
@@ -437,10 +444,14 @@ window.ExpansionManager.register({
                     if (existing) {
                         existing.quantity += qty;
                     } else if (template) {
+                        // 🚨 BUG FIX & ROBUSTNESS WIN: Explicitly map template logic functions
                         const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
                         newItem.templateId = tKey;
                         newItem.quantity = qty;
                         newItem.isEquipped = false;
+                        newItem.effect = template.effect || null;
+                        newItem.onHit = template.onHit || null;
+                        
                         p.inventory.push(newItem);
                     }
 
@@ -489,14 +500,16 @@ window.ExpansionManager.register({
                     // Deduct the gold
                     p.coins -= 50;
                     
-                    p.witsBonus = 3;
-                    p.witsBonusTurns = 500;
+                    // Ensure we don't accidentally override a massive 1000 turn buff down to 500!
+                    p.witsBonus = Math.max(p.witsBonus || 0, 3);
+                    p.witsBonusTurns = Math.max(p.witsBonusTurns || 0, 500);
+                    
                     if (typeof logMessage === 'function') logMessage("{blue:The Bard's tale inspires you! (+3 Wits for 500 turns)}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#60a5fa', 15);
                     if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('witsDisplay'), 'stat-pulse-blue');
                     
-                    if (typeof playerRef !== 'undefined') playerRef.update({ coins: p.coins, witsBonus: 3, witsBonusTurns: 500 });
+                    if (typeof playerRef !== 'undefined') playerRef.update({ coins: p.coins, witsBonus: p.witsBonus, witsBonusTurns: p.witsBonusTurns });
                     if (typeof renderStats === 'function') renderStats(); // Update gold UI
                     loreModal.classList.add('hidden');
                 };
