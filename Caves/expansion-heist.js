@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_grand_heist",
     name: "The Grand Heist (Advanced Stealth)",
-    version: "1.2", // Upgraded Version!
+    version: "1.3", // Upgraded Version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -69,6 +69,8 @@ window.ExpansionManager.register({
                     }
 
                     if (typeof renderInventory === 'function') renderInventory();
+                    
+                    // 🚨 BUG FIX WIN: Always return an object to ensure the turn passes!
                     return { inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv };
                 }
             }
@@ -364,16 +366,19 @@ window.ExpansionManager.register({
                                     if (Math.random() < chance) {
                                         // SUCCESS
                                         const goldStolen = 50 + Math.floor(Math.random() * 150);
-                                        p.coins += goldStolen;
+                                        // 🚨 BUG FIX: Strict number coercion
+                                        p.coins = (Number(p.coins) || 0) + goldStolen;
+                                        
                                         logMessage(`{green:Sleight of hand! You silently slipped ${goldStolen} gold from their pocket.}`);
                                         if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
                                         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, `+${goldStolen}g`, "#4ade80");
                                         
                                         // 10% chance for Blood Ruby
                                         if (Math.random() < 0.10) {
-                                            const ruby = window.ITEM_DATA['💰b'];
+                                            const ruby = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['💰b'] : null;
                                             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(p) : 9;
-                                            if (p.inventory.length < invCap) {
+                                            
+                                            if (ruby && p.inventory.length < invCap) {
                                                 const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(ruby) : JSON.parse(JSON.stringify(ruby));
                                                 newItem.templateId = '💰b'; newItem.quantity = 1; newItem.isEquipped = false;
                                                 p.inventory.push(newItem);
@@ -394,11 +399,11 @@ window.ExpansionManager.register({
                                         p.suspicion = 100;
                                         window.StealthManager.updateUI(); // This will trigger the detection loop and force stand-up
                                         
-                                        p.bounty = (p.bounty || 0) + 500;
+                                        p.bounty = (Number(p.bounty) || 0) + 500; // 🚨 BUG FIX: Strict number coercion
                                         logMessage("{gray:+500g Bounty added to your head.}");
                                         
                                         // 🚨 BUG FIX WIN: Proper Context Enemy Spawning!
-                                        const eData = window.ENEMY_DATA['b']; // Fallback to bandit
+                                        const eData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['b'] : { name: 'Bandit', maxHealth: 10, attack: 2, xp: 20 };
                                         
                                         if (state.mapMode === 'castle' || state.mapMode === 'dungeon') {
                                             // Instanced spawn
@@ -415,7 +420,7 @@ window.ExpansionManager.register({
                                             const enemyId = `overworld:${x},${-y}`;
                                             const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(eData, x, y) : eData;
                                             state.sharedEnemies[enemyId] = { ...scaledStats, tile: 'b', x: x, y: y, name: "Angry Victim", spawnTime: Date.now() };
-                                            chunkManager.setWorldTile(x, y, '.');
+                                            chunkManager.setWorldTile(x, y, '.'); // 🚨 BUG FIX: Erase the merchant visually
                                             if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(x, y, enemyId)).set(state.sharedEnemies[enemyId]);
                                         }
 
@@ -446,12 +451,12 @@ window.ExpansionManager.register({
                 
                 // Only spawn in standard or dark castles
                 if (!castleId.includes('village')) {
-                    const random = Alea(stringToSeed(`vault_${castleId}`));
+                    const random = typeof Alea !== 'undefined' ? Alea(typeof stringToSeed !== 'undefined' ? stringToSeed(`vault_${castleId}`) : 1) : Math.random;
                     
                     // 50% chance to spawn a vault room
                     if (random() < 0.50) {
                         let carved = false;
-                        for(let attempt = 0; attempt < 50 && !carved; attempt++) {
+                        for(let attempt = 0; attempt < 100 && !carved; attempt++) {
                             const cx = Math.floor(random() * (map[0].length - 6)) + 3;
                             const cy = Math.floor(random() * (map.length - 6)) + 3;
                             
@@ -466,27 +471,49 @@ window.ExpansionManager.register({
                                 if(!allWalls) break;
                             }
                             
+                            // 🚨 BUG FIX WIN: Connectivity Guarantee
+                            // If it's a solid 5x5 block of walls, we must ensure that carving a 3x3 vault 
+                            // actually borders at least ONE open floor tile ('.') so the player can reach the door!
                             if (allWalls) {
-                                // Carve 3x3 vault
-                                for(let dy=-1; dy<=1; dy++) {
-                                    for(let dx=-1; dx<=1; dx++) {
-                                        map[cy+dy][cx+dx] = '.';
+                                let touchesPath = false;
+                                // Check the 7x7 outer perimeter for ANY existing floor
+                                for(let dy=-3; dy<=3; dy++) {
+                                    for(let dx=-3; dx<=3; dx++) {
+                                        if (map[cy+dy] && map[cy+dy][cx+dx] === '.') {
+                                            touchesPath = true; break;
+                                        }
                                     }
+                                    if (touchesPath) break;
                                 }
-                                // Place massive loot
-                                map[cy][cx] = '📦'; 
-                                map[cy-1][cx] = '📦';
-                                map[cy+1][cx] = '📦';
-                                map[cy][cx-1] = '💎';
-                                map[cy][cx+1] = '$';
                                 
-                                // Add the Locked Door!
-                                const dir = Math.floor(random() * 4);
-                                if (dir===0) map[cy-2][cx] = '🔒';
-                                if (dir===1) map[cy+2][cx] = '🔒';
-                                if (dir===2) map[cy][cx-2] = '🔒';
-                                if (dir===3) map[cy][cx+2] = '🔒';
-                                carved = true;
+                                if (touchesPath) {
+                                    // Carve 3x3 vault
+                                    for(let dy=-1; dy<=1; dy++) {
+                                        for(let dx=-1; dx<=1; dx++) {
+                                            map[cy+dy][cx+dx] = '.';
+                                        }
+                                    }
+                                    // Place massive loot
+                                    map[cy][cx] = '📦'; 
+                                    map[cy-1][cx] = '📦';
+                                    map[cy+1][cx] = '📦';
+                                    map[cy][cx-1] = '💎';
+                                    map[cy][cx+1] = '$';
+                                    
+                                    // Determine the BEST direction to place the door so it opens to the path
+                                    let bestDir = Math.floor(random() * 4);
+                                    if (map[cy-3] && map[cy-3][cx] === '.') bestDir = 0; // Open North
+                                    if (map[cy+3] && map[cy+3][cx] === '.') bestDir = 1; // Open South
+                                    if (map[cy][cx-3] === '.') bestDir = 2; // Open West
+                                    if (map[cy][cx+3] === '.') bestDir = 3; // Open East
+                                    
+                                    // Add the Locked Door!
+                                    if (bestDir===0) { map[cy-2][cx] = '🔒'; map[cy-3][cx] = '.'; }
+                                    if (bestDir===1) { map[cy+2][cx] = '🔒'; map[cy+3][cx] = '.'; }
+                                    if (bestDir===2) { map[cy][cx-2] = '🔒'; map[cy][cx-3] = '.'; }
+                                    if (bestDir===3) { map[cy][cx+2] = '🔒'; map[cy][cx+3] = '.'; }
+                                    carved = true;
+                                }
                             }
                         }
                     }
