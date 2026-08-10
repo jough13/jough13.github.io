@@ -361,30 +361,14 @@ window.ExpansionManager.register({
                     if (existing) {
                         existing.quantity += tItem.quantity;
                     } else {
-                        // 🚨 BUG FIX & ROBUSTNESS WIN: Re-hydrate logic functions!
-                        // Since `theirOffer.items` came directly from the Firebase network payload, 
-                        // all function references (`effect`, `onHit`) were destroyed by JSON.stringify.
-                        // We must securely bind them back using the master ITEM_DATA dictionary!
-                        let tKey = tItem.templateId;
-                        if (!tKey && typeof window.ITEM_DATA !== 'undefined') {
-                            tKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === tItem.name);
-                        }
-                        
-                        const template = typeof window.ITEM_DATA !== 'undefined' && tKey ? window.ITEM_DATA[tKey] : null;
-                        
-                        if (template) {
-                            tItem.effect = template.effect;
-                            tItem.onHit = template.onHit;
-                            tItem.procChance = template.procChance;
-                            tItem.inflicts = template.inflicts;
-                            tItem.inflictChance = template.inflictChance;
+                        // Use the central rehydration engine to preserve dynamic properties 
+                        // (like Sockets, Masterwork stats, or Curses) while safely restoring the 
+                        // stripped .effect and .onHit functions from the database payload!
+                        const hydratedItem = typeof window.rehydrateItemArray === 'function' 
+                            ? window.rehydrateItemArray([tItem])[0] 
+                            : tItem;
                             
-                            // Safe tag array cloning
-                            if (template.tags) {
-                                tItem.tags = [...template.tags];
-                            }
-                        }
-                        finalInventory.push(tItem);
+                        finalInventory.push(hydratedItem);
                     }
                 });
 
