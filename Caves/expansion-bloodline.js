@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_bloodline",
     name: "The Bloodline (Prestige System)",
-    version: "1.2", // Upgraded version!
+    version: "1.3", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -326,25 +326,33 @@ window.ExpansionManager.register({
             // 4. Wipe Inventory & Equip Bloodline Pendant
             const genMult = player.generation * 2; // +2 All Stats per generation!
             
-            const pendant = window.ITEM_DATA['🩸p'];
-            const newPendant = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(pendant) : JSON.parse(JSON.stringify(pendant));
+            // 🚨 BUG FIX WIN: Safe Clone
+            // Prevents the pendant's stats from leaking globally or failing on load
+            const pendant = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['🩸p'] : null;
+            let newPendant = null;
             
-            newPendant.templateId = '🩸p';
-            newPendant.quantity = 1;
-            newPendant.isEquipped = true;
-            newPendant.statBonuses = {
-                strength: genMult, wits: genMult, constitution: genMult,
-                dexterity: genMult, charisma: genMult, luck: genMult,
-                willpower: genMult, perception: genMult, endurance: genMult, intuition: genMult
-            };
-            newPendant.description = `An heirloom of your past lives. {gold:+${genMult} to All Stats}.`;
+            if (pendant) {
+                newPendant = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(pendant) : JSON.parse(JSON.stringify(pendant));
+                newPendant.templateId = '🩸p';
+                newPendant.quantity = 1;
+                newPendant.isEquipped = true;
+                newPendant.statBonuses = {
+                    strength: genMult, wits: genMult, constitution: genMult,
+                    dexterity: genMult, charisma: genMult, luck: genMult,
+                    willpower: genMult, perception: genMult, endurance: genMult, intuition: genMult
+                };
+                newPendant.description = `An heirloom of your past lives. {gold:+${genMult} to All Stats}.`;
+            }
 
-            player.inventory = [newPendant];
-            player.inventory.push({ templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true });
+            // Create rags natively
+            const rags = { templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true };
+            
+            player.inventory = [rags];
+            if (newPendant) player.inventory.unshift(newPendant); // Put pendant at index 0
 
             player.equipment = {
                 weapon: { name: 'Fists', damage: 0, tags: ['blunt'] },
-                armor: player.inventory[1],
+                armor: rags,
                 offhand: null,
                 accessory: newPendant,
                 ammo: null
@@ -373,10 +381,11 @@ window.ExpansionManager.register({
             player.y = 0;
 
             // 5. Apply Generation Base Vitals Boost
-            player.bonusMaxHealth = player.generation * 10;
-            player.bonusMaxMana = player.generation * 10;
-            player.bonusMaxStamina = player.generation * 10;
-            player.bonusMaxPsyche = player.generation * 10;
+            // 🚨 BUG FIX WIN: Strict Number Coercion
+            player.bonusMaxHealth = Number(player.generation) * 10;
+            player.bonusMaxMana = Number(player.generation) * 10;
+            player.bonusMaxStamina = Number(player.generation) * 10;
+            player.bonusMaxPsyche = Number(player.generation) * 10;
 
             if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
             
@@ -490,7 +499,7 @@ window.ExpansionManager.register({
                     }
                 }
                 
-                // 🚨 STABILITY WIN: Safely apply arguments so updates object is not lost
+                // Safely apply arguments so updates object is not lost
                 if (origEndPlayerTurn) origEndPlayerTurn.apply(this, arguments);
             };
         }
@@ -503,16 +512,6 @@ window.ExpansionManager.register({
                 if (typeof onlinePlayerRef !== 'undefined' && onlinePlayerRef) {
                     onlinePlayerRef.update({ generation: gameState.player.generation || 0, activeTitle: gameState.player.activeTitle || null }).catch(()=>{});
                 }
-            };
-        }
-
-        if (typeof window.handleChatCommand === 'function') {
-            const existingHandleChat = window.handleChatCommand;
-            window.handleChatCommand = function(message) {
-                const raw = message.substring(1); 
-                const command = raw.split(' ')[0].toLowerCase();
-                
-                existingHandleChat(message);
             };
         }
     }
