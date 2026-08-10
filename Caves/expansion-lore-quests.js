@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "faction_lore",
     name: "Factions & Deep Lore",
-    version: "1.2", // Upgraded version!
+    version: "1.3", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -100,20 +100,32 @@ window.ExpansionManager.register({
                                     if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
                                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(ctx.x, ctx.y, '#ef4444', 15);
                                     
-                                    // Drop Reputation for attacking them
-                                    state.player.reputation.shadowed_hand = (state.player.reputation.shadowed_hand || 0) - 10;
+                                    // Drop Reputation for attacking them (🚨 BUG FIX: Strict Number Coercion)
+                                    state.player.reputation.shadowed_hand = (Number(state.player.reputation.shadowed_hand) || 0) - 10;
                                     logMessage("{gray:Your reputation with the Shadowed Hand decreases. (-10)}");
+                                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(ctx.x, ctx.y, "-10 Rep", "#9ca3af");
                                     
-                                    // Spawn 2 Cultist Fanatics
+                                    // Spawn 2 Cultist Fanatics safely
                                     const eData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['z'] : { name: 'Cultist', maxHealth: 15, attack: 3, xp: 10 };
                                     const offsets = [[-1, 0], [1, 0]];
                                     offsets.forEach(off => {
                                         const ex = ctx.x + off[0];
                                         const ey = ctx.y + off[1];
+                                        
+                                        // 🚨 BUG FIX: Ensure tile is walkable before dropping an enemy on it
+                                        if (typeof chunkManager !== 'undefined') {
+                                            const tileAt = chunkManager.getTile(ex, ey);
+                                            if (!['.', 'F', 'd', 'D', '≈'].includes(tileAt)) return;
+                                        }
+
                                         const enemyId = `overworld:${ex},${-ey}`;
                                         const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(eData, ex, ey) : eData;
                                         
                                         state.sharedEnemies[enemyId] = { ...scaledStats, tile: 'z', x: ex, y: ey, spawnTime: Date.now() };
+                                        
+                                        // 🚨 BUG FIX: Add to spatial map so the AI loop instantly realizes they exist!
+                                        if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, null, null, ex, ey);
+
                                         if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(ex, ey, enemyId)).set(state.sharedEnemies[enemyId]);
                                     });
 
@@ -176,18 +188,43 @@ window.ExpansionManager.register({
                                 req: (player) => player.inventory.some(i => i && i.name === 'Healing Potion' && !i.isEquipped),
                                 reqHint: "Requires Healing Potion",
                                 action: (state, ctx) => {
+                                    // 🚨 HELPER: Outward Spiral Safe Drop
+                                    const dropSafely = (tileToDrop) => {
+                                        let placed = false;
+                                        if (typeof chunkManager !== 'undefined') {
+                                            for (let r = 0; r <= 2 && !placed; r++) {
+                                                for (let dy = -r; dy <= r && !placed; dy++) {
+                                                    for (let dx = -r; dx <= r && !placed; dx++) {
+                                                        const tx = state.player.x + dx;
+                                                        const ty = state.player.y + dy;
+                                                        const tileAt = chunkManager.getTile(tx, ty);
+                                                        if (['.', 'F', 'd', 'D', '❄️', '🍄'].includes(tileAt)) {
+                                                            chunkManager.setWorldTile(tx, ty, tileToDrop, 24);
+                                                            placed = true;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            if (!placed) chunkManager.setWorldTile(state.player.x, state.player.y, tileToDrop, 24);
+                                            state.mapDirty = true;
+                                        }
+                                    };
+
                                     // Consume potion safely
                                     const idx = state.player.inventory.findIndex(i => i && i.name === 'Healing Potion' && !i.isEquipped);
                                     state.player.inventory[idx].quantity--;
                                     if (state.player.inventory[idx].quantity <= 0) state.player.inventory.splice(idx, 1);
                                     
-                                    // Adjust Reputation
-                                    state.player.reputation.fae_court = (state.player.reputation.fae_court || 0) + 25;
+                                    // Adjust Reputation (🚨 BUG FIX: Strict Number Coercion)
+                                    state.player.reputation.fae_court = (Number(state.player.reputation.fae_court) || 0) + 25;
                                     logMessage("{green:The being drinks the potion and their wounds close. They hand you a glowing amulet before vanishing into light.}");
                                     logMessage("{blue:Reputation with the Fae Court increased! (+25)}");
                                     
                                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
-                                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(ctx.x, ctx.y, '#3b82f6', 30);
+                                    if (typeof ParticleSystem !== 'undefined') {
+                                        ParticleSystem.createExplosion(ctx.x, ctx.y, '#3b82f6', 30);
+                                        ParticleSystem.createFloatingText(ctx.x, ctx.y, "+25 Rep", "#3b82f6");
+                                    }
                                     
                                     // Give Unique Artifact
                                     const amulet = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['🧿st'] : null;
@@ -202,8 +239,7 @@ window.ExpansionManager.register({
                                             state.player.inventory.push(newItem);
                                         } else {
                                             logMessage("{red:Your inventory is full! The amulet drops at your feet.}");
-                                            // 🚨 BUG FIX: Drop on player coords so map cleanup doesn't erase it
-                                            if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(state.player.x, state.player.y, '🧿', 24);
+                                            dropSafely('🧿');
                                         }
                                     }
                                     
@@ -216,16 +252,41 @@ window.ExpansionManager.register({
                             {
                                 text: "Slay the creature for its magical core.",
                                 action: (state, ctx) => {
+                                    // 🚨 HELPER: Outward Spiral Safe Drop
+                                    const dropSafely = (tileToDrop) => {
+                                        let placed = false;
+                                        if (typeof chunkManager !== 'undefined') {
+                                            for (let r = 0; r <= 2 && !placed; r++) {
+                                                for (let dy = -r; dy <= r && !placed; dy++) {
+                                                    for (let dx = -r; dx <= r && !placed; dx++) {
+                                                        const tx = state.player.x + dx;
+                                                        const ty = state.player.y + dy;
+                                                        const tileAt = chunkManager.getTile(tx, ty);
+                                                        if (['.', 'F', 'd', 'D', '❄️', '🍄'].includes(tileAt)) {
+                                                            chunkManager.setWorldTile(tx, ty, tileToDrop, 24);
+                                                            placed = true;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            if (!placed) chunkManager.setWorldTile(state.player.x, state.player.y, tileToDrop, 24);
+                                            state.mapDirty = true;
+                                        }
+                                    };
+
                                     // Adjust Reputation (Dark Path)
-                                    state.player.reputation.fae_court = (state.player.reputation.fae_court || 0) - 50;
-                                    state.player.reputation.shadowed_hand = (state.player.reputation.shadowed_hand || 0) + 10;
+                                    state.player.reputation.fae_court = (Number(state.player.reputation.fae_court) || 0) - 50;
+                                    state.player.reputation.shadowed_hand = (Number(state.player.reputation.shadowed_hand) || 0) + 10;
                                     
                                     logMessage("{red:You mercilessly strike down the star-wanderer.}");
                                     logMessage("{gray:The Fae Court will remember this. (+10 Shadowed Hand Rep)}");
                                     
                                     state.screenShake = 15;
                                     if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy');
-                                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(ctx.x, ctx.y, '#991b1b', 20);
+                                    if (typeof ParticleSystem !== 'undefined') {
+                                        ParticleSystem.createExplosion(ctx.x, ctx.y, '#991b1b', 20);
+                                        ParticleSystem.createFloatingText(ctx.x, ctx.y, "-50 Rep", "#ef4444");
+                                    }
                                     
                                     // Give Star-Metal
                                     const metal = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['☄️'] : { name: 'Star-Metal Ore', type: 'junk' };
@@ -242,8 +303,7 @@ window.ExpansionManager.register({
                                         state.player.inventory.push(newItem);
                                     } else {
                                         logMessage("{red:Your inventory is full! The ore drops at your feet.}");
-                                        // 🚨 BUG FIX: Drop on player coords
-                                        if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(state.player.x, state.player.y, '☄️', 24);
+                                        dropSafely('☄️');
                                     }
                                     
                                     // Turn the crater into a deadlands tile to signify the corruption
@@ -270,11 +330,35 @@ window.ExpansionManager.register({
                                 req: (player) => (player.reputation && player.reputation.the_crown >= 20),
                                 reqHint: "20+ Crown Rep",
                                 action: (state, ctx) => {
+                                    // 🚨 HELPER: Outward Spiral Safe Drop
+                                    const dropSafely = (tileToDrop) => {
+                                        let placed = false;
+                                        if (typeof chunkManager !== 'undefined') {
+                                            for (let r = 0; r <= 2 && !placed; r++) {
+                                                for (let dy = -r; dy <= r && !placed; dy++) {
+                                                    for (let dx = -r; dx <= r && !placed; dx++) {
+                                                        const tx = state.player.x + dx;
+                                                        const ty = state.player.y + dy;
+                                                        const tileAt = chunkManager.getTile(tx, ty);
+                                                        if (['.', 'F', 'd', 'D'].includes(tileAt)) {
+                                                            chunkManager.setWorldTile(tx, ty, tileToDrop, 24);
+                                                            placed = true;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            if (!placed) chunkManager.setWorldTile(state.player.x, state.player.y, tileToDrop, 24);
+                                            state.mapDirty = true;
+                                        }
+                                    };
+
                                     logMessage("{blue:The Emissary smiles. \"Ah, a loyal servant of the realm. Please, take this for your continued efforts.\"}");
                                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
                                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(ctx.x, ctx.y, '#facc15', 20);
 
-                                    state.player.coins += 250;
+                                    // Strict Number Coercion
+                                    state.player.coins = (Number(state.player.coins) || 0) + 250;
+                                    
                                     const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                                     const itemTemplate = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['🏅r'] : null;
 
@@ -288,8 +372,7 @@ window.ExpansionManager.register({
                                             logMessage("{purple:You received the Royal Signet and 250 Gold!}");
                                         } else {
                                             logMessage("{gold:You received 250 Gold, but your pack was full. The Signet drops at your feet.}");
-                                            // 🚨 BUG FIX: Drop on player coords
-                                            if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(state.player.x, state.player.y, '🏅', 24);
+                                            dropSafely('🏅');
                                         }
                                     }
                                     state.lootedTiles.add(ctx.tileId);
@@ -300,10 +383,17 @@ window.ExpansionManager.register({
                                 req: (player) => player.coins >= 100,
                                 reqHint: "100 Gold",
                                 action: (state, ctx) => {
+                                    // Strict Number Coercion
                                     state.player.coins -= 100;
-                                    state.player.reputation.the_crown = (state.player.reputation.the_crown || 0) + 15;
+                                    state.player.reputation.the_crown = (Number(state.player.reputation.the_crown) || 0) + 15;
+                                    
                                     logMessage("{gold:The Emissary gladly accepts the coin. (+15 Crown Rep)}");
                                     if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+                                    if (typeof ParticleSystem !== 'undefined') {
+                                        ParticleSystem.createFloatingText(ctx.x, ctx.y, "-100g", "#ef4444");
+                                        setTimeout(() => ParticleSystem.createFloatingText(ctx.x, ctx.y, "+15 Rep", "#3b82f6"), 300);
+                                    }
+                                    
                                     state.lootedTiles.add(ctx.tileId);
                                 }
                             },
@@ -325,17 +415,31 @@ window.ExpansionManager.register({
             const originalHandleChat = window.handleChatCommand;
             
             window.handleChatCommand = function(message) {
+                // Ignore if it's not a command
+                if (!message.startsWith('/')) return;
+
                 const raw = message.substring(1); 
                 const command = raw.split(' ')[0].toLowerCase();
                 
                 if (command === 'rep' || command === 'reputation') {
                     const r = gameState.player.reputation || {};
-                    // 🎨 JUICE WIN: Colorful and thematic reputation output
+                    
+                    // Dynamic Color Tagging for Status
+                    const getStatus = (val) => {
+                        const num = Number(val) || 0;
+                        if (num >= 50) return '{green:[Allied]}';
+                        if (num >= 20) return '{blue:[Friendly]}';
+                        if (num <= -50) return '{red:[Hunted]}';
+                        if (num <= -20) return '{orange:[Hostile]}';
+                        return '{gray:[Neutral]}';
+                    };
+
+                    // Colorful and thematic reputation output
                     logMessage("{yellow:--- 📜 Your Reputation 📜 ---}");
-                    logMessage(`{blue:The Crown:} ${r.the_crown || 0}`);
-                    logMessage(`{purple:Shadowed Hand:} ${r.shadowed_hand || 0}`);
-                    logMessage(`{green:Fae Court:} ${r.fae_court || 0}`);
-                    logMessage(`{gold:Merchants Guild:} ${r.merchants_guild || 0}`);
+                    logMessage(`{blue:The Crown:} ${r.the_crown || 0} ${getStatus(r.the_crown)}`);
+                    logMessage(`{purple:Shadowed Hand:} ${r.shadowed_hand || 0} ${getStatus(r.shadowed_hand)}`);
+                    logMessage(`{green:Fae Court:} ${r.fae_court || 0} ${getStatus(r.fae_court)}`);
+                    logMessage(`{gold:Merchants Guild:} ${r.merchants_guild || 0} ${getStatus(r.merchants_guild)}`);
                     return; // Intercepted successfully
                 }
                 
@@ -347,6 +451,7 @@ window.ExpansionManager.register({
         // ==========================================
         // 2. WORLD GENERATION SPAWNER
         // ==========================================
+
         // We safely post-process chunks to occasionally sprinkle our new event tiles!
         
         if (typeof chunkManager !== 'undefined' && chunkManager.generateChunk) {
@@ -355,10 +460,13 @@ window.ExpansionManager.register({
             chunkManager.generateChunk = function(chunkX, chunkY) {
                 origGenerateChunk.call(this, chunkX, chunkY);
                 
+                // Do not spawn these static events in Alternate Realms or Dungeons!
+                if (typeof gameState !== 'undefined' && gameState.currentRealm !== 0 && gameState.currentRealm) return;
+
                 const chunkId = `${chunkX},${chunkY}`;
                 const chunkData = this.loadedChunks[chunkId];
                 
-                // 🚨 ROBUSTNESS WIN: Safe PRNG fallback
+                // Safe PRNG fallback
                 const random = (typeof Alea !== 'undefined' && typeof stringToSeed !== 'undefined') 
                     ? Alea(stringToSeed(`faction_spawn_${chunkId}`)) 
                     : Math.random;
@@ -390,6 +498,7 @@ window.ExpansionManager.register({
         // ==========================================
         // 3. MINIMAP COLOR INTEGRATION
         // ==========================================
+
         // Inject the newly generated tiles into the global TILE_COLOR_MAP
         if (typeof window.TILE_COLOR_MAP !== 'undefined') {
             window.TILE_COLOR_MAP['🕍c'] = [153, 27, 27, 255];   // Dark Red
