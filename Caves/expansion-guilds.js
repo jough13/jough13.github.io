@@ -257,15 +257,20 @@ window.ExpansionManager.register({
                     });
 
                     if (txResult.committed && txResult.snapshot.val()) {
-                        const claimedItem = txResult.snapshot.val();
+                        let claimedItem = txResult.snapshot.val();
                         
-                        // Rehydrate logic functions
-                        if (typeof window.ITEM_DATA !== 'undefined') {
-                            const tKey = claimedItem.templateId || Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === claimedItem.name);
-                            const template = window.ITEM_DATA[tKey];
-                            if (template) {
-                                claimedItem.effect = template.effect;
-                                claimedItem.onHit = template.onHit;
+                        // Rehydrate logic functions dynamically
+                        if (typeof window.rehydrateItemArray === 'function') {
+                            claimedItem = window.rehydrateItemArray([claimedItem])[0];
+                        } else {
+                            // Absolute fallback if the engine hasn't fully loaded
+                            if (typeof window.ITEM_DATA !== 'undefined') {
+                                const tKey = claimedItem.templateId || Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === claimedItem.name);
+                                const template = window.ITEM_DATA[tKey];
+                                if (template) {
+                                    claimedItem.effect = template.effect;
+                                    claimedItem.onHit = template.onHit;
+                                }
                             }
                         }
                         
