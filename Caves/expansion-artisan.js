@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "artisan_guild",
     name: "The Artisan's Guild (Jewelcrafting)",
-    version: "1.3", // Upgraded version!
+    version: "1.4", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -38,7 +38,7 @@ window.ExpansionManager.register({
                     const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                     const existingStack = state.player.inventory.find(i => i && i.name === gemName && !i.isEquipped);
 
-                    // Drop item safely if inventory is full
+                    // 🚨 ROBUSTNESS WIN: Safe Outward Spiral Drop
                     const safelyDropItem = (dropTile) => {
                         let placed = false;
                         let validFloor = '.';
@@ -66,7 +66,7 @@ window.ExpansionManager.register({
                                     }
                                 }
                             }
-                            if (!placed) { // Fallback
+                            if (!placed) { // Absolute fallback
                                 if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(state.player.x, state.player.y, dropTile, 24);
                                 else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][state.player.y][state.player.x] = dropTile;
                                 else if (state.mapMode === 'castle') chunkManager.castleMaps[state.currentCastleId][state.player.y][state.player.x] = dropTile;
@@ -79,9 +79,15 @@ window.ExpansionManager.register({
                         existingStack.quantity += yieldAmt;
                         logMessage(`{purple:The geode shatters, revealing ${yieldAmt}x ${gemName}!}`);
                     } else if (state.player.inventory.length < invCap) {
-                        state.player.inventory.push({
-                            templateId: gemId, name: gemName, type: 'trade', quantity: yieldAmt, tile: '💎', isEquipped: false
-                        });
+                        // 🚨 BUG FIX: Use deep cloning for the new stack!
+                        const template = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA[gemId] : { name: gemName, type: 'trade', tile: '💎' };
+                        const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
+                        
+                        newItem.templateId = gemId;
+                        newItem.quantity = yieldAmt;
+                        newItem.isEquipped = false;
+                        
+                        state.player.inventory.push(newItem);
                         logMessage(`{purple:The geode shatters, revealing ${yieldAmt}x ${gemName}!}`);
                     } else {
                         logMessage(`{red:The geode shatters revealing ${yieldAmt}x ${gemName}, but your pack is full! They drop to the floor.}`);
@@ -158,6 +164,7 @@ window.ExpansionManager.register({
                             if (hasStack) {
                                 hasStack.quantity += yieldAmt;
                             } else {
+                                // 🚨 ROBUSTNESS WIN: Deep cloning isolated template
                                 const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
                                 newItem.templateId = templateKey;
                                 newItem.quantity = yieldAmt;
@@ -220,7 +227,7 @@ window.ExpansionManager.register({
             '🦀c': {
                 name: 'Crystal Crawler', tags: ['beast', 'stone'], mountable: false,
                 maxHealth: 35, attack: 4, defense: 5, xp: 60,
-                color: '#22d3ee', loot: '🪨g', // NOW DROPS THE GEODE INSTEAD OF RAW SAPPHIRE!
+                color: '#22d3ee', loot: '🪨g', 
                 flavor: "A terrestrial crab with a shell made of hardened gemstone."
             }
         },
@@ -424,7 +431,7 @@ window.ExpansionManager.register({
     init: function() {
         
         // Universal Helper Function attached to the window for Gem Socketing
-        // 🌟 LORE & JUICE WIN: Added dynamic particle colors and preserved Lore Descriptions!
+        // Added dynamic particle colors and preserved Lore Descriptions!
         window.applySocket = function(state, slot, stat, amount, suffix, pColorHex = '#facc15', pColorName = 'gold', gemName = 'Gem') {
             const targetItem = state.player.equipment[slot];
             
@@ -454,7 +461,7 @@ window.ExpansionManager.register({
             targetItem.tags.push('socketed');
             targetItem.name = `${targetItem.name} ${suffix}`;
             
-            // 🚨 BUG FIX WIN: Deep clone statBonuses to sever the prototype link!
+            // Deep clone statBonuses to sever the prototype link!
             // Prevents global ITEM_DATA corruption where every subsequent weapon dropped inherits the socket!
             if (!targetItem.statBonuses) {
                 targetItem.statBonuses = {};
@@ -462,7 +469,7 @@ window.ExpansionManager.register({
                 targetItem.statBonuses = typeof window.fastClone === 'function' ? window.fastClone(targetItem.statBonuses) : JSON.parse(JSON.stringify(targetItem.statBonuses));
             }
             
-            // 🚨 BUG FIX WIN: Strict Number Coercion
+            // Strict Number Coercion
             // Prevents a string-concat bug where 5 damage + 3 socket becomes "53" damage, breaking combat!
             if (stat === 'defense') {
                 targetItem.defense = (Number(targetItem.defense) || 0) + Number(amount);
@@ -472,7 +479,7 @@ window.ExpansionManager.register({
                 targetItem.statBonuses[stat] = (Number(targetItem.statBonuses[stat]) || 0) + Number(amount);
             }
             
-            // 🌟 LORE WIN: Visually append the socketed gem to the weapon's description so the player remembers!
+            // Visually append the socketed gem to the weapon's description so the player remembers!
             targetItem.description = (targetItem.description || "") + `\n\n{${pColorName}:[Socketed: ${gemName}]}`;
 
             // 3. Re-equip to apply the new, improved stats back to the player
