@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_vanguard_raids",
     name: "The Vanguard (Multiplayer Raids)",
-    version: "1.3", // Upgraded version!
+    version: "1.4", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -31,15 +31,21 @@ window.ExpansionManager.register({
                 name: 'Vanguard\'s Elixir', type: 'consumable', tile: '🍷', _rarity: 'legendary', excludeFromLoot: true,
                 description: "The absolute peak of alchemy. {gold:Permanently +10 Max HP & +10 Max Mana.}",
                 effect: (state) => {
-                    state.player.bonusMaxHealth = (state.player.bonusMaxHealth || 0) + 10;
-                    state.player.bonusMaxMana = (state.player.bonusMaxMana || 0) + 10;
+                    // 🚨 BUG FIX & ROBUSTNESS WIN: Strict Number Coercion
+                    state.player.bonusMaxHealth = (Number(state.player.bonusMaxHealth) || 0) + 10;
+                    state.player.bonusMaxMana = (Number(state.player.bonusMaxMana) || 0) + 10;
                     
-                    if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
-                    else { state.player.maxHealth += 10; state.player.maxMana += 10; }
+                    if (typeof recalculateDerivedStats === 'function') {
+                        recalculateDerivedStats();
+                    } else { 
+                        state.player.maxHealth += 10; 
+                        state.player.maxMana += 10; 
+                    }
                     
+                    // 🚨 GAMEPLAY WIN: Automatically fill the new empty gap created by expanding the max pool!
                     if (typeof window.modifyVital === 'function') {
-                        window.modifyVital('health', 10);
-                        window.modifyVital('mana', 10);
+                        window.modifyVital('health', state.player.maxHealth);
+                        window.modifyVital('mana', state.player.maxMana);
                     } else {
                         state.player.health = state.player.maxHealth;
                         state.player.mana = state.player.maxMana;
@@ -193,18 +199,25 @@ window.ExpansionManager.register({
                         // Build a single payload dictionary instead of writing to Firebase 5 separate times!
                         const spawnPayload = {};
                         
-                        // 1. Spawn the Boss at (0,0)
-                        const eData = window.ENEMY_DATA['👹r'];
-                        const newBoss = { ...eData, tile: '👹r', x: 0, y: 0, spawnTime: Date.now() };
+                        // 🚨 BUG FIX & ROBUSTNESS WIN: Use fastClone before pushing to Firebase to strip functions
+                        const eData = typeof window.fastClone === 'function' ? window.fastClone(window.ENEMY_DATA['👹r']) : JSON.parse(JSON.stringify(window.ENEMY_DATA['👹r']));
+                        
+                        // 🚨 LORE & EXPLOIT FIX WIN: Unique Boss Instances
+                        // We attach a timestamp to the object so when the boss dies, the loot chest can inherit it
+                        // to prevent players from being permanently locked out of future raids on the same map coordinates!
+                        const instanceTime = Date.now();
+
+                        const newBoss = { ...eData, tile: '👹r', x: 0, y: 0, spawnTime: instanceTime, raidInstanceId: instanceTime };
                         spawnPayload[EnemyNetworkManager.getPath(0, 0, bossId)] = newBoss;
                         
                         // 2. Spawn Adds! (Fire Elementals at the 4 pillars)
                         const adds = [[3,3], [12,3], [3,12], [12,12]];
-                        const fData = window.ENEMY_DATA['f']; // Fire Elemental
+                        const fData = typeof window.fastClone === 'function' ? window.fastClone(window.ENEMY_DATA['f']) : JSON.parse(JSON.stringify(window.ENEMY_DATA['f']));
+                        
                         if (fData) {
                             adds.forEach((pos) => {
                                 const aId = `overworld:${pos[0]},${-pos[1]}`;
-                                const newAdd = { ...fData, tile: 'f', x: pos[0], y: pos[1], spawnTime: Date.now() };
+                                const newAdd = { ...fData, tile: 'f', x: pos[0], y: pos[1], spawnTime: instanceTime };
                                 spawnPayload[EnemyNetworkManager.getPath(pos[0], pos[1], aId)] = newAdd;
                                 
                                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(pos[0], pos[1], '#f97316', 15);
@@ -234,7 +247,17 @@ window.ExpansionManager.register({
                 type: 'anomaly', name: 'Vanguard Cache',
                 flavor: "A massive, glowing chest dropped by the Raid Boss!",
                 onInteract: (state, x, y) => {
-                    const tileId = `raid_cache_${x}_${y}`;
+                    // 🚨 EXPLOIT FIX WIN: Tie the looted tile ID to the specific raid instance!
+                    // Without this, the chest's location (e.g., "1,0") would only be lootable ONCE per character's lifespan!
+                    const chunkData = typeof chunkManager !== 'undefined' ? chunkManager.worldState['0,0'] : null;
+                    const tileKey = (((x % 16) + 16) % 16) + ',' + (((y % 16) + 16) % 16);
+                    
+                    let instanceId = 'unknown';
+                    if (chunkData && chunkData[tileKey] && typeof chunkData[tileKey] === 'object') {
+                        instanceId = chunkData[tileKey].raidInstanceId || 'unknown';
+                    }
+                    
+                    const tileId = `raid_cache_${x}_${y}_${instanceId}`;
                     
                     if (state.lootedTiles.has(tileId)) {
                         logMessage("{gray:You have already claimed your share of the raid loot from this chest.}");
@@ -248,6 +271,10 @@ window.ExpansionManager.register({
                     // Base Gold
                     const goldAmount = 500 + Math.floor(Math.random() * 500);
                     state.player.coins += goldAmount;
+                    
+                    // Tell anti-cheat this gold is valid!
+                    if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(goldAmount);
+
                     logMessage(`{gold:You found ${goldAmount} Gold!}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
 
@@ -261,10 +288,14 @@ window.ExpansionManager.register({
                         const template = window.ITEM_DATA[itemKey];
                         
                         if (template && state.player.inventory.length < invCap) {
-                            const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
+                            
+                            // 🚨 BUG FIX & ROBUSTNESS WIN: Safe deep clone to guarantee weapon traits and tags carry over!
+                            let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
                             newItem.templateId = itemKey;
                             newItem.quantity = 1;
                             newItem.isEquipped = false;
+                            
+                            // Explicit function re-binds for safety (JSON stringify destroys functions)
                             newItem.effect = template.effect || null;
                             newItem.onHit = template.onHit || null;
                             
@@ -375,7 +406,7 @@ window.ExpansionManager.register({
             };
         }
 
-        // 2. LORE & JUCIE WIN: ATMOSPHERIC RAID DAMAGE
+        // 2. ATMOSPHERIC RAID DAMAGE
         // Hooks into the player turn end to deal ambient heat damage if they lack fire resistance!
         if (typeof window.ExpansionManager !== 'undefined') {
             window.ExpansionManager.triggerHook = window.ExpansionManager.triggerHook || function(){}; // Failsafe
@@ -428,7 +459,7 @@ window.ExpansionManager.register({
                         });
                     }
 
-                    // 🚨 BUG FIX & ANTI-GRIEFING WIN: Safe Instanced Loot Drops
+                    // Safe Instanced Loot Drops
                     // We spawn 5 instanced `📦r` chests (one in the center, 4 surrounding).
                     // Because they are anomalies that track looted state locally, every player
                     // in the raid can open all 5 chests on their own screen!
@@ -444,16 +475,45 @@ window.ExpansionManager.register({
                                 // Only drop cache if it's on safe ground (Ash, Floor, or Lava)
                                 if (['d', '.', '🌋'].includes(tileAt)) {
                                     // 2 Hour TTL for Raid Caches so they eventually clean up the server memory
-                                    chunkManager.setWorldTile(targetX, targetY, '📦r', 2);
+                                    // We append the boss's unique instanceTime to the chest
+                                    // object so that when players click it, it knows which specific fight this chest belongs to!
+                                    const instanceData = { t: '📦r', raidInstanceId: enemy.raidInstanceId || Date.now(), expires: Date.now() + (2 * 60 * 60 * 1000) };
+                                    
+                                    const chunkX = Math.floor(targetX / 16);
+                                    const chunkY = Math.floor(targetY / 16);
+                                    const localX = (((targetX % 16) + 16) % 16);
+                                    const localY = (((targetY % 16) + 16) % 16);
+                                    
+                                    chunkManager.worldState[`${chunkX},${chunkY}`][`${localX},${localY}`] = instanceData;
+                                    
+                                    // Mirror to Firebase so the whole party sees it
+                                    if (typeof rtdb !== 'undefined') {
+                                        rtdb.ref(`worldState/realm_raid_molten/${chunkX},${chunkY}/${localX},${localY}`).set(instanceData);
+                                    }
                                 }
                             }
+                            
+                            // Return the 5th chest for the center tile natively!
+                            // We construct the manual object here so the main engine loop handles it correctly.
+                            const centerData = { t: '📦r', raidInstanceId: enemy.raidInstanceId || Date.now(), expires: Date.now() + (2 * 60 * 60 * 1000) };
+                            
+                            const chunkX = Math.floor(cx / 16);
+                            const chunkY = Math.floor(cy / 16);
+                            const localX = (((cx % 16) + 16) % 16);
+                            const localY = (((cy % 16) + 16) % 16);
+                            
+                            chunkManager.worldState[`${chunkX},${chunkY}`][`${localX},${localY}`] = centerData;
+                            if (typeof rtdb !== 'undefined') {
+                                rtdb.ref(`worldState/realm_raid_molten/${chunkX},${chunkY}/${localX},${localY}`).set(centerData);
+                            }
+                            
                             gameState.mapDirty = true;
                             if (typeof render === 'function') render();
                         }
                     }, 200);
 
-                    // Return the 5th chest for the center tile natively
-                    return '📦r'; 
+                    // We return null here because we manually handled pushing the chest to Firebase above!
+                    return null; 
                 }
                 
                 // Fallback to normal loot logic
