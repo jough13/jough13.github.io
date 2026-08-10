@@ -79,6 +79,13 @@ window.rehydrateItemArray = function(arr) {
             parsedItem.skillId = templateItem.skillId || null;
             parsedItem.stat = templateItem.stat || null;
 
+            // Safely clone base template statBonuses 
+            // ONLY if the item doesn't already have its own dynamic bonuses applied!
+            // This prevents a Masterwork sword's stats from leaking into the base template.
+            if (!parsedItem.statBonuses && templateItem.statBonuses) {
+                parsedItem.statBonuses = typeof window.fastClone === 'function' ? window.fastClone(templateItem.statBonuses) : JSON.parse(JSON.stringify(templateItem.statBonuses));
+            }
+
             if (parsedItem.damage === undefined || parsedItem.damage === null) parsedItem.damage = templateItem.damage || 0;
             if (parsedItem.defense === undefined || parsedItem.defense === null) parsedItem.defense = templateItem.defense || 0;
             
