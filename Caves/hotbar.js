@@ -37,12 +37,13 @@ function renderHotbar() {
             const item = player.inventory[i];
             if (!item || item.quantity <= 0) continue; // 🚨 GHOST GUARD
             
-            const keysToMap = [item.name];
-            if (item.templateId && item.templateId !== item.name) keysToMap.push(item.templateId);
+            // Map strictly to the name and the template ID to ensure it catches both potential binding methods
+            inventoryTotals.set(item.name, (inventoryTotals.get(item.name) || 0) + item.quantity);
+            if (!inventorySample.has(item.name)) inventorySample.set(item.name, item);
             
-            for (const k of keysToMap) {
-                inventoryTotals.set(k, (inventoryTotals.get(k) || 0) + item.quantity);
-                if (!inventorySample.has(k)) inventorySample.set(k, item);
+            if (item.templateId && item.templateId !== item.name) {
+                inventoryTotals.set(item.templateId, (inventoryTotals.get(item.templateId) || 0) + item.quantity);
+                if (!inventorySample.has(item.templateId)) inventorySample.set(item.templateId, item);
             }
         }
     }
@@ -85,6 +86,21 @@ function renderHotbar() {
         if (abilityId) {
             const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA[abilityId] : null;
             const spellData = typeof SPELL_DATA !== 'undefined' ? SPELL_DATA[abilityId] : null;
+            
+            // 🚨 ROBUSTNESS WIN: Corrupted Slot Failsafe
+            // If the player uninstalled an expansion or performed a prestige reset that wiped their spellbook,
+            // but the hotbar wasn't cleared, the slot will point to nothing and crash.
+            // We verify they still actually own the spell/skill before rendering it!
+            if (skillData && (!player.skillbook || !player.skillbook[abilityId])) {
+                player.hotbar[index] = null;
+                hotbarMutated = true;
+                return;
+            }
+            if (spellData && (!player.spellbook || !player.spellbook[abilityId])) {
+                player.hotbar[index] = null;
+                hotbarMutated = true;
+                return;
+            }
             
             let invItem = inventorySample.get(abilityId);
             let totalQty = inventoryTotals.get(abilityId) || 0;
@@ -156,7 +172,12 @@ function renderHotbar() {
                 if (data.baseHeal) tooltipDmg = `\nHeals: ${data.baseHeal}`;
                 if (data.baseShield) tooltipDmg = `\nShields: ${data.baseShield}`;
                 
-                const oomWarning = isOOM ? `\n(Not enough ${data.costType.charAt(0).toUpperCase() + data.costType.slice(1)})` : '';
+                // 🚨 BUG FIX: Ensure the OOM string is completely defined before appending to prevent undefined bugs
+                let oomWarning = '';
+                if (isOOM && data.costType) {
+                    const cleanType = data.costType.charAt(0).toUpperCase() + data.costType.slice(1);
+                    oomWarning = `\n(Not enough ${cleanType})`;
+                }
                 
                 slotDiv.title = `[${hotkeyNumber}] ${safeDataName}\nCost: ${actualCost} ${data.costType || 'Resource'}${tooltipDmg}${oomWarning}\n(Right-click to unbind)`;
                 slotDiv.appendChild(abrv);
@@ -178,14 +199,15 @@ function renderHotbar() {
                 const displayTile = invItem ? (invItem.tile || '🎒') : (itemData ? (itemData.tile || '🎒') : '🎒');
                 const rarity = invItem ? invItem._rarity : (itemData ? itemData._rarity : null);
                 
-                // 🚨 PERFORMANCE WIN: Batched Auto-Clearing
+                // 🚨 BUG FIX & PERFORMANCE WIN: Batched Auto-Clearing
                 // If the item is completely depleted and it's a disposable type, wipe it.
+                // Ensures we DO NOT attempt to render an empty div!
                 if (totalQty <= 0 && typeof playerRef !== 'undefined') {
                     const isDisposable = itemData && (itemData.type === 'consumable' || itemData.type === 'ammo');
                     if (isDisposable) {
                         player.hotbar[index] = null;
                         hotbarMutated = true;
-                        return; // Skip rendering this slot
+                        return; // Skip rendering this slot entirely
                     }
                 }
                 
@@ -229,6 +251,11 @@ function renderHotbar() {
                     slotDiv.classList.add('opacity-40', 'grayscale', 'border-red-900');
                     slotDiv.title = `[${hotkeyNumber}] Missing: ${safeDisplayName}\n(Right-click to unbind)`;
                 }
+            } else {
+                // If it's not a skill, spell, or known item... it's a ghost binding!
+                player.hotbar[index] = null;
+                hotbarMutated = true;
+                return;
             }
         } else {
             slotDiv.className = slotClasses; // Apply base
@@ -243,8 +270,14 @@ function renderHotbar() {
     // 🚨 BATCHED AUTO-CLEAR RESOLUTION
     // If one or more slots depleted entirely during this render pass, push ONE save and trigger ONE re-render!
     if (hotbarMutated) {
-        if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ hotbar: player.hotbar });
-        setTimeout(renderHotbar, 0); // Escape the current execution context and redraw clean
+        if (typeof triggerDebouncedSave === 'function') {
+            triggerDebouncedSave({ hotbar: player.hotbar });
+        } else if (typeof playerRef !== 'undefined' && playerRef) {
+            playerRef.update({ hotbar: player.hotbar });
+        }
+        
+        // Escape the current execution context and redraw clean, avoiding DOM state clashing
+        setTimeout(renderHotbar, 0); 
         return;
     }
 
@@ -531,7 +564,7 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
                 
                 player.hotbar[index] = null;
                 
-                // UX WIN: Clear the input queue to prevent them walking forward if they missed the right click
+                // Clear the input queue to prevent them walking forward if they missed the right click
                 if (typeof inputQueue !== 'undefined') inputQueue.length = 0; 
                 
                 if (typeof triggerDebouncedSave === 'function') {
