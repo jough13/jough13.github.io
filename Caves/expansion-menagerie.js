@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_menagerie",
     name: "The Menagerie (Advanced Companions)",
-    version: "1.2", // Upgraded version!
+    version: "1.3", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS (PET GEAR) ---
@@ -39,7 +39,7 @@ window.ExpansionManager.register({
                         return false;
                     }
                     
-                    pet.hp = pet.maxHp;
+                    pet.hp = Number(pet.maxHp) || 10;
                     
                     // Initialize XP if missing
                     if (!pet.level) { pet.level = 1; pet.xp = 0; pet.xpToNext = 50; }
@@ -259,7 +259,7 @@ window.ExpansionManager.register({
                     }
                 }
                 
-                // Equip new item safely (deep clone to sever reference bleed)
+                // 🚨 BUG FIX: Equip new item safely (deep clone to sever reference bleed)
                 pet[slot] = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(item) : JSON.parse(JSON.stringify(item));
                 
                 logMessage(`{green:You equipped the ${item.name} onto your ${pet.name}!}`);
@@ -304,6 +304,7 @@ window.ExpansionManager.register({
                         
                         const handleUnequip = (slot) => {
                             const item = pet[slot];
+                            // 🚨 BUG FIX: Ensure the item safely drops to the ground if the inventory is full
                             if (gameState.player.inventory.length < invCap) {
                                 gameState.player.inventory.push(item);
                                 logMessage(`{gray:You removed the ${item.name} from your ${pet.name}.}`);
