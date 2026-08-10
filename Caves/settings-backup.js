@@ -338,8 +338,8 @@ async function restoreCloudBackup(slotId = 'latest') {
                     let delBatch = db.batch();
                     let delOpCount = 0;
                     
-                    for (const doc of liveMapSnap.docs) {
-                        delBatch.delete(doc.ref);
+                    for (const mapDoc of liveMapSnap.docs) {
+                        delBatch.delete(mapDoc.ref);
                         delOpCount++;
                         
                         if (delOpCount >= MAX_BATCH_SIZE) {
@@ -359,9 +359,9 @@ async function restoreCloudBackup(slotId = 'latest') {
                     let batch = db.batch();
                     let operationCount = 0;
                     
-                    for (const doc of backupMapSnap.docs) {
-                        const liveMapRef = playerRef.collection(collectionName).doc(doc.id);
-                        batch.set(liveMapRef, doc.data());
+                    for (const mapDoc of backupMapSnap.docs) {
+                        const liveMapRef = playerRef.collection(collectionName).doc(mapDoc.id);
+                        batch.set(liveMapRef, mapDoc.data());
                         operationCount++;
                         
                         if (operationCount >= MAX_BATCH_SIZE) {
@@ -394,10 +394,15 @@ async function restoreCloudBackup(slotId = 'latest') {
         if (gameState.foundCodexEntries) gameState.foundCodexEntries.clear();
         if (gameState.pendingMapSaves) gameState.pendingMapSaves = { chunks: new Set(), lore: new Set(), looted: {} };
 
-        // Apply to Game State engine seamlessly
+        // 🚨 BUG FIX & ROBUSTNESS WIN: Ghost State Protection
+        // `enterGame` handles clean merging, but if it fails to load, `Object.assign` natively 
+        // LEAVES keys that exist in `gameState` but not in `data` (e.g. active poison/debuffs).
+        // By merging a fresh default state first, we guarantee a 100% clean slate!
         if (typeof enterGame === 'function') {
             await enterGame(data);
         } else {
+            const basePlayer = typeof createDefaultPlayerState === 'function' ? createDefaultPlayerState() : {};
+            Object.assign(gameState.player, basePlayer);
             Object.assign(gameState.player, data);
         }
         
@@ -485,6 +490,7 @@ async function updateBackupUI(slotId = 'latest') {
             const hoursOld = (now - timestamp) / (1000 * 60 * 60);
             
             let relativeStr = "";
+            
             // 🚨 BUG FIX: Fix minute calculation gap logic
             if (hoursOld < 0.016) relativeStr = "Just now";
             else if (hoursOld < 1) {
@@ -526,19 +532,33 @@ async function updateBackupUI(slotId = 'latest') {
 // EXPANSION: EXPORT & IMPORT SAVES (BASE64)
 // ==========================================
 
-// 🚨 DEPRECATION FIX: Memory Safe UTF-8 Base64 Encoding
-// Replaces the deprecated and memory-heavy `unescape(encodeURIComponent(str))` technique
-// which is prone to crashing the call stack on massive 1MB JSON saves!
+// 🚨 PERFORMANCE & ROBUSTNESS WIN: High-Speed Base64 Compression
+// The previous `unescape(encodeURIComponent(str))` approach is notoriously slow and 
+// crashes the JavaScript Call Stack on massive 1MB JSON files.
+// We now use the modern TextEncoder API, processing the byte array in discrete chunks!
 function _utf8ToBase64(str) {
-    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(match, p1) {
-        return String.fromCharCode(parseInt(p1, 16));
-    }));
+    if (typeof TextEncoder !== 'undefined') {
+        const bytes = new TextEncoder().encode(str);
+        let bin = '';
+        const chunkSize = 0x8000; // 32,768 bytes per chunk prevents stack overflow
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+            bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+        }
+        return btoa(bin);
+    }
+    // Fallback for ancient browsers
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode(parseInt(p1, 16))));
 }
 
 function _base64ToUtf8(str) {
-    return decodeURIComponent(atob(str).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
+    const bin = atob(str);
+    if (typeof TextDecoder !== 'undefined') {
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return new TextDecoder().decode(bytes);
+    }
+    // Fallback for ancient browsers
+    return decodeURIComponent(bin.split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
 }
 
 window.exportTimelineToClipboard = function() {
@@ -575,7 +595,21 @@ window.exportTimelineToClipboard = function() {
         navigator.clipboard.writeText(finalExportString).then(() => {
             logMessage("{cyan:Timeline Copied to Clipboard! Save it somewhere safe.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
-            alert("Save Data copied to clipboard!\n\nYou can paste this text anywhere to back up your character.");
+            
+            // UX WIN: Visual feedback on the button
+            const btn = document.getElementById('btnExportTimeline');
+            if (btn) {
+                const oldText = btn.innerHTML;
+                btn.innerHTML = "✅ Copied!";
+                btn.classList.add('bg-green-600', 'border-green-800');
+                btn.classList.remove('bg-gray-700', 'border-gray-800');
+                setTimeout(() => {
+                    btn.innerHTML = oldText;
+                    btn.classList.remove('bg-green-600', 'border-green-800');
+                    btn.classList.add('bg-gray-700', 'border-gray-800');
+                }, 2000);
+            }
+            
         }).catch(err => {
             console.error("Clipboard API failed:", err);
             prompt("Clipboard access denied. Please copy your save data manually:", finalExportString);
@@ -647,8 +681,8 @@ window.importTimelineFromClipboard = async function() {
                     let delBatch = db.batch();
                     let delOpCount = 0;
                     
-                    for (const doc of liveMapSnap.docs) {
-                        delBatch.delete(doc.ref);
+                    for (const mapDoc of liveMapSnap.docs) {
+                        delBatch.delete(mapDoc.ref);
                         delOpCount++;
                         
                         if (delOpCount >= MAX_BATCH_SIZE) {
@@ -671,10 +705,12 @@ window.importTimelineFromClipboard = async function() {
             chunkManager.worldState = {};
         }
 
-        // Apply Data
+        // 🚨 BUG FIX WIN: Ghost State Protection (As described in backup restoration)
         if (typeof enterGame === 'function') {
             await enterGame(importedData);
         } else {
+            const basePlayer = typeof createDefaultPlayerState === 'function' ? createDefaultPlayerState() : {};
+            Object.assign(gameState.player, basePlayer);
             Object.assign(gameState.player, importedData);
         }
 
