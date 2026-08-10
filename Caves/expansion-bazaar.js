@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_bazaar",
     name: "The Bazaar (Multiplayer Trading)",
-    version: "1.0",
+    version: "1.1", // Upgraded version!
     
     data: {}, // No new hardcoded items needed, purely a systems expansion
 
@@ -190,11 +190,23 @@ window.ExpansionManager.register({
             },
 
             // --- D. INTERACTION LOGIC ---
-            offerItem: function(index) {
+            offerItem: function(index, expectedName) {
                 if (this.isProcessing || this.myLock) return;
                 this.isProcessing = true;
 
-                const item = this.localInv[index];
+                let actualIndex = index;
+                let item = this.localInv[actualIndex];
+                
+                // 🚨 BUG FIX: Verify index matches the item to prevent UI desync shifting
+                if (expectedName && (!item || item.name !== expectedName)) {
+                    actualIndex = this.localInv.findIndex(i => i && i.name === expectedName);
+                    if (actualIndex === -1) {
+                        this.isProcessing = false;
+                        return;
+                    }
+                    item = this.localInv[actualIndex];
+                }
+
                 if (item) {
                     const isStackable = window.isStackableItem ? window.isStackableItem(item.type) : false;
                     const existingOffer = isStackable ? this.myOffer.items.find(i => i.name === item.name) : null;
@@ -209,18 +221,30 @@ window.ExpansionManager.register({
                     }
                     
                     item.quantity--;
-                    if (item.quantity <= 0) this.localInv.splice(index, 1);
+                    if (item.quantity <= 0) this.localInv.splice(actualIndex, 1);
                     
                     this.pushUpdate();
                 }
                 this.isProcessing = false;
             },
 
-            revokeItem: function(index) {
+            revokeItem: function(index, expectedName) {
                 if (this.isProcessing || this.myLock) return;
                 this.isProcessing = true;
 
-                const item = this.myOffer.items[index];
+                let actualIndex = index;
+                let item = this.myOffer.items[actualIndex];
+                
+                // 🚨 BUG FIX: Verify index matches the item to prevent UI desync shifting
+                if (expectedName && (!item || item.name !== expectedName)) {
+                    actualIndex = this.myOffer.items.findIndex(i => i && i.name === expectedName);
+                    if (actualIndex === -1) {
+                        this.isProcessing = false;
+                        return;
+                    }
+                    item = this.myOffer.items[actualIndex];
+                }
+
                 if (item) {
                     const isStackable = window.isStackableItem ? window.isStackableItem(item.type) : false;
                     const existingInv = isStackable ? this.localInv.find(i => i.name === item.name) : null;
@@ -234,7 +258,7 @@ window.ExpansionManager.register({
                     }
                     
                     item.quantity--;
-                    if (item.quantity <= 0) this.myOffer.items.splice(index, 1);
+                    if (item.quantity <= 0) this.myOffer.items.splice(actualIndex, 1);
                     
                     this.pushUpdate();
                 }
@@ -337,12 +361,28 @@ window.ExpansionManager.register({
                     if (existing) {
                         existing.quantity += tItem.quantity;
                     } else {
-                        // Re-hydrate logic functions!
-                        let tKey = tItem.templateId || Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === tItem.name);
-                        const template = window.ITEM_DATA[tKey];
+                        // 🚨 BUG FIX & ROBUSTNESS WIN: Re-hydrate logic functions!
+                        // Since `theirOffer.items` came directly from the Firebase network payload, 
+                        // all function references (`effect`, `onHit`) were destroyed by JSON.stringify.
+                        // We must securely bind them back using the master ITEM_DATA dictionary!
+                        let tKey = tItem.templateId;
+                        if (!tKey && typeof window.ITEM_DATA !== 'undefined') {
+                            tKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === tItem.name);
+                        }
+                        
+                        const template = typeof window.ITEM_DATA !== 'undefined' && tKey ? window.ITEM_DATA[tKey] : null;
+                        
                         if (template) {
                             tItem.effect = template.effect;
                             tItem.onHit = template.onHit;
+                            tItem.procChance = template.procChance;
+                            tItem.inflicts = template.inflicts;
+                            tItem.inflictChance = template.inflictChance;
+                            
+                            // Safe tag array cloning
+                            if (template.tags) {
+                                tItem.tags = [...template.tags];
+                            }
                         }
                         finalInventory.push(tItem);
                     }
@@ -407,29 +447,44 @@ window.ExpansionManager.register({
                 // Render Left (Local Inv)
                 invList.innerHTML = '';
                 this.localInv.forEach((item, index) => {
+                    const safeName = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
                     const li = document.createElement('li');
                     li.className = `p-2 bg-gray-800 rounded border border-gray-700 flex justify-between items-center ${this.myLock ? 'opacity-50 grayscale' : 'hover:border-blue-500 cursor-pointer'}`;
-                    li.innerHTML = `<span class="text-sm font-bold text-gray-300">${item.tile || '🎒'} ${item.name} <span class="text-xs text-gray-500">x${item.quantity}</span></span>`;
-                    if (!this.myLock) li.onclick = () => this.offerItem(index);
+                    li.innerHTML = `<span class="text-sm font-bold text-gray-300">${item.tile || '🎒'} ${safeName} <span class="text-xs text-gray-500">x${item.quantity}</span></span>`;
+                    
+                    // 🚨 BUG FIX: Added `data-name` property for the click handler
+                    if (!this.myLock) {
+                        li.dataset.index = index;
+                        li.dataset.name = item.name;
+                        li.onclick = () => this.offerItem(index, item.name);
+                    }
                     invList.appendChild(li);
                 });
 
                 // Render Middle (My Offer)
                 myOfferList.innerHTML = '';
                 this.myOffer.items.forEach((item, index) => {
+                    const safeName = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
                     const li = document.createElement('li');
                     li.className = `p-2 bg-green-900 bg-opacity-30 rounded border border-green-800 flex justify-between items-center ${this.myLock ? 'opacity-50 grayscale' : 'hover:border-red-500 cursor-pointer'}`;
-                    li.innerHTML = `<span class="text-sm font-bold text-green-400">${item.tile || '🎒'} ${item.name} <span class="text-xs text-gray-400">x${item.quantity}</span></span>`;
-                    if (!this.myLock) li.onclick = () => this.revokeItem(index);
+                    li.innerHTML = `<span class="text-sm font-bold text-green-400">${item.tile || '🎒'} ${safeName} <span class="text-xs text-gray-400">x${item.quantity}</span></span>`;
+                    
+                    // 🚨 BUG FIX: Added `data-name` property for the click handler
+                    if (!this.myLock) {
+                        li.dataset.index = index;
+                        li.dataset.name = item.name;
+                        li.onclick = () => this.revokeItem(index, item.name);
+                    }
                     myOfferList.appendChild(li);
                 });
 
                 // Render Right (Their Offer)
                 theirOfferList.innerHTML = '';
                 this.theirOffer.items.forEach(item => {
+                    const safeName = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
                     const li = document.createElement('li');
                     li.className = `p-2 bg-blue-900 bg-opacity-30 rounded border border-blue-800 flex justify-between items-center`;
-                    li.innerHTML = `<span class="text-sm font-bold text-blue-400">${item.tile || '🎒'} ${item.name} <span class="text-xs text-gray-400">x${item.quantity}</span></span>`;
+                    li.innerHTML = `<span class="text-sm font-bold text-blue-400">${item.tile || '🎒'} ${safeName} <span class="text-xs text-gray-400">x${item.quantity}</span></span>`;
                     theirOfferList.appendChild(li);
                 });
 
@@ -505,7 +560,7 @@ window.ExpansionManager.register({
             }
         }, 3000); // Give the engine a few seconds to boot up `player_id`
 
-        // 🚨 EXPLOIT/CLASH FIX: Add 'Y' to the engine's instant keys so it bypasses the movement queue!
+        // Add 'Y' to the engine's instant keys so it bypasses the movement queue!
         if (typeof INSTANT_KEYS !== 'undefined') {
             INSTANT_KEYS.add('y');
             INSTANT_KEYS.add('Y');
