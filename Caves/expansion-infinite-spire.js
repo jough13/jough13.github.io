@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "infinite_spire",
     name: "The Infinite Spire (Roguelike Endgame)",
-    version: "1.0",
+    version: "1.1", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -38,8 +38,26 @@ window.ExpansionManager.register({
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playTimelineShift();
 
                     // 1. Safely Backup the player's current gear
-                    state.player.spireBackupInv = typeof window.cloneItemSafely === 'function' ? window.fastClone(state.player.inventory) : JSON.parse(JSON.stringify(state.player.inventory));
-                    state.player.spireBackupEquip = typeof window.cloneItemSafely === 'function' ? window.fastClone(state.player.equipment) : JSON.parse(JSON.stringify(state.player.equipment));
+                    // 🚨 BUG FIX & ROBUSTNESS WIN: Use the safe cloning function recursively!
+                    // This guarantees that any 'onHit' or 'effect' functions attached to their epic gear 
+                    // survive the stringification process and are waiting for them when they respawn!
+                    state.player.spireBackupInv = typeof window.rehydrateItemArray === 'function' ? window.rehydrateItemArray(state.player.inventory) : (typeof window.cloneItemSafely === 'function' ? window.fastClone(state.player.inventory) : JSON.parse(JSON.stringify(state.player.inventory)));
+                    
+                    state.player.spireBackupEquip = {};
+                    const eqKeys = ['weapon', 'armor', 'offhand', 'accessory', 'ammo'];
+                    eqKeys.forEach(k => {
+                        const item = state.player.equipment[k];
+                        if (item) {
+                            state.player.spireBackupEquip[k] = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(item) : JSON.parse(JSON.stringify(item));
+                            // Manually re-bind functions just in case fastClone failed
+                            if (typeof window.ITEM_DATA !== 'undefined' && item.templateId && window.ITEM_DATA[item.templateId]) {
+                                state.player.spireBackupEquip[k].effect = window.ITEM_DATA[item.templateId].effect;
+                                state.player.spireBackupEquip[k].onHit = window.ITEM_DATA[item.templateId].onHit;
+                            }
+                        } else {
+                            state.player.spireBackupEquip[k] = null;
+                        }
+                    });
                     
                     // 2. Strip them down to Roguelike starter gear
                     state.player.inventory = [
@@ -209,11 +227,17 @@ window.ExpansionManager.register({
                                 currentTokens.quantity -= cost;
                                 if (currentTokens.quantity <= 0) state.player.inventory.splice(state.player.inventory.indexOf(currentTokens), 1);
 
+                                // 🚨 BUG FIX & ROBUSTNESS WIN: Safe deep clone to guarantee weapon traits and tags carry over!
                                 const template = window.ITEM_DATA[itemKey];
-                                const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
+                                let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
                                 newItem.templateId = itemKey;
                                 newItem.quantity = 1;
                                 newItem.isEquipped = false;
+                                
+                                // Explicit function re-binds for safety
+                                newItem.effect = template ? template.effect : null;
+                                newItem.onHit = template ? template.onHit : null;
+                                
                                 state.player.inventory.push(newItem);
 
                                 logMessage(`{purple:You traded ${cost} Spire Tokens for a ${template.name}!}`);
@@ -252,7 +276,7 @@ window.ExpansionManager.register({
                 if ((typeof gameState !== 'undefined' && gameState.currentRealm !== 0) || 
                     (chunkX*chunkX + chunkY*chunkY) < 15000) return;
 
-                const random = Alea(stringToSeed(`spire_spawn_${chunkId}`));
+                const random = typeof Alea !== 'undefined' ? Alea(typeof stringToSeed !== 'undefined' ? stringToSeed(`spire_spawn_${chunkId}`) : 1) : Math.random;
                 
                 if (random() < 0.01) { // 1% chance per chunk in the extreme late game
                     const rx = Math.floor(random() * 14) + 1;
@@ -293,7 +317,7 @@ window.ExpansionManager.register({
                     const themeIdx = Math.floor((floorZ - 1) / 5) % themes.length;
                     const themeKey = themes[themeIdx];
                     this.caveThemes[caveId] = themeKey;
-                    const theme = window.CAVE_THEMES[themeKey];
+                    const theme = window.CAVE_THEMES[themeKey] || { wall: '▓', floor: '.', secretWall: '▒' };
 
                     // Realm Mutators every 5 floors
                     if (floorZ > 1 && (floorZ - 1) % 5 === 0 && !window._spireMutatorCache[floorZ]) {
@@ -313,6 +337,11 @@ window.ExpansionManager.register({
                     
                     this.caveEnemies[caveId] = [];
 
+                    // 🚨 ROBUSTNESS WIN: Safe Entity Instantiator Fallback
+                    const createEntity = typeof this._createInstancedEnemy === 'function' 
+                        ? this._createInstancedEnemy.bind(this) 
+                        : (id, x, y, tile, scaled, template) => ({ id, x, y, tile, name: scaled.name, health: scaled.maxHealth, maxHealth: scaled.maxHealth, attack: scaled.attack, defense: scaled.defense || 0, xp: scaled.xp, loot: template.loot });
+
                     // --- BOSS FLOOR ---
                     if (floorZ % 10 === 0) {
                         // Hollow out an arena
@@ -325,15 +354,26 @@ window.ExpansionManager.register({
                         
                         const bossTiles = ['☠️', '🩸c', '👸f', '🤖p', '🧙‍♂️s', '🦑', '🦕', '👾'];
                         const bossTile = bossTiles[Math.floor(Math.random() * bossTiles.length)];
-                        const bossTemplate = window.ENEMY_DATA[bossTile];
+                        const bossTemplate = window.ENEMY_DATA[bossTile] || { name: 'Void Terror', maxHealth: 50, attack: 5, xp: 50 };
                         
                         const bx = Math.floor(mapW/2);
                         const by = Math.floor(mapH/2);
                         map[by][bx] = bossTile;
                         
-                        // MASSIVE SCALING
-                        const scaled = { ...bossTemplate, maxHealth: Math.floor(bossTemplate.maxHealth * (1 + floorZ * 0.5)), attack: bossTemplate.attack + Math.floor(floorZ * 1.5), xp: bossTemplate.xp * floorZ };
-                        this.caveEnemies[caveId].push(this._createInstancedEnemy(`${caveId}:boss`, bx, by, bossTile, scaled, bossTemplate));
+                        // MASSIVE SCALING (🚨 BUG FIX: Strict Number Coercion!)
+                        const safeHealth = Number(bossTemplate.maxHealth) || 50;
+                        const safeAttack = Number(bossTemplate.attack) || 5;
+                        const safeXp = Number(bossTemplate.xp) || 50;
+                        
+                        const bossClone = typeof window.fastClone === 'function' ? window.fastClone(bossTemplate) : JSON.parse(JSON.stringify(bossTemplate));
+                        
+                        const scaled = { 
+                            ...bossClone, 
+                            maxHealth: Math.floor(safeHealth * (1 + floorZ * 0.5)), 
+                            attack: safeAttack + Math.floor(floorZ * 1.5), 
+                            xp: safeXp * floorZ 
+                        };
+                        this.caveEnemies[caveId].push(createEntity(`${caveId}:boss`, bx, by, bossTile, scaled, bossTemplate));
                         
                     } else {
                         // --- NORMAL FLOOR ---
@@ -372,10 +412,19 @@ window.ExpansionManager.register({
                                 const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
                                 const template = window.ENEMY_DATA[type];
                                 if (template) {
-                                    // Spire enemy scaling!
-                                    const scaled = { ...template, maxHealth: Math.floor(template.maxHealth * (1 + floorZ * 0.2)), attack: template.attack + Math.floor(floorZ * 0.5) };
+                                    // Spire enemy scaling! (🚨 BUG FIX: Strict Number Coercion)
+                                    const safeHealth = Number(template.maxHealth) || 10;
+                                    const safeAttack = Number(template.attack) || 2;
+                                    
+                                    const eClone = typeof window.fastClone === 'function' ? window.fastClone(template) : JSON.parse(JSON.stringify(template));
+                                    
+                                    const scaled = { 
+                                        ...eClone, 
+                                        maxHealth: Math.floor(safeHealth * (1 + floorZ * 0.2)), 
+                                        attack: safeAttack + Math.floor(floorZ * 0.5) 
+                                    };
                                     map[ey][ex] = type;
-                                    this.caveEnemies[caveId].push(this._createInstancedEnemy(`${caveId}:e_${i}`, ex, ey, type, scaled, template));
+                                    this.caveEnemies[caveId].push(createEntity(`${caveId}:e_${i}`, ex, ey, type, scaled, template));
                                 }
                             }
                         }
@@ -433,7 +482,7 @@ window.ExpansionManager.register({
                     gameState.screenFlash = { color: '#ffffff', alpha: 1.0, decay: 0.05 };
 
                     // 1. Update Firebase Leaderboard
-                    if (typeof rtdb !== 'undefined' && player_id) {
+                    if (typeof rtdb !== 'undefined' && typeof player_id !== 'undefined' && player_id) {
                         const lbRef = rtdb.ref(`leaderboards/infinite_spire/${player_id}`);
                         lbRef.once('value').then(snap => {
                             const data = snap.val();
@@ -450,8 +499,21 @@ window.ExpansionManager.register({
 
                     // 2. Safely Restore Original Inventory & Gear
                     gameState.inSpire = false;
-                    gameState.player.inventory = gameState.player.spireBackupInv || [];
-                    gameState.player.equipment = gameState.player.spireBackupEquip || { weapon: null, armor: null, offhand: null, accessory: null, ammo: null };
+                    
+                    // 🚨 BUG FIX & ROBUSTNESS WIN: Recursive Array Hydration
+                    // This ensures all the magical onHit/effect functions that were preserved by fastClone
+                    // or stripped by Firebase stringification are safely restored!
+                    const rawInv = gameState.player.spireBackupInv || [];
+                    gameState.player.inventory = typeof window.rehydrateItemArray === 'function' ? window.rehydrateItemArray(rawInv) : rawInv;
+                    
+                    const rawEq = gameState.player.spireBackupEquip || {};
+                    gameState.player.equipment = {
+                        weapon: typeof window.rehydrateItemArray === 'function' && rawEq.weapon ? window.rehydrateItemArray([rawEq.weapon])[0] : rawEq.weapon,
+                        armor: typeof window.rehydrateItemArray === 'function' && rawEq.armor ? window.rehydrateItemArray([rawEq.armor])[0] : rawEq.armor,
+                        offhand: typeof window.rehydrateItemArray === 'function' && rawEq.offhand ? window.rehydrateItemArray([rawEq.offhand])[0] : rawEq.offhand,
+                        accessory: typeof window.rehydrateItemArray === 'function' && rawEq.accessory ? window.rehydrateItemArray([rawEq.accessory])[0] : rawEq.accessory,
+                        ammo: typeof window.rehydrateItemArray === 'function' && rawEq.ammo ? window.rehydrateItemArray([rawEq.ammo])[0] : rawEq.ammo
+                    };
                     
                     delete gameState.player.spireBackupInv;
                     delete gameState.player.spireBackupEquip;
@@ -463,7 +525,7 @@ window.ExpansionManager.register({
                         tokenStack.quantity += tokens;
                     } else if (gameState.player.inventory.length < invCap) {
                         gameState.player.inventory.push({
-                            templateId: '🧿t', name: 'Spire Token', type: 'trade', quantity: tokens, tile: '🧿', _rarity: 'epic'
+                            templateId: '🧿t', name: 'Spire Token', type: 'trade', quantity: tokens, tile: '🧿', _rarity: 'epic', isEquipped: false
                         });
                     } else {
                         logMessage("{red:Your inventory was full! The Spire Tokens were lost to the void.}");
@@ -495,7 +557,7 @@ window.ExpansionManager.register({
 
                     // Explicit Firebase Deletion
                     // Using the native delete keyword locally doesn't tell Firebase to remove it from the DB during an update()!
-                    const deleteField = typeof getFirestoreDelete === 'function' ? getFirestoreDelete() : (typeof firebase !== 'undefined' ? firebase.firestore.FieldValue.delete() : null);
+                    const deleteField = typeof window.getFirestoreDelete === 'function' ? window.getFirestoreDelete() : (typeof firebase !== 'undefined' ? firebase.firestore.FieldValue.delete() : null);
 
                     // Force DB Save
                     if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({
