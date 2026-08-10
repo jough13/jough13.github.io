@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_syndicate",
     name: "The Syndicate (Outlaws & PvP)",
-    version: "1.1", // Updated Version
+    version: "1.2", // Upgraded Version
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -63,7 +63,11 @@ window.ExpansionManager.register({
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#facc15', 30);
                     
                     state.player.bounty = 0;
-                    if (typeof playerRef !== 'undefined') playerRef.update({ bounty: 0 });
+                    if (typeof triggerDebouncedSave === 'function') {
+                        triggerDebouncedSave({ bounty: 0 });
+                    } else if (typeof playerRef !== 'undefined') {
+                        playerRef.update({ bounty: 0 });
+                    }
                     return true;
                 }
             }
@@ -110,6 +114,7 @@ window.ExpansionManager.register({
         // ==========================================
         // 1. INJECT THE PVP MODAL
         // ==========================================
+        
         const pvpModalHTML = `
         <div id="pvpModal" class="modal-overlay hidden" role="dialog" aria-modal="true" style="z-index: 600;">
             <div class="modal-content themed-container p-6 rounded-2xl shadow-2xl border-2 border-red-600 max-w-md w-full text-center bg-[var(--bg-container)]">
@@ -135,6 +140,7 @@ window.ExpansionManager.register({
         // ==========================================
         // 2. MONKEY PATCH NPC INTERACTIONS (THE CRIME SYSTEM)
         // ==========================================
+
         const makeMuggable = (tileChar, name, mugGold, bountyAmt) => {
             if (!window.TILE_DATA[tileChar]) return;
             
@@ -167,7 +173,7 @@ window.ExpansionManager.register({
                     document.getElementById('npcTalkBtn').onclick = () => {
                         loreModal.classList.add('hidden');
                         
-                        // 🚨 BUG FIX: Automatically uncrouch the player and re-trigger the 
+                        // Automatically uncrouch the player and re-trigger the 
                         // tile interaction seamlessly to open their shop/dialogue!
                         state.player.isCrouching = false;
                         if (typeof window.StealthManager !== 'undefined') window.StealthManager.updateUI();
@@ -184,8 +190,8 @@ window.ExpansionManager.register({
                         loreModal.classList.add('hidden');
                         
                         // Execute Crime
-                        state.player.bounty = (state.player.bounty || 0) + bountyAmt;
-                        state.player.coins += mugGold;
+                        state.player.bounty = (Number(state.player.bounty) || 0) + bountyAmt;
+                        state.player.coins = (Number(state.player.coins) || 0) + mugGold;
                         
                         logMessage(`{red:You murdered the ${name}! +${bountyAmt}g Bounty. Claimed ${mugGold} gold.}`);
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
@@ -205,8 +211,8 @@ window.ExpansionManager.register({
                         if (typeof render === 'function') render();
                         if (typeof renderStats === 'function') renderStats();
                         
-                        if (typeof playerRef !== 'undefined') {
-                            playerRef.update({ coins: state.player.coins, bounty: state.player.bounty });
+                        if (typeof triggerDebouncedSave === 'function') {
+                            triggerDebouncedSave({ coins: state.player.coins, bounty: state.player.bounty });
                         }
                     };
                 }, 10);
@@ -224,11 +230,14 @@ window.ExpansionManager.register({
         // ==========================================
         // 3. OVERRIDE INPUT FOR PVP INTERACTION
         // ==========================================
+
         if (typeof window.handleInput === 'function') {
             const origHandleInput = window.handleInput;
             
             window.handleInput = function(key) {
-                
+                // Ignore empty keys
+                if (!key) return origHandleInput.call(this, key);
+
                 if (key.toLowerCase() === 't' && typeof otherPlayers !== 'undefined') {
                     
                     let targetPid = null; 
@@ -370,6 +379,7 @@ window.ExpansionManager.register({
         // ==========================================
         // 4. FIREBASE PVP LISTENERS
         // ==========================================
+
         setTimeout(() => {
             if (typeof rtdb !== 'undefined' && typeof player_id !== 'undefined' && player_id) {
                 
@@ -475,6 +485,7 @@ window.ExpansionManager.register({
         // ==========================================
         // 5. THE ROYAL PRISON OVERRIDE
         // ==========================================
+
         if (typeof window.handlePlayerDeath === 'function') {
             const origHandleDeath = window.handlePlayerDeath;
             
@@ -493,6 +504,18 @@ window.ExpansionManager.register({
                     gameState.player.coins = 0;
 
                     // 2. Setup Prison Instance
+                    // Safely purge local map memory before forcing the layout!
+                    if (typeof chunkManager !== 'undefined') {
+                        chunkManager.loadedChunks = {};
+                        chunkManager.worldState = {};
+                    }
+                    if (typeof worldStateListeners !== 'undefined') {
+                        Object.values(worldStateListeners).forEach(unsub => unsub());
+                        worldStateListeners = {};
+                    }
+                    if (typeof EnemyNetworkManager !== 'undefined') EnemyNetworkManager.clearAll();
+                    gameState.sharedEnemies = {};
+
                     gameState.mapMode = 'castle';
                     gameState.currentCastleId = 'castle_royal_prison';
                     gameState.currentRealm = 0; // Ensure they are back in normal reality
@@ -503,6 +526,11 @@ window.ExpansionManager.register({
                         const spawn = chunkManager.castleSpawnPoints[gameState.currentCastleId];
                         gameState.player.x = spawn.x;
                         gameState.player.y = spawn.y;
+                        
+                        // Ensure the castle instanced arrays are explicitly pulled from the new map!
+                        const baseEnemies = chunkManager.castleEnemies[gameState.currentCastleId] || [];
+                        gameState.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
+                        gameState.friendlyNpcs = JSON.parse(JSON.stringify(chunkManager.friendlyNpcs?.[gameState.currentCastleId] || []));
                     }
 
                     // 3. Full Heal
@@ -537,6 +565,7 @@ window.ExpansionManager.register({
         // ==========================================
         // 6. CHAT & PLAYER SYNC HOOKS
         // ==========================================
+
         if (typeof window.syncPlayerState === 'function') {
             const origSync = window.syncPlayerState;
             window.syncPlayerState = function() {
@@ -553,6 +582,7 @@ window.ExpansionManager.register({
         if (typeof window.handleChatCommand === 'function') {
             const existingHandleChat = window.handleChatCommand;
             window.handleChatCommand = function(message) {
+                if (!message) return; // Prevent string slice crash
                 const raw = message.substring(1); 
                 const command = raw.split(' ')[0].toLowerCase();
                 
