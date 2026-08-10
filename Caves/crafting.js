@@ -94,10 +94,13 @@ function handleCraftItem(recipeName, requestBatch = false) {
 
         const player = gameState.player;
         const isCooking = (gameState.currentCraftingMode === 'cooking');
-        const playerCraftLevel = isCooking ? 1 : (player.craftingLevel || 1);
+        
+        // 🚨 BUG FIX WIN: Unified Crafting Progression
+        // Allows advanced Alchemy and Cooking recipes to correctly reference the player's artisan level!
+        const playerCraftLevel = player.craftingLevel || 1;
 
-        if (!isCooking && playerCraftLevel < recipe.level) {
-            logMessage(`{red:You need Crafting Level ${recipe.level} to make this.}`);
+        if (playerCraftLevel < (recipe.level || 1)) {
+            logMessage(`{red:You need Crafting Level ${recipe.level || 1} to make this.}`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
         }
@@ -223,8 +226,13 @@ function handleCraftItem(recipeName, requestBatch = false) {
             newItem.tile = itemTemplate.tile || outputItemKey || '?';
             newItem.quantity = totalYield;
             newItem.isEquipped = false;
+            
+            // 🚨 ROBUSTNESS WIN: Safe functional rehydration
             newItem.effect = itemTemplate.effect;
             newItem.onHit = itemTemplate.onHit;
+            newItem.procChance = itemTemplate.procChance;
+            newItem.inflicts = itemTemplate.inflicts;
+            newItem.inflictChance = itemTemplate.inflictChance;
             newItem.tags = itemTemplate.tags ? [...itemTemplate.tags] : null;
             
             outputTracker[newItem.name] = (outputTracker[newItem.name] || 0) + totalYield;
@@ -259,9 +267,12 @@ function handleCraftItem(recipeName, requestBatch = false) {
                 newItem.quantity = craftYield;
                 newItem.isEquipped = false;
                 
-                // Restore functions and fix tags array!
+                // 🚨 ROBUSTNESS WIN: Safe functional rehydration
                 newItem.effect = itemTemplate.effect;
                 newItem.onHit = itemTemplate.onHit;
+                newItem.procChance = itemTemplate.procChance;
+                newItem.inflicts = itemTemplate.inflicts;
+                newItem.inflictChance = itemTemplate.inflictChance;
                 newItem.tags = itemTemplate.tags ? [...itemTemplate.tags] : null;
 
                 // --- LORE & BUG FIX WIN: Accurate Masterwork Scaling ---
@@ -307,8 +318,8 @@ function handleCraftItem(recipeName, requestBatch = false) {
                 // 🚨 GHOST GUARD
                 const curStack = player.inventory.find(item => item && item.name === newItem.name && !item.isEquipped);
 
-                // Don't merge Masterworks into stacks!
-                if (curStack && isStackable && !isMasterwork && !newItem.name.includes('Perfect')) {
+                // 🚨 BUG FIX WIN: Clean stacking for "Perfect" culinary items!
+                if (curStack && isStackable && !isMasterwork) {
                     curStack.quantity += newItem.quantity; 
                 } else {
                     const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
@@ -441,7 +452,7 @@ function renderCraftingModal() {
     const recipeBook = getRecipeBook(gameState.currentCraftingMode);
     
     const isCooking = gameState.currentCraftingMode === 'cooking';
-    let playerLevel = isCooking ? 1 : (player.craftingLevel || 1);
+    const playerLevel = player.craftingLevel || 1;
 
     // --- Dynamic Title & Live XP Progress Bar! ---
     let titleLore = "Forge weapons, weave armor, and build tools.";
@@ -582,7 +593,8 @@ function renderCraftingModal() {
             let levelClass = levelMet ? 'text-blue-400' : 'text-red-400 font-bold';
             infoHtml = `<div class="text-[10px] uppercase mt-2 ${levelClass} bg-black bg-opacity-40 shadow-inner inline-block px-2 py-1 rounded border border-gray-700">Requires Lvl ${recipe.level || 1} | Reward: ${recipe.xp || 10} XP${specHtml}</div>`;
         } else {
-            infoHtml = `<div class="text-[10px] uppercase mt-2 text-green-400 bg-black bg-opacity-40 shadow-inner inline-block px-2 py-1 rounded border border-gray-700">Delicious! | Reward: ${recipe.xp || 10} XP${specHtml}</div>`;
+            let levelClass = levelMet ? 'text-green-400' : 'text-red-400 font-bold';
+            infoHtml = `<div class="text-[10px] uppercase mt-2 ${levelClass} bg-black bg-opacity-40 shadow-inner inline-block px-2 py-1 rounded border border-gray-700">Requires Lvl ${recipe.level || 1} | Reward: ${recipe.xp || 10} XP${specHtml}</div>`;
         }
 
         const ownedCount = existingStack ? existingStack.quantity : 0;
