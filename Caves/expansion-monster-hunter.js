@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "monster_hunter",
     name: "The Monster Hunter (Tracking & Trophies)",
-    version: "1.2", // Upgraded version!
+    version: "1.3", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -173,7 +173,20 @@ window.ExpansionManager.register({
                 const ty = Math.floor(y + Math.sin(angle) * dist);
 
                 const tileAt = chunkManager.getTile(tx, ty);
-                if (['.', 'F', 'd', 'D'].includes(tileAt)) {
+                
+                // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Tracker Placement
+                // Explicitly check that we aren't overwriting an active WorldState anomaly (like a player-placed camp)
+                const chunkX = Math.floor(tx / 16);
+                const chunkY = Math.floor(ty / 16);
+                const lX = (((tx % 16) + 16) % 16);
+                const lY = (((ty % 16) + 16) % 16);
+                
+                let isWorldStateClear = true;
+                if (chunkManager.worldState[`${chunkX},${chunkY}`] && chunkManager.worldState[`${chunkX},${chunkY}`][`${lX},${lY}`]) {
+                    isWorldStateClear = false;
+                }
+
+                if (isWorldStateClear && ['.', 'F', 'd', 'D'].includes(tileAt)) {
                     nextX = tx; nextY = ty;
                     placedNext = true;
                     break;
@@ -304,11 +317,12 @@ window.ExpansionManager.register({
                 if (existing && isStackable) {
                     existing.quantity += itemQty;
                 } else if (p.inventory.length < invCap) {
-                    // Pull full template safely
+                    // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Template Cloning!
                     const baseKey = Object.keys(window.ITEM_DATA || {}).find(k => window.ITEM_DATA[k].name === itemName);
                     const template = baseKey ? window.ITEM_DATA[baseKey] : null;
                     
                     let newItem = template && typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : { name: itemName, type: itemType, tile: itemTile };
+                    newItem.templateId = baseKey;
                     newItem.quantity = itemQty; 
                     newItem.isEquipped = false;
                     p.inventory.push(newItem);
@@ -401,7 +415,7 @@ window.ExpansionManager.register({
                     // Add Entrance
                     map[mapHeight-2][Math.floor(mapWidth/2)] = '>';
                     
-                    // 🚨 ROBUSTNESS WIN: Safe Entity Instantiator Fallback
+                    // Safe Entity Instantiator Fallback
                     const createEntity = typeof this._createInstancedEnemy === 'function' 
                         ? this._createInstancedEnemy.bind(this) 
                         : (id, x, y, tile, scaled, template) => ({ id, x, y, tile, name: scaled.name, health: scaled.maxHealth, maxHealth: scaled.maxHealth, attack: scaled.attack, defense: scaled.defense || 0, xp: scaled.xp, loot: template.loot });
@@ -413,7 +427,9 @@ window.ExpansionManager.register({
                     
                     const bData = window.ENEMY_DATA ? window.ENEMY_DATA[bossTile] : null;
                     if (bData) {
-                        this.caveEnemies[caveId].push(createEntity(`${caveId}:boss`, bx, by, bossTile, bData, bData));
+                        // Safe clone to sever memory references to global template!
+                        const bossScaled = typeof window.fastClone === 'function' ? window.fastClone(bData) : JSON.parse(JSON.stringify(bData));
+                        this.caveEnemies[caveId].push(createEntity(`${caveId}:boss`, bx, by, bossTile, bossScaled, bData));
                     }
                     
                     this.caveMaps[caveId] = map;
@@ -426,6 +442,7 @@ window.ExpansionManager.register({
         // ==========================================
         // 4. PASSIVE ARMOR EFFECTS (ENGINE HOOK)
         // ==========================================
+
         // Hook into the endPlayerTurn function to continuously apply the powerful passives of Hunter Gear!
         if (typeof window.endPlayerTurn === 'function') {
             const origEndPlayerTurn = window.endPlayerTurn;
@@ -460,7 +477,7 @@ window.ExpansionManager.register({
                     }
                 }
                 
-                // 🚨 STABILITY WIN: Pass all arguments forward safely
+                // Pass all arguments forward safely
                 if (origEndPlayerTurn) origEndPlayerTurn.apply(this, arguments);
             };
         }
