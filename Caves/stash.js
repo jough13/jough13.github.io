@@ -184,22 +184,11 @@ window.handleStashTransfer = function (action, index, amountStr = 'all', expecte
                 let withdrawnItem = window.cloneItemSafely(item);
                 withdrawnItem.quantity = amountToMove;
 
-                let templateKey = withdrawnItem.templateId;
-                if (!templateKey) {
-                    templateKey = getStashItemKey(withdrawnItem.name);
-                    if (templateKey) withdrawnItem.templateId = templateKey; 
-                }
-                
-                if (templateKey && typeof window.ITEM_DATA !== 'undefined' && window.ITEM_DATA[templateKey]) {
-                    const t = window.ITEM_DATA[templateKey];
-                    withdrawnItem.effect = t.effect;
-                    withdrawnItem.onHit = t.onHit;
-                    withdrawnItem.procChance = t.procChance;
-                    withdrawnItem.inflicts = t.inflicts;
-                    withdrawnItem.inflictChance = t.inflictChance;
-                    if (t.tags) withdrawnItem.tags = [...t.tags]; 
-                    if (withdrawnItem.damage !== undefined) withdrawnItem.damage = Number(withdrawnItem.damage) || 0;
-                    if (withdrawnItem.defense !== undefined) withdrawnItem.defense = Number(withdrawnItem.defense) || 0;
+                // Route through the central rehydrator. This guarantees that 
+                // heavily modified items (like "Flawless Iron Sword of the Viper") don't 
+                // accidentally lose their custom stats or functions upon leaving the stash!
+                if (typeof window.rehydrateItemArray === 'function') {
+                    withdrawnItem = window.rehydrateItemArray([withdrawnItem])[0];
                 }
                 
                 player.inventory.push(withdrawnItem); 
