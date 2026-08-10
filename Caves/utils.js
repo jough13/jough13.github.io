@@ -129,6 +129,9 @@ window.MathUtils = {
     // Returns a random integer between min and max (inclusive)
     randomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
     
+    // Returns a random floating point number between min and max
+    randomFloat: (min, max) => Math.random() * (max - min) + min,
+    
     // 🚨 ROBUSTNESS WIN: Safely handles empty or undefined arrays
     randomChoice: (arr) => {
         if (!arr || !arr.length) return null;
@@ -187,15 +190,31 @@ window.MathUtils = {
 
     // UX WIN: Formats milliseconds into readable time with intelligent zero-culling
     formatTime: (ms) => {
-        const seconds = Math.floor((ms / 1000) % 60);
-        const minutes = Math.floor((ms / (1000 * 60)) % 60);
-        const hours = Math.floor((ms / (1000 * 60 * 60)) % 24);
+        // 🚨 BUG FIX: Ensure ms doesn't underflow to negative values if an event overlaps
+        const safeMs = Math.max(0, ms);
+        const seconds = Math.floor((safeMs / 1000) % 60);
+        const minutes = Math.floor((safeMs / (1000 * 60)) % 60);
+        const hours = Math.floor((safeMs / (1000 * 60 * 60)) % 24);
         
         let str = "";
         if (hours > 0) str += `${hours}h `;
         if (minutes > 0) str += `${minutes}m `;
         if (seconds > 0 || str === "") str += `${seconds}s`;
         return str.trim();
+    },
+
+    // 🌟 RPG WIN: Converts integers to Roman Numerals (Useful for Generation/Wave formatting)
+    toRoman: (num) => {
+        if (typeof num !== 'number' || isNaN(num) || num <= 0 || num >= 4000) return String(num);
+        const lookup = {M:1000, CM:900, D:500, CD:400, C:100, XC:90, L:50, XL:40, X:10, IX:9, V:5, IV:4, I:1};
+        let roman = '';
+        for (let i in lookup) {
+            while (num >= lookup[i]) {
+                roman += i;
+                num -= lookup[i];
+            }
+        }
+        return roman;
     },
 
     // 🚨 ROBUSTNESS WIN: Fast array shuffler (Fisher-Yates) that ignores empty inputs
@@ -233,9 +252,10 @@ window.MathUtils = {
 // PERFORMANCE WIN: Cached Regex for V8 speed
 const HEX_RGB_REGEX = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i;
 
-// 🚀 PERFORMANCE WIN: Global Hex-to-RGB cache
-// Prevents regex from being executed thousands of times per second during UI/Particle renders
-window._hexCache = window._hexCache || {};
+// 🚀 PERFORMANCE & SECURITY WIN: Object.create(null)
+// Creating dicts with no prototype guarantees that attempting to look up string keys like "constructor"
+// or "__proto__" won't return native JS functions and crash the cache loop!
+window._hexCache = Object.create(null);
 
 window.ColorUtils = {
     // BUG FIX & ROBUSTNESS: Handles both 6-char (#FF0000) and 3-char (#F00) hex codes safely.
@@ -399,7 +419,8 @@ const Perlin = {
 };
 
 // --- OPTIMIZATION: Cache Emoji Checks ---
-const charWidthCache = {};
+// 🚨 SECURITY WIN: Object.create(null) prevents prototype poisoning in text lookups!
+const charWidthCache = Object.create(null);
 
 // Pre-warm the cache using the actual game data dictionaries!
 // This ensures the expensive Regex is only run ONCE at startup, not during the render loop.
@@ -455,7 +476,7 @@ const isWideChar = (char) => {
     // AND Box Drawing Elements (Used massively in Dungeon rendering)
     if (cp < 255 || (cp >= 0x2500 && cp <= 0x259F)) return false; 
     
-    // 2. Cache Lookup
+    // 2. Cache Lookup (Safe against Object.prototype properties!)
     if (charWidthCache[char] !== undefined) return charWidthCache[char];
     
     // 3. Regex Fallback for un-cached Emojis/Unicode
@@ -533,8 +554,9 @@ function getOrdinalSuffix(day) {
 
 // 🌕 LORE WIN: Celestial Moon Phase Calculator
 window.getMoonPhase = function(day) {
-    // Assuming a 30-day lunar cycle
-    const cycleDay = (day - 1) % 30;
+    // 🚨 BUG FIX: Ensure modulo math correctly wraps around for negative numbers!
+    // Without this, if the days shifted back, (day - 1) % 30 would equal -1 and crash the array match.
+    const cycleDay = (((day - 1) % 30) + 30) % 30;
     
     // Check if the engine has flagged a Blood Moon!
     if (typeof gameState !== 'undefined' && gameState.isBloodMoon) {
@@ -629,7 +651,10 @@ const LORE_KEYWORDS = {
     'Cartographer': 'blue', 'Safe Haven': 'green',
     
     // Special Materials & Valuables
-    'Black Pearl': 'purple', 'Dragon Scale': 'red', 'Elemental Core': 'orange'
+    'Black Pearl': 'purple', 'Dragon Scale': 'red', 'Elemental Core': 'orange',
+    
+    // Base Classes & General additions
+    'Abyss': 'purple', 'Runesmith': 'orange', 'Outlaw': 'red', 'Bounty': 'yellow'
 };
 
 // 🚨 V8 PERFORMANCE WIN: Pre-compile Regexes once at boot instead of on every log message!
@@ -744,7 +769,10 @@ window.fastClone = function(obj, seen = new WeakMap()) {
     // Explicit TypedArray & DataView support 
     // Prevents turning Perlin noise grids or audio buffers into slow, broken dictionaries!
     if (ArrayBuffer.isView(obj)) {
-        return new obj.constructor(obj.buffer.slice(0), obj.byteOffset, obj.length);
+        // 🚨 MEMORY LEAK FIX: We only slice from byteOffset to byteLength. 
+        // Previously, `obj.buffer.slice(0)` copied the ENTIRE massive underlying buffer 
+        // even if this TypedArray was just a tiny view into it!
+        return new obj.constructor(obj.buffer.slice(obj.byteOffset, obj.byteOffset + obj.byteLength));
     }
     
     // ROBUSTNESS WIN: Never attempt to clone DOM Elements or functions that might have snuck into state
