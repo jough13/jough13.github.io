@@ -350,12 +350,15 @@ window.ExpansionManager.register({
                                 rawPower = getPlayerDamageModifier(rawPower);
                             }
                             
+                            // Protect RTDB from NaN Damage Packets
+                            const safeDamage = Math.max(1, Math.floor(Number(rawPower) || 1));
+                            
                             // Send the attack to RTDB!
                             if (typeof rtdb !== 'undefined') {
                                 rtdb.ref(`pvpAttacks/${targetPid}`).push({
                                     attackerId: player_id,
                                     attackerName: gameState.player.name || auth.currentUser.email.split('@')[0],
-                                    damage: rawPower,
+                                    damage: safeDamage,
                                     timestamp: firebase.database.ServerValue.TIMESTAMP
                                 });
                             }
@@ -363,9 +366,9 @@ window.ExpansionManager.register({
                             // Crime Penalty ONLY if attacking an innocent outlaw!
                             // (This is a failsafe, since the UI blocks illegal attacks now anyway)
                             if (!targetOp.bounty || targetOp.bounty <= 0) {
-                                logMessage(`{orange:You strike ${safeName} for ${rawPower} damage in honorable combat!}`);
+                                logMessage(`{orange:You strike ${safeName} for ${safeDamage} damage in honorable combat!}`);
                             } else {
-                                logMessage(`{orange:You mercilessly strike the outlaw ${safeName} for ${rawPower} damage!}`);
+                                logMessage(`{orange:You mercilessly strike the outlaw ${safeName} for ${safeDamage} damage!}`);
                             }
                             
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy');
