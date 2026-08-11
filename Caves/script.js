@@ -316,8 +316,8 @@ async function manualSaveGame() {
 }
 
 // --- INPUT THROTTLE ---
-let lastActionTime = 0;
-window.ACTION_COOLDOWN = 150; 
+window.lastActionTime = 0;
+window.ACTION_COOLDOWN = 150;
 window.SELL_MODIFIER = 0.5; 
 window.HEALING_AMOUNT = 3;
 window.DAMAGE_AMOUNT = 2;
@@ -3288,7 +3288,7 @@ function gameLoop(timestamp) {
         }
     }
 
-    if (!isProcessingMove && window.inputQueue && window.inputQueue.length > 0 && Date.now() - lastActionTime >= currentCooldown) {
+    if (!isProcessingMove && window.inputQueue && window.inputQueue.length > 0 && Date.now() - window.lastActionTime >= currentCooldown) {
         const key = window.inputQueue.shift(); // Pulls the oldest key pressed
         handleInput(key);
     }
