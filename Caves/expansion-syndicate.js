@@ -189,17 +189,21 @@ window.ExpansionManager.register({
                     document.getElementById('npcMugBtn').onclick = () => {
                         loreModal.classList.add('hidden');
                         
-                        // Execute Crime
-                        state.player.bounty = (Number(state.player.bounty) || 0) + bountyAmt;
-                        state.player.coins = (Number(state.player.coins) || 0) + mugGold;
+                        // Strict Number Coercion
+                        // Prevents NaN from infecting the player's core stats
+                        const safeBountyAmt = Math.floor(Number(bountyAmt) || 0);
+                        const safeMugGold = Math.floor(Number(mugGold) || 0);
+
+                        state.player.bounty = Math.floor(Number(state.player.bounty) || 0) + safeBountyAmt;
+                        state.player.coins = Math.floor(Number(state.player.coins) || 0) + safeMugGold;
                         
-                        logMessage(`{red:You murdered the ${name}! +${bountyAmt}g Bounty. Claimed ${mugGold} gold.}`);
+                        logMessage(`{red:You murdered the ${name}! +${safeBountyAmt}g Bounty. Claimed ${safeMugGold} gold.}`);
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
                         state.screenShake = 20;
                         
                         if (typeof ParticleSystem !== 'undefined') {
                             ParticleSystem.createExplosion(x, y, '#ef4444', 20);
-                            ParticleSystem.createFloatingText(x, y, `+${mugGold}g`, "#facc15");
+                            ParticleSystem.createFloatingText(x, y, `+${safeMugGold}g`, "#facc15");
                         }
 
                         // Remove NPC
