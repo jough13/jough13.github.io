@@ -325,7 +325,7 @@ window.ExpansionManager.register({
                         document.getElementById('pvpAttackBtn').onclick = () => {
                             document.getElementById('pvpModal').classList.add('hidden');
                             
-                            // --- NEW: WEAPON TAG SCALING FOR PVP ---
+                            // --- WEAPON TAG SCALING FOR PVP ---
                             const weapon = gameState.player.equipment.weapon;
                             const weaponDamage = weapon ? weapon.damage : 0;
                             const wpnTags = weapon && weapon.tags ? weapon.tags : [];
@@ -350,10 +350,10 @@ window.ExpansionManager.register({
                                 rawPower = getPlayerDamageModifier(rawPower);
                             }
                             
-                            // Protect RTDB from NaN Damage Packets
+                            // KEEPING NaN PROTECTION:
                             const safeDamage = Math.max(1, Math.floor(Number(rawPower) || 1));
                             
-                            // Send the attack to RTDB!
+                            // Send the attack directly to RTDB!
                             if (typeof rtdb !== 'undefined') {
                                 rtdb.ref(`pvpAttacks/${targetPid}`).push({
                                     attackerId: player_id,
@@ -364,7 +364,6 @@ window.ExpansionManager.register({
                             }
                             
                             // Crime Penalty ONLY if attacking an innocent outlaw!
-                            // (This is a failsafe, since the UI blocks illegal attacks now anyway)
                             if (!targetOp.bounty || targetOp.bounty <= 0) {
                                 logMessage(`{orange:You strike ${safeName} for ${safeDamage} damage in honorable combat!}`);
                             } else {
@@ -395,7 +394,7 @@ window.ExpansionManager.register({
                     const attack = snap.val();
                     if (!attack) return;
 
-                    let dmg = attack.damage || 0;
+                    let dmg = Math.floor(Number(attack.damage) || 0); // 🚨 NaN Safe!
                     
                     // --- MULTIPLAYER MONSTER COMBAT RESOLUTION ---
                     if (attack.isMonster) {
@@ -456,7 +455,7 @@ window.ExpansionManager.register({
                             if (!attack.isMonster) {
                                 logMessage(`{red:You were slain by ${attack.attackerName}!}`);
                                 
-                                // Prevent NaN poisoning when calculating the attacker's reward
+                                // 🚨 KEEP NaN FIX HERE
                                 const safeBounty = Math.floor(Number(gameState.player.bounty) || 0);
                                 const safeCoins = Math.floor(Number(gameState.player.coins) || 0);
                                 const rewardGold = safeBounty + safeCoins;
@@ -479,7 +478,7 @@ window.ExpansionManager.register({
                     const reward = snap.val();
                     if (!reward) return;
 
-                    // Cleanse incoming network data before applying it locally
+                    // 🚨 KEEP NaN FIX HERE
                     const safeGold = Math.max(0, Math.floor(Number(reward.gold) || 0));
 
                     logMessage(`{gold:🏆 Target Eliminated! You claimed ${reward.targetName}'s gold: ${safeGold}g!}`);
