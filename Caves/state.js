@@ -418,7 +418,7 @@ window.clampAllVitals = function() {
     p.stamina = Math.max(0, Math.min(p.maxStamina || 10, p.stamina));
     p.psyche = Math.max(0, Math.min(p.maxPsyche || 10, p.psyche));
     
-    // 🚨 BUG FIX: Added absolute ceilings for survival stats so they don't over-fill UI bars!
+    // Added absolute ceilings for survival stats so they don't over-fill UI bars!
     p.hunger = Math.max(0, Math.min(p.maxHunger || 100, p.hunger));
     p.thirst = Math.max(0, Math.min(p.maxThirst || 100, p.thirst));
 };
@@ -430,8 +430,6 @@ window.modifyVital = function(vital, rawAmount) {
     if (!p) return 0;
     
     // The NaN Firewall & Floating Point Fix
-    // Guarantees that corrupted spell damage, corrupted items, or missing properties 
-    // never inject a NaN into the player's health, and Math.round prevents fractional decimal bugs!
     let amount = Math.round(Number(rawAmount));
     if (!Number.isFinite(amount)) { 
         console.warn(`[AKASHIC ENGINE] Blocked invalid vital modification on ${vital}: ${rawAmount}`);
@@ -439,11 +437,16 @@ window.modifyVital = function(vital, rawAmount) {
     }
     
     if (amount === 0) return 0;
+
+    // The Absolute Death Shield
+    // If the player is already dead or mid-death sequence, completely ignore all further incoming damage!
+    // This prevents batched AoE attacks or direct script calls from triggering the death sequence multiple times.
+    if (vital === 'health' && amount < 0 && (p.health <= 0 || gameState.isDead || gameState._isExecutingDeath)) {
+        return 0;
+    }
     
     // Centralized God Mode
-    // Universally intercepts ALL negative vital changes. This prevents the player from dying 
-    // to edge-cases like falling off the skyrealm, drowning, or starving while debugging!
-    // We ALSO block hunger/thirst drains so the UI doesn't spam the dev with starvation warnings!
+    // Universally intercepts ALL negative vital changes.
     if (amount < 0 && gameState.godMode) {
         return 0;
     }
