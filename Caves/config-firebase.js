@@ -474,7 +474,7 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
     // 1. Convert undefined to null immediately
     if (obj === undefined) return null; 
     
-    // 2. FIREBASE CRASH PREVENTION: NaN and Infinity
+    // 2. FIREBASE CRASH PREVENTION: NaN, Infinity, and Float Bloat
     if (typeof obj === 'number') {
         if (Number.isNaN(obj)) {
             console.warn("%c[AKASHIC ENGINE] Void Anomaly (NaN) detected and neutralized before DB save.", "color: #facc15;");
@@ -484,10 +484,18 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
             console.warn("%c[AKASHIC ENGINE] Infinite Loop (Infinity) detected and neutralized before DB save.", "color: #facc15;");
             return 999999; // Safe clamp
         }
+        
+        // Floating Point Math Truncation
+        // Prevents JS math drift from creating massive 15-decimal payloads (e.g., 49.97999999999999)
+        // Limits all floats to exactly 2 decimal places before hitting the network!
+        if (obj % 1 !== 0) {
+            return Math.round(obj * 100) / 100;
+        }
+        
         return obj;
     }
     
-    // 🚨 SECURITY WIN: Massive String Truncation Guard
+    // Massive String Truncation Guard
     // Prevents malicious payloads or runaway concatenation from hitting the 1MB Firestore document limit!
     if (typeof obj === 'string') {
         if (obj.length > 100000) {
