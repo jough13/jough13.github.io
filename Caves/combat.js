@@ -2489,6 +2489,7 @@ function handlePlayerDeath() {
         playerRef.set(deathUpdates, { merge: true }).catch(console.error);
     }
 
+    gameState._isExecutingDeath = false; // Release execution lock
     return true;
 }
 
