@@ -1566,6 +1566,8 @@ function syncPlayerState() {
             mapId: gameState.currentCaveId || gameState.currentCastleId || null,
             email: auth.currentUser ? auth.currentUser.email : "Traveler",
             
+            slotId: window.currentSlotId || 'slot1', 
+            
             currentRealm: gameState.currentRealm || 0,
             stealthTurns: gameState.player.stealthTurns || 0,
 
