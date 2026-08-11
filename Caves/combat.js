@@ -2249,13 +2249,16 @@ function getPlayerDamageModifier(baseDamage) {
 function handlePlayerDeath() {
     if (window.inputQueue) window.inputQueue.length = 0; // Clear input queue to prevent ghost walking!
     
-    if (gameState.isDead) return false; 
+    // The Double-Death Lock!
+    // Prevent manual calls from alchemy/combat from overlapping with modifyVital's timeout.
+    if (gameState.isDead || gameState._isExecutingDeath) return false; 
     
     if (gameState.godMode) return false; 
     if (gameState.player.health > 0) return false; 
 
-    // Engage the lock!
+    // Engage the locks!
     gameState.isDead = true;
+    gameState._isExecutingDeath = true; // Prevents race conditions during the drop loop
 
     // Obliterate ALL Pending Saves!
     // We must physically reach into the global namespace (where script.js defines these) 
