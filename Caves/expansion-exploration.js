@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "exploration_expanded",
     name: "Expanded Exploration",
-    version: "1.4", // Upgraded version!
+    version: "1.5", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -33,12 +33,37 @@ window.ExpansionManager.register({
                         state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 50);
                         state.player.health = Math.min(state.player.maxHealth, state.player.health + 5);
                     }
-                    logMessage("{blue:The water is perfectly crisp and restorative. (+50 Thirst, +5 HP)}");
+                    logMessage("{blue:The water is perfectly crisp and restorative.}");
                     if (typeof triggerStatAnimation !== 'undefined') {
                         triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
                         triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
                     }
                     return true;
+                }
+            },
+            // --- EXPANSION WIN: New Tactical Items ---
+            '🍄l': {
+                name: 'Luminous Spore', type: 'consumable', tile: '🍄',
+                description: "A glowing fungus. Crush it to release a cloud of bioluminescent dust. {gold:Grants Candlelight for 50 turns without costing Mana.}",
+                _rarity: 'uncommon',
+                effect: (state) => {
+                    logMessage("{yellow:You crush the spore, and glowing dust fills the air around you!}");
+                    state.player.candlelightTurns = Math.max(state.player.candlelightTurns || 0, 50);
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#facc15', 15);
+                    return true;
+                }
+            },
+            '🧊s': {
+                name: 'Glacial Shard', type: 'consumable', tile: '🧊',
+                description: "A piece of never-melting ice. Throw to deal 15 Frost damage and inflict {cyan:Frostbite}.",
+                _rarity: 'rare',
+                effect: (state) => {
+                    if (typeof logMessage === 'function') logMessage("{cyan:Select a direction to hurl the Glacial Shard... (WASD/Arrows)}");
+                    state.isAiming = true;
+                    // Binds perfectly into the alchemy throwing engine!
+                    state.abilityToAim = 'throwPotion_Glacial Shard'; 
+                    return false;
                 }
             }
         },
@@ -75,6 +100,12 @@ window.ExpansionManager.register({
                 name: 'Oasis Grotto',
                 flavor: "A hidden underground spring surrounded by glowing desert flora.",
                 getCaveId: (x, y) => `micro_oasis_${x}_${y}`
+            },
+            '🏰r': {
+                type: 'dungeon_entrance',
+                name: 'Forgotten Cellar',
+                flavor: "Crumbling stone steps descend into a forgotten storage cellar.",
+                getCaveId: (x, y) => `micro_cellar_${x}_${y}`
             }
         },
 
@@ -100,19 +131,36 @@ window.ExpansionManager.register({
             "Micro Oasis Grotto": {
                 width: 5, height: 5,
                 map: [' WWWWW ', 'W🌿.🌿W', 'W.~🐸~W', 'W🌿.🌿W', ' WWWWW ']
+            },
+            "Micro Forgotten Cellar": {
+                width: 5, height: 5,
+                map: [' WWWWW ', 'W🛢..📦W', 'W..Z..W', 'W⚰️...W', ' WWWWW ']
             }
+        },
+        
+        // Throwing definition for the Glacial Shard (Intercepts Alchemy engine)
+        alchemyRecipes: {
+            "Glacial Shard": { materials: {}, xp: 0, level: 1, yield: 1, hidden: true }
         }
     },
 
     init: function() {
+        
+        // 🚨 OVERRIDE: Register Glacial Shard in the Potion Engine to allow throwing
+        if (typeof window.ITEM_DATA !== 'undefined' && window.ITEM_DATA['🧊s']) {
+            window.ITEM_DATA['🧊s'].pColor = '#7dd3fc';
+            window.ITEM_DATA['🧊s'].pSize = 25;
+            
+            // Re-route the effect definition so the engine can look it up correctly!
+            if (typeof ITEM_DATA !== 'undefined' && !ITEM_DATA['Glacial Shard']) {
+                ITEM_DATA['Glacial Shard'] = window.ITEM_DATA['🧊s'];
+            }
+        }
 
         // ==========================================
         // FEATURE 1: MICRO-DUNGEON GENERATION
         // ==========================================
 
-        // We safely intercept the cave generator. If it's a "micro" dungeon, we 
-        // generate a single 5x5 room instead of a massive procedural maze!
-        
         if (typeof chunkManager !== 'undefined' && chunkManager.generateCave) {
             const origGenerateCave = chunkManager.generateCave;
             
@@ -128,46 +176,46 @@ window.ExpansionManager.register({
                     if (caveId.includes('spider')) {
                         themeKey = 'FUNGAL';
                         roomKey = 'Micro Spider Den';
-                        bossTile = '@'; // Giant Spider
+                        bossTile = '@'; 
                     } else if (caveId.includes('hollow')) {
                         themeKey = 'OVERGROWN';
                         roomKey = 'Micro Elder Hollow';
-                        bossTile = '🌳c'; // Corrupted Treant
+                        bossTile = '🌳c'; 
                     } else if (caveId.includes('crevasse')) {
                         themeKey = 'ICE';
                         roomKey = 'Micro Glacial Rift';
-                        bossTile = 'Y'; // Yeti
+                        bossTile = 'Y'; 
                     } else if (caveId.includes('scorch')) {
                         themeKey = 'FIRE';
                         roomKey = 'Micro Lava Vent';
-                        bossTile = 'f'; // Fire Elemental
+                        bossTile = 'f'; 
                     } else if (caveId.includes('oasis')) {
                         themeKey = 'SUNKEN';
                         roomKey = 'Micro Oasis Grotto';
-                        bossTile = '🐸'; // Giant Toad
+                        bossTile = '🐸'; 
+                    } else if (caveId.includes('cellar')) {
+                        themeKey = 'CRYPT';
+                        roomKey = 'Micro Forgotten Cellar';
+                        bossTile = 'Z'; 
                     }
                     
                     this.caveThemes[caveId] = themeKey;
                     const theme = (typeof window.CAVE_THEMES !== 'undefined' && window.CAVE_THEMES[themeKey]) ? window.CAVE_THEMES[themeKey] : { wall: '▓', floor: '.' };
                     
-                    // Pull from our custom room dictionary
                     const room = (typeof window.CAVE_ROOM_TEMPLATES !== 'undefined' && window.CAVE_ROOM_TEMPLATES[roomKey]) 
                         ? window.CAVE_ROOM_TEMPLATES[roomKey] 
                         : { width: 5, height: 5, map: [' WWWWW ', 'W.....W', 'W..g..W', 'W.....W', ' WWWWW '] };
                     
-                    // Build a map exactly the size of the room template + a border wall
                     const mapHeight = room.height + 2;
                     const mapWidth = room.width + 2;
                     const map = Array.from({ length: mapHeight }, () => Array(mapWidth).fill(theme.wall));
                     
                     this.caveEnemies[caveId] = [];
                     
-                    // Safe Entity Instantiator Fallback
                     const createEntity = typeof this._createInstancedEnemy === 'function' 
                         ? this._createInstancedEnemy.bind(this) 
                         : (id, x, y, tile, scaled, template) => ({ id, x, y, tile, name: scaled.name, health: scaled.maxHealth, maxHealth: scaled.maxHealth, attack: scaled.attack, defense: scaled.defense || 0, xp: scaled.xp, loot: template.loot });
 
-                    // Stamp the room into the center
                     for(let ry = 0; ry < room.height; ry++){
                         for(let rx = 0; rx < room.width; rx++){
                             const t = room.map[ry][rx];
@@ -175,12 +223,11 @@ window.ExpansionManager.register({
                             
                             if (t === 'W') finalTile = theme.wall;
                             else if (t === 'F' || t === '.') finalTile = theme.floor;
-                            else if (typeof window.ENEMY_DATA !== 'undefined' && window.ENEMY_DATA[t]) {
+                            else if (typeof window.ENEMY_DATA !== 'undefined' && window.ENEMY_DATA[t] && t !== bossTile) {
                                 finalTile = theme.floor;
                                 const tData = window.ENEMY_DATA[t];
                                 const eId = `${caveId}:${rx+1},${ry+1}`;
                                 
-                                // 🚨 PERFORMANCE WIN: Use fastClone to sever memory references
                                 const baseClone = typeof window.fastClone === 'function' ? window.fastClone(tData) : JSON.parse(JSON.stringify(tData));
                                 const scaled = { 
                                     ...baseClone, 
@@ -194,7 +241,7 @@ window.ExpansionManager.register({
                         }
                     }
                     
-                    // Spawn the Mini-Boss in the center of the room!
+                    // Spawn the Mini-Boss!
                     map[Math.floor(mapHeight/2)][Math.floor(mapWidth/2)] = bossTile;
                     const bData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA[bossTile] : null;
                     if (bData) {
@@ -208,22 +255,22 @@ window.ExpansionManager.register({
                             xp: Math.floor((Number(bossClone.xp) || 20) * 4) 
                         };
                         
-                        // Inject unique drops onto the boss based on the dungeon type
+                        // 🚨 BUG FIX WIN: Modify the clone, NOT the global dictionary template!
                         if (themeKey === 'FUNGAL') bossScaled.loot = '🕸️g';
                         if (themeKey === 'OVERGROWN') bossScaled.loot = '🪵e';
                         if (themeKey === 'SUNKEN') bossScaled.loot = '💧o';
+                        if (themeKey === 'ICE') bossScaled.loot = '🧊s';
+                        if (themeKey === 'CRYPT') bossScaled.loot = 'ancient_coin';
 
                         this.caveEnemies[caveId].push(createEntity(`${caveId}:boss`, Math.floor(mapWidth/2), Math.floor(mapHeight/2), bossTile, bossScaled, bData));
                     }
                     
-                    // Ensure a loot chest always spawns near the back wall
-                    map[2][Math.floor(mapWidth/2)] = '📦';
+                    // Ensure a loot chest always spawns near the back wall if one wasn't hardcoded into the template
+                    if (!map.some(row => row.includes('📦'))) {
+                        map[2][Math.floor(mapWidth/2)] = '📦';
+                    }
                     
-                    // The Entrance/Exit is always at the bottom center
                     map[mapHeight-1][Math.floor(mapWidth/2)] = '>';
-                    
-                    // Actually save the newly generated map into the engine cache!
-                    // Without this, the engine re-generates the room every single time the player moves a tile!
                     this.caveMaps[caveId] = map;
                     return map;
                 }
@@ -241,7 +288,6 @@ window.ExpansionManager.register({
             chunkManager.generateChunk = function(chunkX, chunkY) {
                 origGenerateChunk.call(this, chunkX, chunkY);
                 
-                // MULTIVERSE CHECK: Ensure we only spawn naturally in the Prime Realm
                 if (typeof gameState !== 'undefined' && gameState.currentRealm !== 0 && gameState.currentRealm) return;
 
                 const chunkId = `${chunkX},${chunkY}`;
@@ -251,29 +297,27 @@ window.ExpansionManager.register({
                     ? Alea(stringToSeed(`micro_spawn_${chunkId}`)) 
                     : Math.random;
                 
-                // 25% chance per chunk to contain a micro-dungeon!
                 if (random() < 0.25) { 
                     const rx = Math.floor(random() * 14) + 1;
                     const ry = Math.floor(random() * 14) + 1;
                     const tile = chunkData[ry][rx];
                     
-                    // Safe Terrain Overwrite Guard
-                    // Prevents deleting Obelisks, NPCs, or Villages!
-                    const allowedTerrain = ['F', '🌳', '≈', '❄️', '🧊', 'D', 'd'];
+                    // Allow spawning on standard wilderness tiles
+                    const allowedTerrain = ['F', '🌳', '≈', '❄️', '🧊', 'D', 'd', '.', '🧱'];
                     if (!allowedTerrain.includes(tile)) return;
                     
-                    // Spawn contextually based on the terrain it picked
-                    if (tile === 'F' || tile === '🌳') chunkData[ry][rx] = '🌲h'; // Hollowed tree in forest
-                    else if (tile === '≈') chunkData[ry][rx] = '🕸️b'; // Spider burrow in swamp
-                    else if (tile === '❄️' || tile === '🧊') chunkData[ry][rx] = '🧊c'; // Crevasse in snow/ice
-                    else if (tile === 'd') chunkData[ry][rx] = '🔥s'; // Sinkhole in deadlands
-                    else if (tile === 'D') chunkData[ry][rx] = '🏝️g'; // Oasis Grotto in the desert
+                    if (tile === 'F' || tile === '🌳') chunkData[ry][rx] = '🌲h'; 
+                    else if (tile === '≈') chunkData[ry][rx] = '🕸️b'; 
+                    else if (tile === '❄️' || tile === '🧊') chunkData[ry][rx] = '🧊c'; 
+                    else if (tile === 'd') chunkData[ry][rx] = '🔥s'; 
+                    else if (tile === 'D') chunkData[ry][rx] = '🏝️g'; 
+                    else if (tile === '.' || tile === '🧱') chunkData[ry][rx] = '🏰r'; 
                 }
             };
         }
 
         // ==========================================
-        // FEATURE 3: DYNAMIC WEATHER PHYSICS
+        // FEATURE 3: DYNAMIC WEATHER PHYSICS (BATCH OPTIMIZED)
         // ==========================================
 
         if (typeof window.endPlayerTurn === 'function') {
@@ -286,40 +330,42 @@ window.ExpansionManager.register({
                     // Throttle this to run only once every 3 turns to save CPU
                     if (gameState.weather !== 'clear' && gameState.playerTurnCount % 3 === 0) {
                         
-                        let mapUpdatedLocally = false;
+                        let hasLocalUpdates = false;
+                        const weatherBatchPayload = {};
                         const now = Date.now();
                         
-                        // Scan a 7x7 grid around the player safely
                         for(let dy = -3; dy <= 3; dy++) {
                             for(let dx = -3; dx <= 3; dx++) {
                                 const tx = p.x + dx;
                                 const ty = p.y + dy;
                                 
-                                // The "Trapped in Ice" Boat Fix
-                                if (tx === p.x && ty === p.y && (p.isBoating || p.isSailing)) continue;
-                                
                                 const tile = chunkManager.getTile(tx, ty);
+                                let newTile = null;
+                                let ttlHours = 0;
+                                let particleColor = null;
                                 
                                 // ❄️ ICE BRIDGES: Snow freezes water temporarily!
                                 if (gameState.weather === 'snow' && (tile === '~' || tile === '≈')) {
-                                    // Set the tile to Ice with a TTL of 1 hour (melts automatically!)
-                                    chunkManager.setWorldTile(tx, ty, '🧊', 1);
-                                    mapUpdatedLocally = true;
+                                    // 🚨 SAFEGUARD: Protect parked boats from freezing over and disappearing!
+                                    if (tx === p.x && ty === p.y && (p.isBoating || p.isSailing)) continue;
                                     
-                                    // SAFE FALLBACK: Check if ParticleSystem exists before spawning effects
-                                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tx, ty, '#e0f2fe', 3);
+                                    newTile = '🧊';
+                                    ttlHours = 1;
+                                    particleColor = '#e0f2fe';
                                     if (typeof AudioSystem !== 'undefined' && Math.random() < 0.05) AudioSystem.playTone(800, 'square', 0.1, 0.05, false, 100);
                                 }
                                 
                                 // 🌧️ SPRING SHOWERS: Rain sprouts flora in forests!
                                 else if (gameState.weather === 'rain' && tile === 'F') {
                                     if (Math.random() < 0.02) {
-                                        const sprout = Math.random() > 0.8 ? '🌺' : '🍄';
-                                        // Sprout lives for 4 in-game hours before withering
-                                        chunkManager.setWorldTile(tx, ty, sprout, 4);
-                                        mapUpdatedLocally = true;
+                                        // 5% chance for Luminous Spore, otherwise normal flora
+                                        const roll = Math.random();
+                                        if (roll > 0.95) newTile = '🍄l';
+                                        else if (roll > 0.70) newTile = '🌺';
+                                        else newTile = '🍄';
                                         
-                                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tx, ty, sprout === '🌺' ? '#f472b6' : '#d946ef', 4);
+                                        ttlHours = 4;
+                                        particleColor = newTile === '🌺' ? '#f472b6' : '#d946ef';
                                         if (typeof AudioSystem !== 'undefined' && Math.random() < 0.1) AudioSystem.playMelody([800, 1200], 'sine', 0.05, 0.02);
                                     }
                                 }
@@ -327,22 +373,51 @@ window.ExpansionManager.register({
                                 // ⚡ DEADLANDS STORMS: Lightning ignites the ash!
                                 else if (gameState.weather === 'storm' && tile === 'd') {
                                     if (Math.random() < 0.01) {
-                                        chunkManager.setWorldTile(tx, ty, '🔥', 0.5); // Lasts 30 mins
-                                        mapUpdatedLocally = true;
-                                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tx, ty, '#facc15', 5);
+                                        newTile = '🔥';
+                                        ttlHours = 0.5; // Lasts 30 mins
+                                        particleColor = '#facc15';
+                                    }
+                                }
+                                
+                                // --- APPLY BATCHED UPDATES ---
+                                if (newTile) {
+                                    const cx = Math.floor(tx / 16);
+                                    const cy = Math.floor(ty / 16);
+                                    const lx = ((tx % 16) + 16) % 16;
+                                    const ly = ((ty % 16) + 16) % 16;
+                                    const chunkId = `${cx},${cy}`;
+                                    const tileKey = `${lx},${ly}`;
+                                    
+                                    if (!chunkManager.worldState[chunkId]) chunkManager.worldState[chunkId] = {};
+                                    
+                                    const tileData = { t: newTile, expires: now + (ttlHours * 3600000) };
+                                    chunkManager.worldState[chunkId][tileKey] = tileData;
+                                    
+                                    let realmPrefix = '';
+                                    if (gameState.currentRealm !== 0 && gameState.currentRealm) realmPrefix = `realm_${gameState.currentRealm}/`;
+                                    
+                                    weatherBatchPayload[`worldState/${realmPrefix}${chunkId}/${tileKey}`] = tileData;
+                                    hasLocalUpdates = true;
+                                    
+                                    if (particleColor && typeof ParticleSystem !== 'undefined') {
+                                        ParticleSystem.createExplosion(tx, ty, particleColor, 3);
                                     }
                                 }
                             }
                         }
                         
-                        if (mapUpdatedLocally) {
+                        // 🚨 PERFORMANCE WIN: Push all terrain updates to Firebase atomically!
+                        if (hasLocalUpdates) {
                             gameState.mapDirty = true;
                             if (typeof render === 'function') render();
+                            
+                            if (typeof rtdb !== 'undefined' && Object.keys(weatherBatchPayload).length > 0) {
+                                rtdb.ref().update(weatherBatchPayload).catch(e => console.error("Weather Batch Error", e));
+                            }
                         }
                     }
                 }
 
-                // Safely call the original function, passing the arguments forward
                 if (origEndPlayerTurn) origEndPlayerTurn.apply(this, arguments);
             };
         }
@@ -351,13 +426,14 @@ window.ExpansionManager.register({
         // FEATURE 4: MINIMAP INTEGRATION
         // ==========================================
         
-        // Inject the newly generated tiles into the global TILE_COLOR_MAP
         if (typeof window.TILE_COLOR_MAP !== 'undefined') {
             window.TILE_COLOR_MAP['🕸️b'] = [15, 23, 42, 255];     // Very Dark Blue/Grey
             window.TILE_COLOR_MAP['🌲h'] = [6, 78, 59, 255];      // Deep Forest Green
             window.TILE_COLOR_MAP['🧊c'] = [186, 230, 253, 255];  // Pale Ice Blue
             window.TILE_COLOR_MAP['🔥s'] = [153, 27, 27, 255];    // Scorched Red
             window.TILE_COLOR_MAP['🏝️g'] = [34, 197, 94, 255];    // Emerald Green Oasis
+            window.TILE_COLOR_MAP['🏰r'] = [68, 64, 60, 255];     // Stone Gray
+            window.TILE_COLOR_MAP['🍄l'] = [250, 204, 21, 255];   // Bright Yellow Spore
         }
     }
 });
