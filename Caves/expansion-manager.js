@@ -9,8 +9,11 @@ window.ExpansionManager = {
     expansions: new Map(),
     
     // Global Event Bus for Lifecycle Hooks
-    // Allows expansions to passively listen to core game events without monkey-patching!
     activeHooks: {},
+
+    // 🚨 ARCHITECTURE WIN: Deferred Loading Queue
+    // Expansions waiting for their dependencies to load sit here safely.
+    _pendingQueue: [],
 
     // API Helper: Allows expansions to alter behavior if they know another specific expansion is running
     has: function(expansionId) {
@@ -18,8 +21,6 @@ window.ExpansionManager = {
     },
 
     // Centralized Hook Trigger with Veto Power
-    // The core engine can call ExpansionManager.triggerHook('onPlayerDeath', gameState) 
-    // If ANY hook returns explicit 'false', the chain is broken (useful for intercepting deaths/moves).
     triggerHook: function(hookName, context = {}) {
         if (!this.activeHooks[hookName]) return context;
         
@@ -36,8 +37,9 @@ window.ExpansionManager = {
         return context;
     },
 
+    // Entry point for all expansions
     register: function(exp) {
-        // --- 1. VALIDATION & DEPENDENCIES ---
+        // --- 1. VALIDATION ---
         if (!exp || !exp.id) {
             console.error("%c[AKASHIC ENGINE] Failed to inject anomaly: Expansion missing ID.", "color: #ef4444; font-weight: bold;");
             return;
@@ -54,44 +56,49 @@ window.ExpansionManager = {
             }
         }
 
-        // Dependency Checker
-        // Prevents hard crashes if an expansion relies on items/systems from an expansion that was removed!
+        // --- 2. DEPENDENCY QUEUING ---
         if (exp.requires && Array.isArray(exp.requires)) {
-            for (let i = 0; i < exp.requires.length; i++) {
-                const reqId = exp.requires[i];
-                if (!this.has(reqId)) {
-                    console.error(`%c[AKASHIC ENGINE] Fatal Sequence: '${exp.name}' requires missing expansion '${reqId}'. Boot aborted.\n(Hint: Ensure '${reqId}' is loaded above '${exp.id}' in your HTML file!)`, "color: #ef4444; font-weight: bold; font-family: monospace;");
-                    return;
-                }
+            const missing = exp.requires.filter(reqId => !this.has(reqId));
+            if (missing.length > 0) {
+                console.warn(`%c[AKASHIC ENGINE] Pausing Timeline: '${exp.name}' requires missing expansions: [${missing.join(', ')}]. Queuing for later.`, "color: #facc15; font-style: italic;");
+                this._pendingQueue.push(exp);
+                return;
             }
         }
 
+        // If dependencies are met (or none exist), mount it!
+        this._mountExpansion(exp);
+    },
+
+    // Internal mounting logic separated to allow queue processing
+    _mountExpansion: function(exp) {
         console.log(`%c[AKASHIC ENGINE] Weaving Timeline: ${exp.name} (v${exp.version || '1.0'})`, "color: #10b981; font-weight: bold; font-family: monospace;");
         
         const data = exp.data || {};
 
-        // --- 2. LORE & ATMOSPHERE INJECTION ---
-        // Dynamically append new color-coded keywords to the game's auto-tagging system!
+        // --- 1. LORE & ATMOSPHERE INJECTION ---
         if (data.loreKeywords && typeof window.LORE_KEYWORDS !== 'undefined') {
             Object.assign(window.LORE_KEYWORDS, data.loreKeywords);
             
-            // Safely push to the compiled regex cache so it works instantly without a reload
             if (typeof window._COMPILED_LORE_REGEXES !== 'undefined' && Array.isArray(window._COMPILED_LORE_REGEXES)) {
                 for (const [keyword, color] of Object.entries(data.loreKeywords)) {
                     try {
                         window._COMPILED_LORE_REGEXES.push({
+                            keyword: keyword, // Store keyword to sort by length
                             rx: new RegExp(`\\b(${keyword}s?)\\b`, 'gi'),
                             color: color
                         });
                     } catch (regexErr) {
-                        // 🚨 SECURITY WIN: Prevent malformed strings in expansions from crashing the text parser
                         console.warn(`%c[AKASHIC ENGINE] Invalid regex ignored for lore keyword: ${keyword}`, "color: #facc15;");
                     }
                 }
+                // 🚨 BUG FIX WIN: Sort by length descending! 
+                // Ensures "First King" is tagged before "King" accidentally breaks the HTML tag.
+                window._COMPILED_LORE_REGEXES.sort((a, b) => b.keyword.length - a.keyword.length);
             }
         }
 
-        // --- 3. INJECT DICTIONARIES (O(1) Merge) ---
+        // --- 2. INJECT DICTIONARIES (O(1) Merge) ---
         const dictionaries = {
             items: 'ITEM_DATA',
             enemies: 'ENEMY_DATA',
@@ -117,19 +124,23 @@ window.ExpansionManager = {
             if (data[localKey] && typeof data[localKey] === 'object') {
                 if (typeof window[globalKey] === 'undefined') window[globalKey] = {};
                 
-                // Safe merge preventing prototype pollution
                 for (const key in data[localKey]) {
                     if (Object.prototype.hasOwnProperty.call(data[localKey], key)) {
+                        // 🚨 DEV QoL WIN: Collision Warnings
+                        // Prevents two expansions from silently overwriting each other's items!
+                        if (window[globalKey][key]) {
+                            console.warn(`%c[AKASHIC ENGINE] Overwrite Notice: '${exp.id}' is modifying existing ${localKey} entry: '${key}'.`, "color: #fb923c;");
+                        }
                         window[globalKey][key] = data[localKey][key];
                     }
                 }
                 
-                // 🚨 PERFORMANCE FIX: Clear the room cache so the new rooms are actually pulled into the generator!
+                // Clear the room cache so the new rooms are actually pulled into the generator!
                 if (localKey === 'roomTemplates') window.CACHED_ROOM_TEMPLATES = null; 
             }
         }
 
-        // --- 4. INJECT GLOBAL ARRAYS ---
+        // --- 3. INJECT GLOBAL ARRAYS ---
         const globalArrays = {
             stoneMessages: 'LORE_STONE_MESSAGES',
             journalPages: 'RANDOM_JOURNAL_PAGES',
@@ -138,12 +149,18 @@ window.ExpansionManager = {
             regionHistory: 'REGION_HISTORY',
             villagerRumors: 'VILLAGER_RUMORS',
             fishingBaits: 'FISHING_BAITS',
-            fishDirectory: 'FISH_DIRECTORY'
+            fishDirectory: 'FISH_DIRECTORY',
+            namePrefixes: 'NAME_PREFIXES',
+            nameMiddles: 'NAME_MIDDLES',
+            nameSuffixes: 'NAME_SUFFIXES',
+            cavePrefixes: 'CAVE_PREFIXES',
+            caveSuffixes: 'CAVE_SUFFIXES',
+            castlePrefixes: 'CASTLE_PREFIXES',
+            castleSuffixes: 'CASTLE_SUFFIXES'
         };
 
         for (const [localKey, globalKey] of Object.entries(globalArrays)) {
             if (data[localKey] && Array.isArray(data[localKey])) {
-                // 🚨 STABILITY WIN: Strict Type Enforcement
                 if (typeof window[globalKey] === 'undefined' || !Array.isArray(window[globalKey])) {
                     window[globalKey] = [];
                 }
@@ -151,9 +168,18 @@ window.ExpansionManager = {
                 const targetArray = window[globalKey];
                 const newItems = data[localKey];
                 
-                // Safe Iterative Push avoids "Maximum call stack size exceeded" on huge arrays
                 for (let i = 0; i < newItems.length; i++) {
                     targetArray.push(newItems[i]);
+                }
+            }
+        }
+
+        // --- 4. INJECT ATMOSPHERE TEXT (Dictionary of Arrays) ---
+        if (data.atmosphereText && typeof window.ATMOSPHERE_TEXT !== 'undefined') {
+            for (const category in data.atmosphereText) {
+                if (Object.prototype.hasOwnProperty.call(data.atmosphereText, category)) {
+                    if (!window.ATMOSPHERE_TEXT[category]) window.ATMOSPHERE_TEXT[category] = [];
+                    window.ATMOSPHERE_TEXT[category].push(...data.atmosphereText[category]);
                 }
             }
         }
@@ -174,10 +200,8 @@ window.ExpansionManager = {
 
                     const existingItem = window[targetGlobal].find(i => i.name === newItem.name);
                     if (existingItem) {
-                        // 🚨 ECONOMY GUARD: Accumulate stock gracefully, but do NOT overwrite original prices!
                         existingItem.stock = (existingItem.stock || 0) + (newItem.stock || 0);
                     } else {
-                        // Safe clone to prevent memory leaks from the expansion object bleeding into live shops
                         const itemClone = typeof window.fastClone === 'function' ? window.fastClone(newItem) : JSON.parse(JSON.stringify(newItem));
                         window[targetGlobal].push(itemClone);
                     }
@@ -185,14 +209,29 @@ window.ExpansionManager = {
             }
         }
 
-        // --- 6. REGISTER LIFECYCLE HOOKS ---
+        // --- 6. REGISTER LIFECYCLE HOOKS (With Priorities) ---
         if (exp.hooks) {
             for (const hookName in exp.hooks) {
                 if (Object.prototype.hasOwnProperty.call(exp.hooks, hookName)) {
-                    const hookFunc = exp.hooks[hookName];
-                    if (typeof hookFunc === 'function') {
+                    const hookObj = exp.hooks[hookName];
+                    
+                    // Allow simple function passing OR object with priority { func: function, priority: 10 }
+                    let hookFunc = null;
+                    let hookPriority = 0;
+
+                    if (typeof hookObj === 'function') {
+                        hookFunc = hookObj;
+                    } else if (typeof hookObj === 'object' && typeof hookObj.func === 'function') {
+                        hookFunc = hookObj.func;
+                        hookPriority = hookObj.priority || 0;
+                    }
+
+                    if (hookFunc) {
                         if (!this.activeHooks[hookName]) this.activeHooks[hookName] = [];
-                        this.activeHooks[hookName].push({ id: exp.id, func: hookFunc });
+                        this.activeHooks[hookName].push({ id: exp.id, func: hookFunc, priority: hookPriority });
+                        
+                        // 🚨 ARCHITECTURE WIN: Sort hooks so highest priority executes first!
+                        this.activeHooks[hookName].sort((a, b) => b.priority - a.priority);
                     }
                 }
             }
@@ -201,7 +240,6 @@ window.ExpansionManager = {
         // --- 7. CUSTOM INITIALIZATION HOOK ---
         if (typeof exp.init === 'function') {
             try {
-                // ⏱️ PERFORMANCE PROFILER
                 const startTime = performance.now();
                 exp.init();
                 const endTime = performance.now();
@@ -224,8 +262,37 @@ window.ExpansionManager = {
             timestamp: Date.now()
         });
 
-        // 🌟 TRIGGER GLOBAL EVENT: Allows other expansions to react to this one loading!
+        // Trigger Global Event
         this.triggerHook('onExpansionLoaded', { id: exp.id, name: exp.name, version: exp.version });
+
+        // --- 8. PROCESS QUEUE ---
+        // Check if loading this expansion unblocked any waiting expansions in the queue!
+        this._checkPendingQueue();
+    },
+
+    // Recursively processes the queue to load any deferred expansions whose dependencies are now met
+    _checkPendingQueue: function() {
+        if (this._pendingQueue.length === 0) return;
+
+        let processedAny = false;
+
+        // Loop backward so we can safely splice items out of the array
+        for (let i = this._pendingQueue.length - 1; i >= 0; i--) {
+            const exp = this._pendingQueue[i];
+            const missing = exp.requires.filter(reqId => !this.has(reqId));
+            
+            if (missing.length === 0) {
+                console.log(`%c[AKASHIC ENGINE] Dependencies met. Resuming timeline weave for: '${exp.name}'`, "color: #10b981; font-style: italic;");
+                this._pendingQueue.splice(i, 1); // Remove from queue
+                this._mountExpansion(exp);       // Mount it
+                processedAny = true;
+            }
+        }
+
+        // If an expansion was mounted, it might have unblocked ANOTHER expansion, so check again!
+        if (processedAny) {
+            this._checkPendingQueue();
+        }
     }
 };
 
