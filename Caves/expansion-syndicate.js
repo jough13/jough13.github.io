@@ -455,7 +455,12 @@ window.ExpansionManager.register({
                             // If a monster killed us, standard death occurs. If a player killed us, pay the bounty!
                             if (!attack.isMonster) {
                                 logMessage(`{red:You were slain by ${attack.attackerName}!}`);
-                                const rewardGold = (gameState.player.bounty || 0) + (gameState.player.coins || 0);
+                                
+                                // Prevent NaN poisoning when calculating the attacker's reward
+                                const safeBounty = Math.floor(Number(gameState.player.bounty) || 0);
+                                const safeCoins = Math.floor(Number(gameState.player.coins) || 0);
+                                const rewardGold = safeBounty + safeCoins;
+                                
                                 rtdb.ref(`pvpRewards/${attack.attackerId}`).push({
                                     gold: rewardGold,
                                     targetName: gameState.player.name || auth.currentUser.email.split('@')[0]
@@ -474,12 +479,15 @@ window.ExpansionManager.register({
                     const reward = snap.val();
                     if (!reward) return;
 
-                    logMessage(`{gold:🏆 Target Eliminated! You claimed ${reward.targetName}'s gold: ${reward.gold}g!}`);
+                    // Cleanse incoming network data before applying it locally
+                    const safeGold = Math.max(0, Math.floor(Number(reward.gold) || 0));
+
+                    logMessage(`{gold:🏆 Target Eliminated! You claimed ${reward.targetName}'s gold: ${safeGold}g!}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#facc15', 30);
                     
-                    gameState.player.coins += reward.gold;
-                    if (typeof trackLegitimateGold === 'function') trackLegitimateGold(reward.gold);
+                    gameState.player.coins = Math.floor(Number(gameState.player.coins) || 0) + safeGold;
+                    if (typeof trackLegitimateGold === 'function') trackLegitimateGold(safeGold);
                     
                     if (typeof renderStats === 'function') renderStats();
                     if (typeof playerRef !== 'undefined') playerRef.update({ coins: gameState.player.coins });
