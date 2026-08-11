@@ -7,7 +7,7 @@
 // --- GLOBALS & SAFETY ---
 window.inputQueue = window.inputQueue || []; // Guarantee queue exists regardless of load order
 
-// O(1) Directional Mapping
+// PERFORMANCE WIN: O(1) Directional Mapping
 // Replaces massive if/else and switch statements with a single instant dictionary lookup
 const MOVEMENT_MAP = {
     // Cardinals
@@ -232,7 +232,7 @@ function handleInput(key) {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             
             window.inputQueue.length = 0; // Force clear the queue
-            lastActionTime = Date.now();  // Record the action time to enforce the throttle!
+            window.lastActionTime = Date.now();  // Record the action time to enforce the throttle!
             
             // Advance the turn with Mutex Lock
             if (typeof endPlayerTurn === 'function' && !isProcessingMove) {
@@ -383,7 +383,7 @@ function handleInput(key) {
 
     // --- AIMING MODE ---
     if (gameState.isAiming) {
-        // 🚨 BUG FIX: Guard against missing abilities if they somehow aimed without an ID
+        // Guard against missing abilities if they somehow aimed without an ID
         const abilityId = gameState.abilityToAim;
         if (!abilityId) {
             gameState.isAiming = false;
@@ -394,9 +394,9 @@ function handleInput(key) {
         
         if (dir) {
             const [dirX, dirY] = dir;
-            lastActionTime = Date.now(); 
+            window.lastActionTime = Date.now();
             
-            // JUICE WIN: Make the player physically turn to face the direction they are aiming!
+            // Make the player physically turn to face the direction they are aiming!
             if (dirX > 0) gameState.player.facing = 'right';
             else if (dirX < 0) gameState.player.facing = 'left';
 
@@ -533,8 +533,8 @@ function handleInput(key) {
         else if (newX < gameState.player.x) gameState.player.facing = 'left';
 
         // Reset timers on ANY movement attempt, even if they hit a wall!
-        lastActionTime = Date.now(); 
-        window._lastAutoTickTime = Date.now(); 
+        window.lastActionTime = Date.now(); 
+        window._lastAutoTickTime = Date.now();
         
         if (typeof attemptMovePlayer === 'function') attemptMovePlayer(newX, newY);
         return;
@@ -597,7 +597,7 @@ function handleInput(key) {
         }
         
         if (typeof endPlayerTurn === 'function') endPlayerTurn();
-        lastActionTime = Date.now(); 
+        window.lastActionTime = Date.now(); 
         return;
     }
 }
