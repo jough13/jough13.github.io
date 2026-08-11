@@ -161,6 +161,8 @@ window.selectSlot = async function (slotId) {
     if (isEnteringGame) return; 
     isEnteringGame = true;
 
+    window.currentSlotId = slotId;
+
     // JUICE WIN: Play a deep, resonant magical tone when tethering to a timeline
     if (typeof AudioSystem !== 'undefined') {
         AudioSystem.playTone(200, 'sine', 0.5, 0.2, false, 100);
