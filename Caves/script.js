@@ -1421,8 +1421,12 @@ function endPlayerTurn(turnUpdates = {}) {
     if (!player.talents || !player.talents.includes('undeath')) {
         player.hunger = Math.max(0, player.hunger - hungerDrain);
         player.thirst = Math.max(0, player.thirst - thirstDrain);
+        
+        // Neutralize JS Floating Point drift locally
+        // Ensures the variables stay clean in the UI and memory
+        player.hunger = Math.round(player.hunger * 100) / 100;
+        player.thirst = Math.round(player.thirst * 100) / 100;
     }
-
 
     // --- ENVIRONMENTAL HAZARDS ---
     let currentTile;
