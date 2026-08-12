@@ -19,7 +19,7 @@ const ctx = canvas.getContext('2d');
 const terrainCanvas = document.createElement('canvas');
 const terrainCtx = terrainCanvas.getContext('2d');
 
-// PERFORMANCE WIN: Cache the canvas wrapper used heavily in render layers for damage flashes
+// Cache the canvas wrapper used heavily in render layers for damage flashes
 const canvasWrapperEl = document.getElementById('gameCanvasWrapper');
 
 const darkModeToggle = document.getElementById('darkModeToggle');
@@ -29,8 +29,6 @@ const authContainer = document.getElementById('authContainer');
 const gameContainer = document.getElementById('gameContainer');
 const emailInput = document.getElementById('emailInput');
 const passwordInput = document.getElementById('passwordInput');
-const loginButton = document.getElementById('loginButton');
-const signupButton = document.getElementById('signupButton');
 const authError = document.getElementById('authError');
 const logoutButton = document.getElementById('logoutButton');
 const chatInput = document.getElementById('chatInput');
