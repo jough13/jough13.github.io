@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "clockwork_uprising",
     name: "The Clockwork Uprising",
-    version: "1.4", // Upgraded version!
+    version: "1.5", // Upgraded version!
     
     data: {
         // --- 1. EXPANDED ITEMS ---
@@ -30,8 +30,24 @@ window.ExpansionManager.register({
                 name: 'Manual: Overcharge', type: 'skillbook', skillId: 'overcharge', tile: '📓'
             },
             '📜cw1': { 
-                name: 'The Grand Design', type: 'journal', title: 'The Grand Design', 
+                name: 'The Grand Design', type: 'journal', title: 'The Grand Design', tile: '📜',
                 content: "The flesh is weak. It starves, it freezes, it rots. Brass and steam do not suffer. We will replace the King's guard with our creations. They will never tire. They will never question." 
+            },
+            // --- EXPANSION WIN: New Tactical Gear ---
+            '💣e': {
+                name: 'Shock Bomb', type: 'consumable', tile: '💣', pColor: '#facc15', pSize: 30, _rarity: 'rare',
+                description: "Throw to unleash a 3x3 electrical storm. {yellow:Stuns machines and deals massive Lightning damage.}",
+                effect: (state) => {
+                    if (typeof logMessage === 'function') logMessage("{yellow:Select a direction to throw the Shock Bomb... (WASD/Arrows)}");
+                    state.isAiming = true;
+                    state.abilityToAim = 'throwShockBomb'; // Handled by our custom input interceptor!
+                    return false;
+                }
+            },
+            '👓e': {
+                name: "Engineer's Goggles", type: "accessory", tile: "👓", defense: 1, slot: "accessory", 
+                statBonuses: { perception: 5, wits: 2 }, _rarity: 'rare',
+                description: "{blue:+1 Def}, {gold:+5 Per}, {blue:+2 Wits}. Thick glass lenses that help identify structural weaknesses." 
             }
         },
 
@@ -125,6 +141,9 @@ window.ExpansionManager.register({
                                     state.lootedTiles.add(ctx.tileId);
                                     if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(ctx.x, ctx.y, '🏚'); // Replace with rubble
                                     state.mapDirty = true;
+                                    
+                                    // 🚨 BUG FIX: Ensure the save triggers so players can't save scum the event
+                                    if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory });
                                 }
                             },
                             {
@@ -151,6 +170,10 @@ window.ExpansionManager.register({
                                         
                                         const enemyId = `overworld:${ctx.x},${-ctx.y}`;
                                         state.sharedEnemies[enemyId] = { ...scaledStats, tile: '🤖g', x: ctx.x, y: ctx.y, spawnTime: Date.now() };
+                                        
+                                        // 🚨 BUG FIX & ROBUSTNESS WIN: Instantly map the enemy to the Spatial Hashing grid so it can attack immediately!
+                                        if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, null, null, ctx.x, ctx.y);
+                                        
                                         if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(ctx.x, ctx.y, enemyId)).set(state.sharedEnemies[enemyId]);
                                     } else {
                                         logMessage("{green:The machine hums smoothly. It downloads its ancient archives into your mind before fully powering down.}");
@@ -162,6 +185,8 @@ window.ExpansionManager.register({
                                     state.lootedTiles.add(ctx.tileId);
                                     if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(ctx.x, ctx.y, '.'); // Remove it completely
                                     state.mapDirty = true;
+                                    
+                                    if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory });
                                 }
                             },
                             { text: "Leave it alone." }
@@ -190,6 +215,9 @@ window.ExpansionManager.register({
             ],
             castle: [
                 { name: 'Galvanic Battery', price: 10, stock: 50 }
+            ],
+            black_market: [
+                { name: "Engineer's Goggles", price: 1500, stock: 1 }
             ]
         },
 
@@ -198,6 +226,11 @@ window.ExpansionManager.register({
             "Liquid Lightning": {
                 materials: { "Clockwork Core": 1, "Clean Water": 1, "Empty Bottle": 1 },
                 xp: 150, level: 5, yield: 1
+            },
+            // The Shock Bomb logic integrates cleanly with Alchemy
+            "Shock Bomb": { 
+                materials: { "Brass Sprocket": 1, "Elemental Core": 1, "Stone": 1 }, 
+                xp: 45, level: 3, yield: 2 
             }
         },
         craftingRecipes: {
@@ -245,7 +278,8 @@ window.ExpansionManager.register({
                     const ry = Math.floor(random() * 14) + 1;
                     
                     const tile = chunkData[ry][rx];
-                    if (tile === 'D' || tile === 'd') { // Desert or Deadlands
+                    // 🚨 BUG FIX WIN: Used robust array inclusion instead of binary OR
+                    if (['D', 'd'].includes(tile)) { 
                         chunkData[ry][rx] = '🏭'; 
                     }
                 }
@@ -256,7 +290,7 @@ window.ExpansionManager.register({
                     const ry = Math.floor(random() * 14) + 1;
                     
                     const tile = chunkData[ry][rx];
-                    if (tile === 'D' || tile === 'd' || tile === '.') { 
+                    if (['D', 'd', '.'].includes(tile)) { 
                         chunkData[ry][rx] = '🤖x'; 
                     }
                 }
@@ -294,7 +328,14 @@ window.ExpansionManager.register({
             if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
             try {
                 isProcessingMove = true;
-                player.stamina -= skillData.cost;
+                
+                // 🚨 BUG FIX & METRICS WIN: Route through the centralized Vitals Dispatcher!
+                if (typeof window.modifyVital === 'function') {
+                    window.modifyVital('stamina', -skillData.cost);
+                } else {
+                    player.stamina -= skillData.cost;
+                }
+                
                 logMessage(`{yellow:You push the ${weapon.name} past its limits! It hums violently!}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                 
@@ -412,9 +453,106 @@ window.ExpansionManager.register({
             }
         };
 
-        // --- C. INPUT MONKEY-PATCH ---
-        // Safely intercepts the aiming phase to route the Overcharge command 
-        // to our new logic block above without touching the core input.js file!
+        // --- C. SHOCK BOMB LOGIC (THROWS) ---
+        window.executeThrowShockBomb = async function(dirX, dirY) {
+            const player = gameState.player;
+            
+            // LOCK THE ENGINE
+            if (isProcessingMove) return;
+
+            try {
+                isProcessingMove = true;
+                
+                // 1. Consume the Bomb
+                const invIndex = player.inventory.findIndex(i => i && i.name === 'Shock Bomb' && !i.isEquipped);
+                if (invIndex > -1) {
+                    player.inventory[invIndex].quantity--;
+                    if (player.inventory[invIndex].quantity <= 0) player.inventory.splice(invIndex, 1);
+                    if (typeof triggerDebouncedSave === 'function') {
+                        triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory });
+                    }
+                } else {
+                    logMessage("{red:You are out of Shock Bombs.}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                    return; 
+                }
+
+                // 2. Raycast to find landing zone (Max Range: 4 tiles)
+                let targetX = player.x;
+                let targetY = player.y;
+
+                for (let i = 1; i <= 4; i++) {
+                    const checkX = player.x + (dirX * i);
+                    const checkY = player.y + (dirY * i);
+
+                    if (typeof ParticleSystem !== 'undefined') {
+                        setTimeout(() => { ParticleSystem.spawn(checkX, checkY, '#facc15', 'dust', '', 2); }, i * 30);
+                    }
+
+                    let tileAt = '.';
+                    if (typeof chunkManager !== 'undefined') {
+                        if (gameState.mapMode === 'overworld') tileAt = chunkManager.getTile(checkX, checkY);
+                        else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[checkY]?.[checkX] || ' ';
+                        else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[checkY]?.[checkX] || ' ';
+                    }
+
+                    // If it hits a solid wall, the bomb detonates one tile BEFORE the wall!
+                    if (['▓', '▒', '🧱', '^'].includes(tileAt)) {
+                        break; 
+                    }
+                    targetX = checkX;
+                    targetY = checkY;
+                }
+
+                // 3. Detonate!
+                await new Promise(resolve => setTimeout(resolve, 150));
+                
+                logMessage("{yellow:The Shock Bomb detonates in a blinding flash of electricity!}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#facc15', 30);
+                gameState.screenShake = 15;
+                
+                const batchedPayload = {};
+                
+                for (let y = targetY - 1; y <= targetY + 1; y++) {
+                    for (let x = targetX - 1; x <= targetX + 1; x++) {
+                        
+                        // Friendly Fire
+                        if (x === player.x && y === player.y && !gameState.godMode) {
+                            logMessage("{red:You are caught in your own electrical storm! (-10 HP)}");
+                            if (typeof window.modifyVital === 'function') window.modifyVital('health', -10);
+                            if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), false);
+                            continue;
+                        }
+                        
+                        // 🌟 MECHANIC WIN: Natively trigger the 'thunderbolt' spell logic
+                        // This automatically stuns machines, deals double damage in water, and routes through Firebase cleanly!
+                        if (typeof applySpellDamage === 'function') {
+                            const res = await applySpellDamage(x, y, 20, 'thunderbolt', true);
+                            if (res && res.hit) Object.assign(batchedPayload, res.payload);
+                        }
+                    }
+                }
+
+                if (Object.keys(batchedPayload).length > 0 && typeof rtdb !== 'undefined') {
+                    rtdb.ref().update(batchedPayload).catch(e => console.error("Shock Bomb Batch Error:", e));
+                }
+                
+                gameState.isAiming = false;
+                if (gameState.player.health <= 0 || gameState.isDead) return;
+                
+                if (typeof endPlayerTurn === 'function') endPlayerTurn();
+                if (typeof render === 'function') render();
+                if (typeof renderInventory === 'function') renderInventory();
+
+            } finally {
+                isProcessingMove = false;
+            }
+        };
+
+        // --- D. INPUT MONKEY-PATCH ---
+        // Safely intercepts the aiming phase to route the custom commands 
+        // without touching the core input.js file!
         if (typeof window.handleInput === 'function') {
             const origHandleInput = window.handleInput;
             
@@ -423,33 +561,44 @@ window.ExpansionManager.register({
                 // against any underlying changes to the core engine's input router.
                 const key = arguments[0];
                 
-                if (typeof gameState !== 'undefined' && gameState.isAiming && gameState.abilityToAim === 'overcharge') {
+                if (typeof gameState !== 'undefined' && gameState.isAiming) {
                     
-                    // 🚀 PERFORMANCE WIN: Use the global movement map instead of re-allocating it per keystroke
-                    const dir = typeof window.MOVEMENT_MAP !== 'undefined' ? window.MOVEMENT_MAP[key] : null;
+                    // Route to our custom interceptors
+                    const customAbilities = ['overcharge', 'throwShockBomb'];
                     
-                    if (dir) {
-                        const [dirX, dirY] = dir;
+                    if (customAbilities.includes(gameState.abilityToAim)) {
                         
-                        // Face direction
-                        if (dirX > 0) gameState.player.facing = 'right';
-                        else if (dirX < 0) gameState.player.facing = 'left';
+                        // 🚀 PERFORMANCE WIN: Use the global movement map instead of re-allocating it per keystroke
+                        const dir = typeof window.MOVEMENT_MAP !== 'undefined' ? window.MOVEMENT_MAP[key] : null;
+                        
+                        if (dir) {
+                            const [dirX, dirY] = dir;
+                            
+                            // Face direction
+                            if (dirX > 0) gameState.player.facing = 'right';
+                            else if (dirX < 0) gameState.player.facing = 'left';
 
-                        if (typeof executeOvercharge === 'function') executeOvercharge(dirX, dirY);
-                        
-                        gameState.isAiming = false;
-                        gameState.abilityToAim = null;
-                        return; // Intercepted!
-                    } else if (key === 'Escape') {
-                        // Let the core engine handle the Escape cancellation!
-                        return origHandleInput.apply(this, arguments);
-                    } else {
-                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                        logMessage("{gray:Invalid direction. Use Arrow keys or WASD to aim. (Esc) to cancel.}");
-                        return; // Block invalid inputs
+                            if (gameState.abilityToAim === 'overcharge') {
+                                if (typeof executeOvercharge === 'function') executeOvercharge(dirX, dirY);
+                            } else if (gameState.abilityToAim === 'throwShockBomb') {
+                                if (typeof executeThrowShockBomb === 'function') executeThrowShockBomb(dirX, dirY);
+                            }
+                            
+                            gameState.isAiming = false;
+                            gameState.abilityToAim = null;
+                            return; // Intercepted!
+                        } else if (key === 'Escape') {
+                            // Let the core engine handle the Escape cancellation natively
+                            return origHandleInput.apply(this, arguments);
+                        } else {
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                            logMessage("{gray:Invalid direction. Use Arrow keys or WASD to aim. (Esc) to cancel.}");
+                            return; // Block invalid inputs
+                        }
                     }
                 }
                 
+                // If we aren't aiming a custom ability, pass back to the core engine
                 return origHandleInput.apply(this, arguments);
             };
         }
