@@ -1,510 +1,552 @@
-// --- START OF FILE expansion-astral-sea.js ---
+// --- START OF FILE expansion-monster-hunter.js ---
 
 window.ExpansionManager.register({
-    id: "astral_sea",
-    name: "The Astral Sea (Sailing Expansion)",
-    version: "1.5", // Upgraded version!
+    id: "monster_hunter",
+    name: "The Monster Hunter (Tracking & Trophies)",
+    version: "1.4", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
         items: {
-            '🔔': {
-                name: 'Diving Bell', type: 'tool', tile: '🔔',
-                description: "A heavy iron bell. Use while sailing on Deep Water to dive into Sunken Shipwrecks.",
+            '🔪h': {
+                name: "Hunter's Knife", type: 'tool', tile: '🔪',
+                description: "A serrated, incredibly sharp blade. Essential for carving trophies from Apex Predators.", _rarity: 'uncommon'
+            },
+            '📜mh': {
+                name: 'Hunter\'s Log', type: 'journal', title: 'The Apex Predators', tile: '📜',
+                content: "To track an Apex, look for the anomalies. Deep gouges in the dirt. Once you find their tracks, do not rest. They move fast, and their lairs are heavily guarded. Bring a knife, or you'll have nothing to show for the kill."
+            },
+            
+            // Trophies
+            '🐉s': { name: 'Apex Drake Scale', type: 'trade', tile: '🐉', description: "It radiates intense heat. Required for Drakebane gear.", _rarity: 'epic' },
+            '👁️v': { name: 'Apex Void Core', type: 'trade', tile: '👁️', description: "It whispers in a language you don't understand.", _rarity: 'epic' },
+            '🦍p': { name: 'Apex Behemoth Pelt', type: 'trade', tile: '🦍', description: "Incredibly thick and heavy fur. Can stop a blade.", _rarity: 'epic' },
+            '🧪v': { name: 'Apex Venom Gland', type: 'trade', tile: '🧪', description: "A sac of highly concentrated, lethal neurotoxin.", _rarity: 'epic' },
+
+            // Hunter Armor
+            '🛡️db': {
+                name: 'Drakebane Mail', type: 'armor', tile: '🛡️', defense: 8, slot: 'armor',
+                statBonuses: { strength: 5, constitution: 3 },
+                description: "{blue:+8 Def}, {green:+5 Str, +3 Con}. \n{orange:Passive: Grants immunity to Fire and Lava.}", _rarity: 'legendary'
+            },
+            '🧥vs': {
+                name: 'Voidstalker Cowl', type: 'armor', tile: '🧥', defense: 6, slot: 'armor',
+                statBonuses: { wits: 8, perception: 4 },
+                description: "{blue:+6 Def}, {purple:+8 Wits, +4 Per}. \n{fuchsia:Passive: Grants complete immunity to Void Madness.}", _rarity: 'legendary'
+            },
+            '🛡️bp': {
+                name: 'Behemoth Plate', type: 'armor', tile: '🛡️', defense: 12, slot: 'armor',
+                statBonuses: { endurance: 6, constitution: 5 },
+                description: "{blue:+12 Def}, {green:+6 End, +5 Con}. \n{green:Passive: Grants permanent Thorns (Reflect 5 Dmg).}", _rarity: 'legendary'
+            },
+            '🧥b': {
+                name: 'Broodmother Cloak', type: 'armor', tile: '🧥', defense: 7, slot: 'armor',
+                statBonuses: { dexterity: 6, luck: 4 },
+                description: "{blue:+7 Def}, {green:+6 Dex}, {gold:+4 Luck}. \n{green:Passive: Grants complete immunity to Poison.}", _rarity: 'legendary'
+            },
+            // --- EXPANSION WIN: Bone Harpoon ---
+            '🗡️bh': {
+                name: 'Bone Harpoon', type: 'consumable', tile: '🗡️', _rarity: 'rare',
+                description: "A heavy, barbed throwing spear. Throw to deal massive physical damage and inflict {green:Poison} (Deep Bleed).",
                 effect: (state) => {
-                    if (!state.player.isSailing) {
-                        logMessage("{red:You must be Sailing in the Deep Ocean to use the Diving Bell.}");
-                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                        return false;
-                    }
-                    
-                    const tileAt = typeof chunkManager !== 'undefined' ? chunkManager.getTile(state.player.x, state.player.y) : null;
-                    if (tileAt !== '~') {
-                        logMessage("{red:The water here is too shallow to dive. Find Deep Water (~).}");
-                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                        return false;
-                    }
-
-                    logMessage("{cyan:You drop anchor and lower the Diving Bell into the abyssal depths...}");
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.2, 1000); 
-                    
-                    // JUICE WIN: Massive deep-sea splash
-                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#1e40af', 30);
-                    state.screenShake = 15;
-                    
-                    // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Vehicle Dismount!
-                    // If we don't turn off 'isSailing', the player will literally sail their galleon INSIDE the dungeon!
-                    state.player.isSailing = false;
-                    if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(state.player.x, state.player.y, '⛵'); 
-                    if (typeof playerRef !== 'undefined' && playerRef) playerRef.update({ isSailing: false });
-
-                    // Setup the Dungeon
-                    state.mapMode = 'dungeon';
-                    state.currentCaveId = `shipwreck_${state.player.x}_${state.player.y}`;
-                    state.overworldExit = { x: state.player.x, y: state.player.y };
-                    
-                    // Generate the dungeon
-                    const caveMap = chunkManager.generateCave(state.currentCaveId);
-                    
-                    // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Spawn Fallback
-                    // Prevents NaN coordinate crash if the generator failed to place a stairwell
-                    let spawnX = null, spawnY = null;
-                    for (let y = 0; y < caveMap.length; y++) {
-                        const x = caveMap[y].indexOf('>');
-                        if (x !== -1) { spawnX = x; spawnY = y; break; }
-                    }
-                    if (spawnX === null) {
-                        spawnX = Math.floor(caveMap[0].length / 2);
-                        spawnY = Math.floor(caveMap.length / 2);
-                        caveMap[spawnY][spawnX] = '>'; // Force place one
-                    }
-                    
-                    state.player.x = spawnX; 
-                    state.player.y = spawnY;
-                    
-                    const baseEnemies = chunkManager.caveEnemies[state.currentCaveId] || [];
-                    
-                    // 🚀 PERFORMANCE WIN: High-speed recursive clone over JSON stringify
-                    state.instancedEnemies = typeof window.fastClone === 'function' ? window.fastClone(baseEnemies) : JSON.parse(JSON.stringify(baseEnemies));
-                    
-                    if (typeof updateRegionDisplay === 'function') updateRegionDisplay();
-                    state.mapDirty = true;
-                    if (typeof render === 'function') render();
-                    if (typeof syncPlayerState === 'function') syncPlayerState();
-                    if (typeof finalizeMapTransition === 'function') finalizeMapTransition();
-                    
-                    return false; // Tool is reusable, don't consume!
+                    if (typeof logMessage === 'function') logMessage("{red:Select a direction to hurl the Bone Harpoon... (WASD/Arrows)}");
+                    state.isAiming = true;
+                    state.abilityToAim = 'throwPotion_Bone Harpoon'; // Hooks into the Alchemy throwing engine cleanly!
+                    return false;
                 }
-            },
-            '🗺️p': {
-                name: 'Pirate Treasure Map', type: 'treasure_map', tile: '🗺️',
-                description: "Reveals the coordinates of a buried Pirate Cove deep in the ocean.",
-                effect: (state) => {
-                    if (state.mapMode !== 'overworld') {
-                        logMessage("{red:You must be in the Overworld to read this.}");
-                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                        return false;
-                    }
-                    
-                    // 🚨 GAMEPLAY WIN: Smart Oceanic Raycasting
-                    // Guarantees the Pirate Cove actually spawns in deep water instead of the middle of a desert!
-                    let tx = state.player.x;
-                    let ty = state.player.y;
-                    let foundOcean = false;
-                    
-                    // Expanded to 100 attempts to ensure it almost never fails even in huge continents
-                    for (let attempt = 0; attempt < 100; attempt++) {
-                        const angle = Math.random() * Math.PI * 2;
-                        const dist = 2000 + Math.random() * 2000; 
-                        const checkX = Math.floor(state.player.x + Math.cos(angle) * dist);
-                        const checkY = Math.floor(state.player.y + Math.sin(angle) * dist);
-                        
-                        const tileAt = typeof chunkManager !== 'undefined' ? chunkManager.getTile(checkX, checkY) : '~';
-                        if (tileAt === '~') {
-                            tx = checkX;
-                            ty = checkY;
-                            foundOcean = true;
-                            break;
-                        }
-                    }
-                    
-                    // 🚨 ROBUSTNESS WIN: Failsafe Ocean Telemetry
-                    if (!foundOcean) {
-                        tx = state.player.x + 5000;
-                        ty = state.player.y + 5000; 
-                    }
-
-                    // Actually spawn the dungeon entrance via worldState so it exists when they arrive!
-                    if (typeof chunkManager !== 'undefined') {
-                        chunkManager.setWorldTile(tx, ty, '⚓c', 168); // Lasts 7 in-game days (168 hrs)
-                    }
-
-                    // QoL WIN: Automatically add a custom map pin to the player's map!
-                    if (!state.player.customPins) state.player.customPins = [];
-                    // Prevent duplicate pins
-                    if (!state.player.customPins.some(p => p.x === tx && p.y === ty)) {
-                        state.player.customPins.push({ x: tx, y: ty });
-                    }
-                    
-                    logMessage(`{gold:The map reveals a hidden Pirate Cove at (${tx}, ${-ty})! A pin has been added to your map.}`);
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
-                    
-                    state.mapDirty = true;
-                    return true; // Consume map
-                }
-            },
-            '🔫': {
-                name: 'Hand Cannon', type: 'weapon', tags: ['crossbow', 'armor_piercing', 'firearm'], tile: '🔫',
-                damage: 15, range: 6, isTwoHanded: true, slot: 'weapon', skillId: 'ranged_attack',
-                description: "{red:+15 Dmg}. A devastating black-powder weapon. Fires Cannonballs.", _rarity: 'legendary'
-            },
-            '💣c': {
-                name: 'Cannonball', type: 'ammo', tile: '💣', slot: 'ammo', damage: 5,
-                description: "Heavy iron balls for Hand Cannons. {red:+5 Dmg}"
-            },
-            '🎩p': {
-                name: 'Captain\'s Tricorne', type: 'armor', tile: '🎩', defense: 3, slot: 'armor',
-                statBonuses: { charisma: 5, luck: 5 }, description: "{blue:+3 Def}, {gold:+5 Cha, +5 Luck}. Yar.", _rarity: 'epic'
-            },
-            '🍺r': {
-                name: 'Spiced Rum', type: 'consumable', tile: '🍺', _rarity: 'uncommon',
-                description: "Burns going down. {yellow:+30 Stamina, +20 Psyche}, {red:-2 Wits (50 turns)}",
-                effect: (state) => {
-                    if (typeof window.modifyVital === 'function') {
-                        window.modifyVital('stamina', 30);
-                        window.modifyVital('psyche', 20);
-                    } else {
-                        state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + 30);
-                        state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + 20);
-                    }
-                    
-                    // Applies a minor debuff to represent being slightly drunk!
-                    state.player.witsBonus = (state.player.witsBonus || 0) - 2;
-                    state.player.witsBonusTurns = 50;
-                    
-                    logMessage("{orange:You chug the rum. You feel fearless, but dizzy. (+30 Stam, +20 Psyche, -2 Wits)}");
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playConsume();
-                    if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('staminaDisplay'), 'stat-pulse-yellow');
-                    
-                    // 🎨 JUICE WIN: Screen wobble!
-                    state.screenShake = 8;
-                    return true;
-                }
-            },
-            '⚓w': {
-                name: 'Dredged Anchor', type: 'weapon', tags: ['blunt'], tile: '⚓',
-                damage: 12, isTwoHanded: true, slot: 'weapon', statBonuses: { strength: 4, dexterity: -3 },
-                description: "{red:+12 Dmg}, {green:+4 Str}, {gray:-3 Dex}. Impossibly heavy. (Two-Handed)", _rarity: 'rare'
-            },
-            '📜p2': {
-                name: 'Sodden Journal', type: 'journal', title: 'Mutiny', tile: '📜',
-                content: "The Captain has gone mad. He claims the Leviathan spoke to him, told him to sail into the black fog. We strike at midnight. If I fall, tell my wife I died an honest pirate."
             }
         },
 
         // --- 2. NEW ENEMIES ---
         enemies: {
-            '🏴‍☠️': {
-                name: 'Pirate Galleon', tags: ['construct', 'wood'], mountable: false,
-                maxHealth: 150, attack: 15, defense: 5, xp: 300,
-                isRanged: true, range: 6, color: '#111827', loot: '🗺️p',
-                flavor: "A massive ship flying the black flag. Its cannons are aimed right at you!"
+            '🐉a': {
+                name: 'Apex Drake', tags: ['beast', 'reptile', 'dragon', 'fire', 'boss'], mountable: false,
+                maxHealth: 600, attack: 18, defense: 8, xp: 1200,
+                caster: true, castRange: 4, spellDamage: 25, inflicts: 'burn', inflictChance: 0.8,
+                color: '#dc2626', loot: '🥩d', isBoss: true, isElite: true,
+                flavor: "An ancient terror of the skies. Its scales are as hard as steel."
             },
-            '👻p': {
-                name: 'Drowned Buccaneer', tags: ['undead', 'aquatic'], mountable: false,
-                maxHealth: 35, attack: 6, defense: 2, xp: 50,
-                color: '#0ea5e9', loot: 'ancient_coin',
-                flavor: "Covered in barnacles. He still clutches his rusted cutlass."
+            '👁️a': {
+                name: 'Apex Void Terror', tags: ['void', 'monster', 'ethereal', 'boss'], mountable: false,
+                maxHealth: 500, attack: 12, defense: 4, xp: 1500,
+                caster: true, castRange: 6, spellDamage: 20, inflicts: 'madness', inflictChance: 1.0, teleporter: true,
+                color: '#7c3aed', loot: '🥩v', isBoss: true, isElite: true,
+                flavor: "It phases in and out of reality, turning the area around it into a waking nightmare."
             },
-            '🏴‍☠️c': {
-                name: 'Pirate Captain', tags: ['humanoid', 'boss'], mountable: false,
-                maxHealth: 250, attack: 12, defense: 4, xp: 800,
-                isRanged: true, range: 5, color: '#dc2626', loot: '🔫', isBoss: true,
-                flavor: "He laughs maniacally, leveling his Hand Cannon at your chest."
+            '🦍a': {
+                name: 'Apex Behemoth', tags: ['beast', 'giant', 'boss'], mountable: false,
+                maxHealth: 1000, attack: 22, defense: 5, xp: 1000,
+                inflicts: 'stun', inflictChance: 0.4,
+                color: '#78350f', loot: '🥩b', isBoss: true, isElite: true,
+                flavor: "A towering mass of muscle and rage that shatters the earth when it walks."
             },
-            '🧜‍♀️c': {
-                name: 'Abyssal Siren', tags: ['humanoid', 'aquatic', 'magic', 'void', 'boss'], mountable: false,
-                maxHealth: 150, attack: 8, defense: 2, xp: 300,
-                caster: true, castRange: 5, spellDamage: 10, inflicts: 'madness', inflictChance: 0.5,
-                color: '#a855f7', loot: '🐚', isBoss: true,
-                flavor: "Her song doesn't draw you into the water—it pulls the water into your lungs."
+            '🕷️a': {
+                name: 'Apex Broodmother', tags: ['beast', 'bug', 'poison', 'boss'], mountable: false,
+                maxHealth: 750, attack: 15, defense: 6, xp: 1100,
+                caster: true, castRange: 5, spellDamage: 20, inflicts: 'poison', inflictChance: 1.0,
+                color: '#16a34a', loot: '🥩s', isBoss: true, isElite: true,
+                flavor: "An enormous arachnid. Hundreds of glowing green eyes stare back at you."
             }
         },
 
-        // --- 3. NEW TILES & DUNGEON THEMES ---
+        // --- 3. NEW TILES ---
         tiles: {
-            '⚓c': {
-                type: 'dungeon_entrance', name: 'Pirate Cove',
-                flavor: "A hidden cove dug into the side of the island. Skulls line the entrance.",
-                getCaveId: (x, y) => `pirate_${x}_${y}`
-            },
-            '🚢g': {
-                type: 'landmark', name: 'Derelict Galleon',
-                flavor: "A massive ship floating silently on the waves. The sails are torn to shreds.",
-                eventId: 'DERELICT_GALLEON'
-            }
-        },
-        
-        // 🌟 LORE WIN: Interactive Ocean Event
-        events: {
-            'DERELICT_GALLEON': {
-                title: "The Ghost Ship",
-                oncePerTile: true,
-                lootedMessage: "Only the rotting, empty hull remains.",
-                nodes: {
-                    'start': {
-                        text: "You pull alongside the massive, silent galleon. The deck is covered in algae, and the ship's wheel spins lazily in the wind. There is no crew in sight.",
-                        choices: [
-                            {
-                                text: "Board the ship and search the cargo hold.",
-                                action: (state, ctx) => {
-                                    logMessage("{gray:You carefully step onto the rotting deck...}");
-                                    
-                                    // Ambush Check!
-                                    if (Math.random() < 0.40) {
-                                        logMessage("{red:It's a trap! Drowned Buccaneers pour out from the lower decks!}");
-                                        state.screenShake = 15;
-                                        if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
-                                        
-                                        // Spawn 2 Drowned Buccaneers
-                                        const eData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['👻p'] : { name: 'Drowned Buccaneer', maxHealth: 35, attack: 6, xp: 50 };
-                                        const offsets = [[-1, 0], [1, 0]];
-                                        offsets.forEach(off => {
-                                            const ex = ctx.x + off[0];
-                                            const ey = ctx.y + off[1];
-                                            
-                                            // Only spawn if it's open water or the ship tile
-                                            const tAt = typeof chunkManager !== 'undefined' ? chunkManager.getTile(ex, ey) : '~';
-                                            if (tAt === '~' || tAt === '🚢g') {
-                                                const enemyId = `overworld:${ex},${-ey}`;
-                                                const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(eData, ex, ey) : eData;
-                                                
-                                                state.sharedEnemies[enemyId] = { ...scaledStats, tile: '👻p', x: ex, y: ey, spawnTime: Date.now() };
-                                                
-                                                // 🚨 BUG FIX: Ensure Spatial Map is updated instantly so they attack!
-                                                if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, null, null, ex, ey);
-
-                                                if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(ex, ey, enemyId)).set(state.sharedEnemies[enemyId]);
-                                            }
-                                        });
-                                    } else {
-                                        const gold = 200 + Math.floor(Math.random() * 300);
-                                        // Strict coercion
-                                        state.player.coins = (Number(state.player.coins) || 0) + gold;
-                                        logMessage(`{gold:The hold is unguarded! You plunder ${gold} gold coins!}`);
-                                        if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
-                                        
-                                        // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Outward Spiral Drop
-                                        const dropSafely = (itemKey) => {
-                                            let placed = false;
-                                            if (typeof chunkManager !== 'undefined') {
-                                                for (let r = 0; r <= 2 && !placed; r++) {
-                                                    for (let dy = -r; dy <= r && !placed; dy++) {
-                                                        for (let dx = -r; dx <= r && !placed; dx++) {
-                                                            const tx = ctx.x + dx;
-                                                            const ty = ctx.y + dy;
-                                                            const tileAt = chunkManager.getTile(tx, ty);
-                                                            if (tileAt === '~' || tileAt === '🛟' || tileAt === '🚢g') {
-                                                                chunkManager.setWorldTile(tx, ty, itemKey, 24);
-                                                                placed = true;
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                                if (!placed) chunkManager.setWorldTile(ctx.x, ctx.y, itemKey, 24);
-                                                state.mapDirty = true;
-                                            }
-                                        };
-
-                                        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
-                                        const existingRum = state.player.inventory.find(i => i && i.name === 'Spiced Rum' && !i.isEquipped);
-                                        
-                                        if (existingRum) {
-                                            existingRum.quantity += 2;
-                                            logMessage("{purple:You also found a stash of Spiced Rum!}");
-                                        } else if (state.player.inventory.length < invCap) {
-                                            const rumTemplate = window.ITEM_DATA['🍺r'];
-                                            const newRum = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(rumTemplate) : JSON.parse(JSON.stringify(rumTemplate));
-                                            newRum.templateId = '🍺r'; newRum.quantity = 2; newRum.isEquipped = false;
-                                            newRum.effect = rumTemplate.effect; // Rebind the effect manually just in case
-                                            
-                                            state.player.inventory.push(newRum);
-                                            logMessage("{purple:You also found a stash of Spiced Rum!}");
-                                        } else {
-                                            logMessage("{red:You found a stash of Spiced Rum, but your pack is full! It drops onto the deck.}");
-                                            dropSafely('🍺r'); // Safer than sinking!
-                                        }
-                                    }
-                                    
-                                    // Mark as looted and sink the ship visually into Flotsam
-                                    state.lootedTiles.add(ctx.tileId);
-                                    if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(ctx.x, ctx.y, '🛟'); 
-                                    state.mapDirty = true;
-                                    
-                                    if (typeof renderStats === 'function') renderStats();
-                                    if (typeof renderInventory === 'function') renderInventory();
-                                }
-                            },
-                            { text: "Leave it alone. It's cursed." }
-                        ]
-                    }
+            '🐾': {
+                type: 'anomaly', name: 'Monster Tracks',
+                flavor: "Deep gouges in the earth left by an enormous creature.",
+                onInteract: (state, x, y) => {
+                    if (typeof window.handleMonsterTrack === 'function') window.handleMonsterTrack(state, x, y);
+                    return null;
                 }
-            }
-        },
-
-        caveThemes: {
-            'SUNKEN_SHIPWRECK': {
-                name: 'Sunken Shipwreck',
-                wall: '~', floor: '=', secretWall: '▒', // Surrounded by water, walking on planks
-                colors: { wall: '#1e3a8a', floor: '#451a03' },
-                decorations: ['📦w', '⚓', '🐚', '🦴'],
-                enemies: ['👻p', '🦀', '🦈', '🧜‍♀️c']
             },
-            'PIRATE_COVE': {
-                name: 'Pirate Cove',
-                wall: '▓', floor: 'D', secretWall: '🏚', // Sand floors
-                colors: { wall: '#57534e', floor: '#fde047' },
-                decorations: ['🌴', '📦', '$', '🛢'],
-                enemies: ['b', 'C', '👻p'] 
-            }
+            // Carcasses
+            '🥩d': {
+                type: 'anomaly', name: 'Slain Drake', flavor: "The massive corpse of an Apex Drake. It is still smoking.",
+                onInteract: (state, x, y) => { if (typeof window.carveMonster === 'function') window.carveMonster(state, x, y, 'Apex Drake Scale', '🥩d'); return null; }
+            },
+            '🥩v': {
+                type: 'anomaly', name: 'Slain Void Terror', flavor: "The remains of a Void Terror. It is dissolving into purple mist.",
+                onInteract: (state, x, y) => { if (typeof window.carveMonster === 'function') window.carveMonster(state, x, y, 'Apex Void Core', '🥩v'); return null; }
+            },
+            '🥩b': {
+                type: 'anomaly', name: 'Slain Behemoth', flavor: "The mountain of fur and muscle that was the Apex Behemoth.",
+                onInteract: (state, x, y) => { if (typeof window.carveMonster === 'function') window.carveMonster(state, x, y, 'Apex Behemoth Pelt', '🥩b'); return null; }
+            },
+            '🥩s': {
+                type: 'anomaly', name: 'Slain Broodmother', flavor: "The twitching carcass of the Apex Broodmother.",
+                onInteract: (state, x, y) => { if (typeof window.carveMonster === 'function') window.carveMonster(state, x, y, 'Apex Venom Gland', '🥩s'); return null; }
+            },
+            // Lairs
+            '🐉L': { type: 'dungeon_entrance', name: 'Scorched Roost', flavor: "The air here is blisteringly hot.", getCaveId: (x, y) => `hunter_drake_${x}_${y}` },
+            '👁️L': { type: 'dungeon_entrance', name: 'Tear in Reality', flavor: "The sky above this crater is completely black.", getCaveId: (x, y) => `hunter_void_${x}_${y}` },
+            '🦍L': { type: 'dungeon_entrance', name: 'Shattered Cavern', flavor: "The trees have been ripped out by the roots to form this den.", getCaveId: (x, y) => `hunter_behemoth_${x}_${y}` },
+            '🕸️L': { type: 'dungeon_entrance', name: 'Infested Burrow', flavor: "The entrance is completely choked with thick, green webbing.", getCaveId: (x, y) => `hunter_broodmother_${x}_${y}` }
         },
 
         // --- 4. SHOPS ---
         shops: {
             castle: [
-                { name: 'Diving Bell', price: 1500, stock: 1 },
-                { name: 'Cannonball', price: 10, stock: 50 }
+                { name: 'Hunter\'s Knife', price: 300, stock: 1 }
+            ],
+            trader: [
+                { name: 'Hunter\'s Knife', price: 250, stock: 1 },
+                { name: 'Hunter\'s Log', price: 50, stock: 1 }
             ]
         },
 
-        // --- 5. CUSTOM ROOM TEMPLATES ---
-        roomTemplates: {
-            "Captain's Quarters": {
-                width: 7, height: 7,
-                map: [' WWWWW ', 'W📦.🛏️.W', 'W.....W', 'W..🏴‍☠️c.W', 'W.....W', 'W..🍺r.W', ' WWWWW ']
-            },
-            "Flooded Cargo Hold": {
-                width: 9, height: 5,
-                map: [' WWWWWWW ', 'W📦.≈.📦W', 'W.≈.👻p.W', 'W.📦.≈..W', ' WWWWWWW ']
-            }
+        // --- 5. RECIPES ---
+        // 🌟 EXPANDABILITY WIN: Native dictionary injection!
+        craftingRecipes: {
+            "Drakebane Mail": { materials: { "Apex Drake Scale": 1, "Steel Armor": 1, "Elemental Core": 3 }, xp: 250, level: 5 },
+            "Voidstalker Cowl": { materials: { "Apex Void Core": 1, "Silk Cowl": 1, "Void Dust": 5 }, xp: 250, level: 5 },
+            "Behemoth Plate": { materials: { "Apex Behemoth Pelt": 1, "Studded Armor": 1, "Stone": 20 }, xp: 250, level: 5 },
+            "Broodmother Cloak": { materials: { "Apex Venom Gland": 1, "Silk Cowl": 1, "Spider Silk": 15 }, xp: 250, level: 5 },
+            "Bone Harpoon": { materials: { "Fossilized Bone": 1, "Iron Ore": 1 }, xp: 50, level: 3, yield: 2 }
+        },
+        
+        // Define throwing physics for the new Harpoon
+        alchemyRecipes: {
+            "Bone Harpoon": { materials: {}, xp: 0, level: 1, yield: 1, hidden: true }
         }
     },
 
     // --- 6. ENGINE HOOKS ---
     init: function() {
         
-        // 1. INJECT ISLAND GENERATION INTO THE WORLD RENDERER
+        // 🚨 OVERRIDE: Register Bone Harpoon in the Potion Engine to allow throwing
+        // Tricking the alchemy engine into throwing a spear that deals Poison (Bleed) damage!
+        if (typeof window.ITEM_DATA !== 'undefined' && window.ITEM_DATA['🗡️bh']) {
+            window.ITEM_DATA['🗡️bh'].pColor = '#ef4444'; // Red blood spray
+            window.ITEM_DATA['🗡️bh'].pSize = 10;
+            
+            // Re-route the effect definition so the engine can look it up correctly!
+            if (typeof ITEM_DATA !== 'undefined' && !ITEM_DATA['Bone Harpoon']) {
+                ITEM_DATA['Bone Harpoon'] = window.ITEM_DATA['🗡️bh'];
+            }
+        }
+
+        // ==========================================
+        // 1. TRACKING & CARVING LOGIC
+        // ==========================================
+        window.handleMonsterTrack = function(state, x, y) {
+            const p = state.player;
+            if (!p.activeHunt) p.activeHunt = { stage: 0, targetX: 0, targetY: 0, monster: null };
+
+            // Determine if starting a new hunt or continuing
+            let isNewHunt = false;
+            if (p.activeHunt.stage === 0 || (p.activeHunt.targetX !== x && p.activeHunt.targetY !== y)) {
+                isNewHunt = true;
+                const monsters = ['Drake', 'Void Terror', 'Behemoth', 'Broodmother'];
+                p.activeHunt = {
+                    stage: 1,
+                    monster: monsters[Math.floor(Math.random() * monsters.length)],
+                    targetX: x, targetY: y
+                };
+            } else {
+                p.activeHunt.stage++;
+            }
+
+            // Audio & Visuals
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 800); // Rustling sound
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#facc15', 10);
+            state.screenShake = 5;
+
+            // Generate Next Point (30 to 50 tiles away)
+            let placedNext = false;
+            let nextX = x, nextY = y;
+
+            for (let attempts = 0; attempts < 50; attempts++) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 30 + Math.floor(Math.random() * 20);
+                const tx = Math.floor(x + Math.cos(angle) * dist);
+                const ty = Math.floor(y + Math.sin(angle) * dist);
+
+                const tileAt = chunkManager.getTile(tx, ty);
+                
+                // Safe Tracker Placement (Explicitly check WorldState)
+                const chunkX = Math.floor(tx / 16);
+                const chunkY = Math.floor(ty / 16);
+                const lX = (((tx % 16) + 16) % 16);
+                const lY = (((ty % 16) + 16) % 16);
+                
+                let isWorldStateClear = true;
+                if (chunkManager.worldState[`${chunkX},${chunkY}`] && chunkManager.worldState[`${chunkX},${chunkY}`][`${lX},${lY}`]) {
+                    isWorldStateClear = false;
+                }
+
+                if (isWorldStateClear && ['.', 'F', 'd', 'D'].includes(tileAt)) {
+                    nextX = tx; nextY = ty;
+                    placedNext = true;
+                    break;
+                }
+            }
+
+            if (!placedNext) {
+                logMessage("{gray:The trail runs cold. You lost the scent.}");
+                p.activeHunt = { stage: 0 };
+                chunkManager.setWorldTile(x, y, '.');
+                return;
+            }
+
+            // --- 🎨 JUICE WIN: Color-Coded Scent Trail Particles! ---
+            if (typeof ParticleSystem !== 'undefined') {
+                let trackColor = '#4ade80'; // default green
+                if (p.activeHunt.monster === 'Drake') trackColor = '#f97316';
+                if (p.activeHunt.monster === 'Void Terror') trackColor = '#a855f7';
+                if (p.activeHunt.monster === 'Behemoth') trackColor = '#b45309';
+                if (p.activeHunt.monster === 'Broodmother') trackColor = '#22c55e';
+                
+                const angleToNext = Math.atan2(nextY - y, nextX - x);
+                for(let i = 1; i <= 8; i++) {
+                    setTimeout(() => {
+                        ParticleSystem.spawn(x + Math.cos(angleToNext) * i, y + Math.sin(angleToNext) * i, trackColor, 'dust', '', 3);
+                    }, i * 60);
+                }
+            }
+
+            // Place the next step!
+            if (p.activeHunt.stage >= 3) {
+                // SPAWN THE LAIR!
+                let lairTile = '🦍L';
+                if (p.activeHunt.monster === 'Drake') lairTile = '🐉L';
+                if (p.activeHunt.monster === 'Void Terror') lairTile = '👁️L';
+                if (p.activeHunt.monster === 'Broodmother') lairTile = '🕸️L';
+                
+                chunkManager.setWorldTile(nextX, nextY, lairTile);
+                
+                // Add marker to map
+                state.activeTreasure = { x: nextX, y: nextY };
+                
+                logMessage(`{red:You found the lair of the Apex ${p.activeHunt.monster}! It is marked on your map.}`);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
+                
+                p.activeHunt = { stage: 0 }; // Reset hunt state
+            } else {
+                // Spawn next track
+                chunkManager.setWorldTile(nextX, nextY, '🐾');
+                p.activeHunt.targetX = nextX;
+                p.activeHunt.targetY = nextY;
+                
+                const dirStr = typeof getDirectionString === 'function' ? getDirectionString({x: Math.sign(nextX - x), y: Math.sign(nextY - y)}, true) : 'away';
+                
+                if (isNewHunt) {
+                    logMessage(`{green:You found the tracks of an Apex ${p.activeHunt.monster}! The scent trail leads ${dirStr}.}`);
+                } else {
+                    logMessage(`{green:The trail is fresh. The ${p.activeHunt.monster} went ${dirStr}.}`);
+                }
+            }
+
+            // Remove current track
+            chunkManager.setWorldTile(x, y, '.');
+            state.mapDirty = true;
+            if (typeof render === 'function') render();
+            
+            // Defensively debounce save
+            if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ activeHunt: p.activeHunt });
+        };
+
+        window.carveMonster = function(state, x, y, trophyName, carcassTile) {
+            
+            // 🚨 BUG FIX & EXPLOIT GUARD: Mutex Lock
+            // Prevents a player from clicking the carcass twice before the network deletes it, 
+            // rewarding them with two legendary items!
+            if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
+            
+            try {
+                isProcessingMove = true;
+                const p = state.player;
+                const hasKnife = p.inventory.some(i => i && i.name === 'Hunter\'s Knife' && !i.isEquipped);
+
+                if (!hasKnife) {
+                    logMessage("{red:You need a Hunter's Knife to carve this carcass!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                    return;
+                }
+
+                logMessage(`{orange:You meticulously carve the monster, extracting the ${trophyName}!}`);
+                if (typeof AudioSystem !== 'undefined') {
+                    AudioSystem.playAttack('sweep'); // Slicing sound
+                    setTimeout(() => AudioSystem.playNoise(0.2, 0.1, 400), 100); // Squish
+                }
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#ef4444', 25); // Huge blood spray
+                
+                p.stamina = Math.max(0, p.stamina - 5);
+                if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('staminaDisplay'), false);
+
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(p) : 9;
+                
+                // Safe Outward Spiral Drop for Multiple Loot Returns!
+                const safelyDropItem = (itemTile) => {
+                    let placed = false;
+                    let validFloor = '.';
+                    if (state.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[state.currentCaveTheme]) {
+                        validFloor = CAVE_THEMES[state.currentCaveTheme].floor;
+                    }
+
+                    if (typeof chunkManager !== 'undefined') {
+                        for (let r = 0; r <= 2 && !placed; r++) {
+                            for (let dy = -r; dy <= r && !placed; dy++) {
+                                for (let dx = -r; dx <= r && !placed; dx++) {
+                                    const tx = x + dx; // Spawns spiraling OUTWARDS from the carcass
+                                    const ty = y + dy;
+                                    let tileAt;
+                                    if (state.mapMode === 'overworld' || state.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
+                                    else if (state.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[state.currentCaveId]?.[ty]?.[tx];
+                                    else if (state.mapMode === 'castle') tileAt = chunkManager.castleMaps[state.currentCastleId]?.[ty]?.[tx];
+
+                                    if (tileAt === validFloor || tileAt === '.') {
+                                        if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(tx, ty, itemTile, 24); 
+                                        else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][ty][tx] = itemTile;
+                                        else if (state.mapMode === 'castle') chunkManager.castleMaps[state.currentCastleId][ty][tx] = itemTile;
+                                        placed = true;
+                                    }
+                                }
+                            }
+                        }
+                        if (!placed) { // Absolute fallback
+                            if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(x, y, itemTile, 24);
+                            else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][y][x] = itemTile;
+                            else if (state.mapMode === 'castle') chunkManager.castleMaps[state.currentCastleId][y][x] = itemTile;
+                        }
+                    }
+                };
+
+                const addOrDropItem = (itemName, itemType, itemQty, itemTile) => {
+                    const existing = p.inventory.find(i => i && i.name === itemName && !i.isEquipped);
+                    const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(itemType);
+                    
+                    if (existing && isStackable) {
+                        existing.quantity += itemQty;
+                    } else if (p.inventory.length < invCap) {
+                        // Safe Template Cloning!
+                        const baseKey = Object.keys(window.ITEM_DATA || {}).find(k => window.ITEM_DATA[k].name === itemName);
+                        const template = baseKey ? window.ITEM_DATA[baseKey] : null;
+                        
+                        let newItem = template && typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : { name: itemName, type: itemType, tile: itemTile };
+                        newItem.templateId = baseKey;
+                        newItem.quantity = itemQty; 
+                        newItem.isEquipped = false;
+                        p.inventory.push(newItem);
+                    } else {
+                        // Drop on the ground via safe spiral!
+                        safelyDropItem(itemTile);
+                        logMessage(`{red:Inventory full! The ${itemName} drops to the ground.}`);
+                    }
+                };
+
+                // 1. Give Trophy
+                addOrDropItem(trophyName, 'trade', 1, '💎');
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+
+                // 2. Give Bonus Meat/Bones safely
+                addOrDropItem('Raw Meat', 'junk', 5, '🍖');
+                addOrDropItem('Fossilized Bone', 'trade', 2, '🦴');
+
+                // Clear the carcass
+                if (state.mapMode === 'overworld') chunkManager.setWorldTile(x, y, '.');
+                else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][y][x] = '.';
+                
+                state.mapDirty = true;
+                if (typeof renderInventory === 'function') renderInventory();
+                if (typeof render === 'function') render();
+                if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : p.inventory });
+                
+            } finally {
+                isProcessingMove = false;
+            }
+        };
+
+        // ==========================================
+        // 2. OVERWORLD TRACK SPAWNING
+        // ==========================================
         if (typeof chunkManager !== 'undefined' && chunkManager.generateChunk) {
             const origGenerateChunk = chunkManager.generateChunk;
-            
             chunkManager.generateChunk = function(chunkX, chunkY) {
                 origGenerateChunk.call(this, chunkX, chunkY);
                 
-                const chunkId = `${chunkX},${chunkY}`;
-                const chunkData = this.loadedChunks[chunkId];
-                
-                // Only process islands in Realm 0
+                // Only spawn new tracks in Realm 0
                 if (typeof gameState !== 'undefined' && gameState.currentRealm !== 0 && gameState.currentRealm) return;
 
-                // Loop through the chunk and spawn islands in deep water
-                for(let y = 0; y < 16; y++) {
-                    for(let x = 0; x < 16; x++) {
-                        const worldX = chunkX * 16 + x;
-                        const worldY = chunkY * 16 + y;
-                        const distSq = (worldX * worldX) + (worldY * worldY);
-                        
-                        // Deep Ocean Check (> 1000 tiles from spawn)
-                        if (chunkData[y][x] === '~' && distSq > 1000000) { 
-                            // Custom Perlin Noise threshold for islands
-                            const islandNoise = typeof elevationNoise !== 'undefined' ? elevationNoise.noise(worldX / 15 + 5000, worldY / 15 + 5000) : 0;
-                            
-                            // Deterministic PRNG seeded specifically to this world coordinate
-                            const random = typeof Alea !== 'undefined' ? Alea(typeof stringToSeed !== 'undefined' ? stringToSeed(`ocean_${worldX}_${worldY}`) : 1) : Math.random;
-                            
-                            if (islandNoise > 0.85) {
-                                chunkData[y][x] = 'D'; // Sand beach
-                                
-                                // Flora & Features (LORE WIN: Dynamic island populations!)
-                                const rVal = random();
-                                if (rVal < 0.05) chunkData[y][x] = '🌴';
-                                else if (rVal < 0.08) chunkData[y][x] = '∴'; // Dig spot!
-                                else if (rVal < 0.10) chunkData[y][x] = '🦀'; // Giant crab!
-                                else if (rVal < 0.11) chunkData[y][x] = '🍺r'; // Washed up rum
-
-                                // Pirate Coves (Rare)
-                                if (islandNoise > 0.92 && random() < 0.05) {
-                                    chunkData[y][x] = '⚓c';
-                                }
-                            } 
-                            // Use the deterministic `random()` instead of `Math.random()` to prevent ships flickering!
-                            else if (islandNoise > 0.80 && random() < 0.005) {
-                                // Blockading Pirate Ships sitting just off the coast!
-                                chunkData[y][x] = '🏴‍☠️';
-                            }
-                            
-                            // 🌟 EVENT WIN: Ghost Ships floating in the deep sea
-                            if (random() < 0.002 && distSq > 4000000) {
-                                chunkData[y][x] = '🚢g';
-                            }
-                        }
+                const chunkId = `${chunkX},${chunkY}`;
+                const chunkData = this.loadedChunks[chunkId];
+                const random = typeof Alea !== 'undefined' ? Alea(typeof stringToSeed !== 'undefined' ? stringToSeed(`hunter_spawn_${chunkId}`) : 1) : Math.random;
+                
+                // 5% chance per chunk to contain the start of a monster trail
+                if (random() < 0.05) { 
+                    const rx = Math.floor(random() * 14) + 1;
+                    const ry = Math.floor(random() * 14) + 1;
+                    if (chunkData[ry][rx] === '.' || chunkData[ry][rx] === 'F') {
+                        chunkData[ry][rx] = '🐾'; 
                     }
                 }
             };
         }
 
-        // 2. INJECT DUNGEON THEME OVERRIDES
-        // We monkey-patch the cave generator so our custom Dungeon Entrances map to our new Themes!
+        // ==========================================
+        // 3. LAIR DUNGEON GENERATION
+        // ==========================================
+        // Monkey-patch generateCave to create the Boss Rooms!
         if (typeof chunkManager !== 'undefined' && chunkManager.generateCave) {
             const origGenerateCave = chunkManager.generateCave;
-            
             chunkManager.generateCave = function(caveId) {
-                // Let the original function build the maze
-                const map = origGenerateCave.call(this, caveId);
-                
-                // If it's a shipwreck or pirate cove, forcefully repaint the walls and floors
-                // to match the correct aesthetic, bypassing the random theme picker!
-                if (caveId.startsWith('shipwreck_') || caveId.startsWith('pirate_')) {
-                    const themeKey = caveId.startsWith('shipwreck_') ? 'SUNKEN_SHIPWRECK' : 'PIRATE_COVE';
-                    const oldThemeKey = this.caveThemes[caveId]; // Whatever it randomly picked
-                    this.caveThemes[caveId] = themeKey; // Override
+                if (caveId.startsWith('hunter_')) {
+                    if (this.caveMaps[caveId]) return this.caveMaps[caveId];
                     
-                    const newTheme = window.CAVE_THEMES[themeKey];
-                    const oldTheme = window.CAVE_THEMES[oldThemeKey] || { wall: '▓', floor: '.', secretWall: '▒' };
+                    let themeKey = 'ROCK';
+                    let bossTile = '🦍a';
                     
-                    // Safe Theme Replacement
-                    // Preserves custom decorative tiles and items stamped by the room generator!
-                    for(let y = 0; y < map.length; y++) {
-                        for(let x = 0; x < map[y].length; x++) {
-                            if (map[y][x] === oldTheme.wall) map[y][x] = newTheme.wall;
-                            else if (map[y][x] === oldTheme.floor) map[y][x] = newTheme.floor;
-                            else if (map[y][x] === oldTheme.secretWall) map[y][x] = newTheme.secretWall;
+                    if (caveId.includes('drake')) { themeKey = 'FIRE'; bossTile = '🐉a'; }
+                    else if (caveId.includes('void')) { themeKey = 'VOID'; bossTile = '👁️a'; }
+                    else if (caveId.includes('behemoth')) { themeKey = 'OVERGROWN'; bossTile = '🦍a'; }
+                    else if (caveId.includes('broodmother')) { themeKey = 'FUNGAL'; bossTile = '🕷️a'; }
+                    
+                    this.caveThemes[caveId] = themeKey;
+                    const theme = window.CAVE_THEMES[themeKey] || { wall: '▓', floor: '.' };
+                    
+                    // Create a 13x13 Boss Arena
+                    const mapHeight = 13;
+                    const mapWidth = 13;
+                    const map = Array.from({ length: mapHeight }, () => Array(mapWidth).fill(theme.wall));
+                    
+                    this.caveEnemies[caveId] = [];
+                    
+                    // Hollow it out
+                    for(let ry = 2; ry < mapHeight - 2; ry++){
+                        for(let rx = 2; rx < mapWidth - 2; rx++){
+                            map[ry][rx] = theme.floor;
                         }
                     }
-
+                    
+                    // Add Entrance
+                    map[mapHeight-2][Math.floor(mapWidth/2)] = '>';
+                    
+                    // 🚨 BUG FIX WIN: Ensure there is an EXIT `<` so players aren't trapped!
+                    map[mapHeight-3][Math.floor(mapWidth/2)] = '<';
+                    
                     // Safe Entity Instantiator Fallback
                     const createEntity = typeof this._createInstancedEnemy === 'function' 
                         ? this._createInstancedEnemy.bind(this) 
                         : (id, x, y, tile, scaled, template) => ({ id, x, y, tile, name: scaled.name, health: scaled.maxHealth, maxHealth: scaled.maxHealth, attack: scaled.attack, defense: scaled.defense || 0, xp: scaled.xp, loot: template.loot });
 
-                    // 🚨 EXPANSION WIN: Injected Thematic Bosses!
-                    // Both the Pirate Cove and the Sunken Shipwreck get a guaranteed Boss at the center!
-                    const cy = Math.floor(map.length / 2);
-                    const cx = Math.floor(map[0].length / 2);
-                        
-                    // Ensure we don't spawn the boss inside a wall or on the stairs
-                    if (map[cy][cx] === newTheme.floor || map[cy][cx] === oldTheme.floor) {
-                        
-                        let bossTile = '🏴‍☠️c';
-                        let baseBossData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['🏴‍☠️c'] : null;
-                        
-                        // Override if Shipwreck
-                        if (themeKey === 'SUNKEN_SHIPWRECK') {
-                            bossTile = '🧜‍♀️c';
-                            baseBossData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['🧜‍♀️c'] : null;
-                        }
-
-                        if (baseBossData) {
-                            map[cy][cx] = bossTile;
-                            // Safe Fast Clone
-                            const baseClone = typeof window.fastClone === 'function' ? window.fastClone(baseBossData) : JSON.parse(JSON.stringify(baseBossData));
-                            const scaled = { ...baseClone, maxHealth: baseClone.maxHealth, attack: baseClone.attack, xp: baseClone.xp }; 
-                            
-                            this.caveEnemies[caveId].push(createEntity(`${caveId}:boss`, cx, cy, bossTile, scaled, baseBossData));
-                        }
+                    // Spawn the Boss
+                    const bx = Math.floor(mapWidth/2);
+                    const by = 3;
+                    map[by][bx] = bossTile;
+                    
+                    const bData = window.ENEMY_DATA ? window.ENEMY_DATA[bossTile] : null;
+                    if (bData) {
+                        // Safe clone to sever memory references to global template!
+                        const bossScaled = typeof window.fastClone === 'function' ? window.fastClone(bData) : JSON.parse(JSON.stringify(bData));
+                        this.caveEnemies[caveId].push(createEntity(`${caveId}:boss`, bx, by, bossTile, bossScaled, bData));
                     }
+                    
+                    this.caveMaps[caveId] = map;
+                    return map;
                 }
-                return map;
+                return origGenerateCave.call(this, caveId);
             };
         }
 
-        // 3. INJECT COLORS INTO THE MINIMAP CACHE
+        // ==========================================
+        // 4. PASSIVE ARMOR EFFECTS (ENGINE HOOK)
+        // ==========================================
+
+        // Hook into the endPlayerTurn function to continuously apply the powerful passives of Hunter Gear!
+        if (typeof window.endPlayerTurn === 'function') {
+            const origEndPlayerTurn = window.endPlayerTurn;
+            window.endPlayerTurn = function(updates = {}) {
+                
+                if (typeof gameState !== 'undefined' && gameState.player && gameState.player.equipment) {
+                    const armor = gameState.player.equipment.armor;
+                    if (armor) {
+                        // 🚨 BUG FIX & ROBUSTNESS WIN: Use Template ID for safe passive checks!
+                        // This ensures that "Masterwork Drakebane Mail" still grants Fire Immunity!
+                        const armorTemplateId = armor.templateId || (typeof window.ITEM_DATA !== 'undefined' ? Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === armor.name) : null);
+                        
+                        if (armorTemplateId === '🛡️db' || armor.name.includes('Drakebane')) {
+                            // Permanent Fire Immunity
+                            gameState.player.fireResistTurns = Math.max(gameState.player.fireResistTurns || 0, 2);
+                        }
+                        else if (armorTemplateId === '🧥vs' || armor.name.includes('Voidstalker')) {
+                            // Permanent Madness Immunity
+                            if (gameState.player.madnessTurns > 0) {
+                                gameState.player.madnessTurns = 0;
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "RESISTED", "#a855f7");
+                            }
+                        }
+                        else if (armorTemplateId === '🛡️bp' || armor.name.includes('Behemoth Plate')) {
+                            // Permanent Thorns
+                            gameState.player.thornsValue = Math.max(gameState.player.thornsValue || 0, 5);
+                            gameState.player.thornsTurns = Math.max(gameState.player.thornsTurns || 0, 2);
+                        }
+                        else if (armorTemplateId === '🧥b' || armor.name.includes('Broodmother')) {
+                            // Permanent Poison Immunity
+                            if (gameState.player.poisonTurns > 0) {
+                                gameState.player.poisonTurns = 0;
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "RESISTED", "#22c55e");
+                            }
+                        }
+                    }
+                }
+                
+                // Pass all arguments forward safely
+                if (origEndPlayerTurn) origEndPlayerTurn.apply(this, arguments);
+            };
+        }
+
+        // Add Tracks and Carcasses to minimap colors
         if (typeof window.TILE_COLOR_MAP !== 'undefined') {
-            window.TILE_COLOR_MAP['🏴‍☠️'] = [17, 24, 39, 255];  // Black Ship
-            window.TILE_COLOR_MAP['⚓c'] = [133, 77, 14, 255]; // Wood/Brown Cove
-            window.TILE_COLOR_MAP['🍺r'] = [234, 179, 8, 255]; // Gold/Rum
-            window.TILE_COLOR_MAP['🚢g'] = [55, 65, 81, 255];  // Gray Ghost Ship
+            window.TILE_COLOR_MAP['🐾'] = [250, 204, 21, 255]; // Yellow tracks
+            window.TILE_COLOR_MAP['🥩d'] = [220, 38, 38, 255]; // Red carcass
+            window.TILE_COLOR_MAP['🥩v'] = [168, 85, 247, 255]; // Purple carcass
+            window.TILE_COLOR_MAP['🥩b'] = [120, 53, 15, 255]; // Brown carcass
+            window.TILE_COLOR_MAP['🥩s'] = [22, 163, 74, 255]; // Green carcass
+            window.TILE_COLOR_MAP['🐉L'] = [220, 38, 38, 255]; // Red Lair
+            window.TILE_COLOR_MAP['👁️L'] = [168, 85, 247, 255]; // Purple Lair
+            window.TILE_COLOR_MAP['🦍L'] = [120, 53, 15, 255]; // Brown Lair
+            window.TILE_COLOR_MAP['🕸️L'] = [22, 163, 74, 255]; // Green Lair
         }
     }
 });
 
-// --- END OF FILE expansion-astral-sea.js ---
+// --- END OF FILE expansion-monster-hunter.js ---
