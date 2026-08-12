@@ -278,11 +278,9 @@ const chunkManager = {
 
         // --- 3. STAMP THEMED ROOMS ---
         // Initialize the enemy list here
-        if (!this.caveEnemies[caveId]) {
-            this.caveEnemies[caveId] = [];
-        }
+        this.caveEnemies[caveId] = [];
 
-        // PERFORMANCE: Cache room templates
+        // Cache room templates
         if (!window.CACHED_ROOM_TEMPLATES) {
             window.CACHED_ROOM_TEMPLATES = Object.values(typeof CAVE_ROOM_TEMPLATES !== 'undefined' ? CAVE_ROOM_TEMPLATES : {});
         }
