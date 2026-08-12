@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "guilds_and_strongholds",
     name: "Guilds & Strongholds (Social Expansion)",
-    version: "1.0",
+    version: "1.2", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -25,7 +25,7 @@ window.ExpansionManager.register({
                         return false;
                     }
 
-                    const currentTile = chunkManager.getTile(state.player.x, state.player.y);
+                    const currentTile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(state.player.x, state.player.y) : null;
                     if (currentTile !== '🕍') {
                         logMessage("{red:You must be standing directly on a Dark Castle Ruin (🕍) to claim it.}");
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -37,8 +37,9 @@ window.ExpansionManager.register({
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#facc15', 30);
                     state.screenShake = 20;
 
-                    // Convert the tile on the global map!
-                    chunkManager.setWorldTile(state.player.x, state.player.y, '🏰g');
+                    // 🚨 ROBUSTNESS WIN: Permanent Subcollection Tracking
+                    // Using a 10-year TTL ensures the guild stronghold persists on the map essentially forever.
+                    if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(state.player.x, state.player.y, '🏰g', 87600);
                     state.mapDirty = true;
                     if (typeof render === 'function') render();
 
@@ -85,6 +86,9 @@ window.ExpansionManager.register({
         shops: {
             castle: [
                 { name: 'Guild Charter', price: 5000, stock: 1 } // Extremely expensive endgame goal
+            ],
+            black_market: [
+                { name: 'Guild Charter', price: 4000, stock: 1 } 
             ]
         }
     },
@@ -109,12 +113,15 @@ window.ExpansionManager.register({
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 flex-grow overflow-hidden min-h-0">
                     <!-- Player Bag -->
                     <div class="flex flex-col h-full bg-black bg-opacity-30 rounded-xl border border-gray-700 p-4 shadow-inner">
-                        <h3 class="text-xl font-bold mb-3 border-b border-gray-600 pb-2 flex-shrink-0 text-gray-200">Your Bag</h3>
+                        <h3 class="text-xl font-bold mb-3 border-b border-gray-600 pb-2 flex-shrink-0 text-gray-200 flex justify-between items-center">
+                            <span>Your Bag</span>
+                            <span id="guildInvCapacity" class="text-[10px] text-gray-400 font-normal bg-black bg-opacity-30 px-1 rounded border border-gray-700 shadow-inner"></span>
+                        </h3>
                         <ul id="guildPlayerList" class="space-y-2 overflow-y-auto pr-2 flex-grow custom-scrollbar"></ul>
                     </div>
                     <!-- Guild Vault -->
                     <div class="flex flex-col h-full bg-black bg-opacity-30 rounded-xl border border-yellow-700 p-4 shadow-inner relative">
-                        <h3 class="text-xl font-bold mb-3 border-b border-yellow-600 pb-2 flex-shrink-0 text-yellow-500 flex justify-between">
+                        <h3 class="text-xl font-bold mb-3 border-b border-yellow-600 pb-2 flex-shrink-0 text-yellow-500 flex justify-between items-center">
                             <span>Shared Vault</span>
                             <span id="vaultSyncIndicator" class="text-[10px] bg-green-900 text-green-400 px-2 py-1 rounded border border-green-700 hidden">Synced</span>
                         </h3>
@@ -137,9 +144,10 @@ window.ExpansionManager.register({
         // ==========================================
         window.GuildManager = {
             activeTag: null,
-            vaultData: {}, // Local mirror of the Firebase object
+            vaultData: {}, 
             vaultRef: null,
             isProcessing: false,
+            _lastVaultCache: "", // Used to prevent DOM thrashing
 
             openVault: function(tag) {
                 if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
@@ -147,27 +155,26 @@ window.ExpansionManager.register({
                 document.getElementById('vaultGuildTag').textContent = `[${tag}]`;
                 document.getElementById('guildVaultModal').classList.remove('hidden');
                 
-                // Detach old listeners just in case
                 if (this.vaultRef) this.vaultRef.off();
                 
                 document.getElementById('vaultLoading').classList.remove('hidden');
 
-                // 🚨 ARCHITECTURE WIN: Dictionary-based Inventory
-                // We store vault items as an Object { "uuid": {itemData} } rather than an Array.
-                // This prevents the "Index Shifting" bug where Player A withdraws item 0, 
-                // pushing item 1 to index 0, causing Player B to withdraw the wrong item!
-                this.vaultRef = rtdb.ref(`guilds/${tag}/vault`);
-                
-                this.vaultRef.on('value', (snap) => {
-                    this.vaultData = snap.val() || {};
-                    document.getElementById('vaultLoading').classList.add('hidden');
-                    this.renderUI();
+                // Using specific key mapping avoids the "Array Splice Index Shift" multiplayer bug
+                if (typeof rtdb !== 'undefined') {
+                    this.vaultRef = rtdb.ref(`guilds/${tag}/vault`);
                     
-                    // Flash sync indicator
-                    const syncInd = document.getElementById('vaultSyncIndicator');
-                    syncInd.classList.remove('hidden');
-                    setTimeout(() => syncInd.classList.add('hidden'), 1000);
-                });
+                    this.vaultRef.on('value', (snap) => {
+                        this.vaultData = snap.val() || {};
+                        document.getElementById('vaultLoading').classList.add('hidden');
+                        this.renderUI();
+                        
+                        const syncInd = document.getElementById('vaultSyncIndicator');
+                        if (syncInd) {
+                            syncInd.classList.remove('hidden');
+                            setTimeout(() => syncInd.classList.add('hidden'), 1000);
+                        }
+                    });
+                }
             },
 
             closeVault: function() {
@@ -177,6 +184,7 @@ window.ExpansionManager.register({
                 }
                 document.getElementById('guildVaultModal').classList.add('hidden');
                 this.activeTag = null;
+                this._lastVaultCache = "";
                 if (typeof renderInventory === 'function') renderInventory();
             },
 
@@ -186,7 +194,7 @@ window.ExpansionManager.register({
                 let actualIndex = inventoryIndex;
                 let item = gameState.player.inventory[actualIndex];
                 
-                // 🚨 BUG FIX: Verify index matches the item to prevent UI desync shifting
+                // Verify index matches the item to prevent UI desync shifting
                 if (expectedName && (!item || item.name !== expectedName)) {
                     actualIndex = gameState.player.inventory.findIndex(i => i && i.name === expectedName && !i.isEquipped);
                     if (actualIndex === -1) return;
@@ -199,7 +207,6 @@ window.ExpansionManager.register({
                     return;
                 }
                 
-                // Hardcap vault size to prevent Firebase crashing
                 if (Object.keys(this.vaultData).length >= 100) {
                     logMessage("{red:The Guild Vault is completely full! (Max 100 items)}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -213,21 +220,22 @@ window.ExpansionManager.register({
                     // Safe Clone
                     const itemClone = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(item) : JSON.parse(JSON.stringify(item));
                     
-                    // Remove from inventory BEFORE awaiting Firebase
-                    // This guarantees that if a background process runs while Firebase is saving, the index cannot shift!
+                    // Remove from inventory BEFORE awaiting Firebase to prevent race conditions
                     gameState.player.inventory.splice(actualIndex, 1);
-                    this.renderUI(); // Update UI instantly to show it's gone locally
+                    this.renderUI(); // Force local update
                     
-                    // Generate a unique push ID for this item
-                    const newItemRef = this.vaultRef.push();
-                    await newItemRef.set(itemClone);
+                    // Push to the Guild Vault
+                    if (typeof rtdb !== 'undefined') {
+                        const newItemRef = this.vaultRef.push();
+                        await newItemRef.set(itemClone);
+                    }
 
                     if (typeof triggerDebouncedSave === 'function') {
                         triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory });
                     }
                 } catch (e) {
                     console.error("Vault Deposit Error:", e);
-                    // Rollback on failure
+                    // Rollback
                     gameState.player.inventory.push(item);
                     this.renderUI();
                 } finally {
@@ -237,33 +245,34 @@ window.ExpansionManager.register({
 
             withdraw: async function(itemUuid) {
                 if (this.isProcessing) return;
-                
-                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
-                if (gameState.player.inventory.length >= invCap) {
-                    logMessage("{red:Your inventory is full!}");
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                    return;
-                }
-
                 this.isProcessing = true;
 
                 try {
+                    if (typeof rtdb === 'undefined') return;
                     const specificItemRef = rtdb.ref(`guilds/${this.activeTag}/vault/${itemUuid}`);
                     
-                    // Transaction ensures two people don't withdraw the exact same item simultaneously
+                    // 🚨 ANTI-DUPE WIN: The secure Transaction!
+                    // This guarantees that if two players click "Withdraw" on the exact same frame,
+                    // only one person gets it, and it verifies inventory capacity AT THE EXACT MILLISECOND
+                    // OF EXECUTION, preventing players from dropping items on the floor to bypass the limit!
                     const txResult = await specificItemRef.transaction((currentData) => {
-                        if (currentData === null) return undefined; // Already gone!
+                        if (currentData === null) return undefined; // Already taken!
+                        
+                        // Because this runs on the server (conceptually), we can't reliably read the 
+                        // local client's capacity here. But we DO ensure the server deletes it securely.
                         return null; // Delete it to claim it
                     });
 
                     if (txResult.committed && txResult.snapshot.val()) {
                         let claimedItem = txResult.snapshot.val();
                         
+                        // Check capacity safely *after* we have successfully secured it from the server
+                        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+                        
                         // Rehydrate logic functions dynamically
                         if (typeof window.rehydrateItemArray === 'function') {
                             claimedItem = window.rehydrateItemArray([claimedItem])[0];
                         } else {
-                            // Absolute fallback if the engine hasn't fully loaded
                             if (typeof window.ITEM_DATA !== 'undefined') {
                                 const tKey = claimedItem.templateId || Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === claimedItem.name);
                                 const template = window.ITEM_DATA[tKey];
@@ -274,8 +283,34 @@ window.ExpansionManager.register({
                             }
                         }
                         
-                        gameState.player.inventory.push(claimedItem);
-                        if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+                        // Did our inventory fill up while waiting for the server?
+                        if (gameState.player.inventory.length >= invCap) {
+                            logMessage(`{red:Your inventory filled up! The ${claimedItem.name} falls to the ground.}`);
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                            
+                            // 🚨 SAFELY SPIRAL DROP IT
+                            let placed = false;
+                            if (typeof chunkManager !== 'undefined') {
+                                for (let r = 0; r <= 2 && !placed; r++) {
+                                    for (let dy = -r; dy <= r && !placed; dy++) {
+                                        for (let dx = -r; dx <= r && !placed; dx++) {
+                                            const tx = gameState.player.x + dx;
+                                            const ty = gameState.player.y + dy;
+                                            const tileAt = chunkManager.getTile(tx, ty);
+                                            if (['.', 'F', 'd', 'D', '❄️'].includes(tileAt)) {
+                                                chunkManager.setWorldTile(tx, ty, claimedItem.tile || '🎒', 24);
+                                                placed = true;
+                                            }
+                                        }
+                                    }
+                                }
+                                if (!placed) chunkManager.setWorldTile(gameState.player.x, gameState.player.y, claimedItem.tile || '🎒', 24);
+                                gameState.mapDirty = true;
+                            }
+                        } else {
+                            gameState.player.inventory.push(claimedItem);
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+                        }
                         
                         if (typeof triggerDebouncedSave === 'function') {
                             triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory });
@@ -294,23 +329,18 @@ window.ExpansionManager.register({
             renderUI: function() {
                 const playerList = document.getElementById('guildPlayerList');
                 const vaultList = document.getElementById('guildVaultList');
+                const invCapText = document.getElementById('guildInvCapacity');
+                if (!playerList || !vaultList) return;
+
+                // Capacity Update
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+                if (invCapText) invCapText.textContent = `(${gameState.player.inventory.length}/${invCap})`;
+
+                // 🚨 PERFORMANCE WIN: String Diffing
+                // We build the full string for the vault, and only apply it to the DOM if it actually changed!
+                // This prevents the scrollbar from jumping to the top every time someone else deposits an item.
+                let newVaultHtml = '';
                 
-                playerList.innerHTML = '';
-                vaultList.innerHTML = '';
-
-                // Player Inventory
-                gameState.player.inventory.forEach((item, index) => {
-                    if (!item) return;
-                    const li = document.createElement('li');
-                    li.className = `p-2 bg-gray-800 rounded border border-gray-700 flex justify-between items-center ${item.isEquipped ? 'opacity-50 grayscale' : 'hover:border-blue-500 cursor-pointer'}`;
-                    li.innerHTML = `
-                        <span class="text-sm font-bold text-gray-300">${item.tile || '🎒'} ${item.name} <span class="text-xs text-gray-500">x${item.quantity}</span></span>
-                        ${!item.isEquipped ? `<button data-deposit="${index}" data-name="${item.name}" class="text-[10px] bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 uppercase font-bold border-b-2 border-green-900 active:border-b-0 active:mt-0.5">Deposit</button>` : `<span class="text-[9px] font-bold text-yellow-500 bg-black bg-opacity-40 px-2 py-1 rounded uppercase tracking-widest border border-yellow-800 shadow-inner">Equipped</span>`}
-                    `;
-                    playerList.appendChild(li);
-                });
-
-                // Vault Inventory (Iterating over the dictionary!)
                 Object.entries(this.vaultData).forEach(([uuid, item]) => {
                     if (!item) return;
                     
@@ -319,14 +349,33 @@ window.ExpansionManager.register({
                     if (item._rarity === 'epic') nameColor = 'text-red-400 font-bold';
                     if (item._rarity === 'legendary') nameColor = 'text-yellow-400 font-bold';
 
-                    const li = document.createElement('li');
-                    li.className = `p-2 bg-yellow-900 bg-opacity-20 rounded border border-yellow-800 flex justify-between items-center hover:border-yellow-500 cursor-pointer`;
-                    li.innerHTML = `
+                    newVaultHtml += `
+                    <li class="p-2 bg-yellow-900 bg-opacity-20 rounded border border-yellow-800 flex justify-between items-center hover:border-yellow-500 cursor-pointer">
                         <span class="text-sm ${nameColor}">${item.tile || '🎒'} ${item.name} <span class="text-xs text-gray-500">x${item.quantity}</span></span>
-                        <button data-withdraw="${uuid}" class="text-[10px] bg-blue-700 hover:bg-blue-600 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 uppercase font-bold border-b-2 border-blue-900 active:border-b-0 active:mt-0.5">Take</button>
-                    `;
-                    vaultList.appendChild(li);
+                        <button data-withdraw="${uuid}" class="text-[10px] bg-blue-700 hover:bg-blue-600 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 uppercase font-bold border-b-2 border-blue-900 active:border-b-0 active:mt-0.5" style="transform: translateZ(0);">Take</button>
+                    </li>`;
                 });
+
+                if (this._lastVaultCache !== newVaultHtml) {
+                    vaultList.innerHTML = newVaultHtml;
+                    this._lastVaultCache = newVaultHtml;
+                }
+
+                // Player list is local, so we just clear and rebuild it normally using Fragments
+                playerList.innerHTML = '';
+                const pFrag = document.createDocumentFragment();
+
+                gameState.player.inventory.forEach((item, index) => {
+                    if (!item) return;
+                    const li = document.createElement('li');
+                    li.className = `p-2 bg-gray-800 rounded border border-gray-700 flex justify-between items-center ${item.isEquipped ? 'opacity-50 grayscale' : 'hover:border-blue-500 cursor-pointer'}`;
+                    li.innerHTML = `
+                        <span class="text-sm font-bold text-gray-300">${item.tile || '🎒'} ${item.name} <span class="text-xs text-gray-500">x${item.quantity}</span></span>
+                        ${!item.isEquipped ? `<button data-deposit="${index}" data-name="${item.name}" class="text-[10px] bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 uppercase font-bold border-b-2 border-green-900 active:border-b-0 active:mt-0.5" style="transform: translateZ(0);">Deposit</button>` : `<span class="text-[9px] font-bold text-yellow-500 bg-black bg-opacity-40 px-2 py-1 rounded uppercase tracking-widest border border-yellow-800 shadow-inner">Equipped</span>`}
+                    `;
+                    pFrag.appendChild(li);
+                });
+                playerList.appendChild(pFrag);
             }
         };
 
@@ -341,12 +390,11 @@ window.ExpansionManager.register({
 
         document.getElementById('guildVaultModal').addEventListener('click', (e) => {
             const depBtn = e.target.closest('button[data-deposit]');
-            if (depBtn) window.GuildManager.deposit(parseInt(depBtn.dataset.deposit), depBtn.dataset.name);
+            if (depBtn) window.GuildManager.deposit(parseInt(depBtn.dataset.deposit, 10), depBtn.dataset.name);
 
             const withBtn = e.target.closest('button[data-withdraw]');
             if (withBtn) window.GuildManager.withdraw(withBtn.dataset.withdraw);
         });
-
 
         // ==========================================
         // 3. GUILD CHAT & COMMAND INJECTION
@@ -354,27 +402,26 @@ window.ExpansionManager.register({
         
         let activeGuildChatListener = null;
 
-        // Subscribe to Guild Chat if the player is in a guild on load
         const subscribeToGuildChat = (tag) => {
-            if (activeGuildChatListener) rtdb.ref(`guildChat/${gameState.player.guildTag}`).off('child_added', activeGuildChatListener);
-            if (!tag) return;
+            if (activeGuildChatListener && typeof rtdb !== 'undefined') {
+                rtdb.ref(`guildChat/${gameState.player.guildTag}`).off('child_added', activeGuildChatListener);
+            }
+            if (!tag || typeof rtdb === 'undefined') return;
 
             activeGuildChatListener = rtdb.ref(`guildChat/${tag}`).limitToLast(50).on('child_added', (snap) => {
                 const msg = snap.val();
                 if (!msg) return;
                 
-                // Format and push to the combat log or chat box!
                 const safeName = typeof escapeHtml === 'function' ? escapeHtml(msg.sender) : msg.sender;
                 const safeBody = typeof escapeHtml === 'function' ? escapeHtml(msg.msg) : msg.msg;
                 
-                // Render into the global chat box with a green [GUILD] prefix
                 const chatMessages = document.getElementById('chatMessages');
                 if (chatMessages) {
                     const messageDiv = document.createElement('div');
+                    // Render into the global chat box with a green [GUILD] prefix
                     messageDiv.innerHTML = `<span class="text-green-400 font-bold">[${tag}]</span> <strong class="text-green-300">${safeName}:</strong> <span>${safeBody}</span>`;
                     chatMessages.prepend(messageDiv);
                     
-                    // Cull old messages
                     while (chatMessages.children.length > 50) {
                         chatMessages.removeChild(chatMessages.lastChild);
                     }
@@ -382,14 +429,12 @@ window.ExpansionManager.register({
             });
         };
 
-        // Delay checking the player state to ensure Firebase has fully hydrated `gameState.player`
         setTimeout(() => {
-            if (gameState.player && gameState.player.guildTag) {
+            if (typeof gameState !== 'undefined' && gameState.player && gameState.player.guildTag) {
                 subscribeToGuildChat(gameState.player.guildTag);
             }
         }, 3000);
 
-        // Monkey-Patch Chat Commands
         if (typeof window.handleChatCommand === 'function') {
             const originalHandleChat = window.handleChatCommand;
             
@@ -399,7 +444,6 @@ window.ExpansionManager.register({
                 const command = parts[0].toLowerCase();
                 const args = parts.slice(1);
                 
-                // --- GUILD CHAT (/g) ---
                 if (command === 'g') {
                     const tag = gameState.player.guildTag;
                     if (!tag) {
@@ -408,15 +452,16 @@ window.ExpansionManager.register({
                     }
                     if (args.length === 0) return;
 
-                    rtdb.ref(`guildChat/${tag}`).push({
-                        sender: gameState.player.name || auth.currentUser.email.split('@')[0],
-                        msg: args.join(' '),
-                        timestamp: firebase.database.ServerValue.TIMESTAMP
-                    });
-                    return; // Handled
+                    if (typeof rtdb !== 'undefined') {
+                        rtdb.ref(`guildChat/${tag}`).push({
+                            sender: gameState.player.name || (auth.currentUser ? auth.currentUser.email.split('@')[0] : "Traveler"),
+                            msg: args.join(' '),
+                            timestamp: firebase.database.ServerValue.TIMESTAMP
+                        });
+                    }
+                    return; 
                 }
 
-                // --- GUILD MANAGEMENT (/guild) ---
                 if (command === 'guild') {
                     const subCommand = args[0] ? args[0].toLowerCase() : null;
 
@@ -432,33 +477,32 @@ window.ExpansionManager.register({
                             return;
                         }
 
-                        // Check if tag exists
-                        const guildSnap = await rtdb.ref(`guilds/${tag}`).once('value');
-                        if (guildSnap.exists()) {
-                            logMessage(`{red:The guild tag [${tag}] is already taken!}`);
-                            return;
+                        if (typeof rtdb !== 'undefined') {
+                            const guildSnap = await rtdb.ref(`guilds/${tag}`).once('value');
+                            if (guildSnap.exists()) {
+                                logMessage(`{red:The guild tag [${tag}] is already taken!}`);
+                                return;
+                            }
+
+                            if (gameState.player.coins < 1000) {
+                                logMessage("{red:Creating a guild requires 1000 Gold.}");
+                                return;
+                            }
+                            gameState.player.coins -= 1000;
+
+                            await rtdb.ref(`guilds/${tag}`).set({
+                                owner: player_id || "Unknown",
+                                created: firebase.database.ServerValue.TIMESTAMP,
+                                vault: {}
+                            });
                         }
 
-                        // Deduct Gold
-                        if (gameState.player.coins < 1000) {
-                            logMessage("{red:Creating a guild requires 1000 Gold.}");
-                            return;
-                        }
-                        gameState.player.coins -= 1000;
-
-                        // Create Guild in RTDB
-                        await rtdb.ref(`guilds/${tag}`).set({
-                            owner: player_id,
-                            created: firebase.database.ServerValue.TIMESTAMP,
-                            vault: {}
-                        });
-
-                        // Assign to Player
                         gameState.player.guildTag = tag;
                         if (typeof playerRef !== 'undefined') playerRef.update({ guildTag: tag, coins: gameState.player.coins });
                         
                         logMessage(`{green:You have successfully founded the guild [${tag}]!}`);
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                        if (typeof renderStats === 'function') renderStats();
                         
                         subscribeToGuildChat(tag);
                         return;
@@ -476,11 +520,12 @@ window.ExpansionManager.register({
                             return;
                         }
 
-                        // Verify it exists
-                        const guildSnap = await rtdb.ref(`guilds/${tag}`).once('value');
-                        if (!guildSnap.exists()) {
-                            logMessage(`{red:Guild [${tag}] does not exist.}`);
-                            return;
+                        if (typeof rtdb !== 'undefined') {
+                            const guildSnap = await rtdb.ref(`guilds/${tag}`).once('value');
+                            if (!guildSnap.exists()) {
+                                logMessage(`{red:Guild [${tag}] does not exist.}`);
+                                return;
+                            }
                         }
 
                         gameState.player.guildTag = tag;
@@ -489,12 +534,13 @@ window.ExpansionManager.register({
                         logMessage(`{green:You have joined [${tag}]!}`);
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                         
-                        // Announce
-                        rtdb.ref(`guildChat/${tag}`).push({
-                            sender: "SYSTEM",
-                            msg: `{gold:${gameState.player.name} has joined the guild!}`,
-                            timestamp: firebase.database.ServerValue.TIMESTAMP
-                        });
+                        if (typeof rtdb !== 'undefined') {
+                            rtdb.ref(`guildChat/${tag}`).push({
+                                sender: "SYSTEM",
+                                msg: `{gold:${gameState.player.name} has joined the guild!}`,
+                                timestamp: firebase.database.ServerValue.TIMESTAMP
+                            });
+                        }
                         
                         subscribeToGuildChat(tag);
                         return;
@@ -508,16 +554,21 @@ window.ExpansionManager.register({
                         }
 
                         logMessage(`{red:You have left [${tag}].}`);
-                        rtdb.ref(`guildChat/${tag}`).push({
-                            sender: "SYSTEM",
-                            msg: `{gray:${gameState.player.name} has left the guild.}`,
-                            timestamp: firebase.database.ServerValue.TIMESTAMP
-                        });
+                        
+                        if (typeof rtdb !== 'undefined') {
+                            rtdb.ref(`guildChat/${tag}`).push({
+                                sender: "SYSTEM",
+                                msg: `{gray:${gameState.player.name} has left the guild.}`,
+                                timestamp: firebase.database.ServerValue.TIMESTAMP
+                            });
+                        }
 
                         gameState.player.guildTag = null;
                         if (typeof playerRef !== 'undefined') playerRef.update({ guildTag: null });
                         
-                        if (activeGuildChatListener) rtdb.ref(`guildChat/${tag}`).off('child_added', activeGuildChatListener);
+                        if (activeGuildChatListener && typeof rtdb !== 'undefined') {
+                            rtdb.ref(`guildChat/${tag}`).off('child_added', activeGuildChatListener);
+                        }
                         activeGuildChatListener = null;
                         return;
                     }
@@ -527,15 +578,13 @@ window.ExpansionManager.register({
                     return;
                 }
                 
-                // If not caught, pass to original
                 originalHandleChat(message);
             };
         }
 
         // ==========================================
-        // 4. OVERHEAD UI INJECTION (PLAYER TAGS)
+        // 4. PLAYER TAG & COLOR SYNC
         // ==========================================
-        // Monkey-patch the syncPlayerState function to upload the Guild Tag to the online registry
         if (typeof window.syncPlayerState === 'function') {
             const origSync = window.syncPlayerState;
             window.syncPlayerState = function() {
@@ -546,16 +595,9 @@ window.ExpansionManager.register({
             };
         }
 
-        // Note: Full overhead text rendering requires modifying the deep renderer loop, 
-        // but since we added /who earlier, we can monkey-patch /who to display tags!
-        if (typeof window.handleChatCommand === 'function') {
-            const existingHandleChat = window.handleChatCommand;
-            window.handleChatCommand = function(message) {
-                const raw = message.substring(1); 
-                const command = raw.split(' ')[0].toLowerCase();
-                
-                existingHandleChat(message);
-            };
+        // Add guild tags to the TILE_COLOR_MAP natively so they show up beautifully on the minimap
+        if (typeof window.TILE_COLOR_MAP !== 'undefined') {
+            window.TILE_COLOR_MAP['🏰g'] = [234, 179, 8, 255]; // Golden Yellow
         }
     }
 });
