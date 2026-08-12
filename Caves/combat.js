@@ -1225,28 +1225,24 @@ async function processOverworldEnemyTurns() {
 // ==========================================
 
 function runLocalAiTurns() {
-    // Only execute if the player is in an instanced, local map
     if (gameState.mapMode !== 'dungeon' && gameState.mapMode !== 'castle') return;
 
-    // Pause Dungeon AI while the player is looking at menus!
-    // Prevents enemies from slaughtering players in real-time while they sort their inventory.
+    // 1. Pause AI if a menu is open OR if the player is currently aiming an ability/spell/potion!
     if (typeof _modalCache !== 'undefined' && _modalCache.isAnyOpen()) return;
+    if (gameState.isAiming) return; 
 
     const now = Date.now();
-    const AI_INTERVAL = 600; // 600ms tick rate to match overworld speed
+    // 2. Increase AI interval to 900ms (0.9s) for a fairer, more tactical pacing
+    const AI_INTERVAL = 900; 
 
-    // Client-side throttle
     if (now - (window.lastLocalInstanceAIAttempt || 0) < AI_INTERVAL) return;
     window.lastLocalInstanceAIAttempt = now;
 
-    // Stop processing if player is dead
     if (gameState.player.health <= 0) return;
 
-    // 1. Process local entities
     processFriendlyTurns();
     const nearestEnemyDir = processEnemyTurns();
 
-    // 2. Alert the engine to redraw the map since entities likely moved
     gameState.mapDirty = true;
 
     // 3. Client-side intuition feedback
