@@ -2403,8 +2403,13 @@ function handlePlayerDeath() {
                             
                             if (!pendingUpdates[cId]) pendingUpdates[cId] = {};
                             
-                            // Player Corpse Loot lasts a full 24 hours so they can recover it!
-                            const expireTime = Date.now() + (24 * 60 * 60 * 1000);
+                            // Player Corpse Loot lasts 24 hours. Starter gear only lasts 1 hour to prevent litter!
+                            let ttlHours = 24;
+                            if (item.name === 'Tattered Rags' || item.name === 'Simple Tunic') {
+                                ttlHours = 1;
+                            }
+                            
+                            const expireTime = Date.now() + (ttlHours * 60 * 60 * 1000);
                             pendingUpdates[cId][lKey] = { t: dropIcon, expires: expireTime }; 
                             
                             chunkManager.worldState[cId] = chunkManager.worldState[cId] || {};
@@ -2459,7 +2464,16 @@ function handlePlayerDeath() {
     player.isBoating = false;
     player.isSailing = false;
 
-    // The Spire Ghost Fix & Map Protection
+    // Add a custom map pin so the player can find their corpse!
+    if (!player.customPins) player.customPins = [];
+    
+    // Prevent duplicate pins if they die on the exact same spot repeatedly
+    const hasPinHere = player.customPins.some(p => p.x === deathX && p.y === deathY);
+    if (!hasPinHere) {
+        player.customPins.push({ x: deathX, y: deathY });
+        logMessage("{gray:A pin has been added to your map where you fell.}");
+    }
+
     // Ensure pre-prestige gear isn't accidentally restored if they die in the Spire!
     delete player.spireBackupInv;
     delete player.spireBackupEquip;
