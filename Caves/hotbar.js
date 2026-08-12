@@ -234,19 +234,19 @@ function renderHotbar() {
                 iconSpan.className = `font-bold text-2xl drop-shadow-md z-10 ${iconColorClass}`;
                 iconSpan.textContent = displayTile;
                 
-                // SECURITY WIN: Escape tooltip names!
+                // Escape tooltip names!
                 const safeDisplayName = typeof escapeHtml === 'function' ? escapeHtml(displayName) : displayName;
                 slotDiv.title = `[${hotkeyNumber}] ${safeDisplayName} (Qty: ${totalQty})\n(Right-click to unbind)`;
                 slotDiv.appendChild(iconSpan);
                 
-                // UX WIN: Format 999+ so massive stacks don't overflow the UI box
+                // Format 999+ so massive stacks don't overflow the UI box
                 const displayQty = totalQty > 999 ? '999+' : totalQty;
                 const qtyBadge = document.createElement('span');
                 qtyBadge.className = "absolute bottom-0 right-0 text-[10px] bg-black bg-opacity-70 text-white px-1 rounded-tl font-bold border border-gray-700 z-20";
                 qtyBadge.textContent = displayQty;
                 slotDiv.appendChild(qtyBadge);
 
-                // LORE WIN: If they run out of non-disposable items (like a specific sword), color the border red so they know it's a dead slot
+                // If they run out of non-disposable items (like a specific sword), color the border red so they know it's a dead slot
                 if (totalQty <= 0) {
                     slotDiv.classList.add('opacity-40', 'grayscale', 'border-red-900');
                     slotDiv.title = `[${hotkeyNumber}] Missing: ${safeDisplayName}\n(Right-click to unbind)`;
@@ -598,5 +598,37 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
 
     hotbarContainerEl.dataset.listenersBound = 'true';
 }
+
+/**
+ * Sets the cooldown for a skill or spell and updates the UI.
+ * (Globally accessible from magic.js, skills.js, and items.js)
+ */
+
+window.triggerAbilityCooldown = function(abilityId) {
+    const data = (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) || 
+                 (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]);
+
+    if (data && data.cooldown) {
+        if (!gameState.player.cooldowns) gameState.player.cooldowns = {};
+
+        let cd = data.cooldown;
+
+        // --- Class specific Cooldown Reduction! ---
+        if (gameState.player.talents) {
+            // Rogues with Evasion recover movement skills faster
+            if (data.type === 'movement' && gameState.player.talents.includes('evasion')) {
+                cd = Math.max(1, cd - 1);
+            }
+            // Archmages recover spells faster
+            if (data.costType === 'mana' && gameState.player.talents.includes('mana_flow')) {
+                cd = Math.max(1, cd - 1);
+            }
+        }
+
+        gameState.player.cooldowns[abilityId] = cd;
+
+        if (typeof renderHotbar === 'function') renderHotbar();
+    }
+};
 
 // --- END OF FILE hotbar.js ---
