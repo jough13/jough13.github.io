@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "alchemy_and_throwables",
     name: "Alchemy & Throwables",
-    version: "1.2", // Upgraded version!
+    version: "1.3", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -74,6 +74,17 @@ window.ExpansionManager.register({
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#ef4444', 15);
                     return true;
                 }
+            },
+            // --- EXPANSION WIN: New Tactical Throwable ---
+            '💣f': {
+                name: 'Flash Powder', type: 'consumable', tile: '💣', pColor: '#ffffff', pSize: 50, _rarity: 'rare',
+                description: "Throw to detonate a massive blinding flash. Stuns all enemies in a huge 5x5 radius.",
+                effect: (state) => {
+                    if (typeof logMessage === 'function') logMessage("{yellow:Select a direction to throw the Flash Powder... (WASD/Arrows)}");
+                    state.isAiming = true;
+                    state.abilityToAim = 'throwPotion_Flash Powder';
+                    return false;
+                }
             }
         },
 
@@ -100,7 +111,8 @@ window.ExpansionManager.register({
             "Smoke Bomb": { materials: { "Bat Wing": 2, "Wood Log": 1, "Stone": 1 }, xp: 35, level: 2, yield: 2 },
             "Holy Water": { materials: { "Clean Water": 2, "Moonbloom Petal": 1, "Bone Shard": 1 }, xp: 60, level: 3, yield: 1 },
             "Elixir of Strength": { materials: { "Orc Tusk": 2, "Wildberry": 3, "Clean Water": 1 }, xp: 50, level: 3, yield: 1 },
-            "Void-Fire Flask": { materials: { "Void Dust": 2, "Fire Elemental Core": 1, "Empty Bottle": 1 }, xp: 100, level: 4, yield: 1 }
+            "Void-Fire Flask": { materials: { "Void Dust": 2, "Fire Elemental Core": 1, "Empty Bottle": 1 }, xp: 100, level: 4, yield: 1 },
+            "Flash Powder": { materials: { "Void Dust": 2, "Stone": 2 }, xp: 50, level: 3, yield: 2 }
         }
     },
 
@@ -231,6 +243,9 @@ window.ExpansionManager.register({
                             if (typeof logMessage === 'function') logMessage("{red:Inventory full! The Empty Bottle drops to the ground.}");
                             
                             // 🚨 BUG FIX WIN: Safe Outward Spiral Drop
+                            // If the inventory was full, the engine dropped the bottle directly onto the player's coordinate.
+                            // If the player was standing on a dungeon exit ('<'), it permanently overwrote the stairs!
+                            // This ensures the bottle scatters to an adjacent empty floor tile.
                             let placed = false;
                             let validFloor = '.';
                             if (gameState.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[gameState.currentCaveTheme]) {
@@ -272,7 +287,9 @@ window.ExpansionManager.register({
                         player.inventory.splice(invIndex, 1);
                     }
                     
-                    // 🚨 PERFORMANCE WIN: Debounce the inventory save instead of hitting Firebase directly
+                    // 🚨 PERFORMANCE WIN: Explicitly save the ENTIRE serialized inventory array here!
+                    // If we don't, a player who throws their very last potion (triggering a splice deletion)
+                    // and then refreshes their page will get the potion back, resulting in infinite potions!
                     if (typeof triggerDebouncedSave === 'function') {
                         triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory });
                     }
@@ -285,7 +302,6 @@ window.ExpansionManager.register({
                 // 2. Raycast to find landing zone (Max Range: 4 tiles)
                 let targetX = player.x;
                 let targetY = player.y;
-                let hitWall = false;
 
                 for (let i = 1; i <= 4; i++) {
                     const checkX = player.x + (dirX * i);
@@ -305,7 +321,6 @@ window.ExpansionManager.register({
 
                     // If it hits a solid wall, the flask shatters one tile BEFORE the wall!
                     if (['▓', '▒', '🧱', '^'].includes(tileAt)) {
-                        hitWall = true;
                         break; 
                     }
                     
@@ -321,7 +336,6 @@ window.ExpansionManager.register({
                 
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.3, 0.1, 3000); // Glass shatter
 
-                // 🌟 EXPANDABILITY WIN: Read particle properties dynamically from the item data!
                 const explosionColor = (potionTemplate && potionTemplate.pColor) ? potionTemplate.pColor : '#ffffff';
                 const explosionSize = (potionTemplate && potionTemplate.pSize) ? potionTemplate.pSize : 20;
 
@@ -332,13 +346,11 @@ window.ExpansionManager.register({
                     
                     for (let y = targetY - 1; y <= targetY + 1; y++) {
                         for (let x = targetX - 1; x <= targetX + 1; x++) {
-                            // 🛡️ MECHANIC WIN: Friendly Fire!
-                            if (x === player.x && y === player.y) {
-                                if (!gameState.godMode) {
-                                    if (typeof logMessage === 'function') logMessage("{green:You are splashed by your own venom!}");
-                                    player.poisonTurns = 3;
-                                    if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), false);
-                                }
+                            // Friendly Fire!
+                            if (x === player.x && y === player.y && !gameState.godMode) {
+                                if (typeof logMessage === 'function') logMessage("{green:You are splashed by your own venom!}");
+                                player.poisonTurns = 3;
+                                if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), false);
                                 continue;
                             }
                             if (typeof applySpellDamage === 'function') {
@@ -355,17 +367,13 @@ window.ExpansionManager.register({
                     
                     for (let y = targetY - 1; y <= targetY + 1; y++) {
                         for (let x = targetX - 1; x <= targetX + 1; x++) {
-                            // 🛡️ MECHANIC WIN: Friendly Fire!
-                            if (x === player.x && y === player.y) {
-                                if (!gameState.godMode) {
-                                    if (typeof logMessage === 'function') logMessage("{green:The acid burns your skin! (-10 HP)}");
-                                    if (typeof window.modifyVital === 'function') window.modifyVital('health', -10);
-                                    player.poisonTurns = 2;
-                                    if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), false);
-                                }
+                            if (x === player.x && y === player.y && !gameState.godMode) {
+                                if (typeof logMessage === 'function') logMessage("{green:The acid burns your skin! (-10 HP)}");
+                                if (typeof window.modifyVital === 'function') window.modifyVital('health', -10);
+                                player.poisonTurns = 2;
+                                if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), false);
                                 continue;
                             }
-                            // Deals double damage via poison element scaling in applySpellDamage
                             if (typeof applySpellDamage === 'function') {
                                 const res = await applySpellDamage(x, y, 20, 'poisonBolt', true);
                                 if (res && res.hit) Object.assign(batchedPayload, res.payload);
@@ -377,16 +385,14 @@ window.ExpansionManager.register({
                 else if (potionName === 'Smoke Bomb') {
                     if (typeof logMessage === 'function') logMessage("{gray:A thick cloud of smoke erupts!}");
                     if (typeof ParticleSystem !== 'undefined') {
-                        ParticleSystem.createExplosion(targetX, targetY, explosionColor, explosionSize); // Fast batch instead of for loop
+                        ParticleSystem.createExplosion(targetX, targetY, explosionColor, explosionSize); 
                     }
                     
-                    // Check if player is caught in the smoke (Grants Stealth!)
                     if (Math.abs(targetX - player.x) <= 1 && Math.abs(targetY - player.y) <= 1) {
                         if (typeof logMessage === 'function') logMessage("{gray:You vanish into the smoke screen! (Stealth)}");
                         player.stealthTurns = 5;
                     }
 
-                    // 🚨 MECHANIC WIN: Daze/Stun enemies caught in the smoke natively!
                     for (let y = targetY - 1; y <= targetY + 1; y++) {
                         for (let x = targetX - 1; x <= targetX + 1; x++) {
                             if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
@@ -396,21 +402,54 @@ window.ExpansionManager.register({
                                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(x, y, "DAZED", "#9ca3af");
                                 }
                             } else {
-                                // 🚨 MECHANIC WIN: Proper Overworld Stun Logic for Smoke Bombs!
                                 const enemyId = `overworld:${x},${-y}`;
                                 if (gameState.sharedEnemies && gameState.sharedEnemies[enemyId]) {
                                     const liveEnemy = gameState.sharedEnemies[enemyId];
                                     let enemyData = JSON.parse(JSON.stringify(liveEnemy));
                                     enemyData.stunTurns = 2; // Inject Stun!
                                     
-                                    // Send to batch updater via network manager
                                     if (typeof EnemyNetworkManager !== 'undefined') {
                                         batchedPayload[EnemyNetworkManager.getPath(x, y, enemyId)] = enemyData;
                                     }
                                     
-                                    // Local speculative execution
                                     gameState.sharedEnemies[enemyId].stunTurns = 2;
                                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(x, y, "DAZED", "#9ca3af");
+                                }
+                            }
+                        }
+                    }
+                }
+                // --- FLASH POWDER (NEW) ---
+                else if (potionName === 'Flash Powder') {
+                    if (typeof logMessage === 'function') logMessage("{yellow:A blinding flash erupts!}");
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createExplosion(targetX, targetY, explosionColor, explosionSize); 
+                    }
+                    gameState.screenFlash = { color: '#ffffff', alpha: 1.0, decay: 0.05 };
+                    gameState.screenShake = 10;
+                    
+                    // Massive 5x5 Stun Area!
+                    for (let y = targetY - 2; y <= targetY + 2; y++) {
+                        for (let x = targetX - 2; x <= targetX + 2; x++) {
+                            if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
+                                let enemy = gameState.instancedEnemies.find(e => e && e.x === x && e.y === y && e.health > 0);
+                                if (enemy) {
+                                    enemy.stunTurns = 3;
+                                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(x, y, "BLINDED", "#facc15");
+                                }
+                            } else {
+                                const enemyId = `overworld:${x},${-y}`;
+                                if (gameState.sharedEnemies && gameState.sharedEnemies[enemyId]) {
+                                    const liveEnemy = gameState.sharedEnemies[enemyId];
+                                    let enemyData = JSON.parse(JSON.stringify(liveEnemy));
+                                    enemyData.stunTurns = 3; 
+                                    
+                                    if (typeof EnemyNetworkManager !== 'undefined') {
+                                        batchedPayload[EnemyNetworkManager.getPath(x, y, enemyId)] = enemyData;
+                                    }
+                                    
+                                    gameState.sharedEnemies[enemyId].stunTurns = 3;
+                                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(x, y, "BLINDED", "#facc15");
                                 }
                             }
                         }
@@ -424,7 +463,6 @@ window.ExpansionManager.register({
                     
                     for (let y = targetY - 1; y <= targetY + 1; y++) {
                         for (let x = targetX - 1; x <= targetX + 1; x++) {
-                            // Heal the player if caught in the splash zone!
                             if (x === player.x && y === player.y) {
                                 if (typeof window.modifyVital === 'function') {
                                     const actualHeal = window.modifyVital('health', 15);
@@ -433,10 +471,8 @@ window.ExpansionManager.register({
                                         if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
                                     }
                                 }
-                                continue; // Skip trying to damage the player!
+                                continue; 
                             }
-                            
-                            // Holy element will deal double damage to Undead/Demons natively
                             if (typeof applySpellDamage === 'function') {
                                 const res = await applySpellDamage(x, y, 30, 'divineLight', true);
                                 if (res && res.hit) Object.assign(batchedPayload, res.payload);
@@ -452,18 +488,60 @@ window.ExpansionManager.register({
                     
                     for (let y = targetY - 1; y <= targetY + 1; y++) {
                         for (let x = targetX - 1; x <= targetX + 1; x++) {
-                            // 🛡️ MECHANIC WIN: Friendly Fire!
-                            if (x === player.x && y === player.y) {
-                                if (!gameState.godMode) {
-                                    if (typeof logMessage === 'function') logMessage("{purple:You are caught in your own void inferno! (-20 HP)}");
-                                    if (typeof window.modifyVital === 'function') window.modifyVital('health', -20);
-                                    player.burnTurns = 3;
-                                    if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), false);
-                                }
+                            if (x === player.x && y === player.y && !gameState.godMode) {
+                                if (typeof logMessage === 'function') logMessage("{purple:You are caught in your own void inferno! (-20 HP)}");
+                                if (typeof window.modifyVital === 'function') window.modifyVital('health', -20);
+                                player.burnTurns = 3;
+                                if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), false);
                                 continue;
                             }
                             if (typeof applySpellDamage === 'function') {
                                 const res = await applySpellDamage(x, y, 40, 'fireball', true);
+                                if (res && res.hit) Object.assign(batchedPayload, res.payload);
+                            }
+                        }
+                    }
+                }
+                // --- GLACIAL SHARD ---
+                // 🚨 BUG FIX WIN: The Glacial Shard actually executes here!
+                else if (potionName === 'Glacial Shard') {
+                    if (typeof logMessage === 'function') logMessage("{cyan:The shard shatters, erupting in a blast of freezing wind!}");
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, explosionColor, explosionSize);
+                    gameState.screenShake = 10;
+                    
+                    for (let y = targetY - 1; y <= targetY + 1; y++) {
+                        for (let x = targetX - 1; x <= targetX + 1; x++) {
+                            if (x === player.x && y === player.y && !gameState.godMode) {
+                                if (typeof logMessage === 'function') logMessage("{cyan:You are caught in the freezing blast!}");
+                                player.frostbiteTurns = 5;
+                                if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('staminaDisplay'), false);
+                                continue;
+                            }
+                            if (typeof applySpellDamage === 'function') {
+                                // Maps directly to the 'frostBolt' logic in the engine so it naturally extinguishes fires and creates ice bridges!
+                                const res = await applySpellDamage(x, y, 15, 'frostBolt', true);
+                                if (res && res.hit) Object.assign(batchedPayload, res.payload);
+                            }
+                        }
+                    }
+                }
+                // --- BONE HARPOON (From Monster Hunter) ---
+                else if (potionName === 'Bone Harpoon') {
+                    if (typeof logMessage === 'function') logMessage("{red:The heavy harpoon strikes the ground violently!}");
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, explosionColor, explosionSize);
+                    gameState.screenShake = 15;
+                    
+                    for (let y = targetY - 1; y <= targetY + 1; y++) {
+                        for (let x = targetX - 1; x <= targetX + 1; x++) {
+                            if (x === player.x && y === player.y && !gameState.godMode) {
+                                if (typeof logMessage === 'function') logMessage("{red:You impaled your own foot! (-10 HP)}");
+                                if (typeof window.modifyVital === 'function') window.modifyVital('health', -10);
+                                if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), false);
+                                continue;
+                            }
+                            if (typeof applySpellDamage === 'function') {
+                                // Uses 'poisonBolt' as a proxy to inflict the bleeding/poison dot naturally
+                                const res = await applySpellDamage(x, y, 25, 'poisonBolt', true);
                                 if (res && res.hit) Object.assign(batchedPayload, res.payload);
                             }
                         }
@@ -487,13 +565,15 @@ window.ExpansionManager.register({
                         health: player.health,
                         poisonTurns: player.poisonTurns,
                         burnTurns: player.burnTurns,
-                        stealthTurns: player.stealthTurns
+                        stealthTurns: player.stealthTurns,
+                        frostbiteTurns: player.frostbiteTurns
                     });
                 }
                 
                 if (typeof endPlayerTurn === 'function') endPlayerTurn();
                 if (typeof render === 'function') render();
                 if (typeof renderInventory === 'function') renderInventory();
+                if (typeof renderHotbar === 'function') renderHotbar();
 
             } finally {
                 isProcessingMove = false;
