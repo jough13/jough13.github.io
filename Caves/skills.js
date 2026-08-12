@@ -1494,41 +1494,7 @@ async function executeThrowTNT(dirX, dirY) {
     }
 }
 
-/**
- * Sets the cooldown for a skill or spell and updates the DB/UI.
- */
-function triggerAbilityCooldown(abilityId) {
-    const data = (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) || (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]);
-
-    if (data && data.cooldown) {
-        // Initialize object if it doesn't exist
-        if (!gameState.player.cooldowns) gameState.player.cooldowns = {};
-
-        let cd = data.cooldown;
-
-        // --- Class specific Cooldown Reduction! ---
-        if (gameState.player.talents) {
-            // Rogues with Evasion recover movement skills faster
-            if (data.type === 'movement' && gameState.player.talents.includes('evasion')) {
-                cd = Math.max(1, cd - 1);
-            }
-            // Archmages recover spells faster
-            if (data.costType === 'mana' && gameState.player.talents.includes('mana_flow')) {
-                cd = Math.max(1, cd - 1);
-            }
-        }
-
-        // Set the turns
-        gameState.player.cooldowns[abilityId] = cd;
-
-        // 🚨 BUG FIX & PERFORMANCE WIN: Removed un-debounced hard save!
-        // We no longer trigger a direct Firebase update here because `endPlayerTurn` 
-        // automatically wraps the cooldown state into a debounced payload.
-        if (typeof renderHotbar === 'function') renderHotbar();
-    }
-}
-
-// --- SECURITY & PERFORMANCE: Event Delegation ---
+// --- Event Delegation ---
 // Attaches exactly ONE listener to the skillbook list, bypassing inline DOM bindings.
 function initSkillbookListeners() {
     const skillListEl = document.getElementById('skillList');
