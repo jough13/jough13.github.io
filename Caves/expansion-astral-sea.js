@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "astral_sea",
     name: "The Astral Sea (Sailing Expansion)",
-    version: "1.4", // Upgraded version!
+    version: "1.5", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -25,13 +25,20 @@ window.ExpansionManager.register({
                         return false;
                     }
 
-                    logMessage("{cyan:You lower the Diving Bell into the abyssal depths...}");
+                    logMessage("{cyan:You drop anchor and lower the Diving Bell into the abyssal depths...}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.2, 1000); 
                     
                     // JUICE WIN: Massive deep-sea splash
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#1e40af', 30);
                     state.screenShake = 15;
                     
+                    // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Vehicle Dismount!
+                    // If we don't turn off 'isSailing', the player will literally sail their galleon INSIDE the dungeon!
+                    state.player.isSailing = false;
+                    if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(state.player.x, state.player.y, '⛵'); 
+                    if (typeof playerRef !== 'undefined' && playerRef) playerRef.update({ isSailing: false });
+
+                    // Setup the Dungeon
                     state.mapMode = 'dungeon';
                     state.currentCaveId = `shipwreck_${state.player.x}_${state.player.y}`;
                     state.overworldExit = { x: state.player.x, y: state.player.y };
@@ -58,7 +65,7 @@ window.ExpansionManager.register({
                     const baseEnemies = chunkManager.caveEnemies[state.currentCaveId] || [];
                     
                     // 🚀 PERFORMANCE WIN: High-speed recursive clone over JSON stringify
-                    state.instancedEnemies = typeof window.cloneItemSafely === 'function' ? window.fastClone(baseEnemies) : JSON.parse(JSON.stringify(baseEnemies));
+                    state.instancedEnemies = typeof window.fastClone === 'function' ? window.fastClone(baseEnemies) : JSON.parse(JSON.stringify(baseEnemies));
                     
                     if (typeof updateRegionDisplay === 'function') updateRegionDisplay();
                     state.mapDirty = true;
@@ -102,10 +109,9 @@ window.ExpansionManager.register({
                     }
                     
                     // 🚨 ROBUSTNESS WIN: Failsafe Ocean Telemetry
-                    // If they use it in a massive continent where 100 raycasts fail, force an ocean coordinate
                     if (!foundOcean) {
                         tx = state.player.x + 5000;
-                        ty = state.player.y + 5000; // Guaranteed to be mostly ocean by noise metrics
+                        ty = state.player.y + 5000; 
                     }
 
                     // Actually spawn the dungeon entrance via worldState so it exists when they arrive!
@@ -144,8 +150,13 @@ window.ExpansionManager.register({
                 name: 'Spiced Rum', type: 'consumable', tile: '🍺', _rarity: 'uncommon',
                 description: "Burns going down. {yellow:+30 Stamina, +20 Psyche}, {red:-2 Wits (50 turns)}",
                 effect: (state) => {
-                    window.modifyVital('stamina', 30);
-                    window.modifyVital('psyche', 20);
+                    if (typeof window.modifyVital === 'function') {
+                        window.modifyVital('stamina', 30);
+                        window.modifyVital('psyche', 20);
+                    } else {
+                        state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + 30);
+                        state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + 20);
+                    }
                     
                     // Applies a minor debuff to represent being slightly drunk!
                     state.player.witsBonus = (state.player.witsBonus || 0) - 2;
@@ -192,10 +203,10 @@ window.ExpansionManager.register({
                 flavor: "He laughs maniacally, leveling his Hand Cannon at your chest."
             },
             '🧜‍♀️c': {
-                name: 'Abyssal Siren', tags: ['humanoid', 'aquatic', 'magic', 'void'], mountable: false,
-                maxHealth: 50, attack: 8, defense: 2, xp: 120,
+                name: 'Abyssal Siren', tags: ['humanoid', 'aquatic', 'magic', 'void', 'boss'], mountable: false,
+                maxHealth: 150, attack: 8, defense: 2, xp: 300,
                 caster: true, castRange: 5, spellDamage: 10, inflicts: 'madness', inflictChance: 0.5,
-                color: '#a855f7', loot: '🐚',
+                color: '#a855f7', loot: '🐚', isBoss: true,
                 flavor: "Her song doesn't draw you into the water—it pulls the water into your lungs."
             }
         },
@@ -242,22 +253,49 @@ window.ExpansionManager.register({
                                             const ex = ctx.x + off[0];
                                             const ey = ctx.y + off[1];
                                             
-                                            // Only spawn if it's open water
-                                            if (chunkManager.getTile(ex, ey) === '~') {
+                                            // Only spawn if it's open water or the ship tile
+                                            const tAt = typeof chunkManager !== 'undefined' ? chunkManager.getTile(ex, ey) : '~';
+                                            if (tAt === '~' || tAt === '🚢g') {
                                                 const enemyId = `overworld:${ex},${-ey}`;
                                                 const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(eData, ex, ey) : eData;
                                                 
                                                 state.sharedEnemies[enemyId] = { ...scaledStats, tile: '👻p', x: ex, y: ey, spawnTime: Date.now() };
+                                                
+                                                // 🚨 BUG FIX: Ensure Spatial Map is updated instantly so they attack!
+                                                if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, null, null, ex, ey);
+
                                                 if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(ex, ey, enemyId)).set(state.sharedEnemies[enemyId]);
                                             }
                                         });
                                     } else {
                                         const gold = 200 + Math.floor(Math.random() * 300);
-                                        state.player.coins += gold;
+                                        // Strict coercion
+                                        state.player.coins = (Number(state.player.coins) || 0) + gold;
                                         logMessage(`{gold:The hold is unguarded! You plunder ${gold} gold coins!}`);
                                         if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
                                         
-                                        // 🚨 BUG FIX WIN: Clean Stack Merging for Event Loot
+                                        // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Outward Spiral Drop
+                                        const dropSafely = (itemKey) => {
+                                            let placed = false;
+                                            if (typeof chunkManager !== 'undefined') {
+                                                for (let r = 0; r <= 2 && !placed; r++) {
+                                                    for (let dy = -r; dy <= r && !placed; dy++) {
+                                                        for (let dx = -r; dx <= r && !placed; dx++) {
+                                                            const tx = ctx.x + dx;
+                                                            const ty = ctx.y + dy;
+                                                            const tileAt = chunkManager.getTile(tx, ty);
+                                                            if (tileAt === '~' || tileAt === '🛟' || tileAt === '🚢g') {
+                                                                chunkManager.setWorldTile(tx, ty, itemKey, 24);
+                                                                placed = true;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                if (!placed) chunkManager.setWorldTile(ctx.x, ctx.y, itemKey, 24);
+                                                state.mapDirty = true;
+                                            }
+                                        };
+
                                         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                                         const existingRum = state.player.inventory.find(i => i && i.name === 'Spiced Rum' && !i.isEquipped);
                                         
@@ -273,14 +311,18 @@ window.ExpansionManager.register({
                                             state.player.inventory.push(newRum);
                                             logMessage("{purple:You also found a stash of Spiced Rum!}");
                                         } else {
-                                            logMessage("{red:You found a stash of Spiced Rum, but your pack is full! It sinks into the ocean.}");
+                                            logMessage("{red:You found a stash of Spiced Rum, but your pack is full! It drops onto the deck.}");
+                                            dropSafely('🍺r'); // Safer than sinking!
                                         }
                                     }
                                     
-                                    // Mark as looted and sink the ship visually
+                                    // Mark as looted and sink the ship visually into Flotsam
                                     state.lootedTiles.add(ctx.tileId);
                                     if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(ctx.x, ctx.y, '🛟'); 
                                     state.mapDirty = true;
+                                    
+                                    if (typeof renderStats === 'function') renderStats();
+                                    if (typeof renderInventory === 'function') renderInventory();
                                 }
                             },
                             { text: "Leave it alone. It's cursed." }
@@ -424,21 +466,30 @@ window.ExpansionManager.register({
                         ? this._createInstancedEnemy.bind(this) 
                         : (id, x, y, tile, scaled, template) => ({ id, x, y, tile, name: scaled.name, health: scaled.maxHealth, maxHealth: scaled.maxHealth, attack: scaled.attack, defense: scaled.defense || 0, xp: scaled.xp, loot: template.loot });
 
-                    // Special Rule: Spawn the Pirate Captain in Pirate Coves!
-                    if (themeKey === 'PIRATE_COVE') {
-                        const cy = Math.floor(map.length / 2);
-                        const cx = Math.floor(map[0].length / 2);
+                    // 🚨 EXPANSION WIN: Injected Thematic Bosses!
+                    // Both the Pirate Cove and the Sunken Shipwreck get a guaranteed Boss at the center!
+                    const cy = Math.floor(map.length / 2);
+                    const cx = Math.floor(map[0].length / 2);
                         
-                        // Ensure we don't spawn the boss inside a wall or on the stairs
-                        if (map[cy][cx] === newTheme.floor || map[cy][cx] === oldTheme.floor) {
-                            map[cy][cx] = '🏴‍☠️c';
-                            const bData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['🏴‍☠️c'] : { name: 'Pirate Captain', maxHealth: 250, attack: 12, xp: 800 };
-                            
+                    // Ensure we don't spawn the boss inside a wall or on the stairs
+                    if (map[cy][cx] === newTheme.floor || map[cy][cx] === oldTheme.floor) {
+                        
+                        let bossTile = '🏴‍☠️c';
+                        let baseBossData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['🏴‍☠️c'] : null;
+                        
+                        // Override if Shipwreck
+                        if (themeKey === 'SUNKEN_SHIPWRECK') {
+                            bossTile = '🧜‍♀️c';
+                            baseBossData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['🧜‍♀️c'] : null;
+                        }
+
+                        if (baseBossData) {
+                            map[cy][cx] = bossTile;
                             // Safe Fast Clone
-                            const baseClone = typeof window.fastClone === 'function' ? window.fastClone(bData) : JSON.parse(JSON.stringify(bData));
+                            const baseClone = typeof window.fastClone === 'function' ? window.fastClone(baseBossData) : JSON.parse(JSON.stringify(baseBossData));
                             const scaled = { ...baseClone, maxHealth: baseClone.maxHealth, attack: baseClone.attack, xp: baseClone.xp }; 
                             
-                            this.caveEnemies[caveId].push(createEntity(`${caveId}:boss`, cx, cy, '🏴‍☠️c', scaled, bData));
+                            this.caveEnemies[caveId].push(createEntity(`${caveId}:boss`, cx, cy, bossTile, scaled, baseBossData));
                         }
                     }
                 }
