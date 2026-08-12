@@ -71,7 +71,6 @@ let saveTimeout = null;
 let areGlobalListenersInitialized = false;
 
 let chatRenderTimer = null;   
-let lastLocalAIAttempt = 0;   
 let lastSortAudio = 0;        
 
 let cachedThemeColors = {};
@@ -316,11 +315,14 @@ const gameState = {
             highestLevel: 1,      
             deepestFloor: 1,      
             totalKills: 0,
+            bossKills: {},        // Added dedicated boss kill dict
             bossesDefeated: 0,
             totalDeaths: 0,
             stepsTaken: 0,
             itemsCrafted: 0,
             potionsBrewed: 0,
+            potionsDrank: 0,      // Added potion tracking
+            itemsIdentified: 0,   // Added ID tracking
             goldEarned: 0,
             goldSpent: 0,         
             fishCaught: 0,
@@ -329,6 +331,8 @@ const gameState = {
             spellsCast: 0,
             timesRested: 0,       
             cropsHarvested: 0,    
+            treesChopped: 0,      // Added tree chopping tracking
+            oresMined: 0,         // Added mining tracking
             leylinesUsed: 0,
             damageTaken: 0,
             environmentalDamageTaken: 0, 
@@ -546,8 +550,17 @@ window.modifyVital = function(vital, rawAmount) {
         const pctLost = maxVal > 0 ? Math.abs(actualChange) / maxVal : 0;
         
         if (vital === 'health') {
+            
+            // --- LORE WIN: Mortal Blow ---
+            // If the player takes 70% or more of their maximum health in a single, devastating hit!
+            if (pctLost >= 0.70) {
+                if (typeof logMessage !== 'undefined') logMessage("{red:MORTAL BLOW! The sheer force of the impact shatters the earth around you!}");
+                gameState.screenShake = Math.max(gameState.screenShake || 0, 35);
+                gameState.screenFlash = { color: '#dc2626', alpha: 0.8, decay: 0.05 };
+                if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playWarning === 'function') AudioSystem.playWarning();
+            }
             // Huge single physical hit (40% or more of max HP in one blow)
-            if (pctLost >= 0.40) {
+            else if (pctLost >= 0.40) {
                 if (typeof logMessage !== 'undefined') logMessage("{orange:You suffer a devastating blow!}");
                 gameState.screenShake = Math.max(gameState.screenShake || 0, 15);
             }
@@ -612,6 +625,12 @@ window.modifyVital = function(vital, rawAmount) {
         }
     }
 
+    // 🚨 EXPANDABILITY WIN: Fire global lifecycle hook
+    // Any expansion can now listen for when the player's health drops or mana regens!
+    if (typeof window.ExpansionManager !== 'undefined') {
+        window.ExpansionManager.triggerHook('onVitalChanged', { vital, amount, actualChange, player: p });
+    }
+
     // The Death Lock Check
     // Triggers exactly once to execute the death sequence gracefully.
     // Includes a debouncer flag (_isDying) to prevent double-firing if two systems hit 
@@ -630,12 +649,15 @@ window.modifyVital = function(vital, rawAmount) {
         }
         
         if (typeof handlePlayerDeath === 'function') {
-            // Using a tiny timeout allows the current stack trace (combat loops, array iterations)
-            // to safely resolve before we violently alter the mapMode and strip the player's inventory!
+            // 🚨 BUG FIX & ROBUSTNESS WIN: Try/Finally inside the timeout
+            // Guarantees the death locks are released even if a plugin injected a broken item into the death loot loop!
             setTimeout(() => {
-                handlePlayerDeath();
-                p._isDying = false; // Clean up flag
-                p._fatalMutators = null; // Clean up flag
+                try {
+                    handlePlayerDeath();
+                } finally {
+                    p._isDying = false; 
+                    p._fatalMutators = null; 
+                }
             }, 0); 
         }
     }
