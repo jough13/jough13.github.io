@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "artisan_guild",
     name: "The Artisan's Guild (Jewelcrafting)",
-    version: "1.4", // Upgraded version!
+    version: "1.5", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -12,9 +12,11 @@ window.ExpansionManager.register({
             '💎r': { name: 'Raw Ruby', type: 'trade', description: "A cloudy red gemstone. Needs cutting.", value: 100, _rarity: 'uncommon' },
             '💎s': { name: 'Raw Sapphire', type: 'trade', description: "A cloudy blue gemstone. Needs cutting.", value: 100, _rarity: 'uncommon' },
             '💎d': { name: 'Raw Diamond', type: 'trade', description: "A cloudy white gemstone. Needs cutting.", value: 200, _rarity: 'rare' },
-            // NEW GEMS
             '💎e': { name: 'Raw Emerald', type: 'trade', description: "A cloudy green gemstone. Needs cutting.", value: 120, _rarity: 'rare' },
             '💎a': { name: 'Raw Amethyst', type: 'trade', description: "A cloudy purple gemstone. Needs cutting.", value: 120, _rarity: 'rare' },
+            // NEW GEMS
+            '💎t': { name: 'Raw Topaz', type: 'trade', description: "A cloudy yellow gemstone. Needs cutting.", value: 110, _rarity: 'uncommon' },
+            '💎o': { name: 'Raw Onyx', type: 'trade', description: "A cloudy black gemstone. Needs cutting.", value: 110, _rarity: 'uncommon' },
             
             // 🌟 EXPANSION WIN: The Uncracked Geode!
             '🪨g': {
@@ -29,16 +31,18 @@ window.ExpansionManager.register({
                     let gemName = 'Raw Ruby';
                     let gemId = '💎r';
                     
-                    if (roll > 0.4) { gemName = 'Raw Sapphire'; gemId = '💎s'; }
+                    if (roll > 0.3) { gemName = 'Raw Sapphire'; gemId = '💎s'; }
+                    if (roll > 0.5) { gemName = 'Raw Topaz'; gemId = '💎t'; }
                     if (roll > 0.7) { gemName = 'Raw Emerald'; gemId = '💎e'; }
                     if (roll > 0.85) { gemName = 'Raw Amethyst'; gemId = '💎a'; }
-                    if (roll > 0.95) { gemName = 'Raw Diamond'; gemId = '💎d'; }
+                    if (roll > 0.92) { gemName = 'Raw Onyx'; gemId = '💎o'; }
+                    if (roll > 0.97) { gemName = 'Raw Diamond'; gemId = '💎d'; }
 
                     const yieldAmt = Math.floor(Math.random() * 2) + 1; // Yields 1 or 2 gems
                     const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                     const existingStack = state.player.inventory.find(i => i && i.name === gemName && !i.isEquipped);
 
-                    // 🚨 ROBUSTNESS WIN: Safe Outward Spiral Drop
+                    // 🚨 ROBUSTNESS & EXPLOIT FIX: Safe Outward Spiral Drop with EXACT ID
                     const safelyDropItem = (dropTile) => {
                         let placed = false;
                         let validFloor = '.';
@@ -90,8 +94,9 @@ window.ExpansionManager.register({
                         state.player.inventory.push(newItem);
                         logMessage(`{purple:The geode shatters, revealing ${yieldAmt}x ${gemName}!}`);
                     } else {
+                        // Exploit closed: Passes specific gemId instead of a generic '💎' which spawned flawless diamonds!
                         logMessage(`{red:The geode shatters revealing ${yieldAmt}x ${gemName}, but your pack is full! They drop to the floor.}`);
-                        safelyDropItem('💎');
+                        safelyDropItem(gemId);
                     }
 
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
@@ -113,7 +118,9 @@ window.ExpansionManager.register({
                         'Raw Sapphire': 'Cut Sapphire', 
                         'Raw Diamond': 'Cut Diamond',
                         'Raw Emerald': 'Cut Emerald',
-                        'Raw Amethyst': 'Cut Amethyst'
+                        'Raw Amethyst': 'Cut Amethyst',
+                        'Raw Topaz': 'Cut Topaz',
+                        'Raw Onyx': 'Cut Onyx'
                     };
                     
                     // Look for a raw gem to cut
@@ -121,7 +128,7 @@ window.ExpansionManager.register({
                         if (inv[i] && gems[inv[i].name] && !inv[i].isEquipped) {
                             const cutName = gems[inv[i].name];
                             
-                            // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Capacity Check
+                            // Safe Capacity Check
                             // Checks if splitting the raw gem stack will overflow the inventory BEFORE executing!
                             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                             const hasStack = inv.find(item => item && item.name === cutName && !item.isEquipped);
@@ -132,11 +139,15 @@ window.ExpansionManager.register({
                                 return false;
                             }
 
-                            // 🌟 JUICE & GAMEPLAY WIN: The Perfect Cut!
-                            // 5% chance to yield two gems instead of one.
+                            // 🌟 JUICE & SYNERGY WIN: The Perfect Cut!
+                            // Scales with luck, and gives a massive +15% bonus if they are the Artisan class!
                             let yieldAmt = 1;
                             let isFlawless = false;
-                            if (Math.random() < 0.05) {
+                            
+                            let flawlessChance = 0.05 + (state.player.luck * 0.01);
+                            if (state.player.className === 'Artisan') flawlessChance += 0.15;
+                            
+                            if (Math.random() < flawlessChance) {
                                 yieldAmt = 2;
                                 isFlawless = true;
                             }
@@ -152,8 +163,14 @@ window.ExpansionManager.register({
                                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#22d3ee', 10);
                             }
                             
-                            // Look up the template for the cut gem natively via Expansion payload
-                            const templateKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === cutName);
+                            // 🚀 PERFORMANCE WIN: High-Speed Cache for Template Keys
+                            if (!window._artisanKeyCache) window._artisanKeyCache = {};
+                            let templateKey = window._artisanKeyCache[cutName];
+                            if (!templateKey) {
+                                templateKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === cutName);
+                                window._artisanKeyCache[cutName] = templateKey;
+                            }
+                            
                             const template = window.ITEM_DATA[templateKey];
                             
                             // Consume 1 Raw Gem
@@ -164,7 +181,7 @@ window.ExpansionManager.register({
                             if (hasStack) {
                                 hasStack.quantity += yieldAmt;
                             } else {
-                                // 🚨 ROBUSTNESS WIN: Deep cloning isolated template
+                                // Deep cloning isolated template
                                 const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
                                 newItem.templateId = templateKey;
                                 newItem.quantity = yieldAmt;
@@ -219,6 +236,16 @@ window.ExpansionManager.register({
                 name: 'Cut Amethyst', type: 'consumable', tile: '♦️',
                 description: "{purple:+15 Max Mana} to equipped Armor. \nCan only socket an item once.",
                 effect: (state) => window.applySocket(state, 'armor', 'maxMana', 15, 'of the Void', '#a855f7', 'purple', 'Cut Amethyst')
+            },
+            '♦️t': {
+                name: 'Cut Topaz', type: 'consumable', tile: '♦️',
+                description: "{gold:+3 Luck} to equipped Accessory. \nCan only socket an item once.",
+                effect: (state) => window.applySocket(state, 'accessory', 'luck', 3, 'of Fortune', '#facc15', 'gold', 'Cut Topaz')
+            },
+            '♦️o': {
+                name: 'Cut Onyx', type: 'consumable', tile: '♦️',
+                description: "{gray:+3 Endurance} to equipped Armor. \nCan only socket an item once.",
+                effect: (state) => window.applySocket(state, 'armor', 'endurance', 3, 'of the Titan', '#374151', 'gray', 'Cut Onyx')
             }
         },
 
@@ -288,10 +315,12 @@ window.ExpansionManager.register({
                         const roll = Math.random();
                         let gem = 'Raw Ruby';
                         let gemId = '💎r';
-                        if (roll > 0.4) { gem = 'Raw Sapphire'; gemId = '💎s'; }
+                        if (roll > 0.3) { gem = 'Raw Sapphire'; gemId = '💎s'; }
+                        if (roll > 0.5) { gem = 'Raw Topaz'; gemId = '💎t'; }
                         if (roll > 0.7) { gem = 'Raw Emerald'; gemId = '💎e'; }
                         if (roll > 0.85) { gem = 'Raw Amethyst'; gemId = '💎a'; }
-                        if (roll > 0.95) { gem = 'Raw Diamond'; gemId = '💎d'; }
+                        if (roll > 0.92) { gem = 'Raw Onyx'; gemId = '💎o'; }
+                        if (roll > 0.97) { gem = 'Raw Diamond'; gemId = '💎d'; }
 
                         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                         if (state.player.inventory.length < invCap) {
@@ -379,6 +408,27 @@ window.ExpansionManager.register({
                                         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                                         const toolExists = state.player.inventory.some(i => i && i.name === "Jeweler's Kit");
                                         
+                                        // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Outward Spiral Drop
+                                        const dropSafely = (itemTile) => {
+                                            let placed = false;
+                                            if (typeof chunkManager !== 'undefined') {
+                                                for (let r = 0; r <= 2 && !placed; r++) {
+                                                    for (let dy = -r; dy <= r && !placed; dy++) {
+                                                        for (let dx = -r; dx <= r && !placed; dx++) {
+                                                            const tx = ctx.x + dx;
+                                                            const ty = ctx.y + dy;
+                                                            const tileAt = chunkManager.getTile(tx, ty);
+                                                            if (['.', 'F', 'd', 'D'].includes(tileAt)) {
+                                                                chunkManager.setWorldTile(tx, ty, itemTile, 24);
+                                                                placed = true;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                if (!placed) chunkManager.setWorldTile(ctx.x, ctx.y, itemTile, 24);
+                                            }
+                                        };
+                                        
                                         if (!toolExists) {
                                             if (state.player.inventory.length < invCap) {
                                                 const jTemplate = window.ITEM_DATA['🛠️j'];
@@ -387,7 +437,8 @@ window.ExpansionManager.register({
                                                 kit.effect = jTemplate.effect; // Rebind!
                                                 state.player.inventory.push(kit);
                                             } else {
-                                                logMessage("{red:You found a Jeweler's Kit, but your inventory was full!}");
+                                                logMessage("{red:You found a Jeweler's Kit, but your inventory was full! It drops to the floor.}");
+                                                dropSafely('🛠️j');
                                             }
                                         }
                                         
@@ -403,13 +454,17 @@ window.ExpansionManager.register({
                                             geode.effect = gTemplate.effect; // Rebind!
                                             state.player.inventory.push(geode);
                                         } else {
-                                            logMessage("{red:You found Geodes, but your inventory was full!}");
+                                            logMessage(`{red:You found ${geodeYield} Geodes, but your inventory was full! They drop to the floor.}`);
+                                            dropSafely('🪨g');
                                         }
                                     }
                                     
                                     state.lootedTiles.add(ctx.tileId);
                                     if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(ctx.x, ctx.y, '🏚'); // Replace with rubble visually
                                     state.mapDirty = true;
+                                    
+                                    // 🚨 Ensure state is saved!
+                                    if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory, lootedTiles: Object.fromEntries(state.lootedTiles) });
                                 }
                             },
                             { text: "Walk away." }
