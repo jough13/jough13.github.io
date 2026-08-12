@@ -974,9 +974,19 @@ async function processOverworldEnemyTurns() {
         }
 
         // --- AI LOGIC (MOVEMENT & MELEE) ---
-        let chaseChance = 0.20;
-        if (targetDistSq < 400) chaseChance = 0.85; // Close range
-        if (targetDistSq < 100) chaseChance = 1.00; // Aggressive
+        // Line of Sight Aggro!
+        // Prevents enemies from swarming the player through walls/ruins.
+        const hasLoS = hasLineOfSight(enemy.x, enemy.y, targetX, targetY);
+        let chaseChance = 0.05; // Default: Idle/Wandering if they can't see you
+        
+        if (hasLoS) {
+            chaseChance = 0.20; // Baseline chance if visible but far
+            if (targetDistSq < 400) chaseChance = 0.85; // Close range
+            if (targetDistSq < 100) chaseChance = 1.00; // Aggressive
+        } else {
+            // Cannot see the player (behind a wall/mountain)
+            if (targetDistSq < 36) chaseChance = 0.40; // Can hear you nearby through the wall
+        }
 
         if (Math.random() < 0.80) { // 80% chance to act per turn
             let dirX = 0, dirY = 0;
@@ -1016,7 +1026,7 @@ async function processOverworldEnemyTurns() {
             }
 
             if (canMove) {
-                // 🚨 FIX: GLOBAL MELEE COLLISION
+                // GLOBAL MELEE COLLISION
                 if (finalX === targetX && finalY === targetY) {
                     
                     if (target.isHost) {
@@ -1120,7 +1130,7 @@ async function processOverworldEnemyTurns() {
                             }
                         }
                     } else {
-                        // 🚨 FIX: Send Melee Attack to Client
+                        // Send Melee Attack to Client
                         if (typeof rtdb !== 'undefined') {
                             rtdb.ref(`pvpAttacks/${target.id}`).push({
                                 attackerId: enemyId,
