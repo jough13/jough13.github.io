@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_bazaar",
     name: "The Bazaar (Multiplayer Trading)",
-    version: "1.1", // Upgraded version!
+    version: "1.2", // Upgraded version!
     
     data: {}, // No new hardcoded items needed, purely a systems expansion
 
@@ -44,10 +44,15 @@ window.ExpansionManager.register({
                     </div>
                     
                     <!-- Their Offer -->
-                    <div class="flex flex-col h-full bg-black bg-opacity-30 rounded-xl border border-blue-700 p-3 shadow-inner">
+                    <div class="flex flex-col h-full bg-black bg-opacity-30 rounded-xl border border-blue-700 p-3 shadow-inner relative">
                         <h3 id="bazaarTheirName" class="text-lg font-bold mb-2 border-b border-blue-600 pb-1 text-blue-400">Their Offer (Gold: <span id="bazaarTheirOfferGold" class="text-yellow-400">0</span>)</h3>
                         <ul id="bazaarTheirOfferList" class="space-y-2 overflow-y-auto pr-2 flex-grow custom-scrollbar"></ul>
                         <div id="bazaarTheirLock" class="mt-2 text-center text-gray-500 font-bold bg-black bg-opacity-40 py-3 rounded-lg border border-gray-700 shadow-inner flex-shrink-0">Waiting for them...</div>
+                        
+                        <!-- Anti-Scam Overlay -->
+                        <div id="antiScamOverlay" class="absolute inset-0 bg-red-900 bg-opacity-40 flex items-center justify-center z-10 rounded-xl hidden pointer-events-none">
+                            <span class="text-red-400 font-bold bg-black bg-opacity-80 px-4 py-2 rounded-lg border border-red-500 shadow-lg">Offer Changed! Wait...</span>
+                        </div>
                     </div>
                 </div>
                 
@@ -63,10 +68,10 @@ window.ExpansionManager.register({
         window.TradeManager = {
             activeTradeId: null,
             targetId: null,
+            targetName: "Player",
             isInitiator: false,
-            role: null, // 'offerA' or 'offerB'
+            role: null, 
             
-            // Local state to prevent touching the real inventory until the trade is completely finalized
             localInv: [], 
             localGold: 0,
             
@@ -75,8 +80,10 @@ window.ExpansionManager.register({
             myLock: false,
             theirLock: false,
             
-            isProcessing: false, // Mutex lock
+            isProcessing: false, 
             tradeListenerRef: null,
+            antiScamTimer: null,
+            scamLockActive: false,
 
             // --- A. STARTING A TRADE ---
             requestTrade: function(targetUid, targetName) {
@@ -84,7 +91,6 @@ window.ExpansionManager.register({
                 logMessage(`{yellow:Sending trade request to ${targetName}...}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                 
-                // Write a request to their specific inbox
                 rtdb.ref(`tradeRequests/${targetUid}`).set({
                     fromId: player_id,
                     fromName: gameState.player.name || auth.currentUser.email.split('@')[0],
@@ -103,7 +109,6 @@ window.ExpansionManager.register({
                 logMessage(`{green:Accepting trade from ${this.pendingRequest.fromName}...}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
 
-                // Setup the empty trade room in Firebase
                 rtdb.ref(`trades/${tradeId}`).set({
                     status: 'active',
                     initiator: this.pendingRequest.fromId,
@@ -114,7 +119,6 @@ window.ExpansionManager.register({
                     lockB: false
                 });
 
-                // Tell the initiator we accepted
                 rtdb.ref(`tradeRequests/${this.pendingRequest.fromId}`).set({
                     accepted: tradeId,
                     targetName: gameState.player.name || auth.currentUser.email.split('@')[0]
@@ -122,7 +126,7 @@ window.ExpansionManager.register({
 
                 this.joinTrade(tradeId, false, this.pendingRequest.fromName);
                 this.pendingRequest = null;
-                rtdb.ref(`tradeRequests/${player_id}`).remove(); // Clear inbox
+                rtdb.ref(`tradeRequests/${player_id}`).remove(); 
             },
 
             // --- C. JOINING THE TRADE WINDOW ---
@@ -132,25 +136,26 @@ window.ExpansionManager.register({
                 this.activeTradeId = tradeId;
                 this.isInitiator = isInitiator;
                 this.role = isInitiator ? 'A' : 'B';
+                this.targetName = otherName;
                 
-                // Deep clone the inventory so we don't accidentally mutate the real one
-                this.localInv = typeof window.cloneItemSafely === 'function' ? window.fastClone(gameState.player.inventory) : JSON.parse(JSON.stringify(gameState.player.inventory));
-                // Filter out equipped items and quest items!
-                this.localInv = this.localInv.filter(i => i && !i.isEquipped && i.type !== 'quest');
+                // Deep clone and inject strict unique IDs for interaction tracking!
+                this.localInv = (typeof window.cloneItemSafely === 'function' ? window.fastClone(gameState.player.inventory) : JSON.parse(JSON.stringify(gameState.player.inventory)))
+                    .filter(i => i && !i.isEquipped && i.type !== 'quest')
+                    .map((item, i) => { item._tradeUid = `inv_${i}`; return item; });
                 
-                this.localGold = gameState.player.coins || 0;
+                this.localGold = Number(gameState.player.coins) || 0;
                 
                 this.myOffer = { gold: 0, items: [] };
                 this.theirOffer = { gold: 0, items: [] };
                 this.myLock = false;
                 this.theirLock = false;
+                this.scamLockActive = false;
 
                 document.getElementById('bazaarTheirName').innerHTML = `${otherName}'s Offer (Gold: <span id="bazaarTheirOfferGold" class="text-yellow-400">0</span>)`;
                 document.getElementById('bazaarModal').classList.remove('hidden');
                 
                 this.renderUI();
 
-                // Listen for changes from the other player
                 this.tradeListenerRef = rtdb.ref(`trades/${tradeId}`);
                 this.tradeListenerRef.on('value', (snap) => {
                     const data = snap.val();
@@ -168,20 +173,32 @@ window.ExpansionManager.register({
                         return;
                     }
 
-                    // Sync their offer
+                    // Extract their new offer
                     const theirRole = this.isInitiator ? 'offerB' : 'offerA';
-                    this.theirOffer.gold = data[theirRole]?.gold || 0;
-                    this.theirOffer.items = data[theirRole]?.items || [];
-                    
+                    const newTheirGold = Number(data[theirRole]?.gold) || 0;
+                    const newTheirItems = data[theirRole]?.items || [];
                     const theirLockKey = this.isInitiator ? 'lockB' : 'lockA';
-                    this.theirLock = data[theirLockKey] || false;
+                    const newTheirLock = data[theirLockKey] || false;
 
-                    // If we were locked but they changed their offer, Firebase rules usually require an unlock. 
-                    // To be safe, if their lock is false, we should warn the user.
+                    // 🚨 ANTI-SCAM GUARD: Detect if they modified their offer
+                    const oldOfferStr = JSON.stringify(this.theirOffer.items);
+                    const newOfferStr = JSON.stringify(newTheirItems);
                     
+                    if (this.theirOffer.gold !== newTheirGold || oldOfferStr !== newOfferStr) {
+                        if (this.myLock) {
+                            // They changed the offer while I was locked! Revoke my lock immediately!
+                            this.myLock = false;
+                            this.pushUpdate(); // Broadcast my unlock
+                        }
+                        this.triggerAntiScamCooldown();
+                    }
+
+                    this.theirOffer.gold = newTheirGold;
+                    this.theirOffer.items = newTheirItems;
+                    this.theirLock = newTheirLock;
+
                     // Check Completion
                     if (this.myLock && this.theirLock && this.isInitiator) {
-                        // Both locked! Initiator seals the deal to prevent race conditions.
                         this.tradeListenerRef.update({ status: 'completed' });
                     }
 
@@ -189,96 +206,98 @@ window.ExpansionManager.register({
                 });
             },
 
+            triggerAntiScamCooldown: function() {
+                this.scamLockActive = true;
+                const overlay = document.getElementById('antiScamOverlay');
+                if (overlay) overlay.classList.remove('hidden');
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
+                
+                if (this.antiScamTimer) clearTimeout(this.antiScamTimer);
+                
+                // 3 Second Cooldown before you can accept a changed offer
+                this.antiScamTimer = setTimeout(() => {
+                    this.scamLockActive = false;
+                    if (overlay) overlay.classList.add('hidden');
+                    this.renderUI();
+                }, 3000);
+            },
+
             // --- D. INTERACTION LOGIC ---
-            offerItem: function(index, expectedName) {
-                if (this.isProcessing || this.myLock) return;
+            offerItem: function(uid) {
+                if (this.isProcessing || this.myLock || this.scamLockActive) return;
                 this.isProcessing = true;
 
-                let actualIndex = index;
-                let item = this.localInv[actualIndex];
+                const actualIndex = this.localInv.findIndex(i => i._tradeUid === uid);
+                if (actualIndex === -1) {
+                    this.isProcessing = false; return;
+                }
                 
-                // 🚨 BUG FIX: Verify index matches the item to prevent UI desync shifting
-                if (expectedName && (!item || item.name !== expectedName)) {
-                    actualIndex = this.localInv.findIndex(i => i && i.name === expectedName);
-                    if (actualIndex === -1) {
-                        this.isProcessing = false;
-                        return;
-                    }
-                    item = this.localInv[actualIndex];
+                let item = this.localInv[actualIndex];
+                const isStackable = window.isStackableItem ? window.isStackableItem(item.type) : false;
+                const existingOffer = isStackable ? this.myOffer.items.find(i => i.name === item.name) : null;
+                
+                if (existingOffer) {
+                    existingOffer.quantity++;
+                } else {
+                    const offerClone = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(item) : JSON.parse(JSON.stringify(item));
+                    offerClone.quantity = 1;
+                    offerClone._tradeUid = `offer_${Date.now()}_${Math.random()}`; // Give it a new UID for the offer pool
+                    this.myOffer.items.push(offerClone);
                 }
-
-                if (item) {
-                    const isStackable = window.isStackableItem ? window.isStackableItem(item.type) : false;
-                    const existingOffer = isStackable ? this.myOffer.items.find(i => i.name === item.name) : null;
-                    
-                    // Move 1 quantity at a time for simplicity, or use prompts for bulk. Let's do 1 for speed.
-                    if (existingOffer) {
-                        existingOffer.quantity++;
-                    } else {
-                        const offerClone = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(item) : JSON.parse(JSON.stringify(item));
-                        offerClone.quantity = 1;
-                        this.myOffer.items.push(offerClone);
-                    }
-                    
-                    item.quantity--;
-                    if (item.quantity <= 0) this.localInv.splice(actualIndex, 1);
-                    
-                    this.pushUpdate();
-                }
+                
+                item.quantity--;
+                if (item.quantity <= 0) this.localInv.splice(actualIndex, 1);
+                
+                this.pushUpdate();
                 this.isProcessing = false;
             },
 
-            revokeItem: function(index, expectedName) {
-                if (this.isProcessing || this.myLock) return;
+            revokeItem: function(uid) {
+                if (this.isProcessing || this.myLock || this.scamLockActive) return;
                 this.isProcessing = true;
 
-                let actualIndex = index;
-                let item = this.myOffer.items[actualIndex];
+                const actualIndex = this.myOffer.items.findIndex(i => i._tradeUid === uid);
+                if (actualIndex === -1) {
+                    this.isProcessing = false; return;
+                }
                 
-                // 🚨 BUG FIX: Verify index matches the item to prevent UI desync shifting
-                if (expectedName && (!item || item.name !== expectedName)) {
-                    actualIndex = this.myOffer.items.findIndex(i => i && i.name === expectedName);
-                    if (actualIndex === -1) {
-                        this.isProcessing = false;
-                        return;
-                    }
-                    item = this.myOffer.items[actualIndex];
+                let item = this.myOffer.items[actualIndex];
+                const isStackable = window.isStackableItem ? window.isStackableItem(item.type) : false;
+                const existingInv = isStackable ? this.localInv.find(i => i.name === item.name) : null;
+                
+                if (existingInv) {
+                    existingInv.quantity++;
+                } else {
+                    const invClone = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(item) : JSON.parse(JSON.stringify(item));
+                    invClone.quantity = 1;
+                    invClone._tradeUid = `inv_${Date.now()}_${Math.random()}`; 
+                    this.localInv.push(invClone);
                 }
-
-                if (item) {
-                    const isStackable = window.isStackableItem ? window.isStackableItem(item.type) : false;
-                    const existingInv = isStackable ? this.localInv.find(i => i.name === item.name) : null;
-                    
-                    if (existingInv) {
-                        existingInv.quantity++;
-                    } else {
-                        const invClone = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(item) : JSON.parse(JSON.stringify(item));
-                        invClone.quantity = 1;
-                        this.localInv.push(invClone);
-                    }
-                    
-                    item.quantity--;
-                    if (item.quantity <= 0) this.myOffer.items.splice(actualIndex, 1);
-                    
-                    this.pushUpdate();
-                }
+                
+                item.quantity--;
+                if (item.quantity <= 0) this.myOffer.items.splice(actualIndex, 1);
+                
+                this.pushUpdate();
                 this.isProcessing = false;
             },
 
             offerGold: function(amount) {
-                if (this.isProcessing || this.myLock) return;
-                if (amount <= 0 || amount > this.localGold) {
+                if (this.isProcessing || this.myLock || this.scamLockActive) return;
+                
+                // Strict validation
+                const safeAmt = Math.floor(Number(amount));
+                if (isNaN(safeAmt) || safeAmt <= 0 || safeAmt > this.localGold) {
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                     return;
                 }
                 
-                this.localGold -= amount;
-                this.myOffer.gold += amount;
+                this.localGold -= safeAmt;
+                this.myOffer.gold += safeAmt;
                 this.pushUpdate();
             },
 
             revokeGold: function() {
-                if (this.isProcessing || this.myLock) return;
+                if (this.isProcessing || this.myLock || this.scamLockActive) return;
                 if (this.myOffer.gold > 0) {
                     this.localGold += this.myOffer.gold;
                     this.myOffer.gold = 0;
@@ -287,24 +306,24 @@ window.ExpansionManager.register({
             },
 
             toggleLock: function() {
-                if (this.isProcessing) return;
+                if (this.isProcessing || this.scamLockActive) return;
                 
                 // Capacity Check
                 if (!this.myLock) {
                     const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
                     let projectedSlots = this.localInv.length;
                     
-                    // Add their unstackable items to projection
                     this.theirOffer.items.forEach(tItem => {
                         const isStackable = window.isStackableItem ? window.isStackableItem(tItem.type) : false;
                         const existingLocal = isStackable ? this.localInv.find(i => i.name === tItem.name) : null;
                         if (!existingLocal) projectedSlots++;
                     });
                     
+                    // 🚨 PRE-CHECK: If they don't have space, warn them, but STILL let them lock.
+                    // The executeFinalSwap will handle the overflow via `safelyDropItem`.
                     if (projectedSlots > invCap) {
-                        logMessage("{red:You do not have enough inventory space to accept their offer!}");
-                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                        return;
+                        logMessage(`{yellow:Warning: You don't have enough space. Excess items will drop to the floor.}`);
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
                     }
                 }
 
@@ -321,10 +340,10 @@ window.ExpansionManager.register({
                 const offerKey = this.isInitiator ? 'offerA' : 'offerB';
                 const lockKey = this.isInitiator ? 'lockA' : 'lockB';
                 
-                // Strip functions before saving to RTDB
+                // Strip functions and UIDs before sending across network
                 const sanitizedItems = this.myOffer.items.map(i => {
                     const clone = JSON.parse(JSON.stringify(i));
-                    delete clone.effect; delete clone.onHit;
+                    delete clone.effect; delete clone.onHit; delete clone._tradeUid;
                     return clone;
                 });
 
@@ -340,18 +359,47 @@ window.ExpansionManager.register({
 
             // --- E. FINALIZING ---
             executeFinalSwap: function() {
-                logMessage("{gold:Trade completed successfully!}");
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#facc15', 30);
                 gameState.screenShake = 10;
 
-                // 1. Rebuild Inventory
-                // Start with the local inventory (which had my offered items removed safely)
+                // 1. Rebuild Inventory securely
                 let finalInventory = [...this.localInv]; 
                 
-                // Add back equipped items and quest items that were filtered out
+                // Add back equipped & quest items
                 const safeOriginals = gameState.player.inventory.filter(i => i && (i.isEquipped || i.type === 'quest'));
                 finalInventory = finalInventory.concat(safeOriginals);
+
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+                let droppedCount = 0;
+                let summaryItemsGained = [];
+
+                // 🚨 BULLETPROOF DROP FALLBACK
+                const safelyDropItem = (itemDrop) => {
+                    let placed = false;
+                    const validFloor = gameState.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[gameState.currentCaveTheme] ? CAVE_THEMES[gameState.currentCaveTheme].floor : '.';
+                    if (typeof chunkManager !== 'undefined') {
+                        for (let r = 0; r <= 2 && !placed; r++) {
+                            for (let dy = -r; dy <= r && !placed; dy++) {
+                                for (let dx = -r; dx <= r && !placed; dx++) {
+                                    const tx = gameState.player.x + dx;
+                                    const ty = gameState.player.y + dy;
+                                    let tileAt = chunkManager.getTile(tx, ty);
+                                    if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
+                                    if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
+
+                                    if (tileAt === validFloor || tileAt === '.') {
+                                        if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(tx, ty, itemDrop.tile || '🎒', 24); 
+                                        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = itemDrop.tile || '🎒';
+                                        else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = itemDrop.tile || '🎒';
+                                        placed = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    gameState.mapDirty = true;
+                };
 
                 // Add THEIR items safely
                 this.theirOffer.items.forEach(tItem => {
@@ -360,15 +408,19 @@ window.ExpansionManager.register({
                     
                     if (existing) {
                         existing.quantity += tItem.quantity;
+                        summaryItemsGained.push(`${tItem.name} (x${tItem.quantity})`);
                     } else {
-                        // Use the central rehydration engine to preserve dynamic properties 
-                        // (like Sockets, Masterwork stats, or Curses) while safely restoring the 
-                        // stripped .effect and .onHit functions from the database payload!
-                        const hydratedItem = typeof window.rehydrateItemArray === 'function' 
-                            ? window.rehydrateItemArray([tItem])[0] 
-                            : tItem;
+                        const hydratedItem = typeof window.rehydrateItemArray === 'function' ? window.rehydrateItemArray([tItem])[0] : tItem;
                             
-                        finalInventory.push(hydratedItem);
+                        if (finalInventory.length < invCap) {
+                            finalInventory.push(hydratedItem);
+                            summaryItemsGained.push(`${hydratedItem.name}`);
+                        } else {
+                            // Inventory overflow! Safely drop on the floor!
+                            safelyDropItem(hydratedItem);
+                            droppedCount++;
+                            summaryItemsGained.push(`${hydratedItem.name} [Dropped]`);
+                        }
                     }
                 });
 
@@ -376,17 +428,36 @@ window.ExpansionManager.register({
                 gameState.player.coins = this.localGold + this.theirOffer.gold;
                 if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(this.theirOffer.gold);
 
-                // 3. Save & Close
-                gameState.player.inventory = finalInventory;
-                if (typeof triggerDebouncedSave === 'function') {
-                    triggerDebouncedSave({ coins: gameState.player.coins, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : finalInventory });
-                }
+                // 3. Trade Receipt Logging
+                let receipt = `{cyan:Trade with ${this.targetName} Complete!} `;
+                let gainedArr = [];
+                let lostArr = [];
+
+                if (this.theirOffer.gold > 0) gainedArr.push(`{gold:${this.theirOffer.gold}g}`);
+                if (summaryItemsGained.length > 0) gainedArr.push(`{green:${summaryItemsGained.join(', ')}}`);
                 
-                // Initiator cleans up the DB node to save space
-                if (this.isInitiator) {
-                    rtdb.ref(`trades/${this.activeTradeId}`).remove();
+                if (this.myOffer.gold > 0) lostArr.push(`{red:${this.myOffer.gold}g}`);
+                if (this.myOffer.items.length > 0) {
+                    lostArr.push(`{gray:${this.myOffer.items.map(i => `${i.name} (x${i.quantity})`).join(', ')}}`);
                 }
 
+                receipt += `\n{blue:Received:} ${gainedArr.length > 0 ? gainedArr.join(', ') : 'Nothing'}`;
+                receipt += `\n{gray:Gave:} ${lostArr.length > 0 ? lostArr.join(', ') : 'Nothing'}`;
+                
+                logMessage(receipt);
+                if (droppedCount > 0) {
+                    logMessage(`{red:Inventory was full. ${droppedCount} items dropped to the floor.}`);
+                }
+
+                // 4. Save & Close
+                // Clean off the temporary UIDs before saving
+                gameState.player.inventory = finalInventory.map(i => { delete i._tradeUid; return i; });
+                
+                if (typeof triggerDebouncedSave === 'function') {
+                    triggerDebouncedSave({ coins: gameState.player.coins, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory });
+                }
+                
+                if (this.isInitiator) rtdb.ref(`trades/${this.activeTradeId}`).remove();
                 this.closeTrade(true);
             },
 
@@ -398,9 +469,11 @@ window.ExpansionManager.register({
                     this.tradeListenerRef.off();
                     this.tradeListenerRef = null;
                 }
+                if (this.antiScamTimer) clearTimeout(this.antiScamTimer);
                 
                 document.getElementById('bazaarModal').classList.add('hidden');
                 this.activeTradeId = null;
+                this.scamLockActive = false;
                 
                 if (typeof renderInventory === 'function') renderInventory();
                 if (typeof renderStats === 'function') renderStats();
@@ -430,35 +503,25 @@ window.ExpansionManager.register({
 
                 // Render Left (Local Inv)
                 invList.innerHTML = '';
-                this.localInv.forEach((item, index) => {
+                this.localInv.forEach(item => {
                     const safeName = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
                     const li = document.createElement('li');
-                    li.className = `p-2 bg-gray-800 rounded border border-gray-700 flex justify-between items-center ${this.myLock ? 'opacity-50 grayscale' : 'hover:border-blue-500 cursor-pointer'}`;
+                    li.className = `p-2 bg-gray-800 rounded border border-gray-700 flex justify-between items-center ${this.myLock || this.scamLockActive ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:border-blue-500 cursor-pointer'}`;
                     li.innerHTML = `<span class="text-sm font-bold text-gray-300">${item.tile || '🎒'} ${safeName} <span class="text-xs text-gray-500">x${item.quantity}</span></span>`;
                     
-                    // 🚨 BUG FIX: Added `data-name` property for the click handler
-                    if (!this.myLock) {
-                        li.dataset.index = index;
-                        li.dataset.name = item.name;
-                        li.onclick = () => this.offerItem(index, item.name);
-                    }
+                    if (!this.myLock && !this.scamLockActive) li.onclick = () => this.offerItem(item._tradeUid);
                     invList.appendChild(li);
                 });
 
                 // Render Middle (My Offer)
                 myOfferList.innerHTML = '';
-                this.myOffer.items.forEach((item, index) => {
+                this.myOffer.items.forEach(item => {
                     const safeName = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
                     const li = document.createElement('li');
-                    li.className = `p-2 bg-green-900 bg-opacity-30 rounded border border-green-800 flex justify-between items-center ${this.myLock ? 'opacity-50 grayscale' : 'hover:border-red-500 cursor-pointer'}`;
+                    li.className = `p-2 bg-green-900 bg-opacity-30 rounded border border-green-800 flex justify-between items-center ${this.myLock || this.scamLockActive ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:border-red-500 cursor-pointer'}`;
                     li.innerHTML = `<span class="text-sm font-bold text-green-400">${item.tile || '🎒'} ${safeName} <span class="text-xs text-gray-400">x${item.quantity}</span></span>`;
                     
-                    // 🚨 BUG FIX: Added `data-name` property for the click handler
-                    if (!this.myLock) {
-                        li.dataset.index = index;
-                        li.dataset.name = item.name;
-                        li.onclick = () => this.revokeItem(index, item.name);
-                    }
+                    if (!this.myLock && !this.scamLockActive) li.onclick = () => this.revokeItem(item._tradeUid);
                     myOfferList.appendChild(li);
                 });
 
@@ -474,10 +537,16 @@ window.ExpansionManager.register({
 
                 // Lock Buttons
                 const myLockBtn = document.getElementById('bazaarLockBtn');
-                if (this.myLock) {
+                if (this.scamLockActive) {
+                    myLockBtn.disabled = true;
+                    myLockBtn.textContent = "Cooldown...";
+                    myLockBtn.className = "mt-2 w-full bg-gray-700 text-gray-400 font-bold py-3 rounded-lg shadow-inner cursor-not-allowed flex-shrink-0 border border-gray-600";
+                } else if (this.myLock) {
+                    myLockBtn.disabled = false;
                     myLockBtn.textContent = "Unlock Offer";
                     myLockBtn.className = "mt-2 w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-3 rounded-lg shadow transition-transform active:scale-95 flex-shrink-0 border-b-4 border-yellow-800 active:border-b-0 active:mt-1";
                 } else {
+                    myLockBtn.disabled = false;
                     myLockBtn.textContent = "Lock Offer";
                     myLockBtn.className = "mt-2 w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-lg shadow transition-transform active:scale-95 flex-shrink-0 border-b-4 border-green-800 active:border-b-0 active:mt-1";
                 }
@@ -497,7 +566,6 @@ window.ExpansionManager.register({
         // 3. ATTACH LISTENERS & HOOKS
         // ==========================================
 
-        // DOM Listeners
         document.getElementById('bazaarCancelBtn').addEventListener('click', () => {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             TradeManager.closeTrade();
@@ -516,25 +584,22 @@ window.ExpansionManager.register({
             }
         });
 
-        // Click on My Offer Gold to revoke it
         document.getElementById('bazaarMyOfferGold').parentElement.addEventListener('click', () => {
             TradeManager.revokeGold();
         });
 
-        // Hook into Firebase Inbox for incoming requests and accepted requests
+        // Hook into Firebase Inbox
         setTimeout(() => {
             if (typeof rtdb !== 'undefined' && typeof player_id !== 'undefined' && player_id) {
                 rtdb.ref(`tradeRequests/${player_id}`).on('value', (snap) => {
                     const data = snap.val();
                     if (!data) return;
 
-                    // I sent a request, and they accepted it!
                     if (data.accepted) {
                         logMessage(`{green:${data.targetName} accepted your trade request!}`);
                         rtdb.ref(`tradeRequests/${player_id}`).remove();
                         TradeManager.joinTrade(data.accepted, true, data.targetName);
                     } 
-                    // Someone else sent ME a request!
                     else if (data.fromId && data.fromName) {
                         TradeManager.pendingRequest = data;
                         logMessage(`{gold:🔔 ${data.fromName} wants to trade! Type /trade accept to begin.}`);
@@ -542,26 +607,23 @@ window.ExpansionManager.register({
                     }
                 });
             }
-        }, 3000); // Give the engine a few seconds to boot up `player_id`
+        }, 3000); 
 
-        // Add 'Y' to the engine's instant keys so it bypasses the movement queue!
+        // Bind Y Key explicitly
         if (typeof INSTANT_KEYS !== 'undefined') {
-            INSTANT_KEYS.add('y');
-            INSTANT_KEYS.add('Y');
+            INSTANT_KEYS.add('y'); INSTANT_KEYS.add('Y');
         }
 
-        // Hook into the 'Y' key (Trade) to initiate trades if standing on someone!
         if (typeof window.handleInput === 'function') {
             const origHandleInput = window.handleInput;
             window.handleInput = function(key) {
-                // Changed from 't' to 'y' to prevent double-binding clash with Syndicate's Target menu!
                 if (key.toLowerCase() === 'y' && typeof otherPlayers !== 'undefined' && gameState.mapMode === 'overworld') {
                     for (const pid in otherPlayers) {
                         const op = otherPlayers[pid];
                         if (op.x === gameState.player.x && op.y === gameState.player.y && op.mapMode === gameState.mapMode && op.currentRealm === gameState.currentRealm) {
                             const targetName = op.email ? op.email.split('@')[0] : "Player";
                             TradeManager.requestTrade(pid, targetName);
-                            return; // 🚨 Added return to prevent overlap
+                            return; 
                         }
                     }
                 }
@@ -569,7 +631,7 @@ window.ExpansionManager.register({
             };
         }
 
-        // Hook into chat commands for /trade [name] and /trade accept
+        // Chat Hooks
         if (typeof window.handleChatCommand === 'function') {
             const originalHandleChat = window.handleChatCommand;
             window.handleChatCommand = function(message) {
@@ -598,7 +660,7 @@ window.ExpansionManager.register({
                     } else {
                         logMessage("{gray:Usage: /trade [name] or /trade accept}");
                     }
-                    return; // Intercepted successfully
+                    return; 
                 }
                 originalHandleChat(message);
             };
