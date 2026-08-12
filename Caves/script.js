@@ -1389,6 +1389,9 @@ function endPlayerTurn(turnUpdates = {}) {
     // Reset the Auto-Tick AFK timer so it doesn't fire immediately after a manual move!
     window._lastAutoTickTime = Date.now();
     
+    // Reset the AI timer whenever the player acts, so enemies wait after your move
+    window.lastLocalInstanceAIAttempt = Date.now();
+    
     // Inherit any updates passed in from movement/interactions!
     let updates = { ...turnUpdates }; 
 
