@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_menagerie",
     name: "The Menagerie (Advanced Companions)",
-    version: "1.3", // Upgraded version!
+    version: "1.4", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS (PET GEAR) ---
@@ -39,6 +39,7 @@ window.ExpansionManager.register({
                         return false;
                     }
                     
+                    // 🚨 BUG FIX WIN: Strict Number Coercion
                     pet.hp = Number(pet.maxHp) || 10;
                     
                     // Initialize XP if missing
@@ -46,7 +47,7 @@ window.ExpansionManager.register({
                     
                     // Cap level at 20
                     if (pet.level < 20) {
-                        pet.xp += 50;
+                        pet.xp = (Number(pet.xp) || 0) + 50;
                         logMessage(`{green:Your ${pet.name} happily eats the treat! (Fully Healed, +50 XP)}`);
                     } else {
                         logMessage(`{green:Your ${pet.name} happily eats the treat! (Fully Healed)}`);
@@ -148,7 +149,7 @@ window.ExpansionManager.register({
             pl.innerHTML = `
                 <div class="flex justify-between items-center mb-1">
                     <span class="font-bold text-green-400 drop-shadow-md text-sm">${pet.tile} ${safeName} <span class="text-[10px] ${isMax ? 'text-yellow-500 shadow-inner border-yellow-800' : 'text-gray-400 border-gray-700'} bg-black bg-opacity-40 px-1 rounded ml-1 border font-bold uppercase tracking-widest">${isMax ? 'MAXED' : 'Lvl ' + pet.level}</span></span>
-                    <span class="text-xs text-red-400 font-bold">♥ ${pet.hp}/${pet.maxHp}</span>
+                    <span class="text-xs text-red-400 font-bold">♥ ${Math.floor(Number(pet.hp))}/${pet.maxHp}</span>
                 </div>
                 <div class="w-full bg-gray-900 rounded h-1.5 mb-2 mt-1 border border-gray-700 shadow-inner overflow-hidden">
                     <div class="${isMax ? 'bg-yellow-500' : 'bg-purple-500'} h-full transition-all duration-300" style="width: ${xpPct}%"></div>
@@ -273,8 +274,14 @@ window.ExpansionManager.register({
                 window.renderPetUI();
                 if (typeof renderInventory === 'function') renderInventory();
                 
-                // Save state
-                if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ companion: pet, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory });
+                // 🚨 BUG FIX: Force Save on Equip!
+                // Without this, pressing 1-9 to equip pet gear wouldn't trigger a DB save!
+                if (typeof triggerDebouncedSave === 'function') {
+                    triggerDebouncedSave({ 
+                        companion: pet, 
+                        inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory 
+                    });
+                }
                 return; // Stop here, do not run original logic
             }
             
@@ -326,7 +333,9 @@ window.ExpansionManager.register({
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
                             window.renderPetUI();
                             if (typeof renderInventory === 'function') renderInventory();
-                            if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ companion: pet, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory });
+                            if (typeof triggerDebouncedSave === 'function') {
+                                triggerDebouncedSave({ companion: pet, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory });
+                            }
                             if (typeof render === 'function') render();
                         }
                     } finally {
