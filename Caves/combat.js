@@ -1227,13 +1227,8 @@ async function processOverworldEnemyTurns() {
 function runLocalAiTurns() {
     if (gameState.mapMode !== 'dungeon' && gameState.mapMode !== 'castle') return;
 
-    // 1. Pause AI if a menu is open OR if the player is currently aiming an ability/spell/potion!
-    if (typeof _modalCache !== 'undefined' && _modalCache.isAnyOpen()) return;
-    if (gameState.isAiming) return; 
-
     const now = Date.now();
-    // 2. Increase AI interval to 900ms (0.9s) for a fairer, more tactical pacing
-    const AI_INTERVAL = 900; 
+    const AI_INTERVAL = 600; // 600ms real-time MMO tick rate
 
     if (now - (window.lastLocalInstanceAIAttempt || 0) < AI_INTERVAL) return;
     window.lastLocalInstanceAIAttempt = now;
@@ -1245,7 +1240,7 @@ function runLocalAiTurns() {
 
     gameState.mapDirty = true;
 
-    // 3. Client-side intuition feedback
+    // Client-side intuition feedback
     if (nearestEnemyDir) {
         const player = gameState.player;
         const intuitChance = Math.min(player.intuition * 0.005, 0.5);
@@ -1285,6 +1280,10 @@ function processEnemyTurns() {
         
         // Ensure health > 0 so dead enemies don't take a turn!
         if (!enemy || enemy.health <= 0) return; 
+
+        // Attack Cooldown Setup (1.2s for Bosses, 1.8s for Normal Mobs)
+        const now = Date.now();
+        const ENEMY_ATTACK_COOLDOWN = enemy.isBoss ? 1200 : 1800;
 
         if (enemy.rootTurns > 0) {
             enemy.rootTurns--;
@@ -1361,14 +1360,13 @@ function processEnemyTurns() {
 
         if (dist > 25) return;
 
-         // --- STEALTH INVISIBILITY (PvE) ---
+        // --- STEALTH INVISIBILITY (PvE) ---
         if (gameState.player.stealthTurns > 0) {
             if (dist > 3) return; // Completely invisible beyond 3 tiles
             if (Math.random() < 0.5) return; // 50% chance to ignore
         }
 
         // Combat Barks!
-        // Gives humanoid enemies a personality as they close in on the player
         if (distSq < 25 && Math.random() < 0.05) {
             const barks = {
                 'b': ["Your gold or your life!", "Get 'em!", "You're dead meat!"],
@@ -1397,7 +1395,6 @@ function processEnemyTurns() {
             if (enemy.health < enemy.maxHealth * 0.5 && !enemy.hasEnraged) {
                 enemy.hasEnraged = true; 
                 
-                // JUICE WIN: Play the terrifying spawn sound when a boss enrages!
                 if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playBossSpawn === 'function') {
                     AudioSystem.playBossSpawn();
                 }
@@ -1494,7 +1491,7 @@ function processEnemyTurns() {
                 const tx = player.x + pick[0];
                 const ty = player.y + pick[1];
                 if (isWalkable(tx, ty)) {
-                    const occupied = gameState.instancedEnemies.some(e => e && e.x === tx && e.y === ty); // 🚨 GHOST GUARD
+                    const occupied = gameState.instancedEnemies.some(e => e && e.x === tx && e.y === ty);
                     if (!occupied) {
                         map[enemy.y][enemy.x] = theme.floor;
                         map[ty][tx] = enemy.tile;
@@ -1541,6 +1538,7 @@ function processEnemyTurns() {
             if (!hitPlayer) logMessage(`{gray:The ${enemy.name}'s attack strikes the ground!}`);
 
             enemy.pendingAttacks = null;
+            enemy.lastAttackTime = now; // Set cooldown after telegraph burst
             if (player.health <= 0) return; // Death handled by modifyVital
             return; 
         }
@@ -1568,8 +1566,16 @@ function processEnemyTurns() {
             return; 
         }
 
+        // --- MELEE ATTACK (distSq <= 2) ---
         if (distSq <= 2) {
             if (gameState.godMode) return;
+
+            // ✅ INDIVIDUAL ATTACK COOLDOWN CHECK
+            if (enemy.lastAttackTime && (now - enemy.lastAttackTime < ENEMY_ATTACK_COOLDOWN)) {
+                return; // Waiting for attack cooldown, hold position
+            }
+
+            enemy.lastAttackTime = now; // Record attack timestamp
 
             // --- COMPANION VULNERABILITY (Melee) ---
             let targetIsCompanion = false;
@@ -1638,10 +1644,18 @@ function processEnemyTurns() {
             return; 
         }
 
+        // --- CASTER ATTACK ---
         const castRangeSq = Math.pow(enemy.castRange || 6, 2);
         
         if (enemy.caster && distSq <= castRangeSq && Math.random() < 0.20 && hasLineOfSight(enemy.x, enemy.y, player.x, player.y)) {
             if (gameState.godMode) return;
+
+            // ✅ INDIVIDUAL ATTACK COOLDOWN CHECK
+            if (enemy.lastAttackTime && (now - enemy.lastAttackTime < ENEMY_ATTACK_COOLDOWN)) {
+                return; // Waiting for cooldown
+            }
+
+            enemy.lastAttackTime = now; // Record attack timestamp
 
             const spellDmg = Math.max(1, Math.floor(enemy.spellDamage || 1));
             let spellName = "spell";
@@ -1703,6 +1717,13 @@ function processEnemyTurns() {
         
         if (enemy.isRanged && distSq <= shootRangeSq && Math.random() < 0.35 && hasLineOfSight(enemy.x, enemy.y, player.x, player.y)) {
             if (gameState.godMode) return;
+
+            // ✅ INDIVIDUAL ATTACK COOLDOWN CHECK
+            if (enemy.lastAttackTime && (now - enemy.lastAttackTime < ENEMY_ATTACK_COOLDOWN)) {
+                return; // Waiting for cooldown
+            }
+
+            enemy.lastAttackTime = now; // Record attack timestamp
 
             // --- COMPANION VULNERABILITY (Archery) ---
             let targetIsCompanion = false;
@@ -2262,6 +2283,9 @@ function handlePlayerDeath() {
     if (gameState.godMode) return false; 
     if (gameState.player.health > 0) return false; 
 
+    // Automatically close any open menus (Inventory, Crafting, Stash) on death
+    document.querySelectorAll('.modal-overlay').forEach(modal => modal.classList.add('hidden'));
+
     // Engage the locks!
     gameState.isDead = true;
     gameState._isExecutingDeath = true; // Prevents race conditions during the drop loop
@@ -2282,17 +2306,17 @@ function handlePlayerDeath() {
 
     player.health = 0; 
     
-    // --- METRICS WIN: Track Total Deaths ---
+    // --- Track Total Deaths ---
     if (!player.metrics) player.metrics = {};
     player.metrics.totalDeaths = (player.metrics.totalDeaths || 0) + 1;
     
-    // JUICE WIN: Death is now a terrifying audiovisual event
+    // Death is now a terrifying audiovisual event
     gameState.screenFlash = { color: '#991b1b', alpha: 1.0, decay: 0.01 }; // Fade to blood red
     if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playDeath === 'function') {
         AudioSystem.playDeath();
     }
     
-    // LORE WIN: Biome-Aware Atmospheric Death Quotes
+    // Biome-Aware Atmospheric Death Quotes
     let deathTile = '.';
     if (typeof chunkManager !== 'undefined') {
         if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') deathTile = chunkManager.getTile(player.x, player.y);
