@@ -289,6 +289,23 @@ function useHotbarSlot(index) {
     const abilityId = player.hotbar[index];
     if (!abilityId) return;
 
+    // 🚨 GAMEPLAY WIN: Guard against double-casting while actively aiming
+    // If you are already aiming a fireball, pressing the hotkey again shouldn't crash the input queue!
+    if (gameState.isAiming) {
+        if (gameState.abilityToAim === abilityId) {
+            // Clicking the same ability while aiming toggles it OFF!
+            gameState.isAiming = false;
+            gameState.abilityToAim = null;
+            logMessage("{gray:Aiming canceled.}");
+            if (typeof render === 'function') render();
+            renderHotbar();
+            return;
+        } else {
+            // Clicking a different ability automatically swaps your aim!
+            gameState.isAiming = false;
+        }
+    }
+
     const triggerSlotShake = () => {
         const slotEl = document.getElementById(`hotbarSlot-${index}`);
         if (slotEl) {
@@ -545,22 +562,23 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
                 const player = gameState.player;
                 const abilityId = player.hotbar[index];
                 
-                if (abilityId) {
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.05, 1200); // Tearing sound
-                    
-                    // LORE WIN: Dynamic unbind text
-                    let readableName = abilityId;
-                    if (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) readableName = SKILL_DATA[abilityId].name;
-                    else if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) readableName = SPELL_DATA[abilityId].name;
-                    else if (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[abilityId]) readableName = ITEM_DATA[abilityId].name;
-                    else {
-                        const invItem = player.inventory.find(i => i && (i.templateId === abilityId || i.name === abilityId)); // 🚨 GHOST GUARD
-                        if (invItem) readableName = invItem.name;
-                    }
-                    
-                    const safeReadableName = typeof escapeHtml === 'function' ? escapeHtml(readableName) : readableName;
-                    if (typeof logMessage !== 'undefined') logMessage(`{gray:You wiped the memory of ${safeReadableName} from Quick-Slot ${index + 1}.}`);
+                // UX WIN: Graceful unbinding if empty
+                if (!abilityId) return;
+                
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.05, 1200); // Tearing sound
+                
+                // LORE WIN: Dynamic unbind text
+                let readableName = abilityId;
+                if (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) readableName = SKILL_DATA[abilityId].name;
+                else if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) readableName = SPELL_DATA[abilityId].name;
+                else if (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[abilityId]) readableName = ITEM_DATA[abilityId].name;
+                else {
+                    const invItem = player.inventory.find(i => i && (i.templateId === abilityId || i.name === abilityId)); // 🚨 GHOST GUARD
+                    if (invItem) readableName = invItem.name;
                 }
+                
+                const safeReadableName = typeof escapeHtml === 'function' ? escapeHtml(readableName) : readableName;
+                if (typeof logMessage !== 'undefined') logMessage(`{gray:You wiped the memory of ${safeReadableName} from Quick-Slot ${index + 1}.}`);
                 
                 player.hotbar[index] = null;
                 
