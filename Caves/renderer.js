@@ -928,13 +928,15 @@ function renderTerrainCache(startX, startY) {
                         case '🌋': fgChar = '🌋'; break; 
                         default:
                             fgChar = tile;
-                            // Catch corrupted Unicode characters and turn them into golden mystery boxes!
+                            // Catch corrupted Unicode characters
                             if (fgChar === '\uFFFD' || fgChar === '') { 
                                 fgChar = '❓'; 
                                 fgColor = '#facc15'; 
                             } 
+                            // Do NOT render enemy characters on the static terrain layer!
+                            // Let the live entity renderer handle them so they don't leave white ghost trails.
                             else if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tile]) {
-                                fgColor = ENEMY_DATA[tile].color || '#ef4444';
+                                fgChar = null; 
                             }
                             break;
                     }
