@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "seasons_of_the_realm",
     name: "Seasons of the Realm (Dynamic Live-Ops)",
-    version: "1.3", // Upgraded version!
+    version: "1.4", // Upgraded version!
     
     data: {
         // --- 1. SEASONAL ITEMS ---
@@ -49,7 +49,7 @@ window.ExpansionManager.register({
                     return true;
                 }
             },
-            // NEW SEASONAL WEAPONS
+            // NEW SEASONAL WEAPONS & ARTIFACTS
             '⚔️sun': {
                 name: 'Sun-Forged Blade', type: 'weapon', tags: ['blade', 'fire'], tile: '⚔️',
                 damage: 8, slot: 'weapon', statBonuses: { strength: 2 }, inflicts: 'burn', inflictChance: 0.3,
@@ -59,6 +59,11 @@ window.ExpansionManager.register({
                 name: 'Glacial Axe', type: 'weapon', tags: ['axe', 'frost'], tile: '🪓',
                 damage: 9, isTwoHanded: true, slot: 'weapon', statBonuses: { constitution: 2 }, inflicts: 'frostbite', inflictChance: 0.3,
                 description: "{red:+9 Dmg}, {green:+2 Con}. A heavy blade of never-melting ice. (Two-Handed)", _rarity: 'epic'
+            },
+            '💍s': {
+                name: 'Amulet of Seasons', type: 'accessory', tile: '💍', defense: 2, slot: 'accessory',
+                statBonuses: { luck: 5 }, _rarity: 'legendary', excludeFromLoot: true,
+                description: "{blue:+2 Def}, {gold:+5 Luck}. Its gemstone changes color with the turning of the world, granting powerful passive immunities matching the current season."
             }
         },
 
@@ -95,15 +100,16 @@ window.ExpansionManager.register({
         
         // --- 3. SEASONAL SHOPS ---
         shops: {
-            // A wandering "Time Weaver" merchant could sell these, but for now we add them to the Bazaar
             trader: [
                 { name: 'Spring Blossom', price: 500, stock: 1 },
                 { name: 'Autumn Harvest', price: 500, stock: 1 }
+            ],
+            ascendant: [
+                { name: 'Amulet of Seasons', price: 5000, stock: 1 }
             ]
         },
 
         // --- 4. SEASONAL RECIPES ---
-        // Native dictionary injection!
         craftingRecipes: {
             "Sun-Forged Blade": { materials: { "Summer Ember": 1, "Iron Sword": 1, "Arcane Dust": 5 }, xp: 150, level: 5 },
             "Glacial Axe": { materials: { "Winter Core": 1, "Greataxe": 1, "Arcane Dust": 5 }, xp: 150, level: 5 }
@@ -210,7 +216,7 @@ window.ExpansionManager.register({
         }
 
         // ==========================================
-        // 3. TERRAIN MUTATIONS (Winter Ice & Spring Blooms)
+        // 3. TERRAIN MUTATIONS (V8 Optimized)
         // ==========================================
 
         if (typeof chunkManager !== 'undefined' && chunkManager.generateChunk) {
@@ -225,33 +231,44 @@ window.ExpansionManager.register({
                 const chunkId = `${chunkX},${chunkY}`;
                 const chunkData = this.loadedChunks[chunkId];
                 const season = window.getCurrentSeason();
+                
+                // Deterministic PRNG
                 const random = typeof Alea !== 'undefined' ? Alea(typeof stringToSeed !== 'undefined' ? stringToSeed(`season_${season}_${chunkId}`) : 1) : Math.random;
                 
-                for(let y = 0; y < 16; y++) {
-                    for(let x = 0; x < 16; x++) {
-                        const tile = chunkData[y][x];
-                        
-                        if (season === 'Winter') {
-                            // Shallow water and swamps freeze over!
+                // 🚀 PERFORMANCE WIN: Evaluate Season once outside the 256-tile loop!
+                // Eliminates branch mispredictions inside the hot-loop.
+                if (season === 'Winter') {
+                    for (let y = 0; y < 16; y++) {
+                        for (let x = 0; x < 16; x++) {
+                            const tile = chunkData[y][x];
                             if (tile === '≈') chunkData[y][x] = '🧊'; 
-                            // 30% of plains and forests are covered in snow
-                            else if ((tile === '.' || tile === 'F') && random() < 0.3) {
-                                chunkData[y][x] = '❄️';
-                            }
-                        } 
-                        else if (season === 'Spring') {
-                            // Flowers bloom wildly on the plains
+                            else if (tile === '.' && random() < 0.3) chunkData[y][x] = '❄️';
+                            else if (tile === 'F' && random() < 0.3) chunkData[y][x] = '🌲'; // Aesthetic Tundra Pine
+                        }
+                    }
+                } 
+                else if (season === 'Spring') {
+                    for (let y = 0; y < 16; y++) {
+                        for (let x = 0; x < 16; x++) {
+                            const tile = chunkData[y][x];
                             if (tile === '.' && random() < 0.05) chunkData[y][x] = '🌺';
-                        } 
-                        else if (season === 'Summer') {
-                            // Drought: Swamps and shallows dry up into deadlands/deserts
+                        }
+                    }
+                } 
+                else if (season === 'Summer') {
+                    for (let y = 0; y < 16; y++) {
+                        for (let x = 0; x < 16; x++) {
+                            const tile = chunkData[y][x];
                             if (tile === '≈' && random() < 0.3) chunkData[y][x] = 'd';
-                            if (tile === '.' && random() < 0.05) chunkData[y][x] = 'D'; // Small sand patches
-                        } 
-                        else if (season === 'Autumn') {
-                            // Leaves die, forests thin out into deadlands
+                            if (tile === '.' && random() < 0.05) chunkData[y][x] = 'D'; 
+                        }
+                    }
+                } 
+                else if (season === 'Autumn') {
+                    for (let y = 0; y < 16; y++) {
+                        for (let x = 0; x < 16; x++) {
+                            const tile = chunkData[y][x];
                             if (tile === 'F' && random() < 0.2) chunkData[y][x] = 'd'; 
-                            // Wild mushrooms grow aggressively
                             if ((tile === '.' || tile === 'F') && random() < 0.03) chunkData[y][x] = '🍄';
                         }
                     }
@@ -304,10 +321,34 @@ window.ExpansionManager.register({
             const origEndPlayerTurn = window.endPlayerTurn;
             window.endPlayerTurn = function(updates = {}) {
                 
+                const p = gameState.player;
+                const season = window.getCurrentSeason();
+
+                // 🌟 LORE WIN: Amulet of Seasons Passive Traits
+                if (p.equipment && p.equipment.accessory && p.equipment.accessory.name === 'Amulet of Seasons') {
+                    if (season === 'Winter') {
+                        if (p.frostbiteTurns > 0) {
+                            p.frostbiteTurns = 0;
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, "RESISTED", "#7dd3fc");
+                        }
+                    } else if (season === 'Summer') {
+                        p.fireResistTurns = Math.max(p.fireResistTurns || 0, 2);
+                    } else if (season === 'Spring') {
+                        if (p.poisonTurns > 0) {
+                            p.poisonTurns = 0;
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, "PURGED", "#4ade80");
+                        }
+                    } else if (season === 'Autumn') {
+                        // Constant, slow passive regeneration of food and water!
+                        if (gameState.playerTurnCount % 5 === 0) {
+                            p.hunger = Math.min(p.maxHunger, p.hunger + 1);
+                            p.thirst = Math.min(p.maxThirst, p.thirst + 1);
+                        }
+                    }
+                }
+
                 // Only tick these massive overworld effects once every 15 turns to prevent log spam
                 if (gameState.playerTurnCount % 15 === 0 && gameState.mapMode === 'overworld') {
-                    const season = window.getCurrentSeason();
-                    const p = gameState.player;
                     
                     if (season === 'Summer') {
                         // Intense Heat: Extra thirst drain
@@ -318,7 +359,6 @@ window.ExpansionManager.register({
                     } 
                     else if (season === 'Winter') {
                         // Biting Cold: Drains stamina unless you have fire resistance or a torch!
-                        // Removed !i.isEquipped so holding a torch in an off-hand slot protects you!
                         const hasTorch = p.inventory.some(i => i && (i.name === 'Torch' || i.name === 'Ever-Burning Candle'));
                         if (p.fireResistTurns <= 0 && !hasTorch) {
                             if (typeof window.modifyVital === 'function') window.modifyVital('stamina', -1);
@@ -406,15 +446,11 @@ window.ExpansionManager.register({
                 
                 // Infinite Harvest Prevention
                 // We only grant the bonus if the original function actually SUCCEEDED and cleared the plot!
-                // Previously, players could trigger the harvest with a full inventory, abort the base 
-                // harvest, but still receive the Autumn bonus indefinitely!
                 if (plotBefore && plotAfter === null && isFullyGrown && seedData) {
                     const season = window.getCurrentSeason();
                     
                     // In Autumn, crops yield an extra clone of themselves!
                     if (season === 'Autumn') {
-                        // 🚀 PERFORMANCE WIN: High-speed cross-expansion integration!
-                        // Looks up the homestead crop cache first instead of iterating global dictionary.
                         let templateId = null;
                         if (typeof getFarmItemKey === 'function') {
                             templateId = getFarmItemKey(seedData.yields);
@@ -425,18 +461,36 @@ window.ExpansionManager.register({
                         const template = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA[templateId] : null;
                         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(p) : 9;
                         
-                        if (templateId && template && p.inventory.length < invCap) {
+                        // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Stack Checks
+                        // Prevents the player losing their Autumn bonus if their inventory is "full" but they
+                        // already hold a stackable pile of the exact same crop!
+                        const existingStack = p.inventory.find(i => i && i.name === seedData.yields && !i.isEquipped);
+                        const isStackable = typeof window.isStackableItem === 'function' ? window.isStackableItem(template ? template.type : 'ingredient') : true;
+
+                        if (existingStack && isStackable) {
+                            existingStack.quantity += 1;
+                            logMessage(`{orange:Autumn Harvest Bonus! (+1 ${seedData.yields})}`);
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, "BONUS", "#f97316");
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+                        } 
+                        else if (templateId && template && p.inventory.length < invCap) {
                             let bonusItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
                             bonusItem.templateId = templateId;
                             bonusItem.quantity = 1;
                             bonusItem.isEquipped = false;
+                            
+                            // Essential rebinds
+                            bonusItem.effect = template.effect || null;
+                            bonusItem.onHit = template.onHit || null;
+                            
                             p.inventory.push(bonusItem);
                             
                             logMessage(`{orange:Autumn Harvest Bonus! (+1 ${seedData.yields})}`);
-                            
-                            // Sparkles!
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, "BONUS", "#f97316");
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+                        } 
+                        else {
+                            logMessage(`{red:Autumn Bonus lost... Your inventory is completely full!}`);
                         }
                     }
                 }
