@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_bloodline",
     name: "The Bloodline (Prestige System)",
-    version: "1.3", // Upgraded version!
+    version: "1.4", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -238,7 +238,6 @@ window.ExpansionManager.register({
             document.getElementById('prestigeModal').classList.add('hidden');
             
             // 🌟 EXPANDABILITY WIN: Native Injection
-            // Shop is perfectly set up and merged into the system!
             if (!gameState.shopStates) gameState.shopStates = {};
             const shopId = 'shop_ascendant';
             
@@ -295,7 +294,7 @@ window.ExpansionManager.register({
             // 1. Increment Generation
             player.generation = (player.generation || 0) + 1;
 
-            // 2. Wipe Stats
+            // 2. Wipe Stats (And explicitly clear the hotbar to prevent Ghost Spells!)
             player.level = 1;
             player.xp = 0;
             player.xpToNextLevel = 100;
@@ -306,7 +305,7 @@ window.ExpansionManager.register({
             player.skillbook = {};
             player.bounty = 0;
 
-            player.hotbar = [null, null, null, null, null];
+            player.hotbar = [null, null, null, null, null]; // 🚨 BUG FIX: Clears the ghost slots
             player.cooldowns = {};
 
             const coreStats = ['strength', 'wits', 'constitution', 'dexterity', 'charisma', 'luck', 'willpower', 'perception', 'endurance', 'intuition'];
@@ -326,8 +325,7 @@ window.ExpansionManager.register({
             // 4. Wipe Inventory & Equip Bloodline Pendant
             const genMult = player.generation * 2; // +2 All Stats per generation!
             
-            // 🚨 BUG FIX WIN: Safe Clone
-            // Prevents the pendant's stats from leaking globally or failing on load
+            // Safe Clone prevents the pendant's stats from leaking globally or failing on load
             const pendant = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['🩸p'] : null;
             let newPendant = null;
             
@@ -348,7 +346,7 @@ window.ExpansionManager.register({
             const rags = { templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true };
             
             player.inventory = [rags];
-            if (newPendant) player.inventory.unshift(newPendant); // Put pendant at index 0
+            if (newPendant) player.inventory.unshift(newPendant); 
 
             player.equipment = {
                 weapon: { name: 'Fists', damage: 0, tags: ['blunt'] },
@@ -366,12 +364,10 @@ window.ExpansionManager.register({
             }
 
             // The Spire Ghost Fix & Map Protection
-            // Ensure pre-prestige gear isn't accidentally restored if they die in the Spire!
             delete player.spireBackupInv;
             delete player.spireBackupEquip;
             
             // Force the player to spawn at the Village (0,0) in the Prime Realm!
-            // If they activated the throne while deep in a dungeon, this prevents them from soft-locking.
             gameState.mapMode = 'overworld';
             gameState.currentCaveId = null;
             gameState.currentCastleId = null;
@@ -381,7 +377,6 @@ window.ExpansionManager.register({
             player.y = 0;
 
             // 5. Apply Generation Base Vitals Boost
-            // 🚨 BUG FIX WIN: Strict Number Coercion
             player.bonusMaxHealth = Number(player.generation) * 10;
             player.bonusMaxMana = Number(player.generation) * 10;
             player.bonusMaxStamina = Number(player.generation) * 10;
@@ -389,10 +384,14 @@ window.ExpansionManager.register({
 
             if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
             
-            player.health = player.maxHealth;
-            player.mana = player.maxMana;
-            player.stamina = player.maxStamina;
-            player.psyche = player.maxPsyche;
+            // 🚨 BUG FIX: Safe clamp prevents UI overfill bugs
+            if (typeof clampAllVitals === 'function') clampAllVitals();
+            else {
+                player.health = player.maxHealth;
+                player.mana = player.maxMana;
+                player.stamina = player.maxStamina;
+                player.psyche = player.maxPsyche;
+            }
 
             // 6. Announce to Server!
             if (typeof rtdb !== 'undefined') {
@@ -410,6 +409,7 @@ window.ExpansionManager.register({
             if (typeof renderStats === 'function') renderStats();
             if (typeof renderEquipment === 'function') renderEquipment();
             if (typeof renderInventory === 'function') renderInventory();
+            if (typeof renderHotbar === 'function') renderHotbar(); // 🚨 NEW: Force hotbar clear
             
             // Force re-render of the map at 0,0
             gameState.mapDirty = true;
@@ -468,9 +468,14 @@ window.ExpansionManager.register({
                 
                 const gen = gameState.player.generation || 0;
                 if (gen > 0) {
-                    // Visual Juice
-                    if (typeof ParticleSystem !== 'undefined' && Math.random() < 0.10) {
-                        ParticleSystem.spawn(gameState.player.x, gameState.player.y, '#facc15', 'sparkle', '', 3);
+                    
+                    // 🌟 LORE WIN: Radiant Aura
+                    // Ascendant players actually emit a soft golden light from their tile!
+                    if (gameState.activeFilter !== 'gold') {
+                        // Apply a faint golden glow under the player tile using the new filter system!
+                        if (typeof ParticleSystem !== 'undefined' && Math.random() < 0.10) {
+                            ParticleSystem.spawn(gameState.player.x, gameState.player.y, '#facc15', 'sparkle', '', 3);
+                        }
                     }
 
                     // 🚨 GAMEPLAY WIN: Ascendant Regeneration
@@ -494,7 +499,7 @@ window.ExpansionManager.register({
                         }
                         
                         if (regenerated && typeof logMessage !== 'undefined') {
-                            // Don't spam the chat, but let the UI bars pulse (handled inside modifyVital automatically!)
+                            // Let the UI bars pulse (handled inside modifyVital automatically!)
                         }
                     }
                 }
