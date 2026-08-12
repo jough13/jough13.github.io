@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_vanguard_raids",
     name: "The Vanguard (Multiplayer Raids)",
-    version: "1.4", // Upgraded version!
+    version: "1.5", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -44,7 +44,7 @@ window.ExpansionManager.register({
                     
                     // 🚨 GAMEPLAY WIN: Automatically fill the new empty gap created by expanding the max pool!
                     if (typeof window.modifyVital === 'function') {
-                        window.modifyVital('health', state.player.maxHealth);
+                        window.modifyVital('health', state.player.maxHealth); // Over-heals to full
                         window.modifyVital('mana', state.player.maxMana);
                     } else {
                         state.player.health = state.player.maxHealth;
@@ -112,6 +112,9 @@ window.ExpansionManager.register({
                     state.currentRealm = 'raid_molten';
                     state.realmMutators = ['lava_oceans']; 
                     
+                    // Set Raid Entrance Timestamp for heat scaling!
+                    state.player._raidEntryTurn = state.playerTurnCount;
+                    
                     // 🚨 ANTI-GRIEFING WIN: Force disable PvP upon entering a raid!
                     if (state.player.pvpEnabled) {
                         state.player.pvpEnabled = false;
@@ -119,8 +122,8 @@ window.ExpansionManager.register({
                     }
                     
                     // Teleport to the safe zone inside the Raid Arena
-                    state.player.x = 0;
-                    state.player.y = 8;
+                    state.player.x = 8;
+                    state.player.y = 13;
                     state.overworldExit = { x: x, y: y }; // Save exit
                     
                     state.mapDirty = true;
@@ -157,6 +160,8 @@ window.ExpansionManager.register({
                         state.player.x = 0; state.player.y = 0;
                     }
                     
+                    state.player._raidEntryTurn = null; // Clear heat scaling
+                    
                     state.mapDirty = true;
                     if (typeof syncPlayerState === 'function') syncPlayerState();
                     if (typeof finalizeMapTransition === 'function') finalizeMapTransition();
@@ -167,9 +172,16 @@ window.ExpansionManager.register({
                 type: 'anomaly', name: 'Summoning Altar',
                 flavor: "An altar of black iron. It has a keyhole glowing with immense heat.",
                 onInteract: (state, x, y) => {
-                    // Check if boss is already alive
-                    const bossId = `overworld:0,0`;
-                    if (state.sharedEnemies && state.sharedEnemies[bossId]) {
+                    
+                    // 🚨 BUG FIX: Accurately target the true center spawn point of the arena
+                    const bossX = 8;
+                    const bossY = 8;
+                    const bossId = `overworld:${bossX},${-bossY}`;
+                    
+                    // Check if boss is already alive anywhere on the map
+                    const isBossAlive = Object.values(state.sharedEnemies || {}).some(e => e && e.name === 'The Molten Lord' && e.health > 0);
+                    
+                    if (isBossAlive) {
                         logMessage("{red:The Molten Lord is already awake!}");
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                         return null;
@@ -192,26 +204,22 @@ window.ExpansionManager.register({
                     state.screenShake = 40;
                     gameState.screenFlash = { color: '#f97316', alpha: 0.6, decay: 0.02 };
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playBossSpawn();
-                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#ef4444', 50);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(bossX, bossY, '#ef4444', 50);
 
                     if (typeof EnemyNetworkManager !== 'undefined' && typeof rtdb !== 'undefined') {
                         // 🚀 PERFORMANCE WIN: Atomic Batching
-                        // Build a single payload dictionary instead of writing to Firebase 5 separate times!
                         const spawnPayload = {};
                         
-                        // 🚨 BUG FIX & ROBUSTNESS WIN: Use fastClone before pushing to Firebase to strip functions
+                        // Safe deep clone
                         const eData = typeof window.fastClone === 'function' ? window.fastClone(window.ENEMY_DATA['👹r']) : JSON.parse(JSON.stringify(window.ENEMY_DATA['👹r']));
                         
-                        // 🚨 LORE & EXPLOIT FIX WIN: Unique Boss Instances
-                        // We attach a timestamp to the object so when the boss dies, the loot chest can inherit it
-                        // to prevent players from being permanently locked out of future raids on the same map coordinates!
                         const instanceTime = Date.now();
 
-                        const newBoss = { ...eData, tile: '👹r', x: 0, y: 0, spawnTime: instanceTime, raidInstanceId: instanceTime };
-                        spawnPayload[EnemyNetworkManager.getPath(0, 0, bossId)] = newBoss;
+                        const newBoss = { ...eData, tile: '👹r', x: bossX, y: bossY, spawnTime: instanceTime, raidInstanceId: instanceTime };
+                        spawnPayload[EnemyNetworkManager.getPath(bossX, bossY, bossId)] = newBoss;
                         
-                        // 2. Spawn Adds! (Fire Elementals at the 4 pillars)
-                        const adds = [[3,3], [12,3], [3,12], [12,12]];
+                        // Spawn Adds! (Fire Elementals at the 4 pillars)
+                        const adds = [[3,3], [13,3], [3,13], [13,13]];
                         const fData = typeof window.fastClone === 'function' ? window.fastClone(window.ENEMY_DATA['f']) : JSON.parse(JSON.stringify(window.ENEMY_DATA['f']));
                         
                         if (fData) {
@@ -227,7 +235,7 @@ window.ExpansionManager.register({
                         // Execute atomic payload
                         rtdb.ref().update(spawnPayload).catch(e => console.error("Raid Spawn Sync Error:", e));
                         
-                        // 3. Announce to global chat
+                        // Announce to global chat
                         rtdb.ref('chat').push().set({
                             senderId: 'SERVER', email: 'SYSTEM',
                             message: `{red:🌋 THE MOLTEN LORD HAS BEEN AWAKENED! 🌋}`,
@@ -240,17 +248,20 @@ window.ExpansionManager.register({
                 }
             },
             // 🚨 ANTI-GRIEFING WIN: Instanced Raid Loot!
-            // Instead of being a standard 'loot_container' which deletes itself from the server when opened,
-            // this is an anomaly that grants loot but stays on the map. It uses local `lootedTiles` so 
-            // everyone in the raid party can click it once and get their own loot!
             '📦r': {
                 type: 'anomaly', name: 'Vanguard Cache',
                 flavor: "A massive, glowing chest dropped by the Raid Boss!",
                 onInteract: (state, x, y) => {
-                    // 🚨 EXPLOIT FIX WIN: Tie the looted tile ID to the specific raid instance!
-                    // Without this, the chest's location (e.g., "1,0") would only be lootable ONCE per character's lifespan!
-                    const chunkData = typeof chunkManager !== 'undefined' ? chunkManager.worldState['0,0'] : null;
-                    const tileKey = (((x % 16) + 16) % 16) + ',' + (((y % 16) + 16) % 16);
+                    // 🚨 EXPLOIT FIX WIN: Dynamic Chunk Resolution
+                    // Chests now correctly read from their actual coordinate chunk, not just `0,0`
+                    const chunkX = Math.floor(x / 16);
+                    const chunkY = Math.floor(y / 16);
+                    const chunkId = `${chunkX},${chunkY}`;
+                    const localX = (((x % 16) + 16) % 16);
+                    const localY = (((y % 16) + 16) % 16);
+                    const tileKey = `${localX},${localY}`;
+                    
+                    const chunkData = typeof chunkManager !== 'undefined' ? chunkManager.worldState[chunkId] : null;
                     
                     let instanceId = 'unknown';
                     if (chunkData && chunkData[tileKey] && typeof chunkData[tileKey] === 'object') {
@@ -288,14 +299,11 @@ window.ExpansionManager.register({
                         const template = window.ITEM_DATA[itemKey];
                         
                         if (template && state.player.inventory.length < invCap) {
-                            
-                            // 🚨 BUG FIX & ROBUSTNESS WIN: Safe deep clone to guarantee weapon traits and tags carry over!
                             let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
                             newItem.templateId = itemKey;
                             newItem.quantity = 1;
                             newItem.isEquipped = false;
                             
-                            // Explicit function re-binds for safety (JSON stringify destroys functions)
                             newItem.effect = template.effect || null;
                             newItem.onHit = template.onHit || null;
                             
@@ -337,6 +345,41 @@ window.ExpansionManager.register({
     },
 
     // --- 5. ENGINE HOOKS ---
+    // 🚨 ARCHITECTURE WIN: Native Hook Registration
+    hooks: {
+        onTurnEnd: function(context) {
+            const state = typeof gameState !== 'undefined' ? gameState : context.gameState;
+            if (state && state.currentRealm === 'raid_molten' && state.playerTurnCount % 10 === 0) {
+                
+                // Visual embers
+                if (typeof ParticleSystem !== 'undefined' && Math.random() < 0.3) {
+                    const px = state.player.x + (Math.random() * 10 - 5);
+                    const py = state.player.y + (Math.random() * 10 - 5);
+                    ParticleSystem.spawn(px, py, '#f97316', 'sparkle');
+                }
+                
+                // 🌟 GAMEPLAY WIN: Intensifying Heat Mechanic
+                // The longer you stay in the raid instance, the hotter it gets!
+                let ambientDmg = 2;
+                if (state.player._raidEntryTurn) {
+                    const turnsInside = state.playerTurnCount - state.player._raidEntryTurn;
+                    ambientDmg += Math.floor(turnsInside / 50); // Damage increases by 1 every 50 turns
+                }
+                
+                const hasArmor = state.player.equipment.armor && state.player.equipment.armor.name.includes('Dragonscale');
+                const hasPotion = state.player.fireResistTurns > 0;
+                
+                if (!hasArmor && !hasPotion && !state.godMode) {
+                    logMessage(`{orange:The searing heat of the Molten Core scorches your lungs! (-${ambientDmg} HP)}`);
+                    if (typeof window.modifyVital === 'function') window.modifyVital('health', -ambientDmg);
+                    state.screenShake = 5;
+                    if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('healthDisplay'), false);
+                }
+            }
+            return context;
+        }
+    },
+
     init: function() {
 
         // 1. INJECT RAID MAP GENERATOR
@@ -354,28 +397,25 @@ window.ExpansionManager.register({
                     if (chunkX === 0 && chunkY === 0) {
                         for (let y = 0; y < this.CHUNK_SIZE; y++) {
                             for (let x = 0; x < this.CHUNK_SIZE; x++) {
-                                const worldX = x;
-                                const worldY = y;
-                                
-                                // Create a 11x11 square platform in the middle
-                                if (worldX >= 2 && worldX <= 13 && worldY >= 2 && worldY <= 13) {
+                                // Create a 13x13 square platform in the middle
+                                if (x >= 2 && x <= 14 && y >= 2 && y <= 14) {
                                     chunkData[y][x] = 'd'; // Ashen ground
                                 }
                                 
                                 // Decorative Pillars (Spawn points for the Adds!)
-                                if ((worldX===3 && worldY===3) || (worldX===12 && worldY===3) || 
-                                    (worldX===3 && worldY===12) || (worldX===12 && worldY===12)) {
+                                if ((x===3 && y===3) || (x===13 && y===3) || 
+                                    (x===3 && y===13) || (x===13 && y===13)) {
                                     chunkData[y][x] = '🧱';
                                 }
                             }
                         }
                         
-                        // Place Interactive Objects using World Coordinates!
-                        chunkData[4][8] = '🩸r'; 
-                        chunkData[14][8] = '🚪r'; 
+                        // Place Interactive Objects
+                        chunkData[4][8] = '🩸r'; // Altar at Top-Center
+                        chunkData[15][8] = '🚪r'; // Exit at Bottom
                         
-                        // A safe bridge leading to the exit
-                        chunkData[13][8] = 'd';
+                        // A safe bridge leading from the arena to the exit
+                        chunkData[14][8] = 'd';
                     }
                     
                     this.loadedChunks[chunkId] = chunkData;
@@ -389,7 +429,6 @@ window.ExpansionManager.register({
                     const chunkId = `${chunkX},${chunkY}`;
                     const chunkData = this.loadedChunks[chunkId];
                     
-                    // Safe PRNG fallback
                     const random = (typeof Alea !== 'undefined' && typeof stringToSeed !== 'undefined') 
                         ? Alea(stringToSeed(`vanguard_spawn_${chunkId}`)) 
                         : Math.random;
@@ -406,45 +445,7 @@ window.ExpansionManager.register({
             };
         }
 
-        // 2. ATMOSPHERIC RAID DAMAGE
-        // Hooks into the player turn end to deal ambient heat damage if they lack fire resistance!
-        if (typeof window.ExpansionManager !== 'undefined') {
-            window.ExpansionManager.triggerHook = window.ExpansionManager.triggerHook || function(){}; // Failsafe
-            
-            // If the event bus is ready, register the hook natively!
-            if (window.ExpansionManager.activeHooks) {
-                if (!window.ExpansionManager.activeHooks['onTurnEnd']) window.ExpansionManager.activeHooks['onTurnEnd'] = [];
-                
-                window.ExpansionManager.activeHooks['onTurnEnd'].push({
-                    id: 'the_vanguard_raids',
-                    func: (context) => {
-                        const state = typeof gameState !== 'undefined' ? gameState : context.gameState;
-                        if (state && state.currentRealm === 'raid_molten' && state.playerTurnCount % 10 === 0) {
-                            
-                            // Visual embers
-                            if (typeof ParticleSystem !== 'undefined' && Math.random() < 0.3) {
-                                const px = state.player.x + (Math.random() * 10 - 5);
-                                const py = state.player.y + (Math.random() * 10 - 5);
-                                ParticleSystem.spawn(px, py, '#f97316', 'sparkle');
-                            }
-                            
-                            // Ambient Heat Damage
-                            const hasArmor = state.player.equipment.armor && state.player.equipment.armor.name.includes('Dragonscale');
-                            const hasPotion = state.player.fireResistTurns > 0;
-                            
-                            if (!hasArmor && !hasPotion && !state.godMode) {
-                                logMessage("{orange:The ambient heat of the Molten Core sears your lungs! (-2 HP)}");
-                                if (typeof window.modifyVital === 'function') window.modifyVital('health', -2);
-                                state.screenShake = 5;
-                                if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('healthDisplay'), false);
-                            }
-                        }
-                    }
-                });
-            }
-        }
-
-        // 3. INJECT MASSIVE LOOT EXPLOSION ON BOSS DEATH
+        // 2. INJECT MASSIVE LOOT EXPLOSION ON BOSS DEATH
         if (typeof window.generateEnemyLoot === 'function') {
             const origGenLoot = window.generateEnemyLoot;
             
@@ -460,9 +461,6 @@ window.ExpansionManager.register({
                     }
 
                     // Safe Instanced Loot Drops
-                    // We spawn 5 instanced `📦r` chests (one in the center, 4 surrounding).
-                    // Because they are anomalies that track looted state locally, every player
-                    // in the raid can open all 5 chests on their own screen!
                     setTimeout(() => {
                         const cx = enemy.x; const cy = enemy.y;
                         if (typeof chunkManager !== 'undefined') {
@@ -474,9 +472,6 @@ window.ExpansionManager.register({
                                 
                                 // Only drop cache if it's on safe ground (Ash, Floor, or Lava)
                                 if (['d', '.', '🌋'].includes(tileAt)) {
-                                    // 2 Hour TTL for Raid Caches so they eventually clean up the server memory
-                                    // We append the boss's unique instanceTime to the chest
-                                    // object so that when players click it, it knows which specific fight this chest belongs to!
                                     const instanceData = { t: '📦r', raidInstanceId: enemy.raidInstanceId || Date.now(), expires: Date.now() + (2 * 60 * 60 * 1000) };
                                     
                                     const chunkX = Math.floor(targetX / 16);
@@ -484,17 +479,16 @@ window.ExpansionManager.register({
                                     const localX = (((targetX % 16) + 16) % 16);
                                     const localY = (((targetY % 16) + 16) % 16);
                                     
+                                    if (!chunkManager.worldState[`${chunkX},${chunkY}`]) chunkManager.worldState[`${chunkX},${chunkY}`] = {};
                                     chunkManager.worldState[`${chunkX},${chunkY}`][`${localX},${localY}`] = instanceData;
                                     
-                                    // Mirror to Firebase so the whole party sees it
                                     if (typeof rtdb !== 'undefined') {
                                         rtdb.ref(`worldState/realm_raid_molten/${chunkX},${chunkY}/${localX},${localY}`).set(instanceData);
                                     }
                                 }
                             }
                             
-                            // Return the 5th chest for the center tile natively!
-                            // We construct the manual object here so the main engine loop handles it correctly.
+                            // Center Chest
                             const centerData = { t: '📦r', raidInstanceId: enemy.raidInstanceId || Date.now(), expires: Date.now() + (2 * 60 * 60 * 1000) };
                             
                             const chunkX = Math.floor(cx / 16);
@@ -502,7 +496,9 @@ window.ExpansionManager.register({
                             const localX = (((cx % 16) + 16) % 16);
                             const localY = (((cy % 16) + 16) % 16);
                             
+                            if (!chunkManager.worldState[`${chunkX},${chunkY}`]) chunkManager.worldState[`${chunkX},${chunkY}`] = {};
                             chunkManager.worldState[`${chunkX},${chunkY}`][`${localX},${localY}`] = centerData;
+                            
                             if (typeof rtdb !== 'undefined') {
                                 rtdb.ref(`worldState/realm_raid_molten/${chunkX},${chunkY}/${localX},${localY}`).set(centerData);
                             }
@@ -521,7 +517,7 @@ window.ExpansionManager.register({
             };
         }
 
-        // 4. ADD COLORS TO MINIMAP
+        // 3. ADD COLORS TO MINIMAP
         if (typeof window.TILE_COLOR_MAP !== 'undefined') {
             window.TILE_COLOR_MAP['🌀r'] = [239, 68, 68, 255]; // Red Portal
             window.TILE_COLOR_MAP['🚪r'] = [59, 130, 246, 255]; // Blue Exit
