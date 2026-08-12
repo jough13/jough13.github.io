@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "pioneer_town",
     name: "The Pioneer (Town Builder)",
-    version: "1.3", // Upgraded version!
+    version: "1.4", // Upgraded version!
     
     data: {
         // --- 1. NEW MAP TILES & NPCs ---
@@ -110,10 +110,14 @@ window.ExpansionManager.register({
                                     
                                     // Change the tile to a broken cage (rubble)
                                     state.lootedTiles.add(ctx.tileId);
-                                    if (typeof chunkManager !== 'undefined' && chunkManager.getTile(ctx.x, ctx.y) === '🚷') {
-                                        chunkManager.setWorldTile(ctx.x, ctx.y, '🏚');
+                                    if (typeof chunkManager !== 'undefined') {
+                                        if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(ctx.x, ctx.y, '🏚');
+                                        else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][ctx.y][ctx.x] = '🏚';
                                     }
+                                    
+                                    // 🚨 BUG FIX: Force immediate visual refresh so the cage actually disappears!
                                     state.mapDirty = true;
+                                    if (typeof render === 'function') render();
                                 }
                             },
                             { text: "Leave them to their fate." }
@@ -425,7 +429,9 @@ window.ExpansionManager.register({
                         return;
                     }
 
-                    const itemsToGive = ['Medicinal Herb', 'Wildberry', 'Herb Seed'];
+                    // 🚨 GAMEPLAY WIN: Include Seed drops!
+                    // This encourages the player to actually engage with the Homestead plots!
+                    const itemsToGive = ['Medicinal Herb', 'Wildberry', 'Medicinal Herb', 'Wildberry', 'Herb Seed', 'Wildberry Seed', 'Bluecap Spore'];
                     const chosen = itemsToGive[Math.floor(Math.random() * itemsToGive.length)];
                     
                     // 🚀 PERFORMANCE WIN: Fast O(1) template lookup without scanning the full dictionary
