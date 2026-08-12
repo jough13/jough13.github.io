@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_syndicate",
     name: "The Syndicate (Outlaws & PvP)",
-    version: "1.2", // Upgraded Version
+    version: "1.3", // Upgraded Version
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -22,8 +22,13 @@ window.ExpansionManager.register({
 
                     for (const id in otherPlayers) {
                         const op = otherPlayers[id];
-                        // Must be an outlaw, and must be in the same dimension/layer as you
+                        // 🚨 BUG FIX WIN: Cross-Dimensional Z-Axis Guard
+                        // Prevents tracking outlaws who share X/Y coordinates but are in a totally different dungeon instance!
                         if (op.bounty > 0 && op.mapMode === state.mapMode && op.currentRealm === state.currentRealm) {
+                            if (state.mapMode !== 'overworld' && op.mapId !== (state.currentCaveId || state.currentCastleId)) {
+                                continue; 
+                            }
+                            
                             const dist = Math.sqrt(Math.pow(op.x - state.player.x, 2) + Math.pow(op.y - state.player.y, 2));
                             if (dist < minDist) {
                                 minDist = dist;
@@ -39,7 +44,8 @@ window.ExpansionManager.register({
                         logMessage(`{red:The compass spins wildly! It points towards ${safeName} (Bounty: ${nearestOutlaw.bounty}g)!}`);
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                         state.mapDirty = true;
-                        return true;
+                        if (typeof render === 'function') render();
+                        return true; // Consume the durability of the compass
                     } else {
                         logMessage("{gray:The needle drifts lazily. There are no outlaws in this realm.}");
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
@@ -141,6 +147,8 @@ window.ExpansionManager.register({
         // 2. MONKEY PATCH NPC INTERACTIONS (THE CRIME SYSTEM)
         // ==========================================
 
+        window._isPickpocketing = false; // 🚨 EXPLOIT FIX: Mutex Lock
+
         const makeMuggable = (tileChar, name, mugGold, bountyAmt) => {
             if (!window.TILE_DATA[tileChar]) return;
             
@@ -187,36 +195,43 @@ window.ExpansionManager.register({
                     };
                     
                     document.getElementById('npcMugBtn').onclick = () => {
-                        loreModal.classList.add('hidden');
-                        
-                        // Strict Number Coercion
-                        // Prevents NaN from infecting the player's core stats
-                        const safeBountyAmt = Math.floor(Number(bountyAmt) || 0);
-                        const safeMugGold = Math.floor(Number(mugGold) || 0);
+                        if (window._isPickpocketing) return; // Mutex
+                        window._isPickpocketing = true;
 
-                        state.player.bounty = Math.floor(Number(state.player.bounty) || 0) + safeBountyAmt;
-                        state.player.coins = Math.floor(Number(state.player.coins) || 0) + safeMugGold;
-                        
-                        logMessage(`{red:You murdered the ${name}! +${safeBountyAmt}g Bounty. Claimed ${safeMugGold} gold.}`);
-                        if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
-                        state.screenShake = 20;
-                        
-                        if (typeof ParticleSystem !== 'undefined') {
-                            ParticleSystem.createExplosion(x, y, '#ef4444', 20);
-                            ParticleSystem.createFloatingText(x, y, `+${safeMugGold}g`, "#facc15");
-                        }
+                        try {
+                            loreModal.classList.add('hidden');
+                            
+                            // Strict Number Coercion
+                            const safeBountyAmt = Math.floor(Number(bountyAmt) || 0);
+                            const safeMugGold = Math.floor(Number(mugGold) || 0);
 
-                        // Remove NPC
-                        if (state.mapMode === 'overworld') chunkManager.setWorldTile(x, y, '⚰️', 2);
-                        else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][y][x] = '⚰️';
-                        else chunkManager.castleMaps[state.currentCastleId][y][x] = '⚰️';
+                            state.player.bounty = Math.floor(Number(state.player.bounty) || 0) + safeBountyAmt;
+                            state.player.coins = Math.floor(Number(state.player.coins) || 0) + safeMugGold;
+                            if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(safeMugGold);
+                            
+                            logMessage(`{red:You murdered the ${name}! +${safeBountyAmt}g Bounty. Claimed ${safeMugGold} gold.}`);
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+                            state.screenShake = 20;
+                            
+                            if (typeof ParticleSystem !== 'undefined') {
+                                ParticleSystem.createExplosion(x, y, '#ef4444', 20);
+                                ParticleSystem.createFloatingText(x, y, `+${safeMugGold}g`, "#facc15");
+                            }
 
-                        state.mapDirty = true;
-                        if (typeof render === 'function') render();
-                        if (typeof renderStats === 'function') renderStats();
-                        
-                        if (typeof triggerDebouncedSave === 'function') {
-                            triggerDebouncedSave({ coins: state.player.coins, bounty: state.player.bounty });
+                            // Remove NPC
+                            if (state.mapMode === 'overworld') chunkManager.setWorldTile(x, y, '⚰️', 2);
+                            else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][y][x] = '⚰️';
+                            else chunkManager.castleMaps[state.currentCastleId][y][x] = '⚰️';
+
+                            state.mapDirty = true;
+                            if (typeof render === 'function') render();
+                            if (typeof renderStats === 'function') renderStats();
+                            
+                            if (typeof triggerDebouncedSave === 'function') {
+                                triggerDebouncedSave({ coins: state.player.coins, bounty: state.player.bounty });
+                            }
+                        } finally {
+                            window._isPickpocketing = false;
                         }
                     };
                 }, 10);
@@ -263,7 +278,7 @@ window.ExpansionManager.register({
                         const isLawlessZone = () => {
                             if (gameState.mapMode === 'underworld') return true;
                             if (gameState.currentRealm !== 0) return true; 
-                            if (gameState.mapMode === 'dungeon' && ['ARENA', 'VOID', 'ABYSS', 'CORRUPTED'].includes(gameState.currentCaveTheme)) return true;
+                            if (gameState.mapMode === 'dungeon' && gameState.currentCaveTheme && ['ARENA', 'VOID', 'ABYSS', 'CORRUPTED'].includes(gameState.currentCaveTheme)) return true;
                             return false;
                         };
 
@@ -577,7 +592,7 @@ window.ExpansionManager.register({
         }
 
         // ==========================================
-        // 6. CHAT & PLAYER SYNC HOOKS
+        // 6. CHAT, PLAYER SYNC, & BOUNTY BOARD HOOKS
         // ==========================================
 
         if (typeof window.syncPlayerState === 'function') {
@@ -615,6 +630,77 @@ window.ExpansionManager.register({
 
                 existingHandleChat(message);
             };
+        }
+
+        // 🌟 LORE & JUICE WIN: Most Wanted Board
+        // Safely intercepts the bounty board opening logic to inject live PvP bounties!
+        if (typeof window.openBountyBoard === 'function') {
+            const origOpenBountyBoard = window.openBountyBoard;
+            window.openBountyBoard = function() {
+                origOpenBountyBoard(); // Draw the normal board first
+                
+                const questList = document.getElementById('questList');
+                if (questList && typeof otherPlayers !== 'undefined') {
+                    // Extract players with active bounties and sort them highest first
+                    const outlaws = Object.values(otherPlayers).filter(p => p && p.bounty > 0).sort((a, b) => b.bounty - a.bounty).slice(0, 3);
+                    
+                    if (outlaws.length > 0) {
+                        const fragment = document.createDocumentFragment();
+                        const header = document.createElement('div');
+                        header.className = "text-center text-red-500 font-bold uppercase tracking-widest border-b border-red-900 pb-1 mb-3 mt-2";
+                        header.textContent = "Most Wanted (Live Players)";
+                        fragment.appendChild(header);
+                        
+                        outlaws.forEach(op => {
+                            const div = document.createElement('div');
+                            div.className = 'p-3 mb-2 border-2 border-red-800 rounded-lg bg-red-950 bg-opacity-30 flex justify-between items-center shadow-md';
+                            const safeName = typeof escapeHtml === 'function' ? escapeHtml(op.email ? op.email.split('@')[0] : 'Outlaw') : "Outlaw";
+                            div.innerHTML = `
+                                <div>
+                                    <div class="text-red-400 font-bold text-lg drop-shadow-md">☠️ ${safeName}</div>
+                                    <div class="text-xs text-gray-400 italic">Last seen: ${op.mapMode === 'overworld' ? 'The Wilderness' : 'A Dungeon/Castle'}</div>
+                                </div>
+                                <div class="text-yellow-400 font-bold bg-black bg-opacity-50 px-3 py-2 rounded-lg border border-yellow-700 shadow-inner">
+                                    ${op.bounty}g
+                                </div>
+                            `;
+                            fragment.appendChild(div);
+                        });
+                        
+                        // Prepend the outlaws to the absolute top of the board!
+                        questList.prepend(fragment);
+                    }
+                }
+            };
+        }
+
+        // ==========================================
+        // 7. STEALTH VIGNETTE INJECTOR (JUICE)
+        // ==========================================
+        // Hooking into the renderer loop to ensure the vignette is persistent
+        if (typeof window.ExpansionManager !== 'undefined') {
+            window.ExpansionManager.triggerHook = window.ExpansionManager.triggerHook || function(){}; 
+            
+            if (window.ExpansionManager.activeHooks) {
+                if (!window.ExpansionManager.activeHooks['onTurnEnd']) window.ExpansionManager.activeHooks['onTurnEnd'] = [];
+                
+                window.ExpansionManager.activeHooks['onTurnEnd'].push({
+                    id: 'stealth_vignette',
+                    func: (context) => {
+                        const state = typeof gameState !== 'undefined' ? gameState : context.gameState;
+                        const canvasWrapper = document.getElementById('gameCanvasWrapper');
+                        if (canvasWrapper && state && state.player) {
+                            if (state.player.isCrouching) {
+                                // Apply the deep dark stealth shadow
+                                canvasWrapper.style.boxShadow = 'inset 0 0 80px 30px rgba(0,0,0,0.85)';
+                            } else if (!state.screenFlash) {
+                                // Clear it if they stand up (and no other system is currently flashing the screen)
+                                canvasWrapper.style.boxShadow = '';
+                            }
+                        }
+                    }
+                });
+            }
         }
     }
 });
