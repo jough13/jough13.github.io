@@ -1391,7 +1391,7 @@ function getBaseTerrain(worldX, worldY) {
     return tile;
 }
 
-function endPlayerTurn(turnUpdates = {}) {
+async function endPlayerTurn(turnUpdates = {}) {
     
     // Reset the Auto-Tick AFK timer so it doesn't fire immediately after a manual move!
     window._lastAutoTickTime = Date.now();
@@ -1845,6 +1845,11 @@ function endPlayerTurn(turnUpdates = {}) {
     }
 
     if (typeof window.runCompanionTurn === 'function') window.runCompanionTurn();
+
+    // Await the pet's turn so the game state holds until Firebase resolves the damage!
+    if (typeof window.runCompanionTurn === 'function') {
+        await window.runCompanionTurn(); 
+    }
 
     // We merge the specific status updates (poison, buffs) with the core stats.
     // This ensures XP, Quests, and Health are saved together, preventing the reset bug.
