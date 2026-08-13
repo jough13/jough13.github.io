@@ -736,13 +736,20 @@ window.isServerHost = function() {
             const p = otherPlayers[id];
             if (!p) continue; 
             
+            // Ignore players who have dropped connection/timed out
             if (p.lastHeartbeat && (serverNow - p.lastHeartbeat > 12000)) continue;
 
             const theirRealm = p.currentRealm || 0;
             
             if (p.mapMode === myMapMode && theirRealm === myRealm) {
-                // 🚨 FIX: Tightened radius to 24 to perfectly match the 3x3 Chunk AI Scanner!
-                if (Math.abs(p.x - gameState.player.x) <= 24 && Math.abs(p.y - gameState.player.y) <= 24) {
+                
+                // --- 50 TILE SCANNER ---
+                // Enemy AI radius is 25. Therefore, two players fighting the same enemy 
+                // can be at most 50 tiles apart. This guarantees that if our AI circles overlap, 
+                // we will ALWAYS see the other player and defer to the elected host!
+                if (Math.abs(p.x - gameState.player.x) <= 50 && Math.abs(p.y - gameState.player.y) <= 50) {
+                    
+                    // Tie-breaker: The lowest string ID becomes the host.
                     if (id < myId) {
                         return false; 
                     }
