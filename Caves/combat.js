@@ -1904,122 +1904,126 @@ function processFriendlyTurns() {
     });
 }
 
+window._isCompanionAttacking = false;
+
 async function runCompanionTurn() {
+    // MUTEX LOCK
+    if (window._isCompanionAttacking) return;
+    
     const companion = gameState.player.companion;
     if (!companion) return;
     
     // Mounts are occupied carrying you, they don't auto-attack!
     if (gameState.player.isMounted) return;
 
-    const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
-    let attacked = false;
+    window._isCompanionAttacking = true;
 
-    for (const [dx, dy] of dirs) {
-        if (attacked) break;
-        const tx = companion.x + dx;
-        const ty = companion.y + dy;
+    try {
+        const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+        let attacked = false;
 
-        if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-            const enemy = gameState.instancedEnemies.find(e => e && e.x === tx && e.y === ty); // 🚨 GHOST GUARD
-            if (enemy) {
-                const dmg = Math.max(1, companion.attack - (enemy.defense || 0));
-                enemy.health -= dmg;
-                logMessage(`Your ${companion.name} attacks ${enemy.name} for ${dmg} damage!`);
-                
-                if (typeof ParticleSystem !== 'undefined') {
-                    ParticleSystem.createExplosion(tx, ty, '#86efac', 5); 
-                    ParticleSystem.createFloatingText(tx, ty, `-${dmg}`, '#fff');
-                }
+        for (const [dx, dy] of dirs) {
+            if (attacked) break;
+            const tx = companion.x + dx;
+            const ty = companion.y + dy;
 
-                attacked = true;
-
-                if (enemy.health <= 0) {
-                    logMessage(`{green:Your ${companion.name} tears the ${enemy.name} apart!}`);
-                    if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, tx, ty);
-                }
-            }
-        }
-        else if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-            const tile = chunkManager.getTile(tx, ty);
-            const enemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tile] : null;
-
-            if (enemyData && enemyData.maxHealth) {
-                attacked = true;
-                const enemyId = `overworld:${tx},${-ty}`;
-                if (typeof rtdb === 'undefined') return;
-                const enemyRef = rtdb.ref(EnemyNetworkManager.getPath(tx, ty, enemyId));
-
-                const visualDmg = Math.max(1, companion.attack - (enemyData.defense || 0));
-
-                try {
-                    const txResult = await window.withTimeout(enemyRef.transaction(currentData => {
-                        // Let it pass to server
-                        if (currentData === null) return null;
-                        
-                        let enemy = JSON.parse(JSON.stringify(currentData));
-                        enemy.health = Number(enemy.health);
-                        if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
-
-                        const dmg = Math.max(1, companion.attack - (enemy.defense || 0));
-                        enemy.health -= dmg;
-
-                        // Return the corpse
-                        return enemy;
-                    }), 3000);
-
-                    if (txResult && txResult.committed) {
-                        const finalData = txResult.snapshot.val();
-                        
-                        // Already dead check
-                        if (finalData === null) {
-                            if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
-                            return;
-                        }
-
-                        const visualDmg = Math.max(1, companion.attack - (finalData.defense || 0));
-                        
-                        if (typeof ParticleSystem !== 'undefined') {
-                            ParticleSystem.createExplosion(tx, ty, '#86efac', 5); 
-                            ParticleSystem.createFloatingText(tx, ty, `-${visualDmg}`, '#fff');
-                        }
-
-                        // --- COMPANION OVERKILL ---
-                        const isOverkill = visualDmg >= (enemyData.maxHealth * 1.5) && enemyData.maxHealth > 5;
-
-                        if (finalData.health <= 0) {
-                            if (isOverkill) {
-                                logMessage(`{red:OVERKILL! Your ${companion.name} absolutely obliterated the ${enemyData.name}!}`);
-                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tx, ty, '#991b1b', 40);
-                                gameState.screenShake = 15;
-                            } else {
-                                logMessage(`{green:Your ${companion.name} tears the ${enemyData.name} apart!}`);
-                            }
-                            
-                            if (typeof grantXp === 'function') grantXp(Math.floor(enemyData.xp / 2));
-                            
-                            const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, enemyData) : '.'; 
-                            chunkManager.setWorldTile(tx, ty, droppedLoot || '.', 2);
-                            
-                            if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
-                            if (typeof render === 'function') render(); 
-                            
-                            // Sweep the corpse
-                            enemyRef.remove();
-                        } else {
-                            logMessage(`Your ${companion.name} hits the ${enemyData.name}!`);
-                        }
+            if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
+                const enemy = gameState.instancedEnemies.find(e => e && e.x === tx && e.y === ty); // 🚨 GHOST GUARD
+                if (enemy) {
+                    const dmg = Math.max(1, companion.attack - (enemy.defense || 0));
+                    enemy.health -= dmg;
+                    logMessage(`Your ${companion.name} attacks ${enemy.name} for ${dmg} damage!`);
+                    
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createExplosion(tx, ty, '#86efac', 5); 
+                        ParticleSystem.createFloatingText(tx, ty, `-${dmg}`, '#fff');
                     }
-                } catch (err) {
-                    console.error("Companion combat error:", err);
+
+                    attacked = true;
+
+                    if (enemy.health <= 0) {
+                        logMessage(`{green:Your ${companion.name} tears the ${enemy.name} apart!}`);
+                        if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, tx, ty);
+                    }
+                }
+            }
+            else if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                const tile = chunkManager.getTile(tx, ty);
+                const enemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tile] : null;
+
+                if (enemyData && enemyData.maxHealth) {
+                    attacked = true;
+                    const enemyId = `overworld:${tx},${-ty}`;
+                    if (typeof rtdb === 'undefined') break; // Use break instead of return inside the loop
+                    const enemyRef = rtdb.ref(EnemyNetworkManager.getPath(tx, ty, enemyId));
+
+                    try {
+                        const txResult = await window.withTimeout(enemyRef.transaction(currentData => {
+                            if (currentData === null) return null;
+                            
+                            let enemy = JSON.parse(JSON.stringify(currentData));
+                            enemy.health = Number(enemy.health);
+                            if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
+
+                            const dmg = Math.max(1, companion.attack - (enemy.defense || 0));
+                            enemy.health -= dmg;
+
+                            return enemy;
+                        }), 3000);
+
+                        if (txResult && txResult.committed) {
+                            const finalData = txResult.snapshot.val();
+                            
+                            if (finalData === null) {
+                                if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
+                                break; 
+                            }
+
+                            const visualDmg = Math.max(1, companion.attack - (finalData.defense || 0));
+                            
+                            if (typeof ParticleSystem !== 'undefined') {
+                                ParticleSystem.createExplosion(tx, ty, '#86efac', 5); 
+                                ParticleSystem.createFloatingText(tx, ty, `-${visualDmg}`, '#fff');
+                            }
+
+                            const isOverkill = visualDmg >= (enemyData.maxHealth * 1.5) && enemyData.maxHealth > 5;
+
+                            if (finalData.health <= 0) {
+                                if (isOverkill) {
+                                    logMessage(`{red:OVERKILL! Your ${companion.name} absolutely obliterated the ${enemyData.name}!}`);
+                                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tx, ty, '#991b1b', 40);
+                                    gameState.screenShake = 15;
+                                } else {
+                                    logMessage(`{green:Your ${companion.name} tears the ${enemyData.name} apart!}`);
+                                }
+                                
+                                if (typeof grantXp === 'function') grantXp(Math.floor(enemyData.xp / 2));
+                                
+                                const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, enemyData) : '.'; 
+                                chunkManager.setWorldTile(tx, ty, droppedLoot || '.', 2);
+                                
+                                if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
+                                if (typeof render === 'function') render(); 
+                                
+                                enemyRef.remove();
+                            } else {
+                                logMessage(`Your ${companion.name} hits the ${enemyData.name}!`);
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Companion combat error:", err);
+                    }
                 }
             }
         }
-    }
-    
-    // Companion Passive Auto-Heal (If they survived and didn't attack)
-    if (!attacked && companion.hp < companion.maxHp && Math.random() < 0.1) {
-        companion.hp = Math.min(companion.maxHp, companion.hp + 2);
-        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(companion.x, companion.y, "+2", "#22c55e");
+        
+        if (!attacked && companion.hp < companion.maxHp && Math.random() < 0.1) {
+            companion.hp = Math.min(companion.maxHp, companion.hp + 2);
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(companion.x, companion.y, "+2", "#22c55e");
+        }
+    } finally {
+        // ALWAYS unlock the mutex, even if Firebase errors out!
+        window._isCompanionAttacking = false;
     }
 }
 
