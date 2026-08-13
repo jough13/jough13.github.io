@@ -312,66 +312,73 @@ function getScaledEnemy(enemyTemplate, x, y) {
 async function wakeUpNearbyEnemies() {
     if (gameState.mapMode !== 'overworld' && gameState.mapMode !== 'underworld') return;
 
-    // Determine player location
     const player = gameState.player;
     if (!player) return;
 
-    const WAKE_RADIUS = 14; // Increased slightly to ensure they spawn before you see them
+    const WAKE_RADIUS = 14; 
 
-    // Use a batch update for map tiles to prevent excessive rendering/saving
+    // We now use TWO batch objects. One for the live enemies, one for erasing the terrain.
     let spawnUpdates = {};
+    let terrainUpdates = {}; // 🚨 NEW: Holds the terrain erasure data
     let enemiesSpawnedCount = 0;
     let visualUpdateNeeded = false;
 
     for (let y = player.y - WAKE_RADIUS; y <= player.y + WAKE_RADIUS; y++) {
         for (let x = player.x - WAKE_RADIUS; x <= player.x + WAKE_RADIUS; x++) {
             
-            // 1. Check the static map tile
             const tile = chunkManager.getTile(x, y);
             
-            // Optimization: Only check logic if it looks like an enemy tile
+            // Optimization: Skip obvious non-enemy tiles
             if (tile === '.' || tile === 'F' || tile === 'd' || tile === 'D' || tile === '^' || tile === '~' || tile === '≈' || tile === '🍄' || tile === '💎c' || tile === '🌋') continue;
 
             const enemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tile] : null;
 
-            // 2. If it's a valid enemy tile, we "Wake" it
             if (enemyData) {
                 const enemyId = `overworld:${x},${-y}`;
 
-                // Only spawn if it doesn't already exist in the live world
                 if (!gameState.sharedEnemies[enemyId] && (typeof pendingSpawnData === 'undefined' || !pendingSpawnData[enemyId])) {
                     
-                    // A. Create the Live Entity
                     const scaledStats = getScaledEnemy(enemyData, x, y);
                     const newEnemy = {
                         ...scaledStats,
-                        tile: tile, // Keep visual ref
+                        tile: tile, 
                         x: x,
                         y: y,
                         spawnTime: Date.now()
                     };
 
-                    // B. Queue for Firebase (The Source of Truth)
-                    // Parse/Stringify removes 'undefined' keys from ENEMY_DATA so Firebase doesn't crash
+                    // A. Queue the enemy for Firebase
                     spawnUpdates[EnemyNetworkManager.getPath(x, y, enemyId)] = JSON.parse(JSON.stringify(newEnemy));
                     
-                    // C. Add to local pending (Immediate Visual Feedback)
+                    // B. Local immediate feedback
                     if (typeof pendingSpawnData !== 'undefined') pendingSpawnData[enemyId] = newEnemy;
                     gameState.sharedEnemies[enemyId] = newEnemy; 
-                    
-                    // D. Update Spatial Map immediately so AI knows it exists
                     if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, null, null, x, y);
 
-                    // E. CONSUME THE MAP TILE
-                    // 🚨 FIX: Erase the static tile from local memory so it doesn't double-spawn.
-                    // Uses getBaseTerrain to ensure we don't leave ugly patches of grass in the desert!
+                    // --- 🚨 THE FIX: GLOBAL TERRAIN ERASURE ---
+                    const baseTerrain = typeof getBaseTerrain === 'function' ? getBaseTerrain(x, y) : '.'; 
                     const cX = Math.floor(x / 16);
                     const cY = Math.floor(y / 16);
                     const lX = (((x % 16) + 16) % 16);
                     const lY = (((y % 16) + 16) % 16);
+                    
+                    // 1. Erase from local memory to prevent immediate re-triggers
                     if (chunkManager.loadedChunks[`${cX},${cY}`] && chunkManager.loadedChunks[`${cX},${cY}`][lY]) {
-                        chunkManager.loadedChunks[`${cX},${cY}`][lY][lX] = typeof getBaseTerrain === 'function' ? getBaseTerrain(x, y) : '.'; 
+                        chunkManager.loadedChunks[`${cX},${cY}`][lY][lX] = baseTerrain; 
                     }
+                    
+                    // 2. Format the correct Firebase Path (Accounting for Multiverse/Underworld)
+                    let realmPrefix = '';
+                    if (gameState.currentRealm !== 0 && gameState.currentRealm) {
+                        realmPrefix = `realm_${gameState.currentRealm}/`;
+                    }
+                    if (gameState.mapMode === 'underworld') {
+                        realmPrefix += 'underworld/';
+                    }
+                    
+                    // 3. Queue the terrain erasure to sync to all players globally
+                    // By setting the tile to the base terrain (e.g. grass), it will NEVER spawn an enemy here again.
+                    terrainUpdates[`worldState/${realmPrefix}${cX},${cY}/${lX},${lY}`] = baseTerrain;
                     
                     enemiesSpawnedCount++;
                     visualUpdateNeeded = true;
@@ -380,16 +387,19 @@ async function wakeUpNearbyEnemies() {
         }
     }
 
-    // 3. Send Batch to Firebase (Atomic Operation)
-    if (enemiesSpawnedCount > 0) {
-        if (typeof rtdb !== 'undefined') {
-            rtdb.ref().update(spawnUpdates).catch(err => {
-                console.error("Mass Spawn Error:", err);
-            });
-        }
+    // --- PUSH TO FIREBASE ---
+    if (enemiesSpawnedCount > 0 && typeof rtdb !== 'undefined') {
+        // Send the enemies to the live database
+        rtdb.ref().update(spawnUpdates).catch(err => {
+            console.error("Mass Spawn Error:", err);
+        });
+        
+        // Send the terrain erasure to the persistent world state
+        rtdb.ref().update(terrainUpdates).catch(err => {
+            console.error("Terrain Erasure Error:", err);
+        });
     }
 
-    // 4. Force Render if we changed anything
     if (visualUpdateNeeded) {
         gameState.mapDirty = true; 
         if (typeof render === 'function') render(); 
