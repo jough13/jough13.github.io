@@ -551,11 +551,21 @@ function handlePurify(index) {
             return;
         }
 
+        // --- STACK-SPLITTING CAPACITY CHECK ---
+        // If the item is stacked, we must create a new inventory slot for the purified version.
+        // We ensure they have space BEFORE deducting the dust!
+        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+        if (item.quantity > 1 && player.inventory.length >= invCap) {
+            logMessage("{red:Inventory Full! You need an empty slot to purify a stacked item.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return; 
+        }
+
         // Deduct Dust
         player.inventory[dustIdx].quantity -= PURIFY_COST;
         if (player.inventory[dustIdx].quantity <= 0) player.inventory.splice(dustIdx, 1);
 
-        // Stack Splitting Failsafe
+        // Stack Splitting Execution
         let targetItem = item;
         if (item.quantity > 1) {
             item.quantity--;
