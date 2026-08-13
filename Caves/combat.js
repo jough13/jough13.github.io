@@ -615,77 +615,101 @@ async function processOverworldEnemyTurns() {
         let skipTurn = false;
         let statusChanged = false;
 
-        if (enemy.rootTurns > 0) { enemy.rootTurns--; skipTurn = true; statusChanged = true; }
-        if (enemy.stunTurns > 0) { enemy.stunTurns--; skipTurn = true; statusChanged = true; }
-        if (enemy.frostbiteTurns > 0) { enemy.frostbiteTurns--; statusChanged = true; if (Math.random() < 0.25) skipTurn = true; }
+        // TICK-RATE NORMALIZER
+        // The AI runs at 600ms. Players run at ~1200ms.
+        // We only tick DoTs and decrement durations on EVEN AI turns to perfectly match the player's timescale!
+        if (typeof enemy._internalTickCounter === 'undefined') enemy._internalTickCounter = 0;
+        enemy._internalTickCounter++;
         
-        if (enemy.burnTurns > 0) {
-            enemy.burnTurns--;
-            enemy.health -= 2; 
-            if (target.isHost) {
-                logMessage(`{orange:The ${enemy.name} takes burn damage.}`);
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, "-2", "#f97316");
-            }
-            
-            if (enemy.health <= 0) {
-                if (target.isHost) logMessage(`{red:The ${enemy.name} burns to ash!}`);
-                
-                registerKill(enemy);
-                const deathPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
-                if (!pathsClaimedThisFrame.has(deathPath)) multiPathUpdate[deathPath] = null;
-                
-                delete gameState.sharedEnemies[enemyId];
-                if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
-                processedIdsThisFrame.add(enemyId);
-                movesQueued = true;
-                
-                const baseEnemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[enemy.tile] : null;
-                if (baseEnemyData) {
-                    const lootData = { ...baseEnemyData, isElite: enemy.isElite };
-                    const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, lootData) : '.';
-                    const currentTerrain = chunkManager.getTile(enemy.x, enemy.y);
-                    const ttl = (currentTerrain === '~' || currentTerrain === '🌋') ? 0.25 : 2;
-                    chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot || '.', ttl); 
-                    gameState.mapDirty = true;
-                }
-                continue;
-            }
-        }
-        if (enemy.poisonTurns > 0) {
-            enemy.poisonTurns--;
-            enemy.health -= 1;
-            if (target.isHost) {
-                logMessage(`{gray:The ${enemy.name} takes poison damage.}`);
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, "-1", "#22c55e");
-            }
-            
-            if (enemy.health <= 0) {
-                if (target.isHost) logMessage(`{green:The ${enemy.name} succumbs to poison!}`);
-                
-                registerKill(enemy);
-                const deathPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
-                if (!pathsClaimedThisFrame.has(deathPath)) multiPathUpdate[deathPath] = null;
-                
-                delete gameState.sharedEnemies[enemyId];
-                if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
-                processedIdsThisFrame.add(enemyId);
-                movesQueued = true;
-                
-                const baseEnemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[enemy.tile] : null;
-                if (baseEnemyData) {
-                    const lootData = { ...baseEnemyData, isElite: enemy.isElite };
-                    const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, lootData) : '.';
-                    const currentTerrain = chunkManager.getTile(enemy.x, enemy.y);
-                    const ttl = (currentTerrain === '~' || currentTerrain === '🌋') ? 0.25 : 2;
-                    chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot || '.', ttl); 
-                    gameState.mapDirty = true;
-                }
-                continue;
-            }
-            if (enemy.poisonTurns === 0 && target.isHost) logMessage(`{gray:The ${enemy.name} is no longer poisoned.}`);
-        }
+        const shouldTickDoT = (enemy._internalTickCounter % 2 === 0);
 
-        let isMad = false;
+        if (shouldTickDoT) {
+            if (enemy.rootTurns > 0) { enemy.rootTurns--; skipTurn = true; statusChanged = true; }
+            if (enemy.stunTurns > 0) { enemy.stunTurns--; skipTurn = true; statusChanged = true; }
+            if (enemy.frostbiteTurns > 0) { enemy.frostbiteTurns--; statusChanged = true; if (Math.random() < 0.25) skipTurn = true; }
+            
+            if (enemy.burnTurns > 0) {
+                enemy.burnTurns--;
+                enemy.health -= 2; 
+                statusChanged = true;
+                
+                if (target.isHost) {
+                    logMessage(`{orange:The ${enemy.name} takes burn damage.}`);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, "-2", "#f97316");
+                }
+                
+                if (enemy.health <= 0) {
+                    if (target.isHost) logMessage(`{red:The ${enemy.name} burns to ash!}`);
+                    
+                    registerKill(enemy);
+                    const deathPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
+                    if (!pathsClaimedThisFrame.has(deathPath)) multiPathUpdate[deathPath] = null;
+                    
+                    delete gameState.sharedEnemies[enemyId];
+                    if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
+                    processedIdsThisFrame.add(enemyId);
+                    movesQueued = true;
+                    
+                    const baseEnemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[enemy.tile] : null;
+                    if (baseEnemyData) {
+                        const lootData = { ...baseEnemyData, isElite: enemy.isElite };
+                        const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, lootData) : '.';
+                        const currentTerrain = chunkManager.getTile(enemy.x, enemy.y);
+                        const ttl = (currentTerrain === '~' || currentTerrain === '🌋') ? 0.25 : 2;
+                        chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot || '.', ttl); 
+                        gameState.mapDirty = true;
+                    }
+                    continue;
+                }
+            }
+            if (enemy.poisonTurns > 0) {
+                enemy.poisonTurns--;
+                enemy.health -= 1;
+                statusChanged = true;
+                
+                if (target.isHost) {
+                    logMessage(`{gray:The ${enemy.name} takes poison damage.}`);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, "-1", "#22c55e");
+                }
+                
+                if (enemy.health <= 0) {
+                    if (target.isHost) logMessage(`{green:The ${enemy.name} succumbs to poison!}`);
+                    
+                    registerKill(enemy);
+                    const deathPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
+                    if (!pathsClaimedThisFrame.has(deathPath)) multiPathUpdate[deathPath] = null;
+                    
+                    delete gameState.sharedEnemies[enemyId];
+                    if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
+                    processedIdsThisFrame.add(enemyId);
+                    movesQueued = true;
+                    
+                    const baseEnemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[enemy.tile] : null;
+                    if (baseEnemyData) {
+                        const lootData = { ...baseEnemyData, isElite: enemy.isElite };
+                        const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, lootData) : '.';
+                        const currentTerrain = chunkManager.getTile(enemy.x, enemy.y);
+                        const ttl = (currentTerrain === '~' || currentTerrain === '🌋') ? 0.25 : 2;
+                        chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot || '.', ttl); 
+                        gameState.mapDirty = true;
+                    }
+                    continue;
+                }
+                if (enemy.poisonTurns === 0 && target.isHost) logMessage(`{gray:The ${enemy.name} is no longer poisoned.}`);
+            }
+
+            if (enemy.madnessTurns > 0) {
+                enemy.madnessTurns--;
+                statusChanged = true;
+            }
+        } else {
+            // Even if we don't tick the duration down, if they are stunned/rooted, they still can't move this frame!
+            if (enemy.rootTurns > 0) skipTurn = true;
+            if (enemy.stunTurns > 0) skipTurn = true;
+            if (enemy.frostbiteTurns > 0 && Math.random() < 0.25) skipTurn = true;
+        }
+        
+        let isMad = (enemy.madnessTurns > 0);
         if (enemy.madnessTurns > 0) {
             enemy.madnessTurns--;
             statusChanged = true;
@@ -1280,7 +1304,19 @@ function processEnemyTurns() {
     const HEARING_DISTANCE_SQ = 15 * 15;
     const player = gameState.player;
 
-    const isWalkable = (tx, ty) => map[ty] && map[ty][tx] === theme.floor;
+    // --- DYNAMIC PATHFINDING ---
+    // Enemies treat walls, stairs, NPCs, and sealed chests as solid objects,
+    // but they will gladly walk over (and crush) dropped loot and open doors!
+    const isWalkable = (tx, ty) => {
+        if (!map[ty] || map[ty][tx] === undefined) return false;
+        const t = map[ty][tx];
+        
+        const hardWalls = [
+            '▓', '▒', '🧱', '🔒', '🏚', '🏚️', '🕸', '+', '~', '≈', '🌋', ' ', '🕳️', 'Ω', '<', '>', // Terrain & Exits
+            '📦', '🏺', '⚰️', '⛲', '⛩️', '|', '?', 'O', 'T', '🎓', 'N', '§', 'H', 'G', 'B', 'W', 'M', '🚩' // NPCs, Chests & Structures
+        ];
+        return !hardWalls.includes(t);
+    };
 
     const enemiesToMove = [...gameState.instancedEnemies];
 
@@ -1295,20 +1331,27 @@ function processEnemyTurns() {
         const now = Date.now();
         const ENEMY_ATTACK_COOLDOWN = enemy.isBoss ? 1200 : 1800;
 
+        // 🚨 TICK-RATE NORMALIZER 🚨
+        if (typeof enemy._internalTickCounter === 'undefined') enemy._internalTickCounter = 0;
+        enemy._internalTickCounter++;
+        
+        const shouldTickDoT = (enemy._internalTickCounter % 2 === 0);
+
         if (enemy.rootTurns > 0) {
-            enemy.rootTurns--;
+            if (shouldTickDoT) enemy.rootTurns--;
             logMessage(`{gray:The ${enemy.name} struggles against roots!}`);
             if (enemy.rootTurns === 0) logMessage(`{gray:The ${enemy.name} breaks free.}`);
             return;
         }
+        
         if (enemy.stunTurns > 0) {
-            enemy.stunTurns--;
+            if (shouldTickDoT) enemy.stunTurns--;
             logMessage(`{yellow:The ${enemy.name} is stunned!}`);
             return;
         }
 
         if (enemy.madnessTurns > 0) {
-            enemy.madnessTurns--;
+            if (shouldTickDoT) enemy.madnessTurns--;
             const fleeDirX = -Math.sign(player.x - enemy.x);
             const fleeDirY = -Math.sign(player.y - enemy.y);
             const newX = enemy.x + fleeDirX;
@@ -1327,7 +1370,7 @@ function processEnemyTurns() {
         }
 
         if (enemy.frostbiteTurns > 0) {
-            enemy.frostbiteTurns--;
+            if (shouldTickDoT) enemy.frostbiteTurns--;
             if (enemy.frostbiteTurns === 0) logMessage(`{cyan:The ${enemy.name} is no longer frostbitten.}`);
             if (Math.random() < 0.25) {
                 logMessage(`{cyan:The ${enemy.name} is frozen solid and skips its turn!}`);
@@ -1335,32 +1378,34 @@ function processEnemyTurns() {
             }
         }
 
-        // Add burn tick to dungeons
-        if (enemy.burnTurns > 0) {
-            enemy.burnTurns--;
-            enemy.health -= 2; // Fire burns hotter than poison!
-            logMessage(`{orange:The ${enemy.name} takes burn damage.}`);
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, "-2", "#f97316");
-            
-            if (enemy.health <= 0) {
-                logMessage(`{red:The ${enemy.name} burns to ash!}`);
-                if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, enemy.x, enemy.y);
-                return;
+        if (shouldTickDoT) {
+            // Add burn tick to dungeons
+            if (enemy.burnTurns > 0) {
+                enemy.burnTurns--;
+                enemy.health -= 2; // Fire burns hotter than poison!
+                logMessage(`{orange:The ${enemy.name} takes burn damage.}`);
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, "-2", "#f97316");
+                
+                if (enemy.health <= 0) {
+                    logMessage(`{red:The ${enemy.name} burns to ash!}`);
+                    if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, enemy.x, enemy.y);
+                    return;
+                }
             }
-        }
 
-        if (enemy.poisonTurns > 0) {
-            enemy.poisonTurns--;
-            enemy.health -= 1;
-            logMessage(`{green:The ${enemy.name} takes poison damage.}`);
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, "-1", "#22c55e");
-            
-            if (enemy.health <= 0) {
-                logMessage(`{green:The ${enemy.name} succumbs to poison!}`);
-                if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, enemy.x, enemy.y);
-                return;
+            if (enemy.poisonTurns > 0) {
+                enemy.poisonTurns--;
+                enemy.health -= 1;
+                logMessage(`{green:The ${enemy.name} takes poison damage.}`);
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, "-1", "#22c55e");
+                
+                if (enemy.health <= 0) {
+                    logMessage(`{green:The ${enemy.name} succumbs to poison!}`);
+                    if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, enemy.x, enemy.y);
+                    return;
+                }
+                if (enemy.poisonTurns === 0) logMessage(`{gray:The ${enemy.name} is no longer poisoned.}`);
             }
-            if (enemy.poisonTurns === 0) logMessage(`{gray:The ${enemy.name} is no longer poisoned.}`);
         }
 
         const dx = player.x - enemy.x;
@@ -1850,7 +1895,48 @@ function processEnemyTurns() {
             const newY = enemy.y + moveY;
 
             const occupied = gameState.instancedEnemies.some(e => e && e.x === newX && e.y === newY); // 🚨 GHOST GUARD
+            
             if (!occupied) {
+                // --- THE CRUSH MECHANIC ---
+                const targetTile = map[newY][newX];
+                
+                // If they step on something that isn't the floor or an open door...
+                if (targetTile !== theme.floor && targetTile !== '/') {
+                    
+                    // 1. Identify the item
+                    let itemName = null;
+                    if (targetTile === '$') itemName = "Gold Coins";
+                    else if (targetTile === '✨') itemName = "Magical Artifact";
+                    else if (typeof ITEM_DATA !== 'undefined') {
+                        // Find by tile icon or explicit key
+                        const tKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].tile === targetTile || k === targetTile);
+                        if (tKey) itemName = ITEM_DATA[tKey].name;
+                    }
+
+                    // 2. Destroy it with visceral feedback!
+                    if (itemName) {
+                        // Dynamic verbs based on the enemy type
+                        let action = "crushes";
+                        const tags = enemy.tags || (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[enemy.tile] ? ENEMY_DATA[enemy.tile].tags : []);
+                        
+                        if (tags.includes('ethereal') || tags.includes('void')) action = "dissolves";
+                        else if (tags.includes('fire')) action = "incinerates";
+                        else if (tags.includes('frost')) action = "shatters";
+                        else if (tags.includes('bug') || tags.includes('beast')) action = "devours";
+                        
+                        logMessage(`{gray:The ${enemy.name} ${action} the ${itemName} underfoot!}`);
+                        
+                        // Audio & Visual Juicing
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.1, 0.1, 800); // Crunch sound
+                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#9ca3af', 6);
+                        
+                        // Clean up the looted cache so the player doesn't get a ghost pickup later
+                        const mapId = gameState.currentCaveId || gameState.currentCastleId;
+                        gameState.lootedTiles.delete(`${mapId}:${newX},${-newY}`);
+                    }
+                }
+
+                // Execute the move visually
                 map[enemy.y][enemy.x] = theme.floor;
                 map[newY][newX] = enemy.tile;
                 enemy.x = newX;
