@@ -2186,7 +2186,9 @@ async function attemptMovePlayer(newX, newY) {
                 player.unlockedWaypoints.push({
                     x: newX,
                     y: newY,
-                    name: regionName
+                    name: regionName,
+                    mapMode: gameState.mapMode,
+                    currentRealm: gameState.currentRealm || 0
                 });
 
                 logMessage("{cyan:Waystone Attuned! You can now fast travel here.}");
