@@ -1,6 +1,6 @@
 // --- START OF FILE menus.js ---
 
-// PERFORMANCE WIN: Cache DOM lookups used frequently by the menu rendering loops
+// Cache DOM lookups used frequently by the menu rendering loops
 // This prevents the engine from having to parse the entire HTML document 60x a second during animations.
 const _menuDOMCache = {
     talentList: null,
@@ -1381,6 +1381,7 @@ function openSkillbook() {
 
 // Ensure the talent list bindings are attached cleanly when the DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. Bind the Learn buttons
     const tList = document.getElementById('talentList');
     if (tList && !tList.dataset.listenersBound) {
         tList.addEventListener('click', (e) => {
@@ -1390,6 +1391,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         tList.dataset.listenersBound = 'true';
+    }
+
+    // 2. Bind the Close button
+    const closeTalentBtn = document.getElementById('closeTalentButton');
+    if (closeTalentBtn && !closeTalentBtn.dataset.listenerBound) {
+        closeTalentBtn.addEventListener('click', () => {
+            const modal = document.getElementById('talentModal');
+            if (modal) modal.classList.add('hidden');
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+        });
+        closeTalentBtn.dataset.listenerBound = 'true';
     }
 });
 
