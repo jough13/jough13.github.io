@@ -575,10 +575,16 @@ async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = f
                 const lootData = { ...enemyData, isElite: enemyInfo.isElite };
                 const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(player, lootData) : '$';
                 if (typeof chunkManager !== 'undefined') {
-                    // Ensure magic spells provide a TTL so server map cache doesn't clog permanently!
-                    const currentTerrain = chunkManager.getTile(targetX, targetY);
-                    const ttl = (currentTerrain === '~' || currentTerrain === '🌋') ? 0.25 : 2;
-                    chunkManager.setWorldTile(targetX, targetY, droppedLoot || '.', ttl);
+                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                        chunkManager.setWorldTile(targetX, targetY, null); // Safely reveals base terrain!
+                    } 
+                    else if (gameState.mapMode === 'dungeon') {
+                        const theme = typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES[gameState.currentCaveTheme] : null;
+                        chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = theme ? theme.floor : '.';
+                    } 
+                    else {
+                        chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX] = '.';
+                    }
                 }
                 
                 payload[EnemyNetworkManager.getPath(targetX, targetY, enemyId)] = null; // Mark for deletion
