@@ -1061,10 +1061,13 @@ async function executeAimedSpell(spellId, dirX, dirY) {
 
                         let hasEnemy = false;
                         if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                            const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(x, y) : '.';
+                            const enemyId = `overworld:${x},${-y}`;
+                            const liveEnemy = gameState.sharedEnemies ? gameState.sharedEnemies[enemyId] : null;
+                            const tile = liveEnemy ? liveEnemy.tile : (typeof chunkManager !== 'undefined' ? chunkManager.getTile(x, y) : '.');
+                            
                             if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tile]) hasEnemy = true;
                         } else {
-                            // 🚨 GHOST GUARD: Only jump to living enemies
+                            // Only jump to living enemies
                             if (gameState.instancedEnemies && gameState.instancedEnemies.some(e => e && e.x === x && e.y === y && e.health > 0)) hasEnemy = true; 
                         }
 
