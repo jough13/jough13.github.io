@@ -7,9 +7,9 @@
 // --- GLOBALS & SAFETY ---
 window.inputQueue = window.inputQueue || []; // Guarantee queue exists regardless of load order
 
-// PERFORMANCE WIN: O(1) Directional Mapping
+// O(1) Directional Mapping
 // Replaces massive if/else and switch statements with a single instant dictionary lookup
-const MOVEMENT_MAP = {
+window.MOVEMENT_MAP = {
     // Cardinals
     'ArrowUp': [0, -1], 'w': [0, -1], 'W': [0, -1], '8': [0, -1], 'Numpad8': [0, -1],
     'ArrowDown': [0, 1], 's': [0, 1], 'S': [0, 1], '2': [0, 1], 'Numpad2': [0, 1],
@@ -51,7 +51,7 @@ const HOTKEY_MAPPINGS = {
     'h': { modal: 'helpModal',        openFunc: null,                  closeFunc: null } 
 };
 
-// PERFORMANCE WIN: Live HTMLCollection Cache for O(1) Modal Checks
+// Live HTMLCollection Cache for O(1) Modal Checks
 // Completely eliminates the need to run document.querySelector on every single keystroke!
 const _modalCache = {
     collection: null,
@@ -219,7 +219,7 @@ function handleInput(key) {
     let numericTestStr = key.startsWith('Numpad') ? key.replace('Numpad', '') : key;
     const isNumberKey = !isNaN(parseInt(numericTestStr, 10)) && parseInt(numericTestStr, 10) >= 1 && parseInt(numericTestStr, 10) <= 9;
     
-    const isGameplayKey = MOVEMENT_MAP[key] || ['q', 'z', 'g', 'r', ' ', '5', 'numpad5', 'clear', '.'].includes(lowerKey) || isNumberKey;
+    const isGameplayKey = window.MOVEMENT_MAP[key] || ['q', 'z', 'g', 'r', ' ', '5', 'numpad5', 'clear', '.'].includes(lowerKey) || isNumberKey;
     
     if (gameState.player.stunTurns > 0 && isGameplayKey) {
         
@@ -390,7 +390,7 @@ function handleInput(key) {
             return;
         }
         
-        const dir = MOVEMENT_MAP[key];
+        const dir = window.MOVEMENT_MAP[key];
         
         if (dir) {
             const [dirX, dirY] = dir;
@@ -521,7 +521,7 @@ function handleInput(key) {
     }
 
     // --- DIRECTIONAL MOVEMENT ---
-    const dir = MOVEMENT_MAP[key];
+    const dir = window.MOVEMENT_MAP[key];
 
     if (dir) {
         const [dirX, dirY] = dir;
