@@ -2116,7 +2116,7 @@ async function runCompanionTurn() {
 async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage, isBatched = false) { 
     const player = gameState.player;
     const enemyId = `overworld:${newX},${-newY}`; 
-    if (typeof rtdb === 'undefined') return;
+    if (typeof rtdb === 'undefined') return false;
     const enemyRef = rtdb.ref(EnemyNetworkManager.getPath(newX, newY, enemyId));
 
     if (!gameState.sharedEnemies[enemyId]) {
@@ -2126,7 +2126,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             gameState.mapDirty = true;
             if (typeof render === 'function') render();
         }
-        return;
+        return false; // Explicitly return false
     }
 
     const liveEnemy = gameState.sharedEnemies[enemyId];
@@ -2135,7 +2135,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
     // Ensure damage is a valid number to prevent NaN database corruption
     const safeDamage = (typeof playerDamage === 'number' && !isNaN(playerDamage)) ? playerDamage : 1;
 
-    // --- 🚨 ADD BATCHING LOGIC HERE ---
+    // --- BATCHING LOGIC (Unchanged) ---
     if (isBatched) {
         let enemy = JSON.parse(JSON.stringify(enemyInfo));
         enemy.health = Number(enemy.health);
@@ -2170,32 +2170,28 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(player, lootData) : '$';
             
             const currentTerrain = chunkManager.getTile(newX, newY);
-            // Let loot drop in water/lava with a short 15-minute TTL
             const ttl = (currentTerrain === '~' || currentTerrain === '🌋') ? 0.25 : 2;
             chunkManager.setWorldTile(newX, newY, droppedLoot || '.', ttl); 
             gameState.mapDirty = true;
             
-            payload[EnemyNetworkManager.getPath(newX, newY, enemyId)] = null; // Mark for deletion
+            payload[EnemyNetworkManager.getPath(newX, newY, enemyId)] = null; 
         } else {
-            payload[EnemyNetworkManager.getPath(newX, newY, enemyId)] = enemy; // Update health
+            payload[EnemyNetworkManager.getPath(newX, newY, enemyId)] = enemy; 
         }
         return { hit: true, payload: payload };
     }
 
+    // --- STANDARD TRANSACTION LOGIC ---
     try {
         const doTransaction = () => enemyRef.transaction(currentData => {
-            // 1. Let the transaction proceed to the server if uncached (or genuinely dead)
             if (currentData === null) return null; 
             
-            // 2. Deep clone safely
             let enemy = JSON.parse(JSON.stringify(currentData));
             
             enemy.health = Number(enemy.health);
             if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
             
             enemy.health -= safeDamage;
-            
-            // 3. DO NOT return null here. Return the "Corpse" so we know we killed it!
             return enemy; 
         });
 
@@ -2209,23 +2205,21 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
         if (transactionResult && transactionResult.committed) {
             const finalEnemyState = transactionResult.snapshot.val();
 
-            // 4. If the result is null, it means it was ALREADY dead before we swung.
             if (finalEnemyState === null) {
                 logMessage("{gray:You swing at empty air... the enemy is already dead.}");
                 chunkManager.setWorldTile(newX, newY, null);
                 if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
+                
+                return false; // Explicitly return false
             }
             else {
-                // Apply visual hit effects
                 if (typeof ParticleSystem !== 'undefined') {
                     ParticleSystem.createExplosion(newX, newY, '#ef4444');
                     ParticleSystem.createFloatingText(newX, newY, `-${safeDamage}`, '#fff');
                 }
 
-                // --- THE OVERKILL MECHANIC ---
                 const isOverkill = safeDamage >= (enemyInfo.maxHealth * 1.5) && enemyInfo.maxHealth > 5;
 
-                // 5. Did OUR strike drop its health to 0?
                 if (finalEnemyState.health <= 0) {
                     if (isOverkill) {
                         logMessage(`{red:OVERKILL! You absolutely obliterated the ${enemyInfo.name}!}`);
@@ -2243,7 +2237,6 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                     if (gameState.lootedTiles.has(tileId)) gameState.lootedTiles.delete(tileId);
                     if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
 
-                    // Drop Loot
                     try {
                         const lootData = { ...enemyData, isElite: enemyInfo.isElite };
                         const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(player, lootData) : '$';
@@ -2254,7 +2247,6 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                         if (isProtectedTile || isItemTile) {
                             logMessage("{gray:The enemy's loot was lost in the underbrush.}");
                         } else {
-                            // Let loot drop in water/lava with a short 15-minute TTL
                             const ttl = (currentTerrain === '~' || currentTerrain === '🌋') ? 0.25 : 2;
                             chunkManager.setWorldTile(newX, newY, droppedLoot || '.', ttl); 
                             gameState.mapDirty = true;
@@ -2263,24 +2255,26 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                         console.error("Loot drop error:", lootErr);
                     }
 
-                    // 6. NOW we sweep away the corpse so it despawns for the server
                     enemyRef.remove();
                 } 
                 else {
-                    // It survived the hit
                     logMessage(`You hit the ${enemyInfo.name} for {red:${safeDamage}} damage!`);
                 }
+                
+                return true; // Explicitly return true on success
             }
         } 
         else {
             logMessage("{gray:You swing at empty air... the enemy is already dead.}");
             chunkManager.setWorldTile(newX, newY, null);
             if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
+            return false; // Explicitly return false
         }
 
     } catch (error) {
         console.error("Combat Error:", error);
         logMessage(`{gray:Error: ${error.message || "Network Sync Failed"}}`);
+        return false; // Explicitly return false
     }
 }
 
