@@ -26,7 +26,7 @@ const _DOMCache = {
 };
 
 // ==========================================
-// EXPANSION WIN: GUEST MODE INJECTOR
+// GUEST MODE INJECTOR
 // ==========================================
 function initGuestLogin() {
     const authButtonContainer = document.getElementById('authButton')?.parentElement;
@@ -213,7 +213,7 @@ let slotPendingDeletion = null;
 
 // Evaluated dynamically inside functions to prevent DOM parsing errors on initial load
 window.deleteSlot = function (slotId) {
-    // JUICE & LORE WIN: Ominous warning sound and atmospheric text update
+    // Ominous warning sound and atmospheric text update
     if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning(); 
     slotPendingDeletion = slotId;
     
