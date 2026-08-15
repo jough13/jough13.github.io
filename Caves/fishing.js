@@ -4,7 +4,7 @@
 // THE ULTIMATE FISHING EXPANSION (MASTERPIECE++)
 // ==============================================
 
-// PERFORMANCE WIN: O(1) Item Lookup Cache
+// O(1) Item Lookup Cache
 // Prevents scanning the massive ITEM_DATA dictionary multiple times per catch
 // Attaching to window prevents hot-reload SyntaxErrors!
 window._itemKeyCache = window._itemKeyCache || {};
@@ -206,8 +206,8 @@ var NEW_FISHING_ITEMS = {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.1, 0.1, 1000);
             
             if (Math.random() < 0.20) {
-                const existingPearl = state.player.inventory.find(i => i.name === 'Black Pearl' && !i.isEquipped);
-                const oysterStack = state.player.inventory.find(i => i.name === 'Abyssal Oyster' && !i.isEquipped);
+                const existingPearl = state.player.inventory.find(i => i && i.name === 'Black Pearl' && !i.isEquipped);
+                const oysterStack = state.player.inventory.find(i => i && i.name === 'Abyssal Oyster' && !i.isEquipped);
                 const freesSlot = (oysterStack && oysterStack.quantity === 1) ? 1 : 0;
                 const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                 
@@ -249,8 +249,8 @@ var NEW_FISHING_ITEMS = {
                 const template = window.ITEM_DATA[prizeKey];
                 
                 const isStackable = template && ['junk', 'consumable', 'trade'].includes(template.type);
-                const existingPrize = state.player.inventory.find(i => i.name === prize && !i.isEquipped);
-                const chestStack = state.player.inventory.find(i => i.name === 'Waterlogged Chest' && !i.isEquipped);
+                const existingPrize = state.player.inventory.find(i => i && i.name === prize && !i.isEquipped);
+                const chestStack = state.player.inventory.find(i => i && i.name === 'Waterlogged Chest' && !i.isEquipped);
                 const freesSlot = (chestStack && chestStack.quantity === 1) ? 1 : 0;
                 const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                 
@@ -292,7 +292,7 @@ var NEW_FISHING_ITEMS = {
             logMessage("You smash the bottle and unroll the damp parchment...");
             
             if (Math.random() < 0.25) {
-                const bottleStack = state.player.inventory.find(i => i.name === 'Message in a Bottle' && !i.isEquipped);
+                const bottleStack = state.player.inventory.find(i => i && i.name === 'Message in a Bottle' && !i.isEquipped);
                 const freesSlot = (bottleStack && bottleStack.quantity === 1) ? 1 : 0;
                 const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                 
@@ -454,12 +454,12 @@ function executeFishing() {
         currentTile = (map && map[player.y] && map[player.y][player.x]) ? map[player.y][player.x] : ' ';
     }
 
-    const hasSteelRod = player.inventory.some(i => i.name === 'Steel Fishing Rod' && !i.isEquipped);
-    const hasObsidianRod = player.inventory.some(i => i.name === 'Obsidian Fishing Rod' && !i.isEquipped);
+    const hasSteelRod = player.inventory.some(i => i && i.name === 'Steel Fishing Rod' && !i.isEquipped);
+    const hasObsidianRod = player.inventory.some(i => i && i.name === 'Obsidian Fishing Rod' && !i.isEquipped);
     
     const isLava = currentTile === '🌋' || (currentTile === '~' && gameState.mapMode === 'dungeon' && gameState.currentCaveTheme === 'FIRE');
     
-    // SAFEGUARD: Ensure realm is valid before checking
+    // Ensure realm is valid before checking
     const isVoid = (gameState.currentRealm && gameState.currentRealm !== 0) || 
                    (gameState.mapMode === 'dungeon' && ['VOID', 'ABYSS', 'CORRUPTED'].includes(gameState.currentCaveTheme));
 
@@ -518,7 +518,7 @@ function executeFishing() {
 
     for (let b of window.FISHING_BAITS) {
         if (b.zoneOnly && b.zoneOnly !== zone) continue;
-        const idx = player.inventory.findIndex(i => i.name === b.name && !i.isEquipped);
+        const idx = player.inventory.findIndex(i => i && i.name === b.name && !i.isEquipped);
         if (idx > -1) {
             usedBaitName = b.name;
             baitCatchBoost = b.catchBoost;
@@ -806,8 +806,8 @@ function executeFishing() {
                 if (!isTrophy) logMessage(`You caught a ${safeItemName}!`);
             }
                 
-            // THE FIX: Proper Stack & Capacity Checking!
-            const existingStack = player.inventory.find(i => i.name === finalItemName && !i.isEquipped);
+            // Proper Stack & Capacity Checking!
+            const existingStack = player.inventory.find(i => i && i.name === finalItemName && !i.isEquipped);
             const isStackable = template && ['junk', 'consumable', 'trade'].includes(template.type) && !isTrophy;
 
             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
@@ -815,7 +815,7 @@ function executeFishing() {
             if (existingStack && isStackable) {
                 existingStack.quantity++;
             } else if (player.inventory.length < invCap) {
-                // 🚨 BUG FIX & ROBUSTNESS WIN: Safe deep clone to guarantee weapon traits and tags carry over!
+                // Safe deep clone to guarantee weapon traits and tags carry over!
                 let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
                 newItem.templateId = baseKey;
                 newItem.name = finalItemName;
