@@ -614,8 +614,8 @@ window.getLoreTimeOfDay = function(hour) {
     return "The Star-lit Night";
 };
 
-// 🌟 EXPANSION WIN: Deeply Expanded Dictionary for Auto-Tagging
-const LORE_KEYWORDS = {
+// Deeply Expanded Dictionary for Auto-Tagging
+window.LORE_KEYWORDS = {
     // Factions & Entities
     'Void': 'void', 'Void Rift': 'void', 'Shadowed Hand': 'purple',
     'Old King': 'gold', 'First King': 'gold', 'Alaric': 'gold',
@@ -657,26 +657,27 @@ const LORE_KEYWORDS = {
     'Abyss': 'purple', 'Runesmith': 'orange', 'Outlaw': 'red', 'Bounty': 'yellow'
 };
 
-// 🚨 V8 PERFORMANCE WIN: Pre-compile Regexes once at boot instead of on every log message!
-const _COMPILED_LORE_REGEXES = Object.entries(LORE_KEYWORDS).map(([keyword, color]) => ({
+// Pre-compile Regexes once at boot instead of on every log message!
+window._COMPILED_LORE_REGEXES = Object.entries(window.LORE_KEYWORDS).map(([keyword, color]) => ({
     rx: new RegExp(`\\b(${keyword}s?)\\b`, 'gi'),
     color
 }));
 
 /**
- * LORE WIN: The Auto-Lore Tagger
+ * The Auto-Lore Tagger
  * Scans raw text and automatically wraps crucial lore keywords in their appropriate {color:text} syntax.
  * Upgraded to safely support plural words and compile at O(1) speed.
  */
+
 window.autoFormatLore = function(text) {
     if (!text) return "";
     let formatted = text;
-    for (let i = 0; i < _COMPILED_LORE_REGEXES.length; i++) {
-        const { rx, color } = _COMPILED_LORE_REGEXES[i];
+    for (let i = 0; i < window._COMPILED_LORE_REGEXES.length; i++) {
+        const { rx, color } = window._COMPILED_LORE_REGEXES[i];
         formatted = formatted.replace(rx, (match, p1, offset, string) => {
             const lookBehind = string.substring(Math.max(0, offset - 15), offset);
             
-            // 🚨 BUG FIX: Check if we are actively inside an unclosed tag block
+            // Check if we are actively inside an unclosed tag block
             // Solves the issue where {blue:A} Kraken wouldn't trigger the Kraken tag because the lookup 
             // hit the { from {blue:A} even though it was already closed!
             const lastOpen = lookBehind.lastIndexOf('{');
