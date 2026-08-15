@@ -126,7 +126,7 @@ window.ExpansionManager = {
                 
                 for (const key in data[localKey]) {
                     if (Object.prototype.hasOwnProperty.call(data[localKey], key)) {
-                        // 🚨 DEV QoL WIN: Collision Warnings
+                        // Collision Warnings
                         // Prevents two expansions from silently overwriting each other's items!
                         if (window[globalKey][key]) {
                             console.warn(`%c[AKASHIC ENGINE] Overwrite Notice: '${exp.id}' is modifying existing ${localKey} entry: '${key}'.`, "color: #fb923c;");
@@ -186,10 +186,18 @@ window.ExpansionManager = {
 
         // --- 5. INJECT SHOPS (With Smart Deduplication & Protection) ---
         if (data.shops) {
+            const shopTargetMap = {
+                'general': 'SHOP_INVENTORY',
+                'castle': 'CASTLE_SHOP_INVENTORY',
+                'trader': 'TRADER_INVENTORY',
+                'black_market': 'BLACK_MARKET_INVENTORY',
+                'ascendant': 'ASCENDANT_INVENTORY'
+            };
+
             for (const shopKey in data.shops) {
                 if (!Object.prototype.hasOwnProperty.call(data.shops, shopKey)) continue;
 
-                const targetGlobal = shopKey === 'general' ? 'SHOP_INVENTORY' : `${shopKey.toUpperCase()}_INVENTORY`;
+                const targetGlobal = shopTargetMap[shopKey] || `${shopKey.toUpperCase()}_INVENTORY`;
                 
                 if (typeof window[targetGlobal] === 'undefined' || !Array.isArray(window[targetGlobal])) {
                     window[targetGlobal] = [];
