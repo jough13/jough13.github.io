@@ -139,10 +139,18 @@ window.ExpansionManager.register({
                                     }
                                     
                                     state.lootedTiles.add(ctx.tileId);
-                                    if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(ctx.x, ctx.y, '🏚'); // Replace with rubble
+                                    if (typeof chunkManager !== 'undefined') {
+                                        if (state.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[state.currentCaveTheme]) {
+                                            chunkManager.caveMaps[state.currentCaveId][ctx.y][ctx.x] = CAVE_THEMES[state.currentCaveTheme].floor;
+                                        } else if (state.mapMode === 'castle') {
+                                            chunkManager.castleMaps[state.currentCastleId][ctx.y][ctx.x] = '.';
+                                        } else {
+                                            chunkManager.setWorldTile(ctx.x, ctx.y, null); // Reverts to natural procedural terrain!
+                                        }
+                                    }
                                     state.mapDirty = true;
                                     
-                                    // 🚨 BUG FIX: Ensure the save triggers so players can't save scum the event
+                                    // Ensure the save triggers so players can't save scum the event
                                     if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory });
                                 }
                             },
