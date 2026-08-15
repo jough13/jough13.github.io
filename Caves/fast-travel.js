@@ -144,7 +144,7 @@ function renderFastTravelList() {
         const isCrossRealm = (gameState.currentRealm && gameState.currentRealm !== 0);
         const dimensionBadge = isCrossRealm ? `<span class="ml-2 px-1 rounded bg-purple-900 text-purple-300 border border-purple-500 animate-pulse text-[9px] drop-shadow-md">DIMENSIONAL SHIFT</span>` : '';
 
-        // SECURITY WIN: Using data-x and data-y attributes instead of inline onclick functions!
+        // Using data-x and data-y attributes instead of inline onclick functions!
         const villageLi = document.createElement('li');
         villageLi.className = 'shop-item bg-blue-900 bg-opacity-20 border-blue-700 hover:border-blue-400 transition-all transform hover:-translate-y-0.5 shadow-sm hover:shadow-lg';
         villageLi.setAttribute('onmouseenter', "if(typeof AudioSystem !== 'undefined') AudioSystem.playHover()"); // JUICE
@@ -153,7 +153,7 @@ function renderFastTravelList() {
                 <span class="font-bold text-blue-400 drop-shadow-md">🛡️ Safe Haven Village</span>${dimensionBadge}
                 <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: 0, 0 <span class="ml-2 text-blue-300 font-bold bg-black bg-opacity-30 px-1 rounded border border-gray-700">(Dist: ${distToVillage}m${getDir(0, 0)})</span></div>
             </div>
-            <button data-x="0" data-y="0" class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 border-b-2 ${canAfford ? 'border-blue-800 active:border-b-0 active:mt-0.5' : 'border-gray-800'} ${btnClass}" ${canAfford ? '' : 'disabled'}>${btnText}</button>
+            <button data-x="0" data-y="0" data-map-mode="overworld" data-map-id="" data-realm="0" class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 border-b-2 ${canAfford ? 'border-blue-800 active:border-b-0 active:mt-0.5' : 'border-gray-800'} ${btnClass}" ${canAfford ? '' : 'disabled'}>${btnText}</button>
         `;
         fragment.appendChild(villageLi);
     }
@@ -180,7 +180,7 @@ function renderFastTravelList() {
                     <span class="font-bold text-green-400 drop-shadow-md">⛺ Personal Camp (Bed)</span>
                     <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: ${rx}, ${-ry} <span class="ml-2 text-green-300 font-bold bg-black bg-opacity-30 px-1 rounded border border-gray-700">(Dist: ${distToCamp}m${getDir(rx, ry)})</span></div>
                 </div>
-                <button data-x="${rx}" data-y="${ry}" class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 border-b-2 ${canAfford ? 'border-green-800 active:border-b-0 active:mt-0.5' : 'border-gray-800'} ${btnClass}" ${canAfford ? '' : 'disabled'}>${btnText}</button>
+                <button data-x="${rx}" data-y="${ry}" data-map-mode="${player.respawnPoint.mapMode || 'overworld'}" data-map-id="${player.respawnPoint.mapId || ''}" data-realm="${player.respawnPoint.currentRealm || 0}" class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 border-b-2 ${canAfford ? 'border-green-800 active:border-b-0 active:mt-0.5' : 'border-gray-800'} ${btnClass}" ${canAfford ? '' : 'disabled'}>${btnText}</button>
             `;
             fragment.appendChild(bedLi);
         }
@@ -190,7 +190,6 @@ function renderFastTravelList() {
     // Hide regular waystones if the player is stuck in an alternate dimension
     if (gameState.currentRealm === 0 || !gameState.currentRealm) {
         
-        // BUG FIX & PERFORMANCE WIN: 
         // 1. Deduplication to prevent corrupted DB arrays from showing double waypoints
         // 2. Sort by distance squared (distSq) to avoid computing Math.sqrt inside the loop comparison
         const seenCoords = new Set();
@@ -321,8 +320,9 @@ window.forgetWaypoint = function(wpX, wpY) {
     }
 };
 
-// JUICE WIN: Make the handler fully asynchronous so we can await particle animations and build tension!
-window.handleFastTravel = async function (targetX, targetY) {
+// Make the handler fully asynchronous so we can await particle animations and build tension!
+
+window.handleFastTravel = async function (targetX, targetY, targetMapMode = 'overworld', targetMapId = null, targetRealm = 0) {
     // 🚨 GLOBAL ENGINE LOCK
     if (isProcessingMove) return;
     isProcessingMove = true;
@@ -385,12 +385,18 @@ window.handleFastTravel = async function (targetX, targetY) {
         }
 
         // --- OBSTRUCTION CHECK ---
-        const tile = chunkManager.getTile(targetX, targetY);
+        let tile = '.';
+        if (targetMapMode === 'castle') {
+            tile = '.'; // Bypass terrain check for instanced beds because they are guaranteed safe
+        } else {
+            tile = chunkManager.getTile(targetX, targetY);
+        }
+        
         // BUG FIX: Added dynamically built/destructible blocks to invalid list
         const invalidTiles = ['^', '~', '≈', '▓', '▒', '🧱', '🏚', '🏚️', '🌳']; 
 
         // Override if we are teleporting exactly to the village coords and they got corrupted somehow
-        const isVillageBypass = (targetX === 0 && targetY === 0);
+        const isVillageBypass = (targetX === 0 && targetY === 0 && targetMapMode === 'overworld');
 
         if (invalidTiles.includes(tile) && !isVillageBypass) {
             logMessage("{red:The destination Waystone is obstructed by terrain. Teleport unsafe.}");
@@ -400,11 +406,12 @@ window.handleFastTravel = async function (targetX, targetY) {
 
         // --- DESTINATION OCCUPANCY CHECK (Telefrag Prevention) ---
         let isOccupied = false;
-        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+        if (targetMapMode === 'overworld' || targetMapMode === 'underworld') {
             const destEnemyId = `overworld:${targetX},${-targetY}`;
             if (gameState.sharedEnemies && gameState.sharedEnemies[destEnemyId]) isOccupied = true;
         } else {
-            if (gameState.instancedEnemies && gameState.instancedEnemies.some(e => e.x === targetX && e.y === targetY)) isOccupied = true;
+            // Instanced enemies are wiped on transition anyway, so occupancy doesn't matter here
+            isOccupied = false;
         }
 
         if (isOccupied && !isVillageBypass) {
@@ -549,10 +556,27 @@ window.handleFastTravel = async function (targetX, targetY) {
             if (typeof EnemyNetworkManager !== 'undefined') EnemyNetworkManager.clearAll();
         }
 
-        // Failsafe State Override
-        gameState.mapMode = 'overworld';
-        gameState.currentCaveId = null;
-        gameState.currentCastleId = null;
+        // 🚨 BUG FIX: Safely apply the target map mode, preventing castle/camp beds from dropping you in the wilderness!
+        gameState.mapMode = targetMapMode;
+        if (targetMapMode === 'castle') {
+            gameState.currentCastleId = targetMapId;
+            gameState.currentCaveId = null;
+            // Regenerate the castle/camp so it exists in memory!
+            if (typeof chunkManager !== 'undefined') {
+                const layoutType = targetMapId === 'player_camp' ? null : (targetMapId.includes('village') ? 'SAFE_HAVEN' : null);
+                if (targetMapId === 'player_camp') chunkManager.generateCampsite();
+                else chunkManager.generateCastle(targetMapId, layoutType);
+                
+                // Restore friendly NPCs (like the Blacksmith)
+                gameState.friendlyNpcs = JSON.parse(JSON.stringify(chunkManager.friendlyNpcs?.[targetMapId] || []));
+            }
+        } else {
+            gameState.mapMode = 'overworld'; // Enforce overworld for anything else
+            gameState.currentCaveId = null;
+            gameState.currentCastleId = null;
+        }
+        
+        gameState.currentRealm = targetRealm;
         gameState.instancedEnemies = [];
         
         // --- DIMENSIONAL BLEED ---
@@ -747,12 +771,18 @@ if (fastTravelList && !fastTravelList.dataset.listenersBound) {
         // 3. Did they click the teleport button?
         const btn = e.target.closest('button[data-x]');
         if (btn && !btn.disabled) {
-            btn.disabled = true; // UX & SECURITY: Prevent double-click mana drain exploit
+            btn.disabled = true; // Prevent double-click mana drain exploit
             const tx = parseInt(btn.dataset.x, 10);
             const ty = parseInt(btn.dataset.y, 10);
+            
+            // Extract the map data if we are teleporting to an instanced bed!
+            const targetMapMode = btn.dataset.mapMode || 'overworld';
+            const targetMapId = btn.dataset.mapId || null;
+            const targetRealm = parseInt(btn.dataset.realm, 10) || 0;
+            
             if (!isNaN(tx) && !isNaN(ty)) {
                 // Wrap in Promise.resolve so we can definitively catch the end of the async function
-                Promise.resolve(handleFastTravel(tx, ty)).finally(() => {
+                Promise.resolve(handleFastTravel(tx, ty, targetMapMode, targetMapId, targetRealm)).finally(() => {
                     // Re-enable in case the modal didn't close (meaning the teleport was rejected)
                     if (btn) btn.disabled = false;
                 });
