@@ -435,16 +435,19 @@ window.ExpansionManager.register({
                 // the gun mid-animation. We check identity (===) to ensure we destroy the EXACT 
                 // gun that was fired, even if they moved it to their backpack!
                 
-                if (player.equipment.weapon === weapon) {
+                if (player.equipment.weapon && player.equipment.weapon.name === weapon.name) {
                     if (typeof _internalUnequip === 'function') {
-                        _internalUnequip(weapon, player);
+                        _internalUnequip(player.equipment.weapon, player);
                     } else if (typeof applyStatBonuses === 'function') {
-                        applyStatBonuses(weapon, -1);
+                        applyStatBonuses(player.equipment.weapon, -1);
                     }
                     player.equipment.weapon = { name: 'Fists', damage: 0, tags: ['blunt'] };
                 } else {
-                    // They swapped it! Find it in the inventory and delete it anyway.
-                    const stolenIdx = player.inventory.indexOf(weapon);
+                    // --- Array.indexOf Reference Bleed ---
+                    // Because the engine uses deep cloning, indexOf (===) will fail to find the gun.
+                    // We must find it by its actual template/name data!
+                    const stolenIdx = player.inventory.findIndex(i => i && i.templateId === weapon.templateId && i.name === weapon.name);
+                    
                     if (stolenIdx > -1) {
                         player.inventory.splice(stolenIdx, 1);
                         logMessage("{gray:The gun overheats and melts inside your backpack!}");
