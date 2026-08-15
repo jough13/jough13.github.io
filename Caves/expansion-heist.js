@@ -460,7 +460,7 @@ window.ExpansionManager.register({
                                         const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(eData, x, y) : eData;
                                         state.sharedEnemies[enemyId] = { ...scaledStats, tile: 'b', x: x, y: y, name: "Angry Victim", spawnTime: Date.now() };
                                         
-                                        chunkManager.setWorldTile(x, y, '.'); // Erase the merchant visually
+                                        chunkManager.setWorldTile(x, y, null); // Erase the merchant safely, revealing base terrain
                                         
                                         // Force Spatial Sync so the enemy attacks you IMMEDIATELY
                                         if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, null, null, x, y);
