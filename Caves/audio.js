@@ -86,11 +86,19 @@ const AudioSystem = {
 
         const ctx = this.initAudioContext();
         
-        // 🚨 BUG FIX & STABILITY WIN: Browser Tab Suspension Guards
+        // Browser Tab Suspension Guards
         // If a user switches tabs, browsers force-suspend the AudioContext.
         // We MUST attempt to resume it gracefully. If it fails (e.g. strict autoplay policy),
         // we catch the error so the entire game engine doesn't crash!
         if (ctx && ctx.state === 'suspended') {
+            
+            // --- AudioContext State Leak Guard ---
+            // Browsers throw strict autoplay policy warnings if we attempt to resume()
+            // while the tab is hidden (e.g. from an automated DoT tick or network event).
+            if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+                return null; // Abort silently
+            }
+
             try {
                 // Returns a promise, catch rejection silently
                 ctx.resume().catch(() => {});
