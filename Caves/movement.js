@@ -568,8 +568,16 @@ async function attemptMovePlayer(newX, newY) {
             }
 
             try {
-                // We await the network transaction.
-                await handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage);
+                // We await the network transaction and capture the result.
+                const hitSuccess = await handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage);
+                
+                // --- GHOST HIT RACE CONDITION GUARD ---
+                if (hitSuccess === false) {
+                    // We swung at a ghost! Do not end the turn or consume hunger/stamina.
+                    // Returning here allows the 'finally' block to safely release the engine lock.
+                    return; 
+                }
+                
             } catch (err) {
                 console.error("Combat transaction failed or timed out:", err);
             }
