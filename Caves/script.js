@@ -384,67 +384,17 @@ const DAY_CYCLE_STOPS = [{
 }
 ];
 
-async function renderSlots() {
-    slotsContainer.innerHTML = '';
-    const charsRef = db.collection('players').doc(currentUser.uid).collection('characters');
-
-    const slotIds = ['slot1', 'slot2', 'slot3'];
-
-    for (const slotId of slotIds) {
-        const doc = await charsRef.doc(slotId).get();
-        const slotDiv = document.createElement('div');
-        
-        slotDiv.className = "ui-input-asset flex-col justify-between transition-transform cursor-pointer hover:scale-[1.02] min-h-[320px] w-full !p-6";
-
-        if (doc.exists) {
-            const data = doc.data();
-            const bg = PLAYER_BACKGROUNDS[data.background] || { name: 'Unknown' };
-
-            // --- OCCUPIED SLOT UI ---
-            slotDiv.innerHTML = `
-                <div class="text-center w-full pt-2">
-                    <h3 class="text-3xl font-bold text-white mb-2" style="font-family: 'Uncial Antiqua', cursive; text-shadow: 2px 2px 0 #000;">${data.name || 'Unnamed'}</h3>
-                    <div class="text-4xl my-3 text-[#4ade80]" style="text-shadow: 0 0 10px rgba(74, 222, 128, 0.4);">${data.isBoating ? 'c' : (data.character || '@')}</div>
-                    <p class="font-bold text-yellow-400 text-lg uppercase tracking-widest">${bg.name}</p>
-                    <p class="text-sm text-gray-300 font-bold mt-1">Level ${data.level || 1}</p>
-                    <p class="text-xs text-gray-400 mt-3 h-8 leading-tight">${getRegionName(Math.floor((data.x || 0) / 160), Math.floor((data.y || 0) / 160))}</p>
-                </div>
-                
-                <div class="flex gap-2 w-full mt-4 items-center h-12">
-                    <button onclick="selectSlot('${slotId}')" class="ui-btn-asset flex-grow h-full !text-2xl !p-0 !mt-0">PLAY</button>
-                    
-                    <button onclick="deleteSlot('${slotId}')" class="relative top-[3px] right-[9px] w-12 h-8 flex-none bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-xl flex items-center justify-center transition-transform active:scale-95" style="border: 2px solid #000; box-shadow: inset -2px -2px 0px rgba(0,0,0,0.4), inset 2px 2px 0px rgba(255,255,255,0.3); text-shadow: 2px 2px 0px #000;" title="Delete">X</button>
-                </div>
-            `;
-        } else {
-            // --- EMPTY SLOT UI ---
-            slotDiv.classList.add('opacity-80', 'hover:opacity-100');
-
-            slotDiv.onclick = (e) => {
-                if (e.target === slotDiv || e.target.closest('.empty-slot-content')) selectSlot(slotId);
-            };
-
-            slotDiv.innerHTML = `
-                <div class="text-center w-full empty-slot-content pt-6 flex-grow flex flex-col justify-center">
-                    <h3 class="text-2xl font-bold mb-4 text-gray-400" style="font-family: 'Uncial Antiqua', cursive;">Slot ${slotId.replace('slot', '')}</h3>
-                    <div class="text-5xl mb-4 text-gray-600">+</div>
-                    <p class="text-gray-500 font-bold tracking-widest uppercase">Empty</p>
-                </div>
-                
-                <div class="w-full mt-4 h-12">
-                    <button onclick="event.stopPropagation(); selectSlot('${slotId}')" class="ui-btn-asset w-full h-full !text-2xl !p-0 !mt-0 !text-gray-200">CREATE</button>
-                </div>
-            `;
-        }
-        slotsContainer.appendChild(slotDiv);
+document.addEventListener('DOMContentLoaded', () => {
+    const logoutBtn = document.getElementById('logoutFromSelectButton');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            auth.signOut();
+            const charSelectModal = document.getElementById('characterSelectModal');
+            const authCont = document.getElementById('authContainer');
+            if (charSelectModal) charSelectModal.classList.add('hidden');
+            if (authCont) authCont.classList.remove('hidden');
+        });
     }
-    loadingIndicator.classList.add('hidden');
-}
-
-logoutFromSelectButton.addEventListener('click', () => {
-    auth.signOut();
-    characterSelectModal.classList.add('hidden');
-    authContainer.classList.remove('hidden');
 });
 
 function createDefaultPlayerState() {
@@ -672,16 +622,6 @@ const TERRAIN_COST = {
     '<': 0,   // Stairs up are free to step on
     '>': 0    // Stairs down are free to step on
 };
-
-
-const talentModal = document.getElementById('talentModal');
-const closeTalentButton = document.getElementById('closeTalentButton');
-const talentListDiv = document.getElementById('talentList');
-const talentPointsDisplay = document.getElementById('talentPointsDisplay');
-
-
-
-closeTalentButton.addEventListener('click', () => talentModal.classList.add('hidden'));
 
 ctx.font = `${TILE_SIZE}px monospace`;
 ctx.textAlign = 'center';
@@ -2692,9 +2632,15 @@ async function enterGame(playerData) {
         };
 
         // Ensure we pull the saved bed location before respawning!
-        const safeRespawn = playerData.respawnPoint || { x: 0, y: 0 };
+        const safeRespawn = playerData.respawnPoint || { x: 0, y: 0, mapMode: 'overworld', currentRealm: 0, mapId: null };
         const rx = safeRespawn.x !== undefined ? safeRespawn.x : 0;
         const ry = safeRespawn.y !== undefined ? safeRespawn.y : 0;
+        
+        // Pull the saved map mode and realm so they don't respawn in the wilderness!
+        // We ensure we never respawn them in a dungeon, just in case.
+        const rMode = (safeRespawn.mapMode === 'dungeon') ? 'overworld' : (safeRespawn.mapMode || 'overworld');
+        const rRealm = safeRespawn.currentRealm || 0;
+        const rMapId = safeRespawn.mapId || null;
 
         // Merge logic for respawn
         playerData = {
@@ -2703,9 +2649,10 @@ async function enterGame(playerData) {
             respawnPoint: safeRespawn, // Preserve the bed for next time!
             x: rx,
             y: ry,
-            currentRealm: 0,      // Ensure hard-reloads pull you to the Prime Realm
-            realmMutators: [],    // Clear mutators
-            mapMode: 'overworld', // Force overworld mode
+            currentRealm: rRealm,      // Restore correct realm
+            realmMutators: [],    
+            mapMode: rMode,            // Restore correct map mode (overworld or castle)
+            mapId: rMapId,             // Restore correct castle/village ID
 
             health: preservedStats.maxHealth,
             mana: preservedStats.maxMana,
