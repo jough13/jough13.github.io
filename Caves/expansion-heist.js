@@ -435,8 +435,13 @@ window.ExpansionManager.register({
                                     
                                     p.bounty = (Number(p.bounty) || 0) + 500; 
                                     logMessage("{gray:+500g Bounty added to your head.}");
+
+                                    // Purge the ghost NPC so the Angry Victim can actually be attacked!
+                                    if (state.friendlyNpcs) {
+                                        state.friendlyNpcs = state.friendlyNpcs.filter(npc => !(npc && npc.x === x && npc.y === y));
+                                    }
                                     
-                                    // 🚨 BUG FIX WIN: Proper Context Enemy Spawning & Spatial AI Sync!
+                                    // Proper Context Enemy Spawning & Spatial AI Sync!
                                     const eData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['b'] : { name: 'Bandit', maxHealth: 10, attack: 2, xp: 20 };
                                     
                                     if (state.mapMode === 'castle' || state.mapMode === 'dungeon') {
