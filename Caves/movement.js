@@ -1516,13 +1516,22 @@ async function attemptMovePlayer(newX, newY) {
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#d4d4d8', 15);
                 
-                // Clear the obstacle permanently
-                if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, '.');
-                else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = '.';
-                else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
-                
-                newTile = '.'; 
-                // BUG FIX WIN: Explicitly clear tileData so the rest of the function processes smoothly!
+                let floorTile = '.';
+                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                        floorTile = null; // Revert to procedural terrain
+                    } else if (gameState.mapMode === 'dungeon') {
+                        const theme = typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES[gameState.currentCaveTheme] : null;
+                        floorTile = theme ? theme.floor : '.';
+                    }
+
+                    // Clear the obstacle permanently
+                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(newX, newY, floorTile);
+                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = floorTile;
+                    else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = floorTile;
+
+                    // Ensure newTile is a valid character for the rendering pipeline!
+                    newTile = floorTile !== null ? floorTile : (typeof getBaseTerrain === 'function' ? getBaseTerrain(newX, newY) : '.');
+                // Explicitly clear tileData so the rest of the function processes smoothly!
                 tileData = null; 
                 gameState.mapDirty = true;
             }
