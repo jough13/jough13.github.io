@@ -330,13 +330,21 @@ window.forgetWaypoint = function(wpX, wpY) {
 window.handleFastTravel = async function (targetX, targetY, targetMapMode = 'overworld', targetMapId = null, targetRealm = 0) {
     // 🚨 GLOBAL ENGINE LOCK
     if (isProcessingMove) return;
-    isProcessingMove = true;
-    let didTeleport = false; // UX/BUG FIX WIN: Determines if we should apply post-teleport lock
-
-    // Instantly hide the modal so the player can see the visual effects!
-    fastTravelModal.classList.add('hidden'); 
+    
+    // Declare outside the try-block so the finally-block can read it!
+    let didTeleport = false; 
 
     try {
+        // Engage the lock strictly inside the safety block!
+        isProcessingMove = true;
+        
+        // --- Safe DOM Manipulation ---
+        // Instantly hide the modal so the player can see the visual effects!
+        // We ensure the modal exists before touching its classList to prevent TypeError deadlocks.
+        if (typeof fastTravelModal !== 'undefined' && fastTravelModal) {
+            fastTravelModal.classList.add('hidden'); 
+        }
+
         const player = gameState.player;
         
         // Apply Talent Discount & Newbie Grace Period
