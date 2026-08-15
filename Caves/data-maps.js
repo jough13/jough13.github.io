@@ -814,12 +814,18 @@ window.TILE_DATA = {
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(state.player.x, state.player.y, "ZZZ", "#facc15");
 
             logMessage("{green:You rest deeply. Your Respawn Point has been set here.}");
-            
-            state.player.health = state.player.maxHealth;
-            state.player.mana = state.player.maxMana;
-            state.player.stamina = state.player.maxStamina;
-            
-            state.player.respawnPoint = { x: state.player.x, y: state.player.y };
+                
+                state.player.health = state.player.maxHealth;
+                state.player.mana = state.player.maxMana;
+                state.player.stamina = state.player.maxStamina;
+                
+                state.player.respawnPoint = { 
+                    x: state.player.x, 
+                    y: state.player.y,
+                    mapMode: state.mapMode,
+                    mapId: state.currentCaveId || state.currentCastleId || null,
+                    currentRealm: state.currentRealm || 0
+                };
             
             if (typeof triggerStatAnimation !== 'undefined') {
                 triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
