@@ -118,8 +118,11 @@ window.handleStashTransfer = function (action, index, amountStr = 'all', expecte
             if (amountStr === 'all') {
                 amountToMove = item.quantity;
             } else {
-                amountToMove = Math.max(1, Math.min(parseInt(amountStr) || 1, item.quantity));
+                // Strict parsing and explicit NaN checks
+                const parsedAmt = parseInt(amountStr, 10);
+                amountToMove = Math.max(1, Math.min(isNaN(parsedAmt) ? 1 : parsedAmt, item.quantity));
             }
+
 
             if (!existingBankItem && player.bank.length >= window.MAX_STASH_SLOTS) {
                 logMessage(`{red:The fabric of the vault groans under the weight of your possessions! (Max ${window.MAX_STASH_SLOTS} slots)}`);
