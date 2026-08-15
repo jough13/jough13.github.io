@@ -234,14 +234,19 @@ function renderFastTravelList() {
                 const icon = getBiomeIcon(wp.name);
                 const safeName = typeof escapeHtml === 'function' ? escapeHtml(wp.name) : wp.name;
                 
-                // JUICE & QoL WIN: Show danger warning for far-off waypoints
+                // Show danger warning for far-off waypoints
                 const dangerBadge = wp.dist > 1500 ? `<span title="Extreme Danger Zone!" class="ml-2 animate-pulse drop-shadow-md text-red-500 font-bold">💀</span>` : '';
+                
+                // Display dimension/layer badges!
+                let layerBadge = '';
+                if (wp.currentRealm && wp.currentRealm !== 0) layerBadge = `<span class="ml-2 px-1 rounded bg-purple-900 text-purple-300 border border-purple-500 text-[9px] drop-shadow-md animate-pulse">REALM ${wp.currentRealm}</span>`;
+                else if (wp.mapMode === 'underworld') layerBadge = `<span class="ml-2 px-1 rounded bg-gray-900 text-red-400 border border-red-800 text-[9px] drop-shadow-md">UNDERWORLD</span>`;
                 
                 const li = document.createElement('li');
                 li.className = 'shop-item bg-purple-900 bg-opacity-10 border-gray-700 hover:border-purple-500 transition-all transform hover:-translate-y-0.5 shadow-sm hover:shadow-lg relative group';
                 li.setAttribute('onmouseenter', "if(typeof AudioSystem !== 'undefined') AudioSystem.playHover()");
                 
-                // QoL WIN: Renaming & Forget Buttons
+                // Renaming & Forget Buttons
                 // Pops up seamlessly when hovering over the item!
                 li.innerHTML = `
                     <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
@@ -249,10 +254,10 @@ function renderFastTravelList() {
                         <button data-forget-x="${wp.x}" data-forget-y="${wp.y}" title="Un-attune (Forget Waypoint)" class="bg-red-900 hover:bg-red-700 text-red-300 rounded px-1.5 py-0.5 text-[9px] font-bold border border-red-700 shadow-sm">🗑️</button>
                     </div>
                     <div>
-                        <span class="font-bold text-purple-400 drop-shadow-md">${icon} ${safeName}${dangerBadge}</span>
+                        <span class="font-bold text-purple-400 drop-shadow-md">${icon} ${safeName}${dangerBadge}${layerBadge}</span>
                         <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: ${wp.x}, ${-wp.y} <span class="ml-2 text-purple-300 font-bold bg-black bg-opacity-30 px-1 rounded border border-gray-700">(Dist: ${wp.dist}m${wp.dir})</span></div>
                     </div>
-                    <button data-x="${wp.x}" data-y="${wp.y}" class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 border-b-2 ${canAffordBase ? 'border-purple-800 active:border-b-0 active:mt-0.5' : 'border-gray-800'} ${btnClass} ml-2" ${canAffordBase ? '' : 'disabled'}>${btnText}</button>
+                    <button data-x="${wp.x}" data-y="${wp.y}" data-map-mode="${wp.mapMode || 'overworld'}" data-realm="${wp.currentRealm || 0}" class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 border-b-2 ${canAffordBase ? 'border-purple-800 active:border-b-0 active:mt-0.5' : 'border-gray-800'} ${btnClass} ml-2" ${canAffordBase ? '' : 'disabled'}>${btnText}</button>
                 `;
                 fragment.appendChild(li);
             });
