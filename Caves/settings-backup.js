@@ -653,7 +653,11 @@ window.importTimelineFromClipboard = async function() {
 
         // 2. Verify Integrity
         const strictSig = generateStrictSaveSignature(importedData);
-        if (importedData.signature !== strictSig) {
+        const normalSig = generateSaveSignature(importedData);
+        const legacySig = generateLegacySaveSignature(importedData);
+        
+        if (importedData.signature !== strictSig && importedData.signature !== normalSig && importedData.signature !== legacySig) {
+            console.error(`Signature Mismatch! Saved: ${importedData.signature}, Strict: ${strictSig}, Legacy: ${legacySig}`);
             logMessage("{red:CORRUPT TIMELINE DETECTED.} The signature does not match. Import blocked.");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
