@@ -16,7 +16,7 @@ window.ExpansionManager.register({
                 name: 'Blood Ruby', type: 'trade', tile: '💎',
                 description: "A highly illegal, stolen gemstone. Smugglers will pay a fortune for this.", value: 1000, _rarity: 'epic', excludeFromLoot: true
             },
-            // --- EXPANSION WIN: Alchemy Integration ---
+            // --- Alchemy Integration ---
             '🧪s': {
                 name: 'Shadow Draught', type: 'consumable', tile: '🧪', _rarity: 'rare',
                 description: "A vial of liquid darkness. {gray:Instantly clears Suspicion and grants 15 turns of pure Stealth.}",
@@ -24,6 +24,10 @@ window.ExpansionManager.register({
                     state.player.stealthTurns = Math.max(state.player.stealthTurns || 0, 15);
                     state.player.suspicion = 0; 
                     state.player.isCrouching = true; // Auto-crouch!
+                    
+                    // 🚨 BUG FIX: Force the UI container to reveal itself!
+                    const ui = document.getElementById('stealthMeterContainer');
+                    if (ui) ui.classList.remove('hidden');
                     
                     if (typeof window.StealthManager !== 'undefined') window.StealthManager.updateUI();
                     
