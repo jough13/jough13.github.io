@@ -42,7 +42,11 @@ window.ExpansionManager.register({
                     const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                     const existingStack = state.player.inventory.find(i => i && i.name === gemName && !i.isEquipped);
 
-                    // 🚨 ROBUSTNESS & EXPLOIT FIX: Safe Outward Spiral Drop with EXACT ID
+                    // Calculate if consuming this geode frees up a slot!
+                    const geodeStack = state.player.inventory.find(i => i && i.name === 'Uncracked Geode' && !i.isEquipped);
+                    const freesSlot = (geodeStack && geodeStack.quantity === 1) ? 1 : 0;
+
+                    // Safe Outward Spiral Drop with EXACT ID
                     const safelyDropItem = (dropTile) => {
                         let placed = false;
                         let validFloor = '.';
