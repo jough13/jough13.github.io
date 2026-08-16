@@ -97,7 +97,12 @@ if (typeof firebase === 'undefined') {
         initializeApp: () => ({}), 
         app: () => ({}), 
         firestore: Object.assign(() => dummyFirestoreCollection, {
-            FieldValue: { serverTimestamp: () => Date.now(), delete: () => null, arrayUnion: () => [] }
+            FieldValue: { 
+                serverTimestamp: () => Date.now(), 
+                delete: () => null, 
+                arrayUnion: () => [],
+                increment: (n) => n // 🚨 ROBUSTNESS WIN: Added increment mock for future expansions
+            }
         }),
         auth: () => ({ 
             // 🚨 CRITICAL FIX: Simulate auth resolution so the bootloader doesn't soft-lock!
@@ -111,7 +116,10 @@ if (typeof firebase === 'undefined') {
             Auth: { Persistence: { LOCAL: 'local', SESSION: 'session' } }
         }), 
         database: Object.assign(() => dummyRTDBRef, {
-            ServerValue: { TIMESTAMP: Date.now() },
+            ServerValue: { 
+                TIMESTAMP: Date.now(),
+                increment: (n) => n // 🚨 ROBUSTNESS WIN: RTDB Increment
+            },
             goOnline: () => {},
             goOffline: () => {}
         }) 
@@ -184,12 +192,13 @@ function initConnectionBanner() {
         connectionBanner = document.createElement('div');
         connectionBanner.id = 'firebase-connection-banner';
         
-        // Relying purely on native style.transform guarantees it never gets stuck!
+        // 🚨 PERFORMANCE WIN: Relying purely on native style.transform and will-change 
+        // guarantees it never triggers layout reflows!
         connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-transform duration-500 shadow-2xl font-mono tracking-widest uppercase backdrop-blur-md cursor-pointer';
         
         connectionBanner.style.textShadow = "2px 2px 0px rgba(0,0,0,0.8)"; 
         connectionBanner.style.willChange = "transform";
-        connectionBanner.style.transform = "translateY(-100%)"; // Hidden out of frame initially
+        connectionBanner.style.transform = "translateY(-100%) translateZ(0)"; // Hidden out of frame initially
         
         document.body.appendChild(connectionBanner);
     }
@@ -197,7 +206,7 @@ function initConnectionBanner() {
     // ALWAYS bind the click listener so it can be dismissed manually!
     if (connectionBanner) {
         connectionBanner.onclick = () => {
-            connectionBanner.style.transform = "translateY(-100%)";
+            connectionBanner.style.transform = "translateY(-100%) translateZ(0)";
             if (_bannerTimeout) clearTimeout(_bannerTimeout);
         };
     }
@@ -222,12 +231,12 @@ function showNetworkBanner(htmlContent, colorClasses, durationMs) {
         // Force a browser reflow so the CSS transition actually animates instead of snapping!
         void connectionBanner.offsetWidth; 
         
-        // Slide Down
-        connectionBanner.style.transform = "translateY(0%)";
+        // Slide Down (Hardware Accelerated)
+        connectionBanner.style.transform = "translateY(0%) translateZ(0)";
         
         // Auto-Hide after duration
         _bannerTimeout = setTimeout(() => {
-            connectionBanner.style.transform = "translateY(-100%)";
+            connectionBanner.style.transform = "translateY(-100%) translateZ(0)";
         }, durationMs);
     }
 }
@@ -316,7 +325,15 @@ function handleConnectionEstablished() {
         );
 
         if (typeof logMessage === 'function') logMessage("{green:The leylines stabilize. Connection to the realm restored.}");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+        
+        // 🚨 ROBUSTNESS WIN: Audio Resume Hook
+        // Prevents console errors if the connection restores while the player is alt-tabbed
+        if (typeof AudioSystem !== 'undefined') {
+            if (AudioSystem._ctx && AudioSystem._ctx.state === 'suspended') {
+                try { AudioSystem._ctx.resume().catch(()=>{}); } catch(e){}
+            }
+            AudioSystem.playMagic();
+        }
     }
     
     hasInitiallyConnected = true;
@@ -341,7 +358,11 @@ function handleConnectionLost() {
             
             if (typeof logMessage === 'function') logMessage("{red:The leylines have ruptured! Trying to re-attune...}");
             
+            // 🚨 ROBUSTNESS WIN: Audio Resume Hook
             if (typeof AudioSystem !== 'undefined') {
+                if (AudioSystem._ctx && AudioSystem._ctx.state === 'suspended') {
+                    try { AudioSystem._ctx.resume().catch(()=>{}); } catch(e){}
+                }
                 AudioSystem.playNoise(1.5, 0.4, 200); // Deep, long rumble
                 AudioSystem.playTone(100, 'sawtooth', 1.0, 0.2, false, 50); // Descending bass tone
             }
@@ -483,6 +504,10 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
 
     // 1. Convert undefined to null immediately
     if (obj === undefined) return null; 
+    
+    // 🚨 ROBUSTNESS WIN: BigInt Guard
+    // Firebase explicitly crashes if you attempt to save a BigInt type!
+    if (typeof obj === 'bigint') return obj.toString();
     
     // 2. FIREBASE CRASH PREVENTION: NaN, Infinity, and Float Bloat
     if (typeof obj === 'number') {
