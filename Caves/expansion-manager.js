@@ -19,22 +19,58 @@ window.ExpansionManager = {
     has: function(expansionId) {
         return this.expansions.has(expansionId);
     },
+    
+    // API Helper: Retrieve metadata (version, timestamp) of a specific expansion
+    getMeta: function(expansionId) {
+        return this.expansions.get(expansionId) || null;
+    },
+    
+    // API Helper: Returns a list of all currently active expansions
+    listExpansions: function() {
+        return Array.from(this.expansions.values());
+    },
 
-    // Centralized Hook Trigger with Veto Power
+    // Centralized Hook Trigger with Veto Power and Context Enrichment
     triggerHook: function(hookName, context = {}) {
         if (!this.activeHooks[hookName]) return context;
         
-        for (let i = 0; i < this.activeHooks[hookName].length; i++) {
-            const hook = this.activeHooks[hookName][i];
+        // 🚨 BUG FIX: Shallow clone the array to prevent iteration index shifting 
+        // if an expansion adds/removes a hook during execution!
+        const hooksToRun = [...this.activeHooks[hookName]];
+        
+        for (let i = 0; i < hooksToRun.length; i++) {
+            const hook = hooksToRun[i];
             try {
                 const result = hook.func(context);
-                // Allow hooks to explicitly veto/cancel an action by returning false
+                
+                // Allow hooks to explicitly veto/cancel an action by returning strict false
                 if (result === false) return false;
+                
+                // Allow hooks to safely enrich and pass the context down the chain
+                if (typeof result === 'object' && result !== null) {
+                    context = result; 
+                }
             } catch (err) {
                 console.error(`%c[AKASHIC ENGINE] Hook Execution Failed in '${hook.id}' for event '${hookName}':`, "color: #ef4444;", err);
             }
         }
         return context;
+    },
+    
+    // 🚀 EXPANDABILITY WIN: Semantic Version Comparator
+    // Properly compares "1.10.0" vs "1.2.0" without floating point errors!
+    _compareVersions: function(v1, v2) {
+        const parts1 = String(v1 || '0').split('.').map(Number);
+        const parts2 = String(v2 || '0').split('.').map(Number);
+        const maxLen = Math.max(parts1.length, parts2.length);
+        
+        for (let i = 0; i < maxLen; i++) {
+            const num1 = parts1[i] || 0;
+            const num2 = parts2[i] || 0;
+            if (num1 > num2) return 1;
+            if (num1 < num2) return -1;
+        }
+        return 0; // Versions are identical
     },
 
     // Entry point for all expansions
@@ -48,11 +84,16 @@ window.ExpansionManager = {
         // Version Conflict Guard
         if (this.has(exp.id)) {
             const existing = this.expansions.get(exp.id);
-            if (parseFloat(exp.version || 0) <= parseFloat(existing.version || 0)) {
+            if (this._compareVersions(exp.version, existing.version) <= 0) {
                 console.warn(`%c[AKASHIC ENGINE] Timeline Collision: Expansion '${exp.id}' (v${existing.version}) is already woven into reality. Skipping duplicate/older load.`, "color: #facc15; font-weight: bold;");
                 return;
             } else {
                 console.log(`%c[AKASHIC ENGINE] Upgrading Expansion '${exp.id}' from v${existing.version} -> v${exp.version}`, "color: #3b82f6; font-style: italic;");
+                
+                // 🚨 BUG FIX: Purge old hooks to prevent double-firing during live upgrades
+                for (const hookName in this.activeHooks) {
+                    this.activeHooks[hookName] = this.activeHooks[hookName].filter(h => h.id !== exp.id);
+                }
             }
         }
 
@@ -77,11 +118,16 @@ window.ExpansionManager = {
         const data = exp.data || {};
 
         // --- 1. LORE & ATMOSPHERE INJECTION ---
-        if (data.loreKeywords && typeof window.LORE_KEYWORDS !== 'undefined') {
+        if (data.loreKeywords) {
+            // Failsafe initialization
+            if (typeof window.LORE_KEYWORDS === 'undefined') window.LORE_KEYWORDS = {};
             Object.assign(window.LORE_KEYWORDS, data.loreKeywords);
             
-            if (typeof window._COMPILED_LORE_REGEXES !== 'undefined' && Array.isArray(window._COMPILED_LORE_REGEXES)) {
-                for (const [keyword, color] of Object.entries(data.loreKeywords)) {
+            if (typeof window._COMPILED_LORE_REGEXES === 'undefined') window._COMPILED_LORE_REGEXES = [];
+            
+            for (const [keyword, color] of Object.entries(data.loreKeywords)) {
+                // Prevent duplicate regex compilation
+                if (!window._COMPILED_LORE_REGEXES.some(r => r.keyword === keyword)) {
                     try {
                         window._COMPILED_LORE_REGEXES.push({
                             keyword: keyword, // Store keyword to sort by length
@@ -92,10 +138,10 @@ window.ExpansionManager = {
                         console.warn(`%c[AKASHIC ENGINE] Invalid regex ignored for lore keyword: ${keyword}`, "color: #facc15;");
                     }
                 }
-                // 🚨 BUG FIX WIN: Sort by length descending! 
-                // Ensures "First King" is tagged before "King" accidentally breaks the HTML tag.
-                window._COMPILED_LORE_REGEXES.sort((a, b) => b.keyword.length - a.keyword.length);
             }
+            
+            // Ensures "First King" is tagged before "King" accidentally breaks the HTML tag.
+            window._COMPILED_LORE_REGEXES.sort((a, b) => b.keyword.length - a.keyword.length);
         }
 
         // --- 2. INJECT DICTIONARIES (O(1) Merge) ---
@@ -127,7 +173,6 @@ window.ExpansionManager = {
                 for (const key in data[localKey]) {
                     if (Object.prototype.hasOwnProperty.call(data[localKey], key)) {
                         // Collision Warnings
-                        // Prevents two expansions from silently overwriting each other's items!
                         if (window[globalKey][key]) {
                             console.warn(`%c[AKASHIC ENGINE] Overwrite Notice: '${exp.id}' is modifying existing ${localKey} entry: '${key}'.`, "color: #fb923c;");
                         }
@@ -175,7 +220,8 @@ window.ExpansionManager = {
         }
 
         // --- 4. INJECT ATMOSPHERE TEXT (Dictionary of Arrays) ---
-        if (data.atmosphereText && typeof window.ATMOSPHERE_TEXT !== 'undefined') {
+        if (data.atmosphereText) {
+            if (typeof window.ATMOSPHERE_TEXT === 'undefined') window.ATMOSPHERE_TEXT = {};
             for (const category in data.atmosphereText) {
                 if (Object.prototype.hasOwnProperty.call(data.atmosphereText, category)) {
                     if (!window.ATMOSPHERE_TEXT[category]) window.ATMOSPHERE_TEXT[category] = [];
@@ -206,7 +252,8 @@ window.ExpansionManager = {
                 data.shops[shopKey].forEach(newItem => {
                     if (!newItem || !newItem.name) return;
 
-                    const existingItem = window[targetGlobal].find(i => i.name === newItem.name);
+                    // 🚨 GHOST GUARD: Ensure we safely scan existing stock
+                    const existingItem = window[targetGlobal].find(i => i && i.name === newItem.name);
                     if (existingItem) {
                         existingItem.stock = (existingItem.stock || 0) + (newItem.stock || 0);
                     } else {
@@ -238,7 +285,7 @@ window.ExpansionManager = {
                         if (!this.activeHooks[hookName]) this.activeHooks[hookName] = [];
                         this.activeHooks[hookName].push({ id: exp.id, func: hookFunc, priority: hookPriority });
                         
-                        // 🚨 ARCHITECTURE WIN: Sort hooks so highest priority executes first!
+                        // Sort hooks so highest priority executes first!
                         this.activeHooks[hookName].sort((a, b) => b.priority - a.priority);
                     }
                 }
@@ -265,6 +312,7 @@ window.ExpansionManager = {
         
         // Finalize Registration
         this.expansions.set(exp.id, {
+            id: exp.id,
             name: exp.name,
             version: exp.version || '1.0',
             timestamp: Date.now()
