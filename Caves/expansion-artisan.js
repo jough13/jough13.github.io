@@ -86,8 +86,8 @@ window.ExpansionManager.register({
                     if (existingStack) {
                         existingStack.quantity += yieldAmt;
                         logMessage(`{purple:The geode shatters, revealing ${yieldAmt}x ${gemName}!}`);
-                    } else if (state.player.inventory.length < invCap) {
-                        // 🚨 BUG FIX: Use deep cloning for the new stack!
+                    } else if (state.player.inventory.length - freesSlot < invCap) {
+                        // Use deep cloning for the new stack!
                         const template = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA[gemId] : { name: gemName, type: 'trade', tile: '💎' };
                         const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
                         
