@@ -461,7 +461,7 @@ window.ExpansionManager.register({
                         const template = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA[templateId] : null;
                         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(p) : 9;
                         
-                        // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Stack Checks
+                        // Safe Stack Checks
                         // Prevents the player losing their Autumn bonus if their inventory is "full" but they
                         // already hold a stackable pile of the exact same crop!
                         const existingStack = p.inventory.find(i => i && i.name === seedData.yields && !i.isEquipped);
@@ -472,6 +472,11 @@ window.ExpansionManager.register({
                             logMessage(`{orange:Autumn Harvest Bonus! (+1 ${seedData.yields})}`);
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, "BONUS", "#f97316");
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+
+                            // Force a new save payload with the updated stack!
+                            if (typeof triggerDebouncedSave === 'function') {
+                                triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : p.inventory });
+                            }
                         } 
                         else if (templateId && template && p.inventory.length < invCap) {
                             let bonusItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
@@ -488,6 +493,11 @@ window.ExpansionManager.register({
                             logMessage(`{orange:Autumn Harvest Bonus! (+1 ${seedData.yields})}`);
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, "BONUS", "#f97316");
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+
+                            // Force a new save payload with the newly pushed item!
+                            if (typeof triggerDebouncedSave === 'function') {
+                                triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : p.inventory });
+                            }
                         } 
                         else {
                             logMessage(`{red:Autumn Bonus lost... Your inventory is completely full!}`);
