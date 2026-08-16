@@ -182,6 +182,26 @@ window.WAIT_FLAVORS = {
     ]
 };
 
+// 🚨 ROBUSTNESS WIN: Safe Async execution wrapper
+// Guarantees that the global engine lock (`isProcessingMove`) remains active 
+// for the entire duration of an asynchronous action chain!
+const _safeExecuteWithLock = async (actionFunc) => {
+    if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
+    if (typeof actionFunc !== 'function') return;
+
+    isProcessingMove = true;
+    try {
+        const result = actionFunc();
+        if (result instanceof Promise) {
+            await result;
+        }
+    } catch (e) {
+        console.error("[AKASHIC ENGINE] Action execution failed:", e);
+    } finally {
+        isProcessingMove = false;
+    }
+};
+
 // --- CENTRAL INPUT HANDLER ---
 function handleInput(key) {
 
@@ -200,6 +220,8 @@ function handleInput(key) {
     }
 
     // 3. Robust Safety Check
+    // 🚨 BUG FIX: Guard against undefined inputs from raw browser event streams
+    if (!key || typeof key !== 'string') return;
     if (typeof player_id === 'undefined' || !player_id || typeof gameState === 'undefined' || !gameState.player) {
         return;
     }
@@ -227,21 +249,16 @@ function handleInput(key) {
         // Uses the global ACTION_COOLDOWN to ensure mashing keys doesn't accelerate enemy AI to light-speed.
         const currentCooldown = window.ACTION_COOLDOWN || 150;
         
-        if (Date.now() - lastActionTime >= currentCooldown) {
+        if (Date.now() - (window.lastActionTime || 0) >= currentCooldown) {
             logMessage("{yellow:You are stunned and cannot act!}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             
             window.inputQueue.length = 0; // Force clear the queue
             window.lastActionTime = Date.now();  // Record the action time to enforce the throttle!
             
-            // Advance the turn with Mutex Lock
-            if (typeof endPlayerTurn === 'function' && !isProcessingMove) {
-                try {
-                    isProcessingMove = true;
-                    endPlayerTurn();
-                } finally {
-                    isProcessingMove = false;
-                }
+            // Advance the turn securely
+            if (typeof endPlayerTurn === 'function') {
+                _safeExecuteWithLock(() => endPlayerTurn());
             }
         }
         
@@ -368,7 +385,7 @@ function handleInput(key) {
 
     // --- DROP MODE ---
     if (gameState.isDroppingItem) {
-        // 🚨 BUG FIX WIN: Clean numeric parsing for extended Numpad dropping
+        // Clean numeric parsing for extended Numpad dropping
         let numericKeyStr = key.startsWith('Numpad') ? key.replace('Numpad', '') : key;
         const keyNum = parseInt(numericKeyStr, 10);
         
@@ -446,7 +463,6 @@ function handleInput(key) {
     }
 
     // --- NUMBER KEYS & UI INVENTORY CLICKS ---
-    // 🚨 BUG FIX WIN: Strip Numpad prefix to allow numpad players to easily trigger hotbar items!
     let numericKeyStr = key;
     if (numericKeyStr.startsWith('Numpad')) {
         numericKeyStr = numericKeyStr.replace('Numpad', '');
@@ -468,14 +484,9 @@ function handleInput(key) {
 
     // --- UTILITY KEYS ---
     if (lowerKey === 'q') {
-        // Add Mutex Lock
-        if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
-        isProcessingMove = true;
-        try {
+        _safeExecuteWithLock(() => {
             if (typeof drinkFromSource === 'function') drinkFromSource();
-        } finally {
-            isProcessingMove = false;
-        }
+        });
         return;
     }
 
@@ -496,6 +507,7 @@ function handleInput(key) {
 
         if (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[currentTile]) {
             logMessage("You scour the ground for items...");
+            // Let attemptMovePlayer handle its own locks!
             if (typeof attemptMovePlayer === 'function') attemptMovePlayer(gameState.player.x, gameState.player.y); 
             return;
         } else {
@@ -508,15 +520,10 @@ function handleInput(key) {
     }
 
     if (lowerKey === 'r') {
-        // Add Mutex Lock
-        if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
-        isProcessingMove = true;
-        try {
+        _safeExecuteWithLock(() => {
             if (typeof restPlayer === 'function') restPlayer();
-            lastActionTime = Date.now(); 
-        } finally {
-            isProcessingMove = false;
-        }
+            window.lastActionTime = Date.now(); 
+        });
         return;
     }
 
@@ -536,6 +543,7 @@ function handleInput(key) {
         window.lastActionTime = Date.now(); 
         window._lastAutoTickTime = Date.now();
         
+        // Let attemptMovePlayer handle its own locks!
         if (typeof attemptMovePlayer === 'function') attemptMovePlayer(newX, newY);
         return;
     }
@@ -596,8 +604,10 @@ function handleInput(key) {
             ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "...", "#9ca3af");
         }
         
-        if (typeof endPlayerTurn === 'function') endPlayerTurn();
-        window.lastActionTime = Date.now(); 
+        _safeExecuteWithLock(() => {
+            if (typeof endPlayerTurn === 'function') endPlayerTurn();
+            window.lastActionTime = Date.now(); 
+        });
         return;
     }
 }
