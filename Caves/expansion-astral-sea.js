@@ -261,7 +261,7 @@ window.ExpansionManager.register({
                                                 
                                                 state.sharedEnemies[enemyId] = { ...scaledStats, tile: '👻p', x: ex, y: ey, spawnTime: Date.now() };
                                                 
-                                                // 🚨 BUG FIX: Ensure Spatial Map is updated instantly so they attack!
+                                                // Ensure Spatial Map is updated instantly so they attack!
                                                 if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, null, null, ex, ey);
 
                                                 if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(ex, ey, enemyId)).set(state.sharedEnemies[enemyId]);
@@ -271,10 +271,16 @@ window.ExpansionManager.register({
                                         const gold = 200 + Math.floor(Math.random() * 300);
                                         // Strict coercion
                                         state.player.coins = (Number(state.player.coins) || 0) + gold;
+                                        
+                                        // Tell the Anti-Cheat system this gold is legitimate!
+                                        if (typeof window.trackLegitimateGold === 'function') {
+                                            window.trackLegitimateGold(gold);
+                                        }
+                                        
                                         logMessage(`{gold:The hold is unguarded! You plunder ${gold} gold coins!}`);
                                         if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
                                         
-                                        // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Outward Spiral Drop
+                                        // Safe Outward Spiral Drop
                                         const dropSafely = (itemKey) => {
                                             let placed = false;
                                             if (typeof chunkManager !== 'undefined') {
