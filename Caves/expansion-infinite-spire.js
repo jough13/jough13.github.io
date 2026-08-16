@@ -500,10 +500,12 @@ window.ExpansionManager.register({
                     // 2. Safely Restore Original Inventory & Gear
                     gameState.inSpire = false;
                     
-                    // 🚨 BUG FIX & ROBUSTNESS WIN: Recursive Array Hydration
+                    // Recursive Array Hydration
                     // This ensures all the magical onHit/effect functions that were preserved by fastClone
                     // or stripped by Firebase stringification are safely restored!
-                    const rawInv = gameState.player.spireBackupInv || [];
+                    
+                    // Strict Array type-checking prevents ghost wiping!
+                    const rawInv = Array.isArray(gameState.player.spireBackupInv) ? gameState.player.spireBackupInv : [];
                     gameState.player.inventory = typeof window.rehydrateItemArray === 'function' ? window.rehydrateItemArray(rawInv) : rawInv;
                     
                     const rawEq = gameState.player.spireBackupEquip || {};
