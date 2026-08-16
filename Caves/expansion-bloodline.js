@@ -377,14 +377,15 @@ window.ExpansionManager.register({
             player.y = 0;
 
             // 5. Apply Generation Base Vitals Boost
-            player.bonusMaxHealth = Number(player.generation) * 10;
-            player.bonusMaxMana = Number(player.generation) * 10;
-            player.bonusMaxStamina = Number(player.generation) * 10;
-            player.bonusMaxPsyche = Number(player.generation) * 10;
+            // Use additive assignment so we don't wipe out Golden Apples/Elixirs!
+            player.bonusMaxHealth = (Number(player.bonusMaxHealth) || 0) + 10;
+            player.bonusMaxMana = (Number(player.bonusMaxMana) || 0) + 10;
+            player.bonusMaxStamina = (Number(player.bonusMaxStamina) || 0) + 10;
+            player.bonusMaxPsyche = (Number(player.bonusMaxPsyche) || 0) + 10;
 
             if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
             
-            // 🚨 BUG FIX: Safe clamp prevents UI overfill bugs
+            // Safe clamp prevents UI overfill bugs
             if (typeof clampAllVitals === 'function') clampAllVitals();
             else {
                 player.health = player.maxHealth;
@@ -469,7 +470,7 @@ window.ExpansionManager.register({
                 const gen = gameState.player.generation || 0;
                 if (gen > 0) {
                     
-                    // 🌟 LORE WIN: Radiant Aura
+                    // 🌟 Radiant Aura
                     // Ascendant players actually emit a soft golden light from their tile!
                     if (gameState.activeFilter !== 'gold') {
                         // Apply a faint golden glow under the player tile using the new filter system!
@@ -478,7 +479,7 @@ window.ExpansionManager.register({
                         }
                     }
 
-                    // 🚨 GAMEPLAY WIN: Ascendant Regeneration
+                    // 🚨 Ascendant Regeneration
                     // Passively heal 1 HP/Mana/Stam every 10 turns
                     if (gameState.playerTurnCount % 10 === 0) {
                         let regenerated = false;
