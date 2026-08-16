@@ -18,16 +18,20 @@ window.withTimeout = function(promise, ms = 3000) {
 window.debounce = function(func, wait) {
     let timeout;
     return function(...args) {
+        // 🚨 BUG FIX WIN: Context capturing
+        // Guarantees `this` points to the correct DOM element or object, not the Window!
+        const context = this; 
         clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(this, args), wait);
+        timeout = setTimeout(() => func.apply(context, args), wait);
     };
 };
 
 window.throttle = function(func, limit) {
     let inThrottle;
     return function(...args) {
+        const context = this; // 🚨 BUG FIX WIN
         if (!inThrottle) {
-            func.apply(this, args);
+            func.apply(context, args);
             inThrottle = true;
             setTimeout(() => inThrottle = false, limit);
         }
@@ -71,11 +75,12 @@ window.MathUtils = {
     // Returns angle in radians between two points (Essential for particle/projectile rotation)
     angleBetween: (x1, y1, x2, y2) => Math.atan2(y2 - y1, x2 - x1),
     
-    // 🚨 BUG FIX WIN: NaN Protection
+    // 🚨 BUG FIX WIN: NaN Protection & Strict Coercion
     // Keeps a value within a specified range, but safely falls back to min if given a corrupted value!
     clamp: (val, min, max) => {
-        if (Number.isNaN(val)) return min;
-        return Math.max(min, Math.min(max, val));
+        const num = Number(val);
+        if (Number.isNaN(num)) return min;
+        return Math.max(min, Math.min(max, num));
     },
     
     // Smooth linear interpolation for cameras and entity gliding
@@ -279,7 +284,8 @@ window.ColorUtils = {
         return rgb;
     },
     
-    // Smoothly blends two hex colors based on an amount (0.0 to 1.0)
+    // 🚨 BUG FIX WIN: Strict Hex formatting
+    // Previously returned `rgb(r,g,b)` which broke systems that expected strict hexadecimal hashes!
     lerpHex: (hex1, hex2, amt) => {
         const c1 = window.ColorUtils.hexToRgb(hex1);
         const c2 = window.ColorUtils.hexToRgb(hex2);
@@ -288,7 +294,7 @@ window.ColorUtils = {
         const g = Math.round(window.MathUtils.lerp(c1.g, c2.g, amt));
         const b = Math.round(window.MathUtils.lerp(c1.b, c2.b, amt));
         
-        return `rgb(${r}, ${g}, ${b})`;
+        return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1)}`;
     },
 
     // Takes a hex code and a percentage (-1.0 to 1.0) to lighten or darken it natively
@@ -753,7 +759,7 @@ window.getRelativePositionText = function(dx, dy, atmospheric = false) {
 // 🚀 PERFORMANCE & ROBUSTNESS WIN: High-speed recursive clone. 
 // Completely replaces JSON.parse(JSON.stringify()) with a V8-optimized deep copy.
 // Uses Object.keys() and pre-allocated Arrays to bypass all prototype chain overhead!
-// Now safely supports cloning `Set`, `Map`, `RegExp` and custom instances without corrupting them!
+// Now safely supports cloning `Set`, `Map`, `RegExp`, and `Error` objects without corrupting them!
 window.fastClone = function(obj, seen = new WeakMap()) {
     // Guarantee 'seen' is always a WeakMap, even if passed as null
     if (!seen) seen = new WeakMap();
@@ -766,6 +772,14 @@ window.fastClone = function(obj, seen = new WeakMap()) {
     
     // Explicit Date support (Prevents dates becoming empty objects)
     if (obj instanceof Date) return new Date(obj.getTime());
+    
+    // 🚨 BUG FIX WIN: Explicit Error support prevents logs dropping silent `{}` entries!
+    if (obj instanceof Error) {
+        const err = new Error(obj.message);
+        err.stack = obj.stack;
+        err.name = obj.name;
+        return err;
+    }
     
     // Explicit TypedArray & DataView support 
     // Prevents turning Perlin noise grids or audio buffers into slow, broken dictionaries!
@@ -787,13 +801,18 @@ window.fastClone = function(obj, seen = new WeakMap()) {
     if (obj instanceof Set) {
         const clonedSet = new Set();
         seen.set(obj, clonedSet);
-        obj.forEach(x => clonedSet.add(window.fastClone(x, seen)));
+        // Using iterators for top-tier performance on ES6 collections
+        for (const x of obj) {
+            clonedSet.add(window.fastClone(x, seen));
+        }
         return clonedSet;
     }
     if (obj instanceof Map) {
         const clonedMap = new Map();
         seen.set(obj, clonedMap);
-        obj.forEach((v, k) => clonedMap.set(k, window.fastClone(v, seen)));
+        for (const [k, v] of obj) {
+            clonedMap.set(k, window.fastClone(v, seen));
+        }
         return clonedMap;
     }
     
@@ -802,7 +821,8 @@ window.fastClone = function(obj, seen = new WeakMap()) {
         const arr = new Array(obj.length);
         seen.set(obj, arr);
         for(let i = 0; i < obj.length; i++) {
-            arr[i] = window.fastClone(obj[i], seen);
+            // Arrays can be sparse! Only clone if the index physically exists
+            if (i in obj) arr[i] = window.fastClone(obj[i], seen);
         }
         return arr;
     }
