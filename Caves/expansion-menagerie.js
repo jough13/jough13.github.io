@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_menagerie",
     name: "The Menagerie (Advanced Companions)",
-    version: "1.4", // Upgraded version!
+    version: "1.5", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS (PET GEAR) ---
@@ -39,11 +39,20 @@ window.ExpansionManager.register({
                         return false;
                     }
                     
-                    // 🚨 BUG FIX WIN: Strict Number Coercion
-                    pet.hp = Number(pet.maxHp) || 10;
-                    
-                    // Initialize XP if missing
+                    // Initialize XP if missing (backward compatibility)
                     if (!pet.level) { pet.level = 1; pet.xp = 0; pet.xpToNext = 50; }
+                    
+                    // 🚨 BUG FIX WIN: Strict Number Coercion
+                    const safeMaxHp = Number(pet.maxHp) || 10;
+                    
+                    // 🚨 UX WIN: Prevent wasting the treat if the pet is perfectly fine!
+                    if (pet.level >= 20 && pet.hp >= safeMaxHp) {
+                        logMessage(`{gray:Your ${pet.name} is already at maximum strength and health.}`);
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                        return false;
+                    }
+                    
+                    pet.hp = safeMaxHp;
                     
                     // Cap level at 20
                     if (pet.level < 20) {
@@ -82,7 +91,6 @@ window.ExpansionManager.register({
             ]
         },
 
-        // 🌟 EXPANDABILITY WIN: Native dictionary injection!
         craftingRecipes: {
             "Leather Barding": { materials: { "Wolf Pelt": 4, "Stick": 2 }, xp: 20, level: 2 },
             "Spiked Collar": { materials: { "Iron Ore": 3, "Leather Tunic": 1 }, xp: 30, level: 3 },
@@ -191,48 +199,6 @@ window.ExpansionManager.register({
         // FEATURE 3: EQUIPPING PET GEAR
         // ==========================================
         
-        // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Outward Spiral Drop
-        // Prevents dropped pet gear from overwriting Waystones or Dungeons if the player is standing on them!
-        const safelyDropItem = (item) => {
-            let placed = false;
-            let validFloor = '.';
-            if (gameState.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[gameState.currentCaveTheme]) {
-                validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
-            }
-
-            const dropTile = item.tile || '🎒';
-
-            if (typeof chunkManager !== 'undefined') {
-                for (let r = 0; r <= 2 && !placed; r++) {
-                    for (let dy = -r; dy <= r && !placed; dy++) {
-                        for (let dx = -r; dx <= r && !placed; dx++) {
-                            const tx = gameState.player.x + dx;
-                            const ty = gameState.player.y + dy;
-                            
-                            let tileAt;
-                            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
-                            else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
-                            else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
-
-                            if (tileAt === validFloor || tileAt === '.') {
-                                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(tx, ty, dropTile, 24); 
-                                else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = dropTile;
-                                else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = dropTile;
-                                placed = true;
-                            }
-                        }
-                    }
-                }
-                
-                if (!placed) { // Absolute fallback
-                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(gameState.player.x, gameState.player.y, dropTile, 24);
-                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] = dropTile;
-                    else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][gameState.player.y][gameState.player.x] = dropTile;
-                }
-            }
-            gameState.mapDirty = true;
-        };
-
         const origUseInventoryItem = window.useInventoryItem;
         window.useInventoryItem = function(index) {
             const item = gameState.player.inventory[index];
@@ -248,20 +214,33 @@ window.ExpansionManager.register({
                 const slot = item.type === 'pet_armor' ? 'armor' : 'weapon';
                 const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
                 
-                // Safe Unequip Logic
+                // 🚨 BUG FIX & EXPLOIT GUARD: Safe Swap Logic
+                // We MUST mathematically ensure there is space in the inventory for the unequipped item
+                // to prevent it from being permanently lost into the void. We do NOT drop pet gear on the ground
+                // because map tiles cannot store magical affixes/stats!
                 if (pet[slot]) {
                     const unequipped = pet[slot];
-                    // Because we are about to consume the item from our bag, our bag size is effectively -1 right now.
-                    if (gameState.player.inventory.length - 1 < invCap) {
+                    
+                    // Since we are consuming the newly equipped item from a slot, it frees up 1 space, 
+                    // UNLESS the item was part of a stacked pile (e.g. 2 Beast Collars).
+                    const freesSlot = (item.quantity <= 1) ? 1 : 0;
+                    
+                    if (gameState.player.inventory.length - freesSlot < invCap) {
+                        unequipped.isEquipped = false; // Ensure clean state
                         gameState.player.inventory.push(unequipped);
+                        logMessage(`{gray:You removed the ${unequipped.name}.}`);
                     } else {
-                        logMessage(`{red:Inventory full! The old ${unequipped.name} falls to the ground.}`);
-                        safelyDropItem(unequipped);
+                        logMessage(`{red:Inventory full! Make space before swapping pet gear.}`);
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                        return; // Abort completely to save the gear!
                     }
                 }
                 
                 // 🚨 BUG FIX: Equip new item safely (deep clone to sever reference bleed)
+                // and explicitly force the quantity to 1 so the pet doesn't wear a stack of 5 collars!
                 pet[slot] = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(item) : JSON.parse(JSON.stringify(item));
+                pet[slot].quantity = 1;
+                pet[slot].isEquipped = false;
                 
                 logMessage(`{green:You equipped the ${item.name} onto your ${pet.name}!}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
@@ -309,18 +288,19 @@ window.ExpansionManager.register({
                         let unequippedSomething = false;
                         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
                         
+                        // 🚨 BUG FIX: Safe Bounds Check
                         const handleUnequip = (slot) => {
                             const item = pet[slot];
-                            // 🚨 BUG FIX: Ensure the item safely drops to the ground if the inventory is full
                             if (gameState.player.inventory.length < invCap) {
+                                item.isEquipped = false; // Reset just in case
                                 gameState.player.inventory.push(item);
                                 logMessage(`{gray:You removed the ${item.name} from your ${pet.name}.}`);
+                                pet[slot] = null;
+                                unequippedSomething = true;
                             } else {
-                                logMessage(`{red:Inventory full! The ${item.name} falls to the ground.}`);
-                                safelyDropItem(item);
+                                logMessage(`{red:Inventory full! Make space before removing the ${item.name}.}`);
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                             }
-                            pet[slot] = null;
-                            unequippedSomething = true;
                         };
                         
                         if (pet.weapon) {
@@ -404,12 +384,13 @@ window.ExpansionManager.register({
                             skillUsed = true;
                         } 
                         // --- BOAR: Gore (Bleed/Poison) ---
+                        // 🚨 BUG FIX: Added 'await' to all applySpellDamage calls to prevent async log desyncs
                         else if (pet.tile === '🐗') {
                             logMessage(`{orange:Your ${pet.name} violently gores the ${target.name}!}`);
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('pierce');
                             
                             target.poisonTurns = 3; // Acts as bleed
-                            if (typeof applySpellDamage === 'function') applySpellDamage(target.x, target.y, pet.attack, 'crush');
+                            if (typeof applySpellDamage === 'function') await applySpellDamage(target.x, target.y, pet.attack, 'crush');
                             
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(target.x, target.y, "BLEEDING", "#f97316");
                             skillUsed = true;
@@ -435,7 +416,7 @@ window.ExpansionManager.register({
                         else if (pet.tile === '🐲') {
                             logMessage(`{orange:Your ${pet.name} breathes fire on the ${target.name}!}`);
                             target.burnTurns = 3;
-                            if (typeof applySpellDamage === 'function') applySpellDamage(target.x, target.y, pet.attack * 2, 'fireball');
+                            if (typeof applySpellDamage === 'function') await applySpellDamage(target.x, target.y, pet.attack * 2, 'fireball');
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(target.x, target.y, "BURN", "#f97316");
                             skillUsed = true;
                         }
@@ -445,7 +426,7 @@ window.ExpansionManager.register({
                             gameState.screenShake = 15;
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy');
                             target.stunTurns = 2;
-                            if (typeof applySpellDamage === 'function') applySpellDamage(target.x, target.y, pet.attack, 'crush');
+                            if (typeof applySpellDamage === 'function') await applySpellDamage(target.x, target.y, pet.attack, 'crush');
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(target.x, target.y, "STUNNED", "#facc15");
                             skillUsed = true;
                         }
