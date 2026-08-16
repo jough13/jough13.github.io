@@ -292,7 +292,7 @@ window.ExpansionManager.register({
                                         }
                                     };
 
-                                    // 🚨 LORE & ROBUSTNESS WIN: Safe reputation modifiers
+                                    // Safe reputation modifiers
                                     if (typeof window.modifyReputation === 'function') {
                                         window.modifyReputation('fae_court', -50);
                                         window.modifyReputation('shadowed_hand', 10);
@@ -303,6 +303,13 @@ window.ExpansionManager.register({
                                     if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy');
                                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(ctx.x, ctx.y, '#991b1b', 20);
                                     
+                                    // 🚨 BUG FIX: Grant XP for the kill
+                                    if (typeof grantXp === 'function') grantXp(500);
+
+                                    // 🚨 BUG FIX: Replace the terrain FIRST so the dropped item isn't overwritten!
+                                    state.lootedTiles.add(ctx.tileId);
+                                    if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(ctx.x, ctx.y, 'd');
+
                                     const metal = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['☄️'] : { name: 'Star-Metal Ore', type: 'junk' };
                                     const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                                     
@@ -318,11 +325,9 @@ window.ExpansionManager.register({
                                         dropSafely('☄️');
                                     }
                                     
-                                    state.lootedTiles.add(ctx.tileId);
-                                    if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(ctx.x, ctx.y, 'd');
                                     state.mapDirty = true;
                                     
-                                    // 🚨 BUG FIX: Ensure the save triggers
+                                    // Ensure the save triggers
                                     if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ reputation: state.player.reputation, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory, lootedTiles: Object.fromEntries(state.lootedTiles) });
                                 }
                             },
