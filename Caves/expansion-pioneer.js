@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "pioneer_town",
     name: "The Pioneer (Town Builder)",
-    version: "1.4", // Upgraded version!
+    version: "1.5", // Upgraded version!
     
     data: {
         // --- 1. NEW MAP TILES & NPCs ---
@@ -91,20 +91,25 @@ window.ExpansionManager.register({
                                         state.player.coins += 100;
                                         
                                         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
+                                        
+                                        const gems = ['💎r', '💎s', '💎d'];
+                                        const gId = gems[Math.floor(Math.random() * gems.length)];
+                                        const gName = gId === '💎r' ? 'Raw Ruby' : (gId === '💎s' ? 'Raw Sapphire' : 'Raw Diamond');
+                                        
+                                        // 🚨 BUG FIX & ROBUSTNESS WIN: Safe clone to prevent memory leaks from the global dictionary
+                                        const template = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA[gId] : null;
+                                        const newItem = template && typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : { templateId: gId, name: gName, type: 'trade', quantity: 1, tile: '💎', isEquipped: false };
+                                        
                                         if (state.player.inventory.length < invCap) {
-                                            const gems = ['💎r', '💎s', '💎d'];
-                                            const gId = gems[Math.floor(Math.random() * gems.length)];
-                                            const gName = gId === '💎r' ? 'Raw Ruby' : (gId === '💎s' ? 'Raw Sapphire' : 'Raw Diamond');
-                                            
-                                            // 🚨 BUG FIX & ROBUSTNESS WIN: Safe clone to prevent memory leaks from the global dictionary
-                                            const template = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA[gId] : null;
-                                            const newItem = template && typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : { templateId: gId, name: gName, type: 'trade', quantity: 1, tile: '💎', isEquipped: false };
-                                            
                                             state.player.inventory.push(newItem);
                                             logMessage(`{purple:You received a ${gName} and 100 Gold!}`);
                                             if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
                                         } else {
-                                            logMessage("{gold:You received 100 Gold.}");
+                                            // 🚨 BUG FIX: Safe drop fallback so the gem isn't deleted into the void!
+                                            logMessage(`{red:You received 100 Gold, but your pack is full! The ${gName} drops at your feet.}`);
+                                            if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
+                                                window.EventManager.safeDropItem(state, ctx.x, ctx.y, '💎');
+                                            }
                                         }
                                     }
                                     
@@ -115,7 +120,7 @@ window.ExpansionManager.register({
                                         else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][ctx.y][ctx.x] = '🏚';
                                     }
                                     
-                                    // 🚨 BUG FIX: Force immediate visual refresh so the cage actually disappears!
+                                    // Force immediate visual refresh so the cage actually disappears!
                                     state.mapDirty = true;
                                     if (typeof render === 'function') render();
                                 }
@@ -200,25 +205,26 @@ window.ExpansionManager.register({
                 const rescued = p.rescuedNpcs || [];
                 const houses = p.builtHouses || [];
 
-                // If they have rescued anyone, spawn the Town Bell near the top edge
-                if (rescued.length > 0) {
+                // 🚨 BUG FIX & ROBUSTNESS: Strict Array Bound Check
+                // Prevents a hard crash if another expansion shrunk the base player camp size!
+                if (rescued.length > 0 && map[1] && map[1][6] !== undefined) {
                     map[1][6] = '🛎️';
                 }
 
                 // Place Blacksmith (Top Right)
-                if (houses.includes('Blacksmith')) {
+                if (houses.includes('Blacksmith') && map[2] && map[3] && map[2][10] !== undefined) {
                     map[2][10] = '🏠';
                     map[3][10] = '⚒️t';
                 }
                 
                 // Place Botanist (Bottom Right)
-                if (houses.includes('Botanist')) {
+                if (houses.includes('Botanist') && map[5] && map[6] && map[5][10] !== undefined) {
                     map[5][10] = '🏠';
                     map[6][10] = '👩‍🌾';
                 }
                 
                 // Place Bard (Bottom Left)
-                if (houses.includes('Bard')) {
+                if (houses.includes('Bard') && map[6] && map[7] && map[6][2] !== undefined) {
                     map[6][2] = '🏠';
                     map[7][2] = '🎸';
                 }
@@ -354,7 +360,7 @@ window.ExpansionManager.register({
             loreContent.innerHTML = `
                 <p class="italic muted-text mb-4 border-b border-gray-700 pb-2">"Thanks again for busting me out of that cage. The forge here is excellent. Need your gear maintained?"</p>
                 <button id="buffWeapon" class="mb-3 bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl w-full flex justify-between shadow-md transition-transform active:scale-95 border-b-4 border-red-900 active:border-b-0 active:mt-1">
-                    <span>⚔️ Sharpen Blade</span> <span class="text-xs font-normal opacity-90">+3 Strength (500 Turns)</span>
+                    <span>⚔️ Sharpen Blade</span> <span class="text-xs font-normal opacity-90">50 Gold</span>
                 </button>
             `;
             loreModal.classList.remove('hidden');
@@ -362,18 +368,25 @@ window.ExpansionManager.register({
             setTimeout(() => {
                 const btn = document.getElementById('buffWeapon');
                 if (btn) btn.onclick = () => {
-                    // 🚨 FIXED: Added cost validation
                     if (p.coins < 50) {
                         if (typeof logMessage === 'function') logMessage("{red:You need 50 Gold to pay the Blacksmith.}");
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                         return;
                     }
+
+                    // 🚨 EXPLOIT FIX: Multiplicative Buff Guard
+                    // Prevents a player who drank a Berserker Potion (+10 Str, 20t) from speaking to the Blacksmith 
+                    // and permanently locking in their massive +10 bonus for 500 turns!
+                    if ((p.strengthBonus || 0) > 3) {
+                        if (typeof logMessage === 'function') logMessage("{red:You are already under the effects of a more powerful enchantment!}");
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                        return;
+                    }
                     
-                    // Deduct the gold
                     p.coins -= 50;
                     
-                    // 🚨 BUG FIX WIN: Ensure we don't accidentally override a massive 1000 turn buff down to 500!
-                    p.strengthBonus = Math.max(p.strengthBonus || 0, 3);
+                    // Assign fixed stats safely
+                    p.strengthBonus = 3;
                     p.strengthBonusTurns = Math.max(p.strengthBonusTurns || 0, 500);
                     
                     if (typeof logMessage === 'function') logMessage("{red:The Blacksmith hones your weapons! (+3 Strength for 500 turns)}");
@@ -383,7 +396,7 @@ window.ExpansionManager.register({
                     
                     if (typeof playerRef !== 'undefined') playerRef.update({ coins: p.coins, strengthBonus: p.strengthBonus, strengthBonusTurns: p.strengthBonusTurns });
                     if (typeof renderEquipment === 'function') renderEquipment();
-                    if (typeof renderStats === 'function') renderStats(); // Update gold UI
+                    if (typeof renderStats === 'function') renderStats(); 
                     loreModal.classList.add('hidden');
                 };
             }, 0);
@@ -423,18 +436,14 @@ window.ExpansionManager.register({
                 const btn = document.getElementById('claimHerbs');
                 if (btn) btn.onclick = () => {
                     const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(p) : 9;
-                    if (p.inventory.length >= invCap) {
-                        if (typeof logMessage === 'function') logMessage("{red:Your inventory is full! Make space first.}");
-                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                        return;
-                    }
 
-                    // 🚨 GAMEPLAY WIN: Include Seed drops!
-                    // This encourages the player to actually engage with the Homestead plots!
-                    const itemsToGive = ['Medicinal Herb', 'Wildberry', 'Medicinal Herb', 'Wildberry', 'Herb Seed', 'Wildberry Seed', 'Bluecap Spore'];
+                    // 🚨 LORE & GAMEPLAY WIN: Include Seed drops and Rare Items!
+                    let itemsToGive = ['Medicinal Herb', 'Wildberry', 'Medicinal Herb', 'Wildberry', 'Herb Seed', 'Wildberry Seed', 'Bluecap Spore'];
+                    if (Math.random() < 0.05) itemsToGive = ['Golden Apple', 'Luminous Spore', 'Moonbloom Bulb']; // 5% Rare drop!
+
                     const chosen = itemsToGive[Math.floor(Math.random() * itemsToGive.length)];
                     
-                    // 🚀 PERFORMANCE WIN: Fast O(1) template lookup without scanning the full dictionary
+                    // Fast O(1) template lookup
                     let tKey = null;
                     if (typeof getFarmItemKey === 'function') {
                         tKey = getFarmItemKey(chosen);
@@ -443,14 +452,18 @@ window.ExpansionManager.register({
                     }
                     
                     const template = tKey ? window.ITEM_DATA[tKey] : null;
-                    
                     const existing = p.inventory.find(i => i && i.name === chosen && !i.isEquipped);
-                    const qty = 2 + Math.floor(Math.random() * 3); // 2 to 4 items
                     
+                    // You get 1 of the rare stuff, but 2-4 of the regular stuff
+                    const qty = ['Golden Apple', 'Luminous Spore', 'Moonbloom Bulb'].includes(chosen) ? 1 : (2 + Math.floor(Math.random() * 3)); 
+                    
+                    let itemGranted = false;
+
                     if (existing) {
                         existing.quantity += qty;
-                    } else if (template) {
-                        // 🚨 BUG FIX & ROBUSTNESS WIN: Explicitly map template logic functions
+                        itemGranted = true;
+                    } else if (template && p.inventory.length < invCap) {
+                        // Safe deep clone to guarantee traits/effects don't bleed reference
                         const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
                         newItem.templateId = tKey;
                         newItem.quantity = qty;
@@ -459,13 +472,22 @@ window.ExpansionManager.register({
                         newItem.onHit = template.onHit || null;
                         
                         p.inventory.push(newItem);
+                        itemGranted = true;
                     }
 
                     p.lastBotanistDay = currentDay;
                     
-                    if (typeof logMessage === 'function') logMessage(`{green:The Botanist hands you ${qty}x ${chosen}!}`);
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
-                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#4ade80', 15);
+                    if (itemGranted) {
+                        if (typeof logMessage === 'function') logMessage(`{green:The Botanist hands you ${qty}x ${chosen}!}`);
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#4ade80', 15);
+                    } else {
+                        // 🚨 BUG FIX: Safe drop fallback so harvest isn't permanently deleted!
+                        if (typeof logMessage === 'function') logMessage(`{red:Your pack is full! The Botanist drops the ${chosen} on the ground.}`);
+                        if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
+                            window.EventManager.safeDropItem(gameState, p.x, p.y, template ? template.tile : '🌿');
+                        }
+                    }
                     
                     loreModal.classList.add('hidden');
                     if (typeof renderInventory === 'function') renderInventory();
@@ -484,11 +506,20 @@ window.ExpansionManager.register({
 
             if (!loreTitle || !loreContent || !loreModal) return;
 
+            // 🎵 LORE WIN: Dynamic Bard Songs
+            const songs = [
+                "A lively tune about a rat that outsmarted a king.",
+                "A sorrowful ballad for the ruined kingdom.",
+                "A fast-paced jig about a dwarven brewmaster.",
+                "A mysterious instrumental piece that reminds you of the ocean."
+            ];
+            const song = songs[Math.floor(Math.random() * songs.length)];
+
             loreTitle.textContent = "Town Bard";
             loreContent.innerHTML = `
-                <p class="italic muted-text mb-4 border-b border-gray-700 pb-2">"Ah, the hero returns! Care to sit by the fire and listen to a song of your exploits?"</p>
+                <p class="italic muted-text mb-4 border-b border-gray-700 pb-2">"Ah, the hero returns! Care to sit by the fire and listen to a song of your exploits?"<br><br><span class="text-blue-300 font-serif">He strums his lute. ${song}</span></p>
                 <button id="buffBard" class="mb-3 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl w-full flex justify-between shadow-md transition-transform active:scale-95 border-b-4 border-blue-800 active:border-b-0 active:mt-1">
-                    <span>🎵 Listen to Song</span> <span class="text-xs font-normal opacity-90">+3 Wits (500 Turns)</span>
+                    <span>🎵 Listen to Song</span> <span class="text-xs font-normal opacity-90">50 Gold</span>
                 </button>
             `;
             loreModal.classList.remove('hidden');
@@ -496,18 +527,22 @@ window.ExpansionManager.register({
             setTimeout(() => {
                 const btn = document.getElementById('buffBard');
                 if (btn) btn.onclick = () => {
-                    
                     if (p.coins < 50) {
                         if (typeof logMessage === 'function') logMessage("{red:You need 50 Gold to tip the Bard.}");
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                         return;
                     }
                     
-                    // Deduct the gold
+                    // 🚨 EXPLOIT FIX: Multiplicative Buff Guard
+                    if ((p.witsBonus || 0) > 3) {
+                        if (typeof logMessage === 'function') logMessage("{red:You are already under the effects of a more powerful enchantment!}");
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                        return;
+                    }
+                    
                     p.coins -= 50;
                     
-                    // Ensure we don't accidentally override a massive 1000 turn buff down to 500!
-                    p.witsBonus = Math.max(p.witsBonus || 0, 3);
+                    p.witsBonus = 3;
                     p.witsBonusTurns = Math.max(p.witsBonusTurns || 0, 500);
                     
                     if (typeof logMessage === 'function') logMessage("{blue:The Bard's tale inspires you! (+3 Wits for 500 turns)}");
@@ -516,12 +551,21 @@ window.ExpansionManager.register({
                     if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('witsDisplay'), 'stat-pulse-blue');
                     
                     if (typeof playerRef !== 'undefined') playerRef.update({ coins: p.coins, witsBonus: p.witsBonus, witsBonusTurns: p.witsBonusTurns });
-                    if (typeof renderStats === 'function') renderStats(); // Update gold UI
+                    if (typeof renderStats === 'function') renderStats(); 
                     loreModal.classList.add('hidden');
                 };
             }, 0);
-
         };
+
+        // --- MAP COLORS INJECTION ---
+        if (typeof window.TILE_COLOR_MAP !== 'undefined') {
+            window.TILE_COLOR_MAP['🚷'] = [120, 113, 108, 255]; // Rusted Iron
+            window.TILE_COLOR_MAP['🛎️'] = [250, 204, 21, 255];  // Gold Bell
+            window.TILE_COLOR_MAP['🏠'] = [180, 83, 9, 255];    // Wood/Thatch
+            window.TILE_COLOR_MAP['⚒️t'] = [156, 163, 175, 255]; // Blacksmith Gray
+            window.TILE_COLOR_MAP['👩‍🌾'] = [34, 197, 94, 255];   // Botanist Green
+            window.TILE_COLOR_MAP['🎸'] = [168, 85, 247, 255];  // Bard Purple
+        }
     }
 });
 
