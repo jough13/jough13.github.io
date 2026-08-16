@@ -205,9 +205,24 @@ const _safeExecuteWithLock = async (actionFunc) => {
 // --- CENTRAL INPUT HANDLER ---
 function handleInput(key) {
 
-    // 1. INPUT LOCK: Prevent spamming while network/animations are processing
+    // 1. INPUT LOCK & WATCHDOG: Prevent spamming while network/animations are processing
+    // 🚨 BUG FIX & UX WIN: The "Infinite Lock" Watchdog
+    // If Firebase drops a transaction silently or an error bypasses a `finally` block, 
+    // the game used to permanently soft-lock. This tracks how long inputs have been ignored 
+    // and forces an engine unlock if it exceeds 5 seconds!
     if (typeof isProcessingMove !== 'undefined' && isProcessingMove) {
-        return;
+        if (!window._lastLockRejectTime) {
+            window._lastLockRejectTime = Date.now();
+            return;
+        } else if (Date.now() - window._lastLockRejectTime > 5000) {
+            console.warn("%c[AKASHIC ENGINE] Input Lock Watchdog triggered. Forcing engine unlock to prevent soft-lock.", "color: #ef4444; font-weight: bold;");
+            isProcessingMove = false;
+            window._lastLockRejectTime = null;
+        } else {
+            return;
+        }
+    } else {
+        window._lastLockRejectTime = null; // Clean state
     }
     
     if (typeof isBackupOperationRunning !== 'undefined' && isBackupOperationRunning) {
@@ -417,17 +432,29 @@ function handleInput(key) {
             if (dirX > 0) gameState.player.facing = 'right';
             else if (dirX < 0) gameState.player.facing = 'left';
 
-            if (abilityId === 'lunge') { if (typeof executeLunge === 'function') executeLunge(dirX, dirY); }
-            else if (abilityId === 'ranged_attack') { if (typeof executeRangedAttack === 'function') executeRangedAttack(dirX, dirY); }
-            else if (['shieldBash', 'cleave', 'kick', 'crush'].includes(abilityId)) { if (typeof executeMeleeSkill === 'function') executeMeleeSkill(abilityId, dirX, dirY); }
-            else if (abilityId === 'quickstep') { if (typeof executeQuickstep === 'function') executeQuickstep(dirX, dirY); }
-            else if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) { if (typeof executeAimedSpell === 'function') executeAimedSpell(abilityId, dirX, dirY); }
-            else if (abilityId === 'pacify') { if (typeof executePacify === 'function') executePacify(dirX, dirY); }
-            else if (abilityId === 'inflictMadness') { if (typeof executeInflictMadness === 'function') executeInflictMadness(dirX, dirY); }
-            else if (abilityId === 'tame') { if (typeof executeTame === 'function') executeTame(dirX, dirY); }
-            else if (abilityId === 'throwTNT') { if (typeof executeThrowTNT === 'function') executeThrowTNT(dirX, dirY); }
-            else if (abilityId.startsWith('throwPotion_')) { if (typeof executeThrowPotion === 'function') executeThrowPotion(abilityId, dirX, dirY); } // ALCHEMY POTIONS
-            else logMessage("{red:Unknown ability. Aiming canceled.}");
+            // 🚨 EXPANDABILITY WIN: Native Expansion Aiming Hook
+            // Allows new modules (like guns or grenades) to intercept the aim vector 
+            // BEFORE it hits the hardcoded list!
+            let expansionHandled = false;
+            if (typeof window.ExpansionManager !== 'undefined') {
+                const hookRes = window.ExpansionManager.triggerHook('onAimAbility', { abilityId, dirX, dirY, handled: false });
+                if (hookRes && hookRes.handled) expansionHandled = true;
+            }
+
+            if (!expansionHandled) {
+                // Legacy Aiming Router
+                if (abilityId === 'lunge') { if (typeof executeLunge === 'function') executeLunge(dirX, dirY); }
+                else if (abilityId === 'ranged_attack') { if (typeof executeRangedAttack === 'function') executeRangedAttack(dirX, dirY); }
+                else if (['shieldBash', 'cleave', 'kick', 'crush'].includes(abilityId)) { if (typeof executeMeleeSkill === 'function') executeMeleeSkill(abilityId, dirX, dirY); }
+                else if (abilityId === 'quickstep') { if (typeof executeQuickstep === 'function') executeQuickstep(dirX, dirY); }
+                else if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) { if (typeof executeAimedSpell === 'function') executeAimedSpell(abilityId, dirX, dirY); }
+                else if (abilityId === 'pacify') { if (typeof executePacify === 'function') executePacify(dirX, dirY); }
+                else if (abilityId === 'inflictMadness') { if (typeof executeInflictMadness === 'function') executeInflictMadness(dirX, dirY); }
+                else if (abilityId === 'tame') { if (typeof executeTame === 'function') executeTame(dirX, dirY); }
+                else if (abilityId === 'throwTNT') { if (typeof executeThrowTNT === 'function') executeThrowTNT(dirX, dirY); }
+                else if (abilityId.startsWith('throwPotion_')) { if (typeof executeThrowPotion === 'function') executeThrowPotion(abilityId, dirX, dirY); } // ALCHEMY POTIONS
+                else logMessage("{red:Unknown ability. Aiming canceled.}");
+            }
 
             gameState.isAiming = false;
             gameState.abilityToAim = null;
@@ -565,6 +592,8 @@ function handleInput(key) {
         else if (gameState.currentRealm !== 0 && gameState.currentRealm) {
             if (gameState.realmMutators && gameState.realmMutators.includes('frozen_wastes')) {
                 waitFlavors = window.WAIT_FLAVORS.FROZEN_WASTES;
+            } else if (gameState.currentRealm === 'raid_molten') {
+                waitFlavors = window.WAIT_FLAVORS.CAVE_FIRE; 
             } else {
                 waitFlavors = window.WAIT_FLAVORS.MULTIVERSE;
             }
@@ -581,7 +610,8 @@ function handleInput(key) {
         else if (gameState.mapMode === 'dungeon') {
             if (gameState.currentCaveTheme === 'VOID') waitFlavors = window.WAIT_FLAVORS.CAVE_VOID;
             else if (gameState.currentCaveTheme === 'FIRE') waitFlavors = window.WAIT_FLAVORS.CAVE_FIRE;
-            else if (gameState.currentCaveTheme === 'ICE') waitFlavors = window.WAIT_FLAVORS.CAVE_ICE;
+            else if (gameState.currentCaveTheme === 'ICE' || gameState.currentCaveTheme === 'FROZEN_RUIN') waitFlavors = window.WAIT_FLAVORS.CAVE_ICE;
+            else if (gameState.currentCaveTheme === 'PIRATE_COVE' || gameState.currentCaveTheme === 'SUNKEN_SHIPWRECK') waitFlavors = window.WAIT_FLAVORS.SAILING;
             else waitFlavors = window.WAIT_FLAVORS.CAVE_DEFAULT;
         } 
         else if (gameState.mapMode === 'underworld') {
