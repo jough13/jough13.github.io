@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "core_delver",
     name: "The Core Delver (Underworld Sandbox)",
-    version: "1.4", // Upgraded version!
+    version: "1.5", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -77,6 +77,12 @@ window.ExpansionManager.register({
                     const batchedPayload = {};
                     let traveled = 0;
                     
+                    // 🚨 BUG FIX: Ensure the minecart works flawlessly in ALL Dungeons and Dimensions!
+                    const validFloors = ['.', 'F', 'd', 'D', '▤', '=', '🧊'];
+                    if (state.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[state.currentCaveTheme]) {
+                        validFloors.push(CAVE_THEMES[state.currentCaveTheme].floor);
+                    }
+                    
                     while(traveled < 60) { // Max 60 tiles per push
                         let nX = curX + vX;
                         let nY = curY + vY;
@@ -108,7 +114,8 @@ window.ExpansionManager.register({
                                         const lootData = baseEnemyData ? { ...baseEnemyData, isElite: liveEnemy.isElite } : null;
                                         const droppedLoot = lootData && typeof generateEnemyLoot === 'function' ? generateEnemyLoot(state.player, lootData) : '$';
                                         
-                                        chunkManager.setWorldTile(nX, nY, droppedLoot || '.');
+                                        // Uses 2-hour TTL for dropped loot on the Overworld
+                                        chunkManager.setWorldTile(nX, nY, droppedLoot || '.', 2);
                                         
                                         batchedPayload[EnemyNetworkManager.getPath(nX, nY, enemyId)] = null; // Delete
                                         delete state.sharedEnemies[enemyId];
@@ -165,7 +172,7 @@ window.ExpansionManager.register({
                                 curX += vX; curY += vY;
                             } else {
                                 // 3. No tracks found. Try to slide on open floor, otherwise crash/stop!
-                                if (['.', 'F', 'd', 'D'].includes(t)) {
+                                if (validFloors.includes(t)) {
                                     curX = nX; curY = nY;
                                 } else {
                                     break; 
@@ -173,7 +180,12 @@ window.ExpansionManager.register({
                             }
                         }
                         
-                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(curX, curY, '#facc15', 1);
+                        // JUICE WIN: Spark and Smoke trail!
+                        if (typeof ParticleSystem !== 'undefined') {
+                            ParticleSystem.spawn(curX, curY, '#9ca3af', 'smoke', '', 2);
+                            if (Math.random() < 0.4) ParticleSystem.spawn(curX, curY, '#facc15', 'sparkle', '', 2);
+                        }
+                        
                         traveled++;
                     }
                     
@@ -297,14 +309,18 @@ window.ExpansionManager.register({
 
                             try {
                                 isProcessingMove = true;
-                                if (gameState.player.stamina < 2) {
+                                
+                                // 🚨 BUG FIX WIN: Route securely through the central vitals dispatcher
+                                if (gameState.player.stamina < 2 && !gameState.godMode) {
                                     logMessage("{red:You are too exhausted to mine through solid rock.}");
                                     if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                                     return;
                                 }
                                 
-                                gameState.player.stamina -= 2;
-                                if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('staminaDisplay'), false);
+                                if (!gameState.godMode) {
+                                    if (typeof window.modifyVital === 'function') window.modifyVital('stamina', -2);
+                                    else gameState.player.stamina = Math.max(0, gameState.player.stamina - 2);
+                                }
                                 
                                 // Dynamic particle color based on the wall's biome color!
                                 let explosionColor = '#4b5563'; // Dark Gray (Default Rock)
@@ -408,25 +424,32 @@ window.ExpansionManager.register({
                             const item = gameState.player.inventory[i];
                             if (!item) continue;
                             
-                            // Torches light up just by holding them
-                            if (!item.isEquipped && (item.name === 'Torch' || item.name === 'Ever-Burning Candle')) {
+                            // Torches and glowing spores light up just by holding them
+                            if (!item.isEquipped && (item.name === 'Torch' || item.name === 'Ever-Burning Candle' || item.name === 'Luminous Spore')) {
                                 hasLight = true;
                                 break;
                             }
-                            // Helmets MUST be equipped
-                            if (item.isEquipped && item.name === "Miner's Helm") {
+                            // Helmets and legendary weapons MUST be equipped
+                            if (item.isEquipped && (item.name === "Miner's Helm" || item.name === "Sun-Forged Blade" || item.name === "Star-Forged Blade")) {
                                 hasLight = true;
                                 break;
                             }
                         }
                     }
                     
-                    if (!hasLight) {
+                    // 🚨 GAMEPLAY WIN: God mode protects you from darkness natively
+                    if (!hasLight && !gameState.godMode) {
                         // 25% chance per turn in the dark to take Psyche and Health damage
                         if (Math.random() < 0.25) {
                             logMessage("{purple:The suffocating darkness presses against your mind... (-1 Psyche, -1 HP)}");
-                            window.modifyVital('psyche', -1);
-                            window.modifyVital('health', -1);
+                            
+                            if (typeof window.modifyVital === 'function') {
+                                window.modifyVital('psyche', -1);
+                                window.modifyVital('health', -1);
+                            } else {
+                                gameState.player.psyche = Math.max(0, gameState.player.psyche - 1);
+                                gameState.player.health = Math.max(0, gameState.player.health - 1);
+                            }
                             
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "DARKNESS", "#a855f7");
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.1, 300); // Low hum
