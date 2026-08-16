@@ -47,7 +47,7 @@ window.ExpansionManager = {
                 if (result === false) return false;
                 
                 // Allow hooks to safely enrich and pass the context down the chain
-                if (typeof result === 'object' && result !== null) {
+                if (result !== undefined && result !== null) {
                     context = result; 
                 }
             } catch (err) {
@@ -116,6 +116,8 @@ window.ExpansionManager = {
         console.log(`%c[AKASHIC ENGINE] Weaving Timeline: ${exp.name} (v${exp.version || '1.0'})`, "color: #10b981; font-weight: bold; font-family: monospace;");
         
         const data = exp.data || {};
+        let dictCount = 0;
+        let arrCount = 0;
 
         // --- 1. LORE & ATMOSPHERE INJECTION ---
         if (data.loreKeywords) {
@@ -177,6 +179,7 @@ window.ExpansionManager = {
                             console.warn(`%c[AKASHIC ENGINE] Overwrite Notice: '${exp.id}' is modifying existing ${localKey} entry: '${key}'.`, "color: #fb923c;");
                         }
                         window[globalKey][key] = data[localKey][key];
+                        dictCount++;
                     }
                 }
                 
@@ -215,6 +218,7 @@ window.ExpansionManager = {
                 
                 for (let i = 0; i < newItems.length; i++) {
                     targetArray.push(newItems[i]);
+                    arrCount++;
                 }
             }
         }
@@ -257,8 +261,11 @@ window.ExpansionManager = {
                     if (existingItem) {
                         existingItem.stock = (existingItem.stock || 0) + (newItem.stock || 0);
                     } else {
-                        const itemClone = typeof window.fastClone === 'function' ? window.fastClone(newItem) : JSON.parse(JSON.stringify(newItem));
+                        // 🚨 BUG FIX & ROBUSTNESS: Use Object.assign instead of JSON stringify
+                        // If a modder puts a custom function inside a shop item, stringify deletes it.
+                        const itemClone = typeof window.fastClone === 'function' ? window.fastClone(newItem) : Object.assign({}, newItem);
                         window[targetGlobal].push(itemClone);
+                        dictCount++;
                     }
                 });
             }
@@ -300,7 +307,7 @@ window.ExpansionManager = {
                 const endTime = performance.now();
                 
                 const executionTime = (endTime - startTime).toFixed(2);
-                console.log(`%c[AKASHIC ENGINE] ↳ Initialization logic compiled in ${executionTime}ms.`, "color: #94a3b8; font-style: italic; font-family: monospace;");
+                console.log(`%c[AKASHIC ENGINE] ↳ Initialization logic compiled in ${executionTime}ms. (Injected ${dictCount} Dicts, ${arrCount} Arrays)`, "color: #94a3b8; font-style: italic; font-family: monospace;");
                 
                 if (executionTime > 50) {
                     console.warn(`%c[AKASHIC ENGINE] ⚠️ Warning: '${exp.name}' took longer than 50ms to initialize. This may cause stuttering on boot.`, "color: #facc15; font-weight: bold;");
@@ -318,8 +325,14 @@ window.ExpansionManager = {
             timestamp: Date.now()
         });
 
-        // Trigger Global Event
+        // Trigger Global Event for Native Engine Systems
         this.triggerHook('onExpansionLoaded', { id: exp.id, name: exp.name, version: exp.version });
+
+        // 🌟 EXPANDABILITY WIN: Broadcast to the DOM!
+        // Allows UI scripts to listen for expansion loads and dynamically draw menus
+        if (typeof window.dispatchEvent === 'function') {
+            window.dispatchEvent(new CustomEvent('expansionLoaded', { detail: { id: exp.id, name: exp.name, version: exp.version } }));
+        }
 
         // --- 8. PROCESS QUEUE ---
         // Check if loading this expansion unblocked any waiting expansions in the queue!
