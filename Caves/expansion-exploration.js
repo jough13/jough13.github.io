@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "exploration_expanded",
     name: "Expanded Exploration",
-    version: "1.5", // Upgraded version!
+    version: "1.6", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -30,8 +30,9 @@ window.ExpansionManager.register({
                         window.modifyVital('thirst', 50);
                         window.modifyVital('health', 5);
                     } else {
-                        state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 50);
-                        state.player.health = Math.min(state.player.maxHealth, state.player.health + 5);
+                        // Safe integer clamping fallback
+                        state.player.thirst = Math.floor(Math.min(state.player.maxThirst, state.player.thirst + 50));
+                        state.player.health = Math.floor(Math.min(state.player.maxHealth, state.player.health + 5));
                     }
                     logMessage("{blue:The water is perfectly crisp and restorative.}");
                     if (typeof triggerStatAnimation !== 'undefined') {
@@ -48,7 +49,9 @@ window.ExpansionManager.register({
                 _rarity: 'uncommon',
                 effect: (state) => {
                     logMessage("{yellow:You crush the spore, and glowing dust fills the air around you!}");
-                    state.player.candlelightTurns = Math.max(state.player.candlelightTurns || 0, 50);
+                    // 🚨 BUG FIX WIN: Accumulate turns instead of resetting to a flat 50!
+                    state.player.candlelightTurns = (Number(state.player.candlelightTurns) || 0) + 50;
+                    
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#facc15', 15);
                     return true;
@@ -217,6 +220,9 @@ window.ExpansionManager.register({
                         : (id, x, y, tile, scaled, template) => ({ id, x, y, tile, name: scaled.name, health: scaled.maxHealth, maxHealth: scaled.maxHealth, attack: scaled.attack, defense: scaled.defense || 0, xp: scaled.xp, loot: template.loot });
 
                     for(let ry = 0; ry < room.height; ry++){
+                        // 🚨 BUG FIX WIN: Ensure map row exists to prevent uncaught TypeErrors
+                        if (!room.map[ry]) continue;
+                        
                         for(let rx = 0; rx < room.width; rx++){
                             const t = room.map[ry][rx];
                             let finalTile = t;
@@ -251,11 +257,11 @@ window.ExpansionManager.register({
                             isBoss: true, 
                             isElite: true, 
                             maxHealth: Math.floor((Number(bossClone.maxHealth) || 20) * 3), 
-                            attack: (Number(bossClone.attack) || 5) + 2, 
+                            attack: Math.floor((Number(bossClone.attack) || 5) * 1.5), // 🚨 BUG FIX: Scaled damage as well!
                             xp: Math.floor((Number(bossClone.xp) || 20) * 4) 
                         };
                         
-                        // 🚨 BUG FIX WIN: Modify the clone, NOT the global dictionary template!
+                        // Modifier check for boss loot
                         if (themeKey === 'FUNGAL') bossScaled.loot = '🕸️g';
                         if (themeKey === 'OVERGROWN') bossScaled.loot = '🪵e';
                         if (themeKey === 'SUNKEN') bossScaled.loot = '💧o';
@@ -270,6 +276,7 @@ window.ExpansionManager.register({
                         map[2][Math.floor(mapWidth/2)] = '📦';
                     }
                     
+                    // The entrance and exit share the same coordinate (the player spawns on it)
                     map[mapHeight-1][Math.floor(mapWidth/2)] = '>';
                     this.caveMaps[caveId] = map;
                     return map;
@@ -304,14 +311,15 @@ window.ExpansionManager.register({
                     
                     // Allow spawning on standard wilderness tiles
                     const allowedTerrain = ['F', '🌳', '≈', '❄️', '🧊', 'D', 'd', '.', '🧱'];
-                    if (!allowedTerrain.includes(tile)) return;
-                    
-                    if (tile === 'F' || tile === '🌳') chunkData[ry][rx] = '🌲h'; 
-                    else if (tile === '≈') chunkData[ry][rx] = '🕸️b'; 
-                    else if (tile === '❄️' || tile === '🧊') chunkData[ry][rx] = '🧊c'; 
-                    else if (tile === 'd') chunkData[ry][rx] = '🔥s'; 
-                    else if (tile === 'D') chunkData[ry][rx] = '🏝️g'; 
-                    else if (tile === '.' || tile === '🧱') chunkData[ry][rx] = '🏰r'; 
+                    // 🚨 BUG FIX: Replaced `return` with falling through cleanly so other expansion generation isn't interrupted
+                    if (allowedTerrain.includes(tile)) {
+                        if (tile === 'F' || tile === '🌳') chunkData[ry][rx] = '🌲h'; 
+                        else if (tile === '≈') chunkData[ry][rx] = '🕸️b'; 
+                        else if (tile === '❄️' || tile === '🧊') chunkData[ry][rx] = '🧊c'; 
+                        else if (tile === 'd') chunkData[ry][rx] = '🔥s'; 
+                        else if (tile === 'D') chunkData[ry][rx] = '🏝️g'; 
+                        else if (tile === '.' || tile === '🧱') chunkData[ry][rx] = '🏰r'; 
+                    }
                 }
             };
         }
@@ -334,73 +342,77 @@ window.ExpansionManager.register({
                         const weatherBatchPayload = {};
                         const now = Date.now();
                         
-                        for(let dy = -3; dy <= 3; dy++) {
-                            for(let dx = -3; dx <= 3; dx++) {
-                                const tx = p.x + dx;
-                                const ty = p.y + dy;
-                                
-                                const tile = chunkManager.getTile(tx, ty);
-                                let newTile = null;
-                                let ttlHours = 0;
-                                let particleColor = null;
-                                
-                                // ❄️ ICE BRIDGES: Snow freezes water temporarily!
-                                if (gameState.weather === 'snow' && (tile === '~' || tile === '≈')) {
-                                    // 🚨 SAFEGUARD: Protect parked boats from freezing over and disappearing!
-                                    if (tx === p.x && ty === p.y && (p.isBoating || p.isSailing)) continue;
+                        // 🚨 ROBUSTNESS WIN: Safely test chunkManager
+                        if (typeof chunkManager !== 'undefined') {
+                            for(let dy = -3; dy <= 3; dy++) {
+                                for(let dx = -3; dx <= 3; dx++) {
+                                    const tx = p.x + dx;
+                                    const ty = p.y + dy;
                                     
-                                    newTile = '🧊';
-                                    ttlHours = 1;
-                                    particleColor = '#e0f2fe';
-                                    if (typeof AudioSystem !== 'undefined' && Math.random() < 0.05) AudioSystem.playTone(800, 'square', 0.1, 0.05, false, 100);
-                                }
-                                
-                                // 🌧️ SPRING SHOWERS: Rain sprouts flora in forests!
-                                else if (gameState.weather === 'rain' && tile === 'F') {
-                                    if (Math.random() < 0.02) {
-                                        // 5% chance for Luminous Spore, otherwise normal flora
-                                        const roll = Math.random();
-                                        if (roll > 0.95) newTile = '🍄l';
-                                        else if (roll > 0.70) newTile = '🌺';
-                                        else newTile = '🍄';
+                                    const tile = chunkManager.getTile(tx, ty);
+                                    let newTile = null;
+                                    let ttlHours = 0;
+                                    let particleColor = null;
+                                    
+                                    // ❄️ ICE BRIDGES: Snow freezes water temporarily!
+                                    if (gameState.weather === 'snow' && (tile === '~' || tile === '≈')) {
+                                        // SAFEGUARD: Protect parked boats from freezing over and disappearing!
+                                        if (tx === p.x && ty === p.y && (p.isBoating || p.isSailing)) continue;
                                         
-                                        ttlHours = 4;
-                                        particleColor = newTile === '🌺' ? '#f472b6' : '#d946ef';
-                                        if (typeof AudioSystem !== 'undefined' && Math.random() < 0.1) AudioSystem.playMelody([800, 1200], 'sine', 0.05, 0.02);
+                                        newTile = '🧊';
+                                        ttlHours = 1;
+                                        particleColor = '#e0f2fe';
+                                        if (typeof AudioSystem !== 'undefined' && Math.random() < 0.05) AudioSystem.playTone(800, 'square', 0.1, 0.05, false, 100);
                                     }
-                                }
+                                    
+                                    // 🌧️ SPRING SHOWERS: Rain sprouts flora in forests!
+                                    else if (gameState.weather === 'rain' && tile === 'F') {
+                                        if (Math.random() < 0.02) {
+                                            // 5% chance for Luminous Spore, otherwise normal flora
+                                            const roll = Math.random();
+                                            if (roll > 0.95) newTile = '🍄l';
+                                            else if (roll > 0.70) newTile = '🌺';
+                                            else newTile = '🍄';
+                                            
+                                            ttlHours = 4;
+                                            particleColor = newTile === '🌺' ? '#f472b6' : '#d946ef';
+                                            if (typeof AudioSystem !== 'undefined' && Math.random() < 0.1) AudioSystem.playMelody([800, 1200], 'sine', 0.05, 0.02);
+                                        }
+                                    }
 
-                                // ⚡ DEADLANDS STORMS: Lightning ignites the ash!
-                                else if (gameState.weather === 'storm' && tile === 'd') {
-                                    if (Math.random() < 0.01) {
-                                        newTile = '🔥';
-                                        ttlHours = 0.5; // Lasts 30 mins
-                                        particleColor = '#facc15';
+                                    // ⚡ DEADLANDS STORMS: Lightning ignites the ash!
+                                    else if (gameState.weather === 'storm' && tile === 'd') {
+                                        if (Math.random() < 0.01) {
+                                            newTile = '🔥';
+                                            ttlHours = 0.5; // Lasts 30 mins
+                                            particleColor = '#facc15';
+                                        }
                                     }
-                                }
-                                
-                                // --- APPLY BATCHED UPDATES ---
-                                if (newTile) {
-                                    const cx = Math.floor(tx / 16);
-                                    const cy = Math.floor(ty / 16);
-                                    const lx = ((tx % 16) + 16) % 16;
-                                    const ly = ((ty % 16) + 16) % 16;
-                                    const chunkId = `${cx},${cy}`;
-                                    const tileKey = `${lx},${ly}`;
                                     
-                                    if (!chunkManager.worldState[chunkId]) chunkManager.worldState[chunkId] = {};
-                                    
-                                    const tileData = { t: newTile, expires: now + (ttlHours * 3600000) };
-                                    chunkManager.worldState[chunkId][tileKey] = tileData;
-                                    
-                                    let realmPrefix = '';
-                                    if (gameState.currentRealm !== 0 && gameState.currentRealm) realmPrefix = `realm_${gameState.currentRealm}/`;
-                                    
-                                    weatherBatchPayload[`worldState/${realmPrefix}${chunkId}/${tileKey}`] = tileData;
-                                    hasLocalUpdates = true;
-                                    
-                                    if (particleColor && typeof ParticleSystem !== 'undefined') {
-                                        ParticleSystem.createExplosion(tx, ty, particleColor, 3);
+                                    // --- APPLY BATCHED UPDATES ---
+                                    if (newTile) {
+                                        // Modulo math with negatives
+                                        const cx = Math.floor(tx / 16);
+                                        const cy = Math.floor(ty / 16);
+                                        const lx = ((tx % 16) + 16) % 16;
+                                        const ly = ((ty % 16) + 16) % 16;
+                                        const chunkId = `${cx},${cy}`;
+                                        const tileKey = `${lx},${ly}`;
+                                        
+                                        if (!chunkManager.worldState[chunkId]) chunkManager.worldState[chunkId] = {};
+                                        
+                                        const tileData = { t: newTile, expires: now + (ttlHours * 3600000) };
+                                        chunkManager.worldState[chunkId][tileKey] = tileData;
+                                        
+                                        let realmPrefix = '';
+                                        if (gameState.currentRealm !== 0 && gameState.currentRealm) realmPrefix = `realm_${gameState.currentRealm}/`;
+                                        
+                                        weatherBatchPayload[`worldState/${realmPrefix}${chunkId}/${tileKey}`] = tileData;
+                                        hasLocalUpdates = true;
+                                        
+                                        if (particleColor && typeof ParticleSystem !== 'undefined') {
+                                            ParticleSystem.createExplosion(tx, ty, particleColor, 3);
+                                        }
                                     }
                                 }
                             }
