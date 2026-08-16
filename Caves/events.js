@@ -101,18 +101,10 @@ window.EVENT_DATA = {
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal();
                             state.player.coins += 50;
                             
-                            // 1. Resolve the NPC tile cleanup FIRST so it doesn't overwrite dropped loot
-                            if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
-                                const currentTile = chunkManager.getTile(ctx.x, ctx.y);
-                                if (['.', 'F', 'd', 'D', '❄️', '🍄'].includes(currentTile)) {
-                                    chunkManager.setWorldTile(ctx.x, ctx.y, '⚰️'); // Turn into grave
-                                } else {
-                                    chunkManager.setWorldTile(ctx.x, ctx.y, currentTile);
-                                }
-                                state.mapDirty = true;
-                            }
+                            // 1. Resolve the NPC tile cleanup securely
+                            window.EventManager.replaceEventTile(state, ctx.x, ctx.y, '⚰️');
                             
-                            // 2. Grant or drop the item!
+                            // 2. Grant or drop the item safely!
                             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                             const potion = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['🍷'] : null;
                             
@@ -132,12 +124,9 @@ window.EVENT_DATA = {
                                     state.player.inventory.push(newItem);
                                     logMessage("{gold:You received an Elixir of Life and 50 Gold.}");
                                 } else {
-                                    logMessage("{gold:You received 50 Gold, but your pack is too full! The Elixir drops at your feet.}");
-                                    // 🚨 THE FIX: Drop the item on the PLAYER'S coordinates
-                                    if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
-                                        chunkManager.setWorldTile(state.player.x, state.player.y, '🍷', 24);
-                                        state.mapDirty = true;
-                                    }
+                                    logMessage("{gold:You received 50 Gold, but your pack is too full! The Elixir drops to the ground.}");
+                                    // 🚨 THE FIX: Drop the item via outward spiral to prevent map corruption
+                                    window.EventManager.safeDropItem(state, state.player.x, state.player.y, '🍷');
                                 }
                             }
                         }
@@ -192,7 +181,8 @@ window.EVENT_DATA = {
                                         if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
                                     } else {
                                         logMessage(`{red:The altar offers the ${loot.name}, but your pack is full! It drops to the ground.}`);
-                                        if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(ctx.x, ctx.y, loot.tile || '🗡️', 24);
+                                        // 🚨 THE FIX: Drop via safe outward spiral
+                                        window.EventManager.safeDropItem(state, ctx.x, ctx.y, loot.tile || '🗡️');
                                     }
                                 }
                             }
@@ -221,11 +211,8 @@ window.EVENT_DATA = {
                             state.player.coins -= 100;
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
                             
-                            // 1. Remove the Smuggler NPC from the map FIRST
-                            if (state.mapMode === 'overworld') {
-                                chunkManager.setWorldTile(ctx.x, ctx.y, '.');
-                                state.mapDirty = true;
-                            }
+                            // 1. Remove the Smuggler NPC from the map safely
+                            window.EventManager.replaceEventTile(state, ctx.x, ctx.y, '.');
                             
                             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                             const roll = Math.random();
@@ -252,12 +239,9 @@ window.EVENT_DATA = {
                                     });
                                     logMessage("{green:You open the box and find a massive cache of supplies!}");
                                 } else {
-                                    logMessage("{red:You open the box, but your inventory is full! The potions spill at your feet.}");
-                                    // 🚨 THE FIX: Drop on player coords
-                                    if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
-                                        chunkManager.setWorldTile(state.player.x, state.player.y, '♥', 24);
-                                        state.mapDirty = true;
-                                    }
+                                    logMessage("{red:You open the box, but your inventory is full! The potions spill to the ground.}");
+                                    // 🚨 THE FIX: Drop on player coords securely
+                                    window.EventManager.safeDropItem(state, state.player.x, state.player.y, '♥');
                                 }
                             } else {
                                 logMessage("{purple:You open the box... A Legendary Artifact is inside!}");
@@ -270,12 +254,8 @@ window.EVENT_DATA = {
                                 if (state.player.inventory.length < invCap) {
                                     state.player.inventory.push(loot);
                                 } else {
-                                    logMessage("{red:Your inventory is full! The artifact falls at your feet.}");
-                                    // 🚨 THE FIX: Drop on player coords
-                                    if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
-                                        chunkManager.setWorldTile(state.player.x, state.player.y, loot.tile || '🗡️', 24);
-                                        state.mapDirty = true;
-                                    }
+                                    logMessage("{red:Your inventory is full! The artifact falls to the ground.}");
+                                    window.EventManager.safeDropItem(state, state.player.x, state.player.y, loot.tile || '🗡️');
                                 }
                             }
                         }
@@ -340,12 +320,17 @@ window.EVENT_DATA = {
                             const ironStack = state.player.inventory.find(i => i && i.name === 'Iron Ore' && !i.isEquipped);
                             if (ironStack) ironStack.quantity += yieldAmt;
                             else if (state.player.inventory.length < invCap) state.player.inventory.push({ templateId: '•', name: 'Iron Ore', type: 'junk', quantity: yieldAmt, tile: '•', isEquipped: false });
+                            else window.EventManager.safeDropItem(state, ctx.x, ctx.y, '•'); // Drop overflowing iron
                             
                             if (Math.random() < 0.30) {
                                 logMessage("{purple:You found the Titan's power core! (Star-Metal Ore)}");
                                 const starStack = state.player.inventory.find(i => i && i.name === 'Star-Metal Ore' && !i.isEquipped);
                                 if (starStack) starStack.quantity += 1;
                                 else if (state.player.inventory.length < invCap) state.player.inventory.push({ templateId: '☄️', name: 'Star-Metal Ore', type: 'junk', quantity: 1, tile: '☄️', isEquipped: false });
+                                else {
+                                    logMessage("{red:Inventory full! The Star-Metal drops to the floor.}");
+                                    window.EventManager.safeDropItem(state, ctx.x, ctx.y, '☄️');
+                                }
                             }
 
                             state.lootedTiles.add(ctx.tileId);
@@ -407,7 +392,7 @@ window.EVENT_DATA = {
                                 logMessage(`{purple:You received a Void Astrolabe!}`);
                             } else {
                                 logMessage(`{red:The merchant hands you the Astrolabe, but your pack is full! It drops.}`);
-                                if (state.mapMode === 'overworld') chunkManager.setWorldTile(ctx.x, ctx.y, '🧭', 24);
+                                window.EventManager.safeDropItem(state, ctx.x, ctx.y, '🧭');
                             }
                             
                             state.lootedTiles.add(ctx.tileId);
@@ -489,6 +474,58 @@ window.EventManager = {
     activeEvent: null,
     activeContext: null,
     isProcessingChoice: false, 
+
+    // 🚨 ARCHITECTURE WIN: Global Helper Methods
+    // Provides a robust, cross-dimensional way for ANY expansion to modify map tiles during events
+    replaceEventTile: function(state, x, y, newTile) {
+        if (typeof chunkManager !== 'undefined') {
+            if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
+                chunkManager.setWorldTile(x, y, newTile);
+            } else if (state.mapMode === 'dungeon') {
+                chunkManager.caveMaps[state.currentCaveId][y][x] = newTile;
+            } else if (state.mapMode === 'castle') {
+                chunkManager.castleMaps[state.currentCastleId][y][x] = newTile;
+            }
+            state.mapDirty = true;
+        }
+    },
+
+    safeDropItem: function(state, startX, startY, itemTile) {
+        let placed = false;
+        let validFloor = '.';
+        if (state.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[state.currentCaveTheme]) {
+            validFloor = CAVE_THEMES[state.currentCaveTheme].floor;
+        }
+
+        if (typeof chunkManager !== 'undefined') {
+            for (let r = 0; r <= 2 && !placed; r++) {
+                for (let dy = -r; dy <= r && !placed; dy++) {
+                    for (let dx = -r; dx <= r && !placed; dx++) {
+                        const tx = startX + dx;
+                        const ty = startY + dy;
+                        let tileAt;
+                        
+                        if (state.mapMode === 'overworld' || state.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
+                        else if (state.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[state.currentCaveId]?.[ty]?.[tx];
+                        else if (state.mapMode === 'castle') tileAt = chunkManager.castleMaps[state.currentCastleId]?.[ty]?.[tx];
+
+                        if (tileAt === validFloor || tileAt === '.') {
+                            if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(tx, ty, itemTile, 24);
+                            else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][ty][tx] = itemTile;
+                            else if (state.mapMode === 'castle') chunkManager.castleMaps[state.currentCastleId][ty][tx] = itemTile;
+                            placed = true;
+                        }
+                    }
+                }
+            }
+            if (!placed) { // Absolute fallback
+                if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(startX, startY, itemTile, 24);
+                else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][startY][startX] = itemTile;
+                else if (state.mapMode === 'castle') chunkManager.castleMaps[state.currentCastleId][startY][startX] = itemTile;
+            }
+            state.mapDirty = true;
+        }
+    },
 
     startEvent: function(eventId, x, y) {
         const eventData = window.EVENT_DATA[eventId];
@@ -622,5 +659,42 @@ window.EventManager = {
         if (document.activeElement) document.activeElement.blur();
     }
 };
+
+// 🚨 BUG FIX WIN: The Ghost Buttons Modal Watcher
+// If the player opened an event modal but closed it via the Escape key, `endEvent` was bypassed.
+// This caused the custom buttons to permanently glue themselves to the UI on standard books/shrines!
+// This observer guarantees the DOM is surgically cleaned the millisecond the modal hides.
+(function initEventCleanupObserver() {
+    // Wait for DOM
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachObserver);
+    } else {
+        attachObserver();
+    }
+
+    function attachObserver() {
+        const loreModal = document.getElementById('loreModal');
+        if (loreModal) {
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.attributeName === 'class' && loreModal.classList.contains('hidden')) {
+                        // Purge event buttons
+                        const oldContainer = document.getElementById('eventChoicesContainer');
+                        if (oldContainer) oldContainer.remove();
+                        
+                        // Restore original close button
+                        const closeBtn = document.getElementById('closeLoreButton');
+                        if (closeBtn) closeBtn.classList.remove('hidden');
+                        
+                        // Nullify state
+                        window.EventManager.activeEvent = null;
+                        window.EventManager.activeContext = null;
+                    }
+                });
+            });
+            observer.observe(loreModal, { attributes: true });
+        }
+    }
+})();
 
 // --- END OF FILE events.js ---
