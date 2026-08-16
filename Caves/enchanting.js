@@ -105,12 +105,12 @@ function renderEnchantingModal() {
             tooltip += `\n\n${cleanDesc}`;
         }
 
-        // Strict Number coercion
+        // 🚨 BUG FIX & ROBUSTNESS: Strict Number coercion to prevent undefined string concatenation
         if (item.type === 'weapon' && item.damage !== undefined) tooltip += `\nDamage: +${Number(item.damage) || 0}`;
         if (item.type === 'armor' && item.defense !== undefined) tooltip += `\nDefense: +${Number(item.defense) || 0}`;
 
         if (item.statBonuses) {
-            const bonuses = Object.entries(item.statBonuses).map(([k,v]) => `+${v} ${k.substring(0,3).toUpperCase()}`).join(', ');
+            const bonuses = Object.entries(item.statBonuses).map(([k,v]) => `+${Number(v) || 0} ${k.substring(0,3).toUpperCase()}`).join(', ');
             tooltip += `\nBonuses: [${bonuses}]`;
         }
         return tooltip;
@@ -410,12 +410,22 @@ function handleEnchant(index) {
             return;
         }
 
+        // --- 🚨 BUG FIX WIN: STACK-SPLITTING CAPACITY CHECK ---
+        // If the item is stacked, we must create a new inventory slot for the upgraded version.
+        // We ensure they have space BEFORE deducting the dust!
+        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+        const dustFreesSlot = (player.inventory[dustIdx].quantity === cost) ? 1 : 0;
+        
+        if (item.quantity > 1 && player.inventory.length - dustFreesSlot >= invCap) {
+            logMessage("{red:Inventory Full! You need an empty slot to enchant a stacked item.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return; 
+        }
+
         player.inventory[dustIdx].quantity -= cost;
         if (player.inventory[dustIdx].quantity <= 0) player.inventory.splice(dustIdx, 1);
 
         // Stack Splitting Failsafe
-        // If the item somehow has a quantity > 1 (due to old save files or bypasses), 
-        // we isolate ONE item to enchant, leaving the rest of the stack alone.
         let targetItem = item;
         if (item.quantity > 1) {
             item.quantity--;
@@ -424,10 +434,12 @@ function handleEnchant(index) {
             player.inventory.push(targetItem);
         }
 
-        // Detach statBonuses from Global Template
-        // Prevents modifying `targetItem.statBonuses` from unintentionally bleeding backwards into ITEM_DATA.
+        // Detach statBonuses and tags from Global Template
+        // Prevents modifying `targetItem` from unintentionally bleeding backwards into ITEM_DATA.
         if (!targetItem.statBonuses) targetItem.statBonuses = {};
         else targetItem.statBonuses = typeof fastClone === 'function' ? fastClone(targetItem.statBonuses) : JSON.parse(JSON.stringify(targetItem.statBonuses));
+        
+        if (targetItem.tags) targetItem.tags = [...targetItem.tags];
 
         let newRarity = 'uncommon';
         if (currentRarity === 'uncommon') newRarity = 'rare';
@@ -447,7 +459,7 @@ function handleEnchant(index) {
             
             const stats = ['strength', 'wits', 'dexterity', 'constitution', 'luck'];
             const randomStat = stats[Math.floor(Math.random() * stats.length)];
-            targetItem.statBonuses[randomStat] = (targetItem.statBonuses[randomStat] || 0) + 1;
+            targetItem.statBonuses[randomStat] = (Number(targetItem.statBonuses[randomStat]) || 0) + 1;
             
             upgradeMsg = `The altar breathes arcane life into the mundane. You forged a ${targetItem.name}!`;
         } 
@@ -463,13 +475,13 @@ function handleEnchant(index) {
                 for (const stat in prefixData.bonus) {
                     if (stat === 'damage') targetItem.damage = (Number(targetItem.damage) || 0) + prefixData.bonus[stat];
                     else if (stat === 'defense') targetItem.defense = (Number(targetItem.defense) || 0) + prefixData.bonus[stat];
-                    else targetItem.statBonuses[stat] = (targetItem.statBonuses[stat] || 0) + prefixData.bonus[stat];
+                    else targetItem.statBonuses[stat] = (Number(targetItem.statBonuses[stat]) || 0) + prefixData.bonus[stat];
                 }
             } else {
                 targetItem.name = `Mystic ${targetItem.name}`;
                 if (targetItem.type === 'weapon') targetItem.damage = (Number(targetItem.damage) || 0) + 1;
                 if (targetItem.type === 'armor') targetItem.defense = (Number(targetItem.defense) || 0) + 1;
-                targetItem.statBonuses.wits = (targetItem.statBonuses.wits || 0) + 1;
+                targetItem.statBonuses.wits = (Number(targetItem.statBonuses.wits) || 0) + 1;
             }
             upgradeMsg = `Arcane runes brand themselves into the surface. It is now a ${targetItem.name}!`;
         } 
@@ -483,13 +495,13 @@ function handleEnchant(index) {
                 for (const stat in suffixData.bonus) {
                     if (stat === 'damage') targetItem.damage = (Number(targetItem.damage) || 0) + suffixData.bonus[stat];
                     else if (stat === 'defense') targetItem.defense = (Number(targetItem.defense) || 0) + suffixData.bonus[stat];
-                    else targetItem.statBonuses[stat] = (targetItem.statBonuses[stat] || 0) + suffixData.bonus[stat];
+                    else targetItem.statBonuses[stat] = (Number(targetItem.statBonuses[stat]) || 0) + suffixData.bonus[stat];
                 }
             } else {
                 targetItem.name = `${targetItem.name} of Power`;
                 if (targetItem.type === 'weapon') targetItem.damage = (Number(targetItem.damage) || 0) + 1;
                 if (targetItem.type === 'armor') targetItem.defense = (Number(targetItem.defense) || 0) + 1;
-                targetItem.statBonuses.strength = (targetItem.statBonuses.strength || 0) + 1;
+                targetItem.statBonuses.strength = (Number(targetItem.statBonuses.strength) || 0) + 1;
             }
             upgradeMsg = `The item hums with a terrifying new power. It is now ${targetItem.name}!`;
         } 
@@ -551,11 +563,12 @@ function handlePurify(index) {
             return;
         }
 
-        // --- STACK-SPLITTING CAPACITY CHECK ---
-        // If the item is stacked, we must create a new inventory slot for the purified version.
+        // --- 🚨 BUG FIX WIN: STACK-SPLITTING CAPACITY CHECK ---
         // We ensure they have space BEFORE deducting the dust!
         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
-        if (item.quantity > 1 && player.inventory.length >= invCap) {
+        const dustFreesSlot = (player.inventory[dustIdx].quantity === PURIFY_COST) ? 1 : 0;
+        
+        if (item.quantity > 1 && player.inventory.length - dustFreesSlot >= invCap) {
             logMessage("{red:Inventory Full! You need an empty slot to purify a stacked item.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return; 
@@ -573,6 +586,9 @@ function handlePurify(index) {
             targetItem.quantity = 1;
             player.inventory.push(targetItem);
         }
+        
+        // Sever tag references natively just in case
+        if (targetItem.tags) targetItem.tags = [...targetItem.tags];
 
         // Strip ALL negative stats!
         if (targetItem.statBonuses) {
