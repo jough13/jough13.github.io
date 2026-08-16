@@ -45,6 +45,12 @@ window.getInventoryCap = function(player) {
         cap += Math.floor(Number(player.bonusCapacity)) || 0;
     }
     
+    // 🚨 EXPANDABILITY WIN: Fire global hook so expansions can alter capacity cleanly!
+    if (typeof window.ExpansionManager !== 'undefined') {
+        const hookRes = window.ExpansionManager.triggerHook('onCalculateInventoryCap', { player: player, currentCap: cap });
+        if (hookRes && hookRes.currentCap !== undefined) cap = hookRes.currentCap;
+    }
+    
     // Absolute floor and ceiling safety
     return Math.max(1, Math.min(cap, ABSOLUTE_MAX_INVENTORY_SLOTS)); 
 };
@@ -91,13 +97,24 @@ window._statCapCache = {
 };
 
 // O(1) Cache for Stat Bar UI pulses
+// 🚨 PERFORMANCE WIN: Pre-mapped UI animation classes!
 window._statColorCache = {
     health: 'stat-pulse-green',
     hunger: 'stat-pulse-green',
     mana: 'stat-pulse-blue',
     thirst: 'stat-pulse-blue',
     stamina: 'stat-pulse-yellow',
-    psyche: 'stat-pulse-purple'
+    psyche: 'stat-pulse-purple',
+    strength: 'stat-pulse-red',
+    wits: 'stat-pulse-blue',
+    constitution: 'stat-pulse-green',
+    dexterity: 'stat-pulse-green',
+    luck: 'stat-pulse-yellow',
+    charisma: 'stat-pulse-yellow',
+    perception: 'stat-pulse-gold',
+    willpower: 'stat-pulse-purple',
+    endurance: 'stat-pulse-yellow',
+    intuition: 'stat-pulse-green'
 };
 
 // ============================================================================
@@ -230,29 +247,26 @@ const gameState = {
         lastHitTime: 0,       
         lastHitDamage: 0,
         
-        strengthBonus: 0,
-        strengthBonusTurns: 0,
-        witsBonus: 0,
-        witsBonusTurns: 0,
-        defenseBonus: 0,
-        defenseBonusTurns: 0,
-        dexterityBonus: 0,
-        dexterityBonusTurns: 0,
-        shieldValue: 0,
-        shieldTurns: 0,
-        thornsValue: 0,
-        thornsTurns: 0,
-        frostbiteTurns: 0,
-        poisonTurns: 0,
-        burnTurns: 0,         
-        rootTurns: 0,
-        madnessTurns: 0,      
-        stunTurns: 0,         
-        candlelightTurns: 0,
-        stealthTurns: 0,
+        // --- BUFF/DEBUFF DURATIONS (Strict Shape Allocation) ---
+        strengthBonus: 0, strengthBonusTurns: 0,
+        witsBonus: 0, witsBonusTurns: 0,
+        defenseBonus: 0, defenseBonusTurns: 0,
+        dexterityBonus: 0, dexterityBonusTurns: 0,
+        constitutionBonus: 0, constitutionBonusTurns: 0,
+        luckBonus: 0, luckBonusTurns: 0,
+        charismaBonus: 0, charismaBonusTurns: 0,
+        willpowerBonus: 0, willpowerBonusTurns: 0,
+        perceptionBonus: 0, perceptionBonusTurns: 0,
+        enduranceBonus: 0, enduranceBonusTurns: 0,
+        intuitionBonus: 0, intuitionBonusTurns: 0,
         
-        fireResistTurns: 0,
-        waterBreathingTurns: 0,
+        shieldValue: 0, shieldTurns: 0,
+        thornsValue: 0, thornsTurns: 0,
+        frostbiteTurns: 0, poisonTurns: 0, burnTurns: 0,         
+        rootTurns: 0, madnessTurns: 0, stunTurns: 0,         
+        candlelightTurns: 0, stealthTurns: 0,
+        fireResistTurns: 0, waterBreathingTurns: 0,
+        
         weatherState: 'calm',
         weatherIntensity: 0,
         weatherDuration: 0,
@@ -342,6 +356,8 @@ const gameState = {
             totalDeaths: 0,
             stepsTaken: 0,
             itemsCrafted: 0,
+            itemsEnchanted: 0,
+            materialsStashed: 0,
             potionsBrewed: 0,
             potionsDrank: 0,      
             itemsIdentified: 0,   
@@ -351,6 +367,7 @@ const gameState = {
             dungeonsCleared: 0,
             secretsFound: 0,
             spellsCast: 0,
+            spellsWoven: 0,
             timesRested: 0,       
             cropsHarvested: 0,    
             treesChopped: 0,      
@@ -371,7 +388,8 @@ const gameState = {
             mimicsDefeated: 0,
             voidRiftsSealed: 0,
             artifactsUnearthed: 0,
-            timesMutated: 0
+            timesMutated: 0,
+            timesAscended: 0
         }
     },
 
@@ -586,6 +604,9 @@ window.modifyVital = function(vital, rawAmount) {
                 gameState.screenShake = Math.max(gameState.screenShake || 0, 35);
                 gameState.screenFlash = { color: '#dc2626', alpha: 0.8, decay: 0.05 };
                 if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playWarning === 'function') AudioSystem.playWarning();
+                
+                // JUICE WIN: Gore Burst
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#991b1b', 30);
             }
             // Huge single physical hit (40% or more of max HP in one blow)
             else if (pctLost >= 0.40) {
