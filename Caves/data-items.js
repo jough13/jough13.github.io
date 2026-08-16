@@ -813,6 +813,12 @@ window.ITEM_DATA = {
         effect: (state) => {
             const gold = 50 + Math.floor(Math.random() * 100);
             state.player.coins += gold;
+            
+            // Tell the Anti-Cheat system this gold is legitimate!
+            if (typeof window.trackLegitimateGold === 'function') {
+                window.trackLegitimateGold(gold);
+            }
+            
             logMessage(`You pry open the chest... Found {gold:${gold} coins}!`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
             
