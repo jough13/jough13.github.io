@@ -250,27 +250,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 try {
                     // Delete the main character document
-                    await db.collection('players').doc(currentUser.uid).collection('characters').doc(slotPendingDeletion).delete();
-                    
-                    const batch = db.batch();
                     const charRef = db.collection('players').doc(currentUser.uid).collection('characters').doc(slotPendingDeletion);
-
-                    // Firestore does not cascade-delete subcollections!
-                    // We must manually fetch and delete backups AND map_data to prevent database bloat!
                     
-                    // 1. Delete Backups & their nested Subcollections
+                    // 🚨 CRITICAL BUG FIX WIN: Dynamic Batched Deletion!
+                    // Previously, if a player explored more than 500 regions (generating 500 map docs), 
+                    // the flat `batch.commit()` would crash and the character would be permanently undeletable!
+                    const batches = [db.batch()];
+                    let opCount = 0;
+                    
+                    const getBatch = () => {
+                        if (opCount >= 450) { // Safety buffer before the 500 limit
+                            batches.push(db.batch());
+                            opCount = 0;
+                        }
+                        opCount++;
+                        return batches[batches.length - 1];
+                    };
+
+                    // 1. Queue Main Document Deletion
+                    getBatch().delete(charRef);
+                    
+                    // 2. Queue Backups & their nested Subcollections
                     const backups = await charRef.collection('backups').get();
                     for (const doc of backups.docs) {
                         const backupMapData = await doc.ref.collection('map_data').get();
-                        backupMapData.forEach(mapDoc => batch.delete(mapDoc.ref));
-                        batch.delete(doc.ref);
+                        backupMapData.forEach(mapDoc => getBatch().delete(mapDoc.ref));
+                        getBatch().delete(doc.ref);
                     }
                     
-                    // 2. Delete Main Map Data
+                    // 3. Queue Main Map Data
                     const mapData = await charRef.collection('map_data').get();
-                    mapData.forEach(doc => batch.delete(doc.ref));
+                    mapData.forEach(doc => getBatch().delete(doc.ref));
 
-                    await batch.commit();
+                    // 4. Commit all batches concurrently!
+                    await Promise.all(batches.map(b => b.commit()));
 
                     // JUICE WIN: Play the heavy death dirge to signify permanent erasure
                     if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playDeath === 'function') {
@@ -419,7 +432,7 @@ function updateCreationSummary() {
         </div>
     ` : '';
     
-    // LORE WIN: Context-Aware "Origin Story" Flavor Text based on the combination chosen!
+    // 🚨 LORE & EXPANDABILITY WIN: Context-Aware "Origin Story" Flavor Text
     let originHtml = '';
     if (creationState.name && creationState.race && creationState.background && typeof stringToSeed === 'function') {
         const origins = [
@@ -429,9 +442,12 @@ function updateCreationSummary() {
             "was exiled from their homeland for a crime they did not commit.",
             "is the last surviving member of their bloodline.",
             "seeks to chart the unmapped boundaries of the Void.",
-            "is driven by an unquenchable thirst for gold and glory."
+            "is driven by an unquenchable thirst for gold and glory.",
+            "seeks their own path in a broken world.",
+            "was drawn to the mysteries of the leylines."
         ];
         
+        // Base Classes
         if (creationState.background === 'necromancer') origins.push("studies the forbidden arts of the Old King.", "seeks to conquer death itself.");
         if (creationState.background === 'mage') origins.push("was expelled from the Academy for reckless experiments.", "feels the leylines humming in their blood.");
         if (creationState.background === 'warrior') origins.push("survived the brutal arenas of the capital.", "fights to honor a fallen comrade.");
@@ -439,6 +455,10 @@ function updateCreationSummary() {
         if (creationState.background === 'wretch') origins.push("has lost absolutely everything.", "is pitied by the gods themselves.");
         if (creationState.background === 'cleric') origins.push("is guided by a blinding, holy light.", "seeks to cleanse the world of the Shadowed Hand.");
         if (creationState.background === 'hunter') origins.push("feels more at home among beasts than men.", "is tracking a legendary monster.");
+        
+        // Expansion Classes
+        if (creationState.background === 'defector') origins.push("fled a dark cult and carries their secrets.", "trusts no one who wears a cowl.");
+        if (creationState.background === 'artisan') origins.push("built a life out of scrap and ingenuity.", "knows the structural weakness of every beast.");
         
         if (creationState.race === 'elf') origins.push("remembers the world before the sky cracked.");
         if (creationState.race === 'dwarf') origins.push("was buried alive, and dug their way out.");
@@ -549,10 +569,12 @@ window.generateRandomName = function() {
     let s = suffixes[Math.floor(Math.random() * suffixes.length)];
     let t = (Math.random() < 0.20) ? titles[Math.floor(Math.random() * titles.length)] : "";
     
-    // Ensure the generated name doesn't exceed our strict 16 character limit
+    // 🚨 BUG FIX: Name bounding logic
+    // We strictly slice the name at 16 characters so long titles like "the Chronomancer"
+    // do not force the name generator to inject invalid characters into the UI!
     let generated = p + s + t;
     if (generated.length > 16) {
-        generated = p + s; // Drop title if it's too long
+        generated = (p + s).substring(0, 16); 
     }
     
     const nameInput = _DOMCache.getNameInput();
