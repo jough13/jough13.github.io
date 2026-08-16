@@ -23,7 +23,7 @@ window.ExpansionManager.register({
                 _rarity: 'uncommon',
                 effect: (state) => {
                     if (state.player.thirst >= state.player.maxThirst && state.player.health >= state.player.maxHealth) {
-                        logMessage("You are completely refreshed.");
+                        logMessage("{gray:You are completely refreshed.}");
                         return false;
                     }
                     if (typeof window.modifyVital === 'function') {
@@ -31,8 +31,8 @@ window.ExpansionManager.register({
                         window.modifyVital('health', 5);
                     } else {
                         // Safe integer clamping fallback
-                        state.player.thirst = Math.floor(Math.min(state.player.maxThirst, state.player.thirst + 50));
-                        state.player.health = Math.floor(Math.min(state.player.maxHealth, state.player.health + 5));
+                        state.player.thirst = Math.floor(Math.min(state.player.maxThirst, Number(state.player.thirst) + 50));
+                        state.player.health = Math.floor(Math.min(state.player.maxHealth, Number(state.player.health) + 5));
                     }
                     logMessage("{blue:The water is perfectly crisp and restorative.}");
                     if (typeof triggerStatAnimation !== 'undefined') {
@@ -45,12 +45,19 @@ window.ExpansionManager.register({
             // --- EXPANSION WIN: New Tactical Items ---
             '🍄l': {
                 name: 'Luminous Spore', type: 'consumable', tile: '🍄',
-                description: "A glowing fungus. Crush it to release a cloud of bioluminescent dust. {gold:Grants Candlelight for 50 turns without costing Mana.}",
+                description: "A glowing fungus. Crush it to release a cloud of bioluminescent dust. {gold:Grants Candlelight for 50 turns and cures Void Madness.}",
                 _rarity: 'uncommon',
                 effect: (state) => {
                     logMessage("{yellow:You crush the spore, and glowing dust fills the air around you!}");
+                    
                     // 🚨 BUG FIX WIN: Accumulate turns instead of resetting to a flat 50!
                     state.player.candlelightTurns = (Number(state.player.candlelightTurns) || 0) + 50;
+                    
+                    // LORE WIN: Cures Madness!
+                    if (state.player.madnessTurns > 0) {
+                        state.player.madnessTurns = 0;
+                        logMessage("{gold:The gentle light banishes the Void's whispers from your mind!}");
+                    }
                     
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#facc15', 15);
@@ -113,31 +120,72 @@ window.ExpansionManager.register({
         },
 
         // --- 3. CUSTOM MICRO-DUNGEON ROOMS ---
+        
+        // 🚨 BUG FIX & ROBUSTNESS WIN: Nested Arrays
+        // Replaced string arrays (e.g. 'W🕸️.🕸️W') with true 2D character arrays.
+        // Javascript splits Emojis in half (UTF-16 surrogate pairs) when iterating over strings by index,
+        // which would cause the engine to crash or print missing character glyphs '' onto the map!
 
         roomTemplates: {
             "Micro Spider Den": {
                 width: 5, height: 5,
-                map: [' WWWWW ', 'W🕸️.🕸️W', 'W..@..W', 'W🕸️.🕸️W', ' WWWWW ']
+                map: [
+                    ['W', 'W', 'W', 'W', 'W'],
+                    ['W', '🕸️', '.', '🕸️', 'W'],
+                    ['W', '.', '@', '.', 'W'],
+                    ['W', '🕸️', '.', '🕸️', 'W'],
+                    ['W', 'W', 'W', 'W', 'W']
+                ]
             },
             "Micro Elder Hollow": {
                 width: 5, height: 5,
-                map: [' WWWWW ', 'W🌿.🌿W', 'W..🌳c.W', 'W🌿.🌿W', ' WWWWW ']
+                map: [
+                    ['W', 'W', 'W', 'W', 'W'],
+                    ['W', '🌿', '.', '🌿', 'W'],
+                    ['W', '.', '🌳c', '.', 'W'],
+                    ['W', '🌿', '.', '🌿', 'W'],
+                    ['W', 'W', 'W', 'W', 'W']
+                ]
             },
             "Micro Glacial Rift": {
                 width: 5, height: 5,
-                map: [' WWWWW ', 'W🧊.🧊W', 'W..Y..W', 'W🧊.🧊W', ' WWWWW ']
+                map: [
+                    ['W', 'W', 'W', 'W', 'W'],
+                    ['W', '🧊', '.', '🧊', 'W'],
+                    ['W', '.', 'Y', '.', 'W'],
+                    ['W', '🧊', '.', '🧊', 'W'],
+                    ['W', 'W', 'W', 'W', 'W']
+                ]
             },
             "Micro Lava Vent": {
                 width: 5, height: 5,
-                map: [' WWWWW ', 'W🔥.🔥W', 'W..f..W', 'W🔥.🔥W', ' WWWWW ']
+                map: [
+                    ['W', 'W', 'W', 'W', 'W'],
+                    ['W', '🔥', '.', '🔥', 'W'],
+                    ['W', '.', 'f', '.', 'W'],
+                    ['W', '🔥', '.', '🔥', 'W'],
+                    ['W', 'W', 'W', 'W', 'W']
+                ]
             },
             "Micro Oasis Grotto": {
                 width: 5, height: 5,
-                map: [' WWWWW ', 'W🌿.🌿W', 'W.~🐸~W', 'W🌿.🌿W', ' WWWWW ']
+                map: [
+                    ['W', 'W', 'W', 'W', 'W'],
+                    ['W', '🌿', '.', '🌿', 'W'],
+                    ['W', '.', '🐸', '.', 'W'],
+                    ['W', '🌿', '.', '🌿', 'W'],
+                    ['W', 'W', 'W', 'W', 'W']
+                ]
             },
             "Micro Forgotten Cellar": {
                 width: 5, height: 5,
-                map: [' WWWWW ', 'W🛢..📦W', 'W..Z..W', 'W⚰️...W', ' WWWWW ']
+                map: [
+                    ['W', 'W', 'W', 'W', 'W'],
+                    ['W', '🛢', '.', '📦', 'W'],
+                    ['W', '.', 'Z', '.', 'W'],
+                    ['W', '⚰️', '.', '.', 'W'],
+                    ['W', 'W', 'W', 'W', 'W']
+                ]
             }
         },
         
@@ -207,7 +255,7 @@ window.ExpansionManager.register({
                     
                     const room = (typeof window.CAVE_ROOM_TEMPLATES !== 'undefined' && window.CAVE_ROOM_TEMPLATES[roomKey]) 
                         ? window.CAVE_ROOM_TEMPLATES[roomKey] 
-                        : { width: 5, height: 5, map: [' WWWWW ', 'W.....W', 'W..g..W', 'W.....W', ' WWWWW '] };
+                        : { width: 5, height: 5, map: [['W','W','W','W','W'],['W','.','.','.','W'],['W','.','g','.','W'],['W','.','.','.','W'],['W','W','W','W','W']] };
                     
                     const mapHeight = room.height + 2;
                     const mapWidth = room.width + 2;
@@ -257,7 +305,7 @@ window.ExpansionManager.register({
                             isBoss: true, 
                             isElite: true, 
                             maxHealth: Math.floor((Number(bossClone.maxHealth) || 20) * 3), 
-                            attack: Math.floor((Number(bossClone.attack) || 5) * 1.5), // 🚨 BUG FIX: Scaled damage as well!
+                            attack: Math.floor((Number(bossClone.attack) || 5) * 1.5), 
                             xp: Math.floor((Number(bossClone.xp) || 20) * 4) 
                         };
                         
@@ -295,6 +343,7 @@ window.ExpansionManager.register({
             chunkManager.generateChunk = function(chunkX, chunkY) {
                 origGenerateChunk.call(this, chunkX, chunkY);
                 
+                // Only spawn new anomalies in the Prime Realm!
                 if (typeof gameState !== 'undefined' && gameState.currentRealm !== 0 && gameState.currentRealm) return;
 
                 const chunkId = `${chunkX},${chunkY}`;
@@ -311,7 +360,8 @@ window.ExpansionManager.register({
                     
                     // Allow spawning on standard wilderness tiles
                     const allowedTerrain = ['F', '🌳', '≈', '❄️', '🧊', 'D', 'd', '.', '🧱'];
-                    // 🚨 BUG FIX: Replaced `return` with falling through cleanly so other expansion generation isn't interrupted
+                    
+                    // Safe injection prevents overwriting existing structures!
                     if (allowedTerrain.includes(tile)) {
                         if (tile === 'F' || tile === '🌳') chunkData[ry][rx] = '🌲h'; 
                         else if (tile === '≈') chunkData[ry][rx] = '🕸️b'; 
@@ -367,7 +417,26 @@ window.ExpansionManager.register({
                                     
                                     // 🌧️ SPRING SHOWERS: Rain sprouts flora in forests!
                                     else if (gameState.weather === 'rain' && tile === 'F') {
-                                        if (Math.random() < 0.02) {
+                                        // 🚨 BUG FIX & PROTECTION WIN: 
+                                        // Ensure we don't accidentally overwrite a dropped item, an NPC, or a quest marker!
+                                        let isTileOccupied = false;
+                                        
+                                        // 1. Check for live enemies
+                                        if (gameState.sharedEnemies[`overworld:${tx},${-ty}`]) isTileOccupied = true;
+                                        
+                                        // 2. Check for worldState items (dropped loot, user chalk, etc.)
+                                        const cx = Math.floor(tx / 16);
+                                        const cy = Math.floor(ty / 16);
+                                        const chunkId = `${cx},${cy}`;
+                                        const lx = ((tx % 16) + 16) % 16;
+                                        const ly = ((ty % 16) + 16) % 16;
+                                        const tileKey = `${lx},${ly}`;
+                                        
+                                        if (chunkManager.worldState[chunkId] && chunkManager.worldState[chunkId][tileKey]) {
+                                            isTileOccupied = true;
+                                        }
+
+                                        if (!isTileOccupied && Math.random() < 0.02) {
                                             // 5% chance for Luminous Spore, otherwise normal flora
                                             const roll = Math.random();
                                             if (roll > 0.95) newTile = '🍄l';
@@ -382,7 +451,14 @@ window.ExpansionManager.register({
 
                                     // ⚡ DEADLANDS STORMS: Lightning ignites the ash!
                                     else if (gameState.weather === 'storm' && tile === 'd') {
-                                        if (Math.random() < 0.01) {
+                                        // Protection against overwriting items!
+                                        let isTileOccupied = false;
+                                        if (gameState.sharedEnemies[`overworld:${tx},${-ty}`]) isTileOccupied = true;
+                                        const cx = Math.floor(tx / 16); const cy = Math.floor(ty / 16);
+                                        const lx = ((tx % 16) + 16) % 16; const ly = ((ty % 16) + 16) % 16;
+                                        if (chunkManager.worldState[`${cx},${cy}`] && chunkManager.worldState[`${cx},${cy}`][`${lx},${ly}`]) isTileOccupied = true;
+                                        
+                                        if (!isTileOccupied && Math.random() < 0.01) {
                                             newTile = '🔥';
                                             ttlHours = 0.5; // Lasts 30 mins
                                             particleColor = '#facc15';
@@ -391,7 +467,6 @@ window.ExpansionManager.register({
                                     
                                     // --- APPLY BATCHED UPDATES ---
                                     if (newTile) {
-                                        // Modulo math with negatives
                                         const cx = Math.floor(tx / 16);
                                         const cy = Math.floor(ty / 16);
                                         const lx = ((tx % 16) + 16) % 16;
