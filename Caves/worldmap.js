@@ -9,6 +9,9 @@ const worldMapCanvas = document.getElementById('worldMapCanvas');
 const worldMapCtx = worldMapCanvas.getContext('2d', { alpha: false }); // PERFORMANCE WIN: Disable alpha buffer for the main canvas!
 const mapCoordsDisplay = document.getElementById('mapCoords');
 
+// Localized math constants to prevent cross-file dependency crashes
+const TWO_PI = Math.PI * 2; 
+
 // Settings & State
 let currentMapScale = 4; 
 let targetMapScale = 4;
@@ -423,11 +426,6 @@ function renderWorldMap() {
 
     // LORE EXPANSION: Dynamic Region Watermarks
     const regSize = typeof REGION_SIZE !== 'undefined' ? REGION_SIZE : 160;
-    const startWorldX = mapCamera.x - (logicalWidth / 2) / currentMapScale;
-    const endWorldX = mapCamera.x + (logicalWidth / 2) / currentMapScale;
-    const startWorldY = mapCamera.y - (logicalHeight / 2) / currentMapScale;
-    const endWorldY = mapCamera.y + (logicalHeight / 2) / currentMapScale;
-
     const startRegX = Math.floor(startWorldX / regSize);
     const endRegX = Math.floor(endWorldX / regSize);
     const startRegY = Math.floor(startWorldY / regSize);
@@ -709,9 +707,14 @@ function renderWorldMap() {
             let tooltipX = hScreenX + currentMapScale + 8;
             let tooltipY = hScreenY + currentMapScale / 2;
             
-            // Shift left if it hits the edge of the map bounds
+            // Shift left if it hits the right edge
             if (tooltipX + boxWidth > logicalWidth) {
                 tooltipX = hScreenX - boxWidth - 8;
+            }
+            
+            // 🚨 BUG FIX: Shift down if it hits the top edge
+            if (tooltipY - 12 - padY < 0) {
+                tooltipY = hScreenY + currentMapScale + boxHeight; 
             }
             
             worldMapCtx.fillStyle = 'rgba(255, 255, 255, 0.85)';
@@ -1012,6 +1015,7 @@ worldMapCanvas.addEventListener('contextmenu', (e) => {
 
 // UX WIN: Touch Support for Mobile Pan/Zoom
 let initialPinchDist = null;
+let touchPinchCentroid = { x: 0, y: 0 };
 
 worldMapCanvas.addEventListener('touchstart', (e) => {
     if (e.touches.length === 1) {
@@ -1041,6 +1045,11 @@ worldMapCanvas.addEventListener('touchstart', (e) => {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
         initialPinchDist = Math.sqrt(dx * dx + dy * dy);
+        
+        // 🚀 UX WIN: Capture the midpoint between the fingers to zoom into that exact spot!
+        const rect = worldMapCanvas.getBoundingClientRect();
+        touchPinchCentroid.x = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
+        touchPinchCentroid.y = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
     }
     hoverWorldX = null; 
 }, { passive: false });
@@ -1064,8 +1073,20 @@ worldMapCanvas.addEventListener('touchmove', (e) => {
         const zoomDelta = currentDist / initialPinchDist;
         initialPinchDist = currentDist; // Reset for smooth continuous zooming
 
+        const centerX = Math.floor(worldMapCanvas.clientWidth / 2);
+        const centerY = Math.floor(worldMapCanvas.clientHeight / 2);
+
+        // 1. Find exactly what world coordinate the pinch is hovering over right now
+        const worldXAtPinch = (touchPinchCentroid.x - centerX) / targetMapScale + targetMapCamera.x;
+        const worldYAtPinch = (touchPinchCentroid.y - centerY) / targetMapScale + targetMapCamera.y;
+
+        // 2. Apply the zoom
         targetMapScale *= zoomDelta;
         targetMapScale = Math.max(0.5, Math.min(32, targetMapScale));
+
+        // 3. Shift the camera so the world coordinate stays perfectly pinned under the fingers!
+        targetMapCamera.x = worldXAtPinch - (touchPinchCentroid.x - centerX) / targetMapScale;
+        targetMapCamera.y = worldYAtPinch - (touchPinchCentroid.y - centerY) / targetMapScale;
     }
 }, { passive: false });
 
@@ -1085,9 +1106,11 @@ worldMapCanvas.addEventListener('wheel', (e) => {
     const centerX = Math.floor(worldMapCanvas.clientWidth / 2);
     const centerY = Math.floor(worldMapCanvas.clientHeight / 2);
     
-    // 1. Find exactly what world coordinate the mouse is hovering over right now based on target scale
-    const worldXAtMouse = (mouseX - centerX) / targetMapScale + targetMapCamera.x;
-    const worldYAtMouse = (mouseY - centerY) / targetMapScale + targetMapCamera.y;
+    // 🚨 BUG FIX WIN: Accurate Zoom-to-Cursor
+    // Previously used `targetMapScale`, which caused the cursor tracking to drift wildly 
+    // because `currentMapScale` lerps smoothly over time. Now it locks perfectly to the visual layer!
+    const worldXAtMouse = (mouseX - centerX) / currentMapScale + mapCamera.x;
+    const worldYAtMouse = (mouseY - centerY) / currentMapScale + mapCamera.y;
 
     // 2. Apply the zoom smoothly via a multiplier rather than a raw addition
     if (e.deltaY < 0) {
@@ -1100,6 +1123,7 @@ worldMapCanvas.addEventListener('wheel', (e) => {
     targetMapScale = Math.max(0.5, Math.min(32, targetMapScale));
 
     // 3. Shift the camera so the world coordinate stays perfectly pinned under the mouse!
+    // Notice we use the NEW targetMapScale here so the camera lerp knows where it needs to end up!
     targetMapCamera.x = worldXAtMouse - (mouseX - centerX) / targetMapScale;
     targetMapCamera.y = worldYAtMouse - (mouseY - centerY) / targetMapScale;
     
