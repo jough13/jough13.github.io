@@ -104,9 +104,10 @@ window._statColorCache = {
 // MASTER GAME STATE (THE "SINGLE SOURCE OF TRUTH")
 // ============================================================================
 
-// V8 MEMORY OPTIMIZATION: Strict Object Shape
-// Every possible variable the player or world could ever have is pre-defined here.
-// This locks the Hidden Class in the browser's JavaScript engine, making state lookups incredibly fast.
+// 🚨 V8 MEMORY OPTIMIZATION: Strict Object Shape
+// Every possible variable the player or world could ever have across ALL expansions is pre-defined here.
+// This locks the "Hidden Class" in the browser's JavaScript engine, making state lookups incredibly fast
+// and preventing lag spikes when a new expansion activates a feature for the first time.
 const gameState = {
     // --- System & Engine State ---
     saveVersion: "0.3.0", 
@@ -179,6 +180,8 @@ const gameState = {
         isFishing: false,     
         isCrafting: false,    
         mountName: null,      
+        isCrouching: false,
+        suspicion: 0,
         
         chatBubble: null,     
         chatTimer: 0,
@@ -226,12 +229,15 @@ const gameState = {
         lastCombatTime: 0,    
         lastHitTime: 0,       
         lastHitDamage: 0,
+        
         strengthBonus: 0,
         strengthBonusTurns: 0,
         witsBonus: 0,
         witsBonusTurns: 0,
         defenseBonus: 0,
         defenseBonusTurns: 0,
+        dexterityBonus: 0,
+        dexterityBonusTurns: 0,
         shieldValue: 0,
         shieldTurns: 0,
         thornsValue: 0,
@@ -290,17 +296,33 @@ const gameState = {
         obeliskProgress: [],   
         cartographerProgress: 0, 
         
+        // Expansion Specific Variables
         craftingLevel: 1, 
         craftingXp: 0, 
         craftingXpToNext: 50,
         fishingLevel: 1,
         fishingXp: 0,
         fishingRecords: {},    
-        
         farmingLevel: 1,       
         farmingXp: 0,
         farmingXpToNext: 50,
-        gardenPlots: [],       
+        gardenPlots: [null, null, null],       
+        guildTag: null,
+        pvpEnabled: false,
+        bounty: 0,
+        builtHouses: [],
+        rescuedNpcs: [],
+        lastBotanistDay: 0,
+        generation: 0,
+        customSpells: {},
+        spireBackupInv: null,
+        spireBackupEquip: null,
+        activeHunt: null,
+
+        // System Locks
+        _isDying: false,
+        _fatalMutators: null,
+        _raidEntryTurn: null,
 
         unlockedWaypoints: [], 
         discoveredPOIs: [],    
@@ -315,14 +337,14 @@ const gameState = {
             highestLevel: 1,      
             deepestFloor: 1,      
             totalKills: 0,
-            bossKills: {},        // Added dedicated boss kill dict
+            bossKills: {},        
             bossesDefeated: 0,
             totalDeaths: 0,
             stepsTaken: 0,
             itemsCrafted: 0,
             potionsBrewed: 0,
-            potionsDrank: 0,      // Added potion tracking
-            itemsIdentified: 0,   // Added ID tracking
+            potionsDrank: 0,      
+            itemsIdentified: 0,   
             goldEarned: 0,
             goldSpent: 0,         
             fishCaught: 0,
@@ -331,8 +353,8 @@ const gameState = {
             spellsCast: 0,
             timesRested: 0,       
             cropsHarvested: 0,    
-            treesChopped: 0,      // Added tree chopping tracking
-            oresMined: 0,         // Added mining tracking
+            treesChopped: 0,      
+            oresMined: 0,         
             leylinesUsed: 0,
             damageTaken: 0,
             environmentalDamageTaken: 0, 
@@ -417,7 +439,10 @@ const gameState = {
 window.clampAllVitals = function() {
     const p = gameState.player;
     if (!p) return;
-    p.health = Math.max(1, Math.min(p.maxHealth || 10, p.health));
+    
+    // 🚨 BUG FIX WIN: Clamp Health to 0 minimum instead of 1.
+    // If a player was dead (HP 0), this function would accidentally resurrect them as a 1 HP zombie!
+    p.health = Math.max(0, Math.min(p.maxHealth || 10, p.health));
     p.mana = Math.max(0, Math.min(p.maxMana || 10, p.mana));
     p.stamina = Math.max(0, Math.min(p.maxStamina || 10, p.stamina));
     p.psyche = Math.max(0, Math.min(p.maxPsyche || 10, p.psyche));
@@ -445,7 +470,7 @@ window.modifyVital = function(vital, rawAmount) {
     // The Absolute Death Shield
     // If the player is already dead or mid-death sequence, completely ignore all further incoming damage!
     // This prevents batched AoE attacks or direct script calls from triggering the death sequence multiple times.
-    if (vital === 'health' && amount < 0 && (p.health <= 0 || gameState.isDead || gameState._isExecutingDeath)) {
+    if (vital === 'health' && amount < 0 && (p.health <= 0 || gameState.isDead || p._isDying || gameState._isExecutingDeath)) {
         return 0;
     }
     
@@ -525,7 +550,10 @@ window.modifyVital = function(vital, rawAmount) {
     
     // O(1) Pre-cached max vital lookup bypasses string manipulation
     const maxKey = window._statCapCache[vital] || ('max' + vital.charAt(0).toUpperCase() + vital.slice(1));
-    const maxVal = Math.round(Number(p[maxKey])) || 100; // Failsafe fallback
+    
+    // 🚨 FUTURE-PROOFING WIN: If an expansion modifies a stat that doesn't have a max cap (like heat/sanity),
+    // we fall back to Infinity so we don't accidentally clamp it at 100!
+    const maxVal = p[maxKey] !== undefined ? (Math.round(Number(p[maxKey])) || 0) : Infinity; 
     
     const oldVal = Math.round(Number(p[vital])) || 0; // Strict coercion
     let newVal = oldVal + amount;
