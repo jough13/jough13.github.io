@@ -28,7 +28,7 @@ const firebaseConfig = {
 // the entire game will fatally crash. This intercepts the failure, warns the player gracefully,
 // and injects a fully robust mock API so the game runs flawlessly in offline mode!
 if (typeof firebase === 'undefined') {
-    console.error("%c[AKASHIC ENGINE] FATAL: Firebase SDK not found. Connection to the Leylines blocked.", "color: #ef4444; font-weight: bold;");
+    console.error("%c[AKASHIC ENGINE] FATAL: Firebase SDK not found. Connection to the Leylines blocked. Falling back to local emulation.", "color: #ef4444; font-weight: bold;");
     
     // --- FIRESTORE MOCK ---
     const dummyFirestoreRef = {
@@ -71,18 +71,27 @@ if (typeof firebase === 'undefined') {
             try {
                 // Allows the native game code to process the transaction locally
                 const res = cb(null);
+                
+                // 🚨 BUG FIX WIN: Accurate Transaction Mocking
+                // If a transaction callback returns undefined, it implies an abort in standard RTDB.
+                if (res === undefined) {
+                    return { committed: false, snapshot: { val: () => null } };
+                }
+                
                 return { committed: true, snapshot: { val: () => res } };
             } catch(e) {
                 return { committed: false, snapshot: { val: () => null } };
             }
         },
         // Chaining methods required by the Chat & AI systems
-        orderByChild: function() { return dummyRTDBRef; },
-        limitToLast: function() { return dummyRTDBRef; },
-        onDisconnect: function() { return dummyRTDBRef; }
+        orderByChild: function() { return this; },
+        limitToLast: function() { return this; },
+        onDisconnect: function() { return this; }
     };
 
     // --- ASSEMBLE GLOBAL MOCK ---
+    const mockUser = { email: 'offline@cavesandcastles.local', uid: 'offline_guest', isAnonymous: true };
+    
     window.firebase = { 
         apps: [], 
         initializeApp: () => ({}), 
@@ -91,13 +100,14 @@ if (typeof firebase === 'undefined') {
             FieldValue: { serverTimestamp: () => Date.now(), delete: () => null, arrayUnion: () => [] }
         }),
         auth: () => ({ 
-            onAuthStateChanged: () => {},
-            signInAnonymously: async () => ({ user: { uid: 'guest', isAnonymous: true, email: 'guest@cavesandcastles.com' } }), 
-            signInWithEmailAndPassword: async () => ({ user: { uid: 'dummy' } }), 
-            createUserWithEmailAndPassword: async () => ({ user: { uid: 'dummy' } }),
+            // 🚨 CRITICAL FIX: Simulate auth resolution so the bootloader doesn't soft-lock!
+            onAuthStateChanged: (cb) => { setTimeout(() => cb(mockUser), 150); },
+            signInAnonymously: async () => ({ user: mockUser }), 
+            signInWithEmailAndPassword: async () => ({ user: mockUser }), 
+            createUserWithEmailAndPassword: async () => ({ user: mockUser }),
             signOut: async () => {},
             setPersistence: async () => {},
-            currentUser: { email: 'offline@cavesandcastles.com', uid: 'offline' },
+            currentUser: mockUser,
             Auth: { Persistence: { LOCAL: 'local', SESSION: 'session' } }
         }), 
         database: Object.assign(() => dummyRTDBRef, {
@@ -557,7 +567,8 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
         if (obj.size === 0) return null;
         const newObj = {};
         for (const [key, val] of obj) {
-            newObj[key] = sanitizeForFirebase(val, seen, depth + 1);
+            // 🚨 ROBUSTNESS WIN: Coerce Map keys to strings to prevent Firebase rejection!
+            newObj[String(key)] = sanitizeForFirebase(val, seen, depth + 1);
         }
         return newObj;
     }
