@@ -17,7 +17,7 @@ function renderHotbar() {
 
     // Absolute positioned label that sits on the border/top-left
     const label = document.createElement('div');
-    label.className = 'absolute -top-3 left-2 text-[10px] uppercase font-bold text-gray-400 tracking-widest bg-[var(--bg-panel)] px-1';
+    label.className = 'absolute -top-3 left-2 text-[10px] uppercase font-bold text-gray-400 tracking-widest bg-[var(--bg-panel)] px-1 shadow-sm rounded-sm';
     label.textContent = 'Hotkeys';
     hotbarContainerEl.appendChild(label);
 
@@ -57,6 +57,7 @@ function renderHotbar() {
         slotDiv.dataset.index = index;
         
         let slotClasses = "hotbar-slot relative w-12 h-12 border-2 rounded flex items-center justify-center cursor-pointer bg-[var(--bg-page)] transition-all shadow-sm";
+        let isSlotEmpty = false;
         
         // --- JUICE WIN: Active Telegraphing ---
         // Dynamically resolve aiming states for items that have internal system prefixes!
@@ -73,13 +74,11 @@ function renderHotbar() {
             slotClasses += " hover:border-blue-500";
         }
         
-        // We will apply slotClasses to className *after* checking item rarity below!
-
         // EXPANDABILITY WIN: If the hotbar ever expands to 10 slots, slot 10 safely renders as '0'
         const hotkeyNumber = (index + 1) % 10 === 0 && index !== 0 ? 0 : index + 1;
 
         const keyHint = document.createElement('span');
-        keyHint.className = "absolute top-0 left-1 text-[10px] font-bold text-[var(--text-muted)] z-20";
+        keyHint.className = "absolute top-0 left-1 text-[10px] font-bold text-[var(--text-muted)] z-20 pointer-events-none";
         keyHint.textContent = hotkeyNumber;
         slotDiv.appendChild(keyHint);
 
@@ -90,195 +89,197 @@ function renderHotbar() {
             // 🚨 ROBUSTNESS WIN: Corrupted Slot Failsafe
             // If the player uninstalled an expansion or performed a prestige reset that wiped their spellbook,
             // but the hotbar wasn't cleared, the slot will point to nothing and crash.
-            // We verify they still actually own the spell/skill before rendering it!
             if (skillData && (!player.skillbook || !player.skillbook[abilityId])) {
                 player.hotbar[index] = null;
                 hotbarMutated = true;
-                return;
+                isSlotEmpty = true;
             }
-            if (spellData && (!player.spellbook || !player.spellbook[abilityId])) {
+            else if (spellData && (!player.spellbook || !player.spellbook[abilityId])) {
                 player.hotbar[index] = null;
                 hotbarMutated = true;
-                return;
+                isSlotEmpty = true;
             }
-            
-            let invItem = inventorySample.get(abilityId);
-            let totalQty = inventoryTotals.get(abilityId) || 0;
-            let itemData = typeof ITEM_DATA !== 'undefined' ? ITEM_DATA[abilityId] : null;
-            
-            // ROBUSTNESS & PERFORMANCE WIN: Match dynamic prefixed items against their base template!
-            // If we don't have a direct key match, scan for the base name using O(1) cache.
-            if (!itemData && typeof ITEM_DATA !== 'undefined') {
-                if (window._hotbarItemKeyCache[abilityId]) {
-                    itemData = ITEM_DATA[window._hotbarItemKeyCache[abilityId]];
-                } else {
-                    const itemKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === abilityId);
-                    if (itemKey) {
-                        window._hotbarItemKeyCache[abilityId] = itemKey;
-                        itemData = ITEM_DATA[itemKey];
+            else {
+                let invItem = inventorySample.get(abilityId);
+                let totalQty = inventoryTotals.get(abilityId) || 0;
+                let itemData = typeof ITEM_DATA !== 'undefined' ? ITEM_DATA[abilityId] : null;
+                
+                // Fetch template data for dynamically prefixed items
+                if (!itemData && typeof ITEM_DATA !== 'undefined') {
+                    if (window._hotbarItemKeyCache[abilityId]) {
+                        itemData = ITEM_DATA[window._hotbarItemKeyCache[abilityId]];
+                    } else {
+                        const itemKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === abilityId);
+                        if (itemKey) {
+                            window._hotbarItemKeyCache[abilityId] = itemKey;
+                            itemData = ITEM_DATA[itemKey];
+                        }
                     }
                 }
-            }
 
-            if (skillData || spellData) {
-                const data = skillData || spellData;
-                
-                // --- 🚨 UX WIN: Out of Mana/Stamina (OOM) Indication ---
-                let isOOM = false;
-                let actualCost = data.cost || 0;
-                
-                if (spellData) {
-                    if (spellData.costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
-                        actualCost = Math.floor(actualCost * 0.8);
-                    }
-                    if (player[spellData.costType] < actualCost) isOOM = true;
-                } else if (skillData) {
-                    if (player[skillData.costType] < actualCost) isOOM = true;
-                }
-                
-                if (isOOM) {
-                    slotClasses += " opacity-60 grayscale-[50%]";
-                    // Subtle colored border based on what you are missing!
-                    if (data.costType === 'mana') slotClasses += " border-blue-900";
-                    else if (data.costType === 'stamina') slotClasses += " border-yellow-900";
-                    else if (data.costType === 'psyche') slotClasses += " border-purple-900";
-                }
-                
-                slotDiv.className = slotClasses; // Apply base classes
-                
-                const abrv = document.createElement('span');
-                
-                let colorClass = "text-gray-200";
-                if (spellData) {
-                    const sName = data.name || "";
-                    // Color-code the spell icons natively based on their element!
-                    if (sName.includes("Fire") || sName.includes("Meteor") || sName.includes("Pact") || sName.includes("Boil")) colorClass = "text-orange-400";
-                    else if (sName.includes("Frost")) colorClass = "text-cyan-300";
-                    else if (sName.includes("Poison") || sName.includes("Entangle") || sName.includes("Venom") || sName.includes("Acid")) colorClass = "text-green-400";
-                    else if (sName.includes("Divine") || sName.includes("Heal") || sName.includes("Nova") || sName.includes("Holy")) colorClass = "text-yellow-400";
-                    else if (sName.includes("Dark") || sName.includes("Siphon") || sName.includes("Smoke")) colorClass = "text-red-500";
-                    else if (sName.includes("Lightning") || sName.includes("Thunder")) colorClass = "text-yellow-300";
-                    else colorClass = "text-blue-300";
-                } else if (skillData) {
-                    colorClass = "text-yellow-500"; 
-                }
-
-                abrv.className = `font-bold text-sm ${colorClass} drop-shadow-md`;
-                abrv.textContent = (data.name || '??').substring(0, 2).toUpperCase(); 
-                
-                // SECURITY & LORE WIN: Detailed, escaped tooltips
-                const safeDataName = typeof escapeHtml === 'function' ? escapeHtml(data.name || 'Unknown') : (data.name || 'Unknown');
-                let tooltipDmg = data.baseDamage ? `\nBase Dmg: ${data.baseDamage}` : '';
-                if (data.baseHeal) tooltipDmg = `\nHeals: ${data.baseHeal}`;
-                if (data.baseShield) tooltipDmg = `\nShields: ${data.baseShield}`;
-                
-                // 🚨 BUG FIX: Ensure the OOM string is completely defined before appending to prevent undefined bugs
-                let oomWarning = '';
-                if (isOOM && data.costType) {
-                    const cleanType = data.costType.charAt(0).toUpperCase() + data.costType.slice(1);
-                    oomWarning = `\n(Not enough ${cleanType})`;
-                }
-                
-                slotDiv.title = `[${hotkeyNumber}] ${safeDataName}\nCost: ${actualCost} ${data.costType || 'Resource'}${tooltipDmg}${oomWarning}\n(Right-click to unbind)`;
-                slotDiv.appendChild(abrv);
-
-                // --- JUICE WIN: Dynamic Cooldown Colors ---
-                if (cooldowns[abilityId] > 0) {
-                    slotDiv.classList.add('cursor-not-allowed', 'border-red-900', 'grayscale');
-                    const cd = cooldowns[abilityId];
-                    const cdOverlay = document.createElement('div');
-                    // Flashes yellow if only 1 turn left, otherwise menacing red
-                    const cdColor = cd === 1 ? 'text-yellow-400' : 'text-red-400';
+                if (skillData || spellData) {
+                    const data = skillData || spellData;
                     
-                    cdOverlay.className = `absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-[2px] ${cdColor} font-bold text-xl rounded shadow-inner animate-pulse z-20`;
-                    cdOverlay.textContent = cd;
-                    slotDiv.appendChild(cdOverlay);
-                }
-            } else if (invItem || itemData) {
-                const displayName = invItem ? invItem.name : (itemData ? itemData.name : 'Unknown Item');
-                const displayTile = invItem ? (invItem.tile || '🎒') : (itemData ? (itemData.tile || '🎒') : '🎒');
-                const rarity = invItem ? invItem._rarity : (itemData ? itemData._rarity : null);
-                
-                // 🚨 BUG FIX & PERFORMANCE WIN: Batched Auto-Clearing
-                // If the item is completely depleted and it's a disposable type, wipe it.
-                // Ensures we DO NOT attempt to render an empty div!
-                if (totalQty <= 0 && typeof playerRef !== 'undefined') {
-                    const isDisposable = itemData && (itemData.type === 'consumable' || itemData.type === 'ammo');
-                    if (isDisposable) {
-                        player.hotbar[index] = null;
-                        hotbarMutated = true;
-                        return; // Skip rendering this slot entirely
+                    // --- 🚨 UX WIN: Out of Mana/Stamina (OOM) Indication ---
+                    let isOOM = false;
+                    let actualCost = Number(data.cost) || 0;
+                    
+                    if (spellData) {
+                        if (spellData.costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
+                            actualCost = Math.floor(actualCost * 0.8);
+                        }
                     }
-                }
-                
-                // --- JUICE WIN: Apply Rarity Colors and Glows to Hotbar! ---
-                let iconColorClass = "text-gray-200";
-                if (rarity && totalQty > 0) {
-                    if (rarity === 'uncommon') {
-                        iconColorClass = 'text-green-400';
-                        slotClasses += ' border-green-800';
-                    } else if (rarity === 'rare') {
-                        iconColorClass = 'text-purple-400';
-                        slotClasses += ' border-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.3)]';
-                    } else if (rarity === 'epic') {
-                        iconColorClass = 'text-red-400';
-                        slotClasses += ' border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.3)]';
-                    } else if (rarity === 'legendary') {
-                        iconColorClass = 'text-yellow-400 text-magic-shimmer';
-                        slotClasses += ' border-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]';
+                    
+                    // Safe numeric coercion
+                    if ((Number(player[data.costType]) || 0) < actualCost) {
+                        isOOM = true;
                     }
-                }
-                slotDiv.className = slotClasses;
-                
-                const iconSpan = document.createElement('span');
-                iconSpan.className = `font-bold text-2xl drop-shadow-md z-10 ${iconColorClass}`;
-                iconSpan.textContent = displayTile;
-                
-                // Escape tooltip names!
-                const safeDisplayName = typeof escapeHtml === 'function' ? escapeHtml(displayName) : displayName;
-                slotDiv.title = `[${hotkeyNumber}] ${safeDisplayName} (Qty: ${totalQty})\n(Right-click to unbind)`;
-                slotDiv.appendChild(iconSpan);
-                
-                // Format 999+ so massive stacks don't overflow the UI box
-                const displayQty = totalQty > 999 ? '999+' : totalQty;
-                const qtyBadge = document.createElement('span');
-                qtyBadge.className = "absolute bottom-0 right-0 text-[10px] bg-black bg-opacity-70 text-white px-1 rounded-tl font-bold border border-gray-700 z-20";
-                qtyBadge.textContent = displayQty;
-                slotDiv.appendChild(qtyBadge);
+                    
+                    if (isOOM) {
+                        slotClasses += " opacity-60 grayscale-[50%]";
+                        // Subtle colored border based on what you are missing!
+                        if (data.costType === 'mana') slotClasses += " border-blue-900";
+                        else if (data.costType === 'stamina') slotClasses += " border-yellow-900";
+                        else if (data.costType === 'psyche') slotClasses += " border-purple-900";
+                    }
+                    
+                    slotDiv.className = slotClasses; 
+                    
+                    const abrv = document.createElement('span');
+                    
+                    let colorClass = "text-gray-200";
+                    if (spellData) {
+                        const sName = data.name || "";
+                        // Color-code the spell icons natively based on their element!
+                        if (sName.includes("Fire") || sName.includes("Meteor") || sName.includes("Pact") || sName.includes("Boil")) colorClass = "text-orange-400";
+                        else if (sName.includes("Frost")) colorClass = "text-cyan-300";
+                        else if (sName.includes("Poison") || sName.includes("Entangle") || sName.includes("Venom") || sName.includes("Acid")) colorClass = "text-green-400";
+                        else if (sName.includes("Divine") || sName.includes("Heal") || sName.includes("Nova") || sName.includes("Holy")) colorClass = "text-yellow-400";
+                        else if (sName.includes("Dark") || sName.includes("Siphon") || sName.includes("Smoke")) colorClass = "text-red-500";
+                        else if (sName.includes("Lightning") || sName.includes("Thunder")) colorClass = "text-yellow-300";
+                        else colorClass = "text-blue-300";
+                    } else if (skillData) {
+                        colorClass = "text-yellow-500"; 
+                    }
 
-                // If they run out of non-disposable items (like a specific sword), color the border red so they know it's a dead slot
-                if (totalQty <= 0) {
-                    slotDiv.classList.add('opacity-40', 'grayscale', 'border-red-900');
-                    slotDiv.title = `[${hotkeyNumber}] Missing: ${safeDisplayName}\n(Right-click to unbind)`;
+                    abrv.className = `font-bold text-sm ${colorClass} drop-shadow-md pointer-events-none`;
+                    abrv.textContent = (data.name || '??').substring(0, 2).toUpperCase(); 
+                    
+                    // SECURITY & LORE WIN: Detailed, escaped tooltips
+                    const safeDataName = typeof escapeHtml === 'function' ? escapeHtml(data.name || 'Unknown') : (data.name || 'Unknown');
+                    let tooltipDmg = data.baseDamage ? `\nBase Dmg: ${data.baseDamage}` : '';
+                    if (data.baseHeal) tooltipDmg = `\nHeals: ${data.baseHeal}`;
+                    if (data.baseShield) tooltipDmg = `\nShields: ${data.baseShield}`;
+                    
+                    let oomWarning = '';
+                    if (isOOM && data.costType) {
+                        const cleanType = data.costType.charAt(0).toUpperCase() + data.costType.slice(1);
+                        oomWarning = `\n(Not enough ${cleanType})`;
+                    }
+                    
+                    slotDiv.title = `[${hotkeyNumber}] ${safeDataName}\nCost: ${actualCost} ${data.costType || 'Resource'}${tooltipDmg}${oomWarning}\n(Right-click to unbind)`;
+                    slotDiv.appendChild(abrv);
+
+                    // --- JUICE WIN: Dynamic Cooldown Colors ---
+                    if (cooldowns[abilityId] > 0) {
+                        slotDiv.classList.add('cursor-not-allowed', 'border-red-900', 'grayscale');
+                        const cd = cooldowns[abilityId];
+                        const cdOverlay = document.createElement('div');
+                        // Flashes yellow if only 1 turn left, otherwise menacing red
+                        const cdColor = cd === 1 ? 'text-yellow-400' : 'text-red-400';
+                        
+                        cdOverlay.className = `absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-[2px] ${cdColor} font-bold text-xl rounded shadow-inner animate-pulse z-20 pointer-events-none`;
+                        cdOverlay.textContent = cd;
+                        slotDiv.appendChild(cdOverlay);
+                    }
+                } 
+                else if (invItem || itemData) {
+                    const displayName = invItem ? invItem.name : (itemData ? itemData.name : 'Unknown Item');
+                    const displayTile = invItem ? (invItem.tile || '🎒') : (itemData ? (itemData.tile || '🎒') : '🎒');
+                    const rarity = invItem ? invItem._rarity : (itemData ? itemData._rarity : null);
+                    
+                    // 🚨 BUG FIX & PERFORMANCE WIN: True Auto-Clearing
+                    // Instead of aborting the render and skipping the slot (which shrinks the hotbar),
+                    // we flag it as mutated and set `isSlotEmpty` to true so the empty pocket graphic renders cleanly!
+                    if (totalQty <= 0) {
+                        const isDisposable = itemData && (itemData.type === 'consumable' || itemData.type === 'ammo');
+                        if (isDisposable) {
+                            player.hotbar[index] = null;
+                            hotbarMutated = true;
+                            isSlotEmpty = true;
+                        }
+                    }
+                    
+                    if (!isSlotEmpty) {
+                        // --- JUICE WIN: Apply Rarity Colors and Glows to Hotbar! ---
+                        let iconColorClass = "text-gray-200";
+                        if (rarity && totalQty > 0) {
+                            if (rarity === 'uncommon') {
+                                iconColorClass = 'text-green-400';
+                                slotClasses += ' border-green-800';
+                            } else if (rarity === 'rare') {
+                                iconColorClass = 'text-purple-400';
+                                slotClasses += ' border-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.3)]';
+                            } else if (rarity === 'epic') {
+                                iconColorClass = 'text-red-400';
+                                slotClasses += ' border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.3)]';
+                            } else if (rarity === 'legendary') {
+                                iconColorClass = 'text-yellow-400 text-magic-shimmer';
+                                slotClasses += ' border-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]';
+                            }
+                        }
+                        slotDiv.className = slotClasses;
+                        
+                        const iconSpan = document.createElement('span');
+                        iconSpan.className = `font-bold text-2xl drop-shadow-md z-10 pointer-events-none ${iconColorClass}`;
+                        iconSpan.textContent = displayTile;
+                        
+                        // Escape tooltip names!
+                        const safeDisplayName = typeof escapeHtml === 'function' ? escapeHtml(displayName) : displayName;
+                        slotDiv.title = `[${hotkeyNumber}] ${safeDisplayName} (Qty: ${totalQty})\n(Right-click to unbind)`;
+                        slotDiv.appendChild(iconSpan);
+                        
+                        // Format 999+ so massive stacks don't overflow the UI box
+                        const displayQty = totalQty > 999 ? '999+' : totalQty;
+                        const qtyBadge = document.createElement('span');
+                        qtyBadge.className = "absolute bottom-0 right-0 text-[10px] bg-black bg-opacity-70 text-white px-1 rounded-tl font-bold border border-gray-700 z-20 pointer-events-none";
+                        qtyBadge.textContent = displayQty;
+                        slotDiv.appendChild(qtyBadge);
+
+                        // If they run out of non-disposable items (like a specific sword), color the border red so they know it's a dead slot
+                        if (totalQty <= 0) {
+                            slotDiv.classList.add('opacity-40', 'grayscale', 'border-red-900');
+                            slotDiv.title = `[${hotkeyNumber}] Missing: ${safeDisplayName}\n(Right-click to unbind)`;
+                        }
+                    }
+                } else {
+                    // If it's not a skill, spell, or known item... it's a ghost binding!
+                    player.hotbar[index] = null;
+                    hotbarMutated = true;
+                    isSlotEmpty = true;
                 }
-            } else {
-                // If it's not a skill, spell, or known item... it's a ghost binding!
-                player.hotbar[index] = null;
-                hotbarMutated = true;
-                return;
             }
         } else {
-            slotDiv.className = slotClasses; // Apply base
-            slotDiv.classList.add('border-dashed', 'opacity-30', 'border-gray-600');
-            // LORE WIN: Thematic empty pocket hint
+            isSlotEmpty = true;
+        }
+
+        // 🚨 UI WIN: Clean Empty Slot Rendering
+        // Ensures the hotbar never physically collapses, maintaining exactly 5 boxes!
+        if (isSlotEmpty) {
+            slotDiv.className = slotClasses + " border-dashed opacity-30 border-gray-600";
             slotDiv.title = "Empty Quick-Slot\n(Your hand grasps at air. Open your Bag or Grimoire to bind an action here.)";
         }
 
         fragment.appendChild(slotDiv);
     });
     
-    // 🚨 BATCHED AUTO-CLEAR RESOLUTION
-    // If one or more slots depleted entirely during this render pass, push ONE save and trigger ONE re-render!
+    // Quietly sync the newly scrubbed hotbar to the database without forcing an infinite recursive re-render!
     if (hotbarMutated) {
         if (typeof triggerDebouncedSave === 'function') {
             triggerDebouncedSave({ hotbar: player.hotbar });
         } else if (typeof playerRef !== 'undefined' && playerRef) {
             playerRef.update({ hotbar: player.hotbar });
         }
-        
-        // Escape the current execution context and redraw clean, avoiding DOM state clashing
-        setTimeout(renderHotbar, 0); 
-        return;
     }
 
     hotbarContainerEl.appendChild(fragment);
@@ -290,7 +291,6 @@ function useHotbarSlot(index) {
     if (!abilityId) return;
 
     // 🚨 GAMEPLAY WIN: Guard against double-casting while actively aiming
-    // If you are already aiming a fireball, pressing the hotkey again shouldn't crash the input queue!
     if (gameState.isAiming) {
         if (gameState.abilityToAim === abilityId) {
             // Clicking the same ability while aiming toggles it OFF!
@@ -340,14 +340,14 @@ function useHotbarSlot(index) {
     // Instantly shakes the hotbar slot *before* routing to the logic if we know we can't afford it!
     let preCheckFailed = false;
     if (isSkill) {
-        const cost = SKILL_DATA[abilityId].cost;
-        if (player[SKILL_DATA[abilityId].costType] < cost) preCheckFailed = true;
+        const cost = Number(SKILL_DATA[abilityId].cost) || 0;
+        if ((Number(player[SKILL_DATA[abilityId].costType]) || 0) < cost) preCheckFailed = true;
     } else if (isSpell) {
-        let cost = SPELL_DATA[abilityId].cost;
+        let cost = Number(SPELL_DATA[abilityId].cost) || 0;
         if (SPELL_DATA[abilityId].costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
             cost = Math.floor(cost * 0.8);
         }
-        if (player[SPELL_DATA[abilityId].costType] < cost) preCheckFailed = true;
+        if ((Number(player[SPELL_DATA[abilityId].costType]) || 0) < cost) preCheckFailed = true;
     }
 
     if (preCheckFailed) {
@@ -377,7 +377,7 @@ function useHotbarSlot(index) {
         }
 
         const invIndex = player.inventory.findIndex(i => 
-            i && (i.name === targetName || i.templateId === abilityId) && i.quantity > 0 // 🚨 GHOST GUARD
+            i && (i.name === targetName || i.templateId === abilityId) && i.quantity > 0 
         );
         
         if (invIndex > -1) {
@@ -532,7 +532,7 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
         }
         
         const slotDiv = e.target.closest('.hotbar-slot');
-        if (slotDiv && !slotDiv.classList.contains('cursor-not-allowed')) {
+        if (slotDiv && !slotDiv.classList.contains('cursor-not-allowed') && !slotDiv.classList.contains('border-dashed')) {
             const index = parseInt(slotDiv.dataset.index, 10);
             if (!isNaN(index)) {
                 // Subtle press animation
