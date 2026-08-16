@@ -108,6 +108,7 @@ function finalizeMapTransition() {
  * Claims a world tile (like an item or chest) using a Firebase Transaction.
  * Prevents duplication exploits when multiple players try to grab the same object.
  */
+
 async function claimWorldTile(x, y, expectedTile) {
     // Instanced maps (Dungeons/Castles) are single-player, so no transaction is needed.
     if (gameState.mapMode !== 'overworld' && gameState.mapMode !== 'underworld') {
@@ -131,16 +132,20 @@ async function claimWorldTile(x, y, expectedTile) {
     
     const tileRef = rtdb.ref(`worldState/${realmPrefix}${chunkId}/${tileKey}`);
     
+    // 🚨 BUG FIX: Determine what terrain should be left behind when the item is picked up
+    const baseTerrain = typeof getBaseTerrain === 'function' ? getBaseTerrain(x, y) : '.';
+    
     try {
         const txResult = await tileRef.transaction(currentData => {
             // If it's a TTL (time-to-live) object, check the 't' property. Otherwise check the string.
             const currentVal = (typeof currentData === 'object' && currentData !== null) ? currentData.t : currentData;
             
-            // If the item isn't there anymore, abort the transaction!
-            if (currentVal !== expectedTile) return undefined; 
+            // If currentData is null, it's untouched procedural generation and therefore valid to claim!
+            // If it is NOT null, we check if it matches the expected tile to prevent dupes.
+            if (currentData !== null && currentVal !== expectedTile) return undefined; 
             
-            // Otherwise, claim it by deleting it from the world state
-            return null; 
+            // Erase the item by setting the tile permanently to the base terrain instead of null!
+            return { t: baseTerrain }; 
         });
         
         return txResult.committed;
@@ -774,8 +779,9 @@ async function attemptMovePlayer(newX, newY) {
                 logMessage("{gray:Just dirt and rocks.}");
             }
 
-            // Clear the tile
-            chunkManager.setWorldTile(newX, newY, null);
+            // Clear the tile safely
+            const baseTerrain = typeof getBaseTerrain === 'function' ? getBaseTerrain(newX, newY) : '.';
+            chunkManager.setWorldTile(newX, newY, baseTerrain);
             playerRef.update({
                 inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory
             });
@@ -2152,7 +2158,10 @@ async function attemptMovePlayer(newX, newY) {
                 logMessage(`You found {gold:${coinsFound} gold coins.}`);
             }
 
-            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(newX, newY, null);
+            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                const baseTerrain = typeof getBaseTerrain === 'function' ? getBaseTerrain(newX, newY) : '.';
+                chunkManager.setWorldTile(newX, newY, baseTerrain);
+            }
             else if (gameState.mapMode === 'dungeon') {
                 const theme = CAVE_THEMES[gameState.currentCaveTheme];
                 chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme ? theme.floor : '.';
@@ -3196,7 +3205,9 @@ async function attemptMovePlayer(newX, newY) {
         function clearLootTile() {
             gameState.lootedTiles.add(tileId);
             if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                chunkManager.setWorldTile(newX, newY, null);
+                // Use baseTerrain instead of null to prevent respawning
+                const baseTerrain = typeof getBaseTerrain === 'function' ? getBaseTerrain(newX, newY) : '.';
+                chunkManager.setWorldTile(newX, newY, baseTerrain);
             } else if (gameState.mapMode === 'dungeon') {
                 const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
                 chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
