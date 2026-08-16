@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_menagerie",
     name: "The Menagerie (Advanced Companions)",
-    version: "1.5", // Upgraded version!
+    version: "1.6", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS (PET GEAR) ---
@@ -142,7 +142,7 @@ window.ExpansionManager.register({
 
             // 🚨 UI WIN: Handled Max Level Cap beautifully
             const isMax = pet.level >= 20;
-            const xpPct = isMax ? 100 : Math.min(100, (pet.xp / pet.xpToNext) * 100);
+            const xpPct = isMax ? 100 : Math.min(100, (Number(pet.xp) / Number(pet.xpToNext)) * 100);
             
             const wpnName = pet.weapon ? pet.weapon.name : 'Unarmed';
             const armName = pet.armor ? pet.armor.name : 'Unarmored';
@@ -157,9 +157,9 @@ window.ExpansionManager.register({
             pl.innerHTML = `
                 <div class="flex justify-between items-center mb-1">
                     <span class="font-bold text-green-400 drop-shadow-md text-sm">${pet.tile} ${safeName} <span class="text-[10px] ${isMax ? 'text-yellow-500 shadow-inner border-yellow-800' : 'text-gray-400 border-gray-700'} bg-black bg-opacity-40 px-1 rounded ml-1 border font-bold uppercase tracking-widest">${isMax ? 'MAXED' : 'Lvl ' + pet.level}</span></span>
-                    <span class="text-xs text-red-400 font-bold">♥ ${Math.floor(Number(pet.hp))}/${pet.maxHp}</span>
+                    <span class="text-xs text-red-400 font-bold">♥ ${Math.floor(Number(pet.hp))}/${Number(pet.maxHp)}</span>
                 </div>
-                <div class="w-full bg-gray-900 rounded h-1.5 mb-2 mt-1 border border-gray-700 shadow-inner overflow-hidden">
+                <div class="w-full bg-gray-900 rounded h-1.5 mb-2 mt-1 border border-gray-700 shadow-inner overflow-hidden" title="XP: ${Math.floor(Number(pet.xp))} / ${Number(pet.xpToNext)}">
                     <div class="${isMax ? 'bg-yellow-500' : 'bg-purple-500'} h-full transition-all duration-300" style="width: ${xpPct}%"></div>
                 </div>
                 <div class="text-[10px] text-gray-300 flex justify-between bg-black bg-opacity-30 p-1.5 rounded shadow-inner">
@@ -219,7 +219,7 @@ window.ExpansionManager.register({
                 // to prevent it from being permanently lost into the void. We do NOT drop pet gear on the ground
                 // because map tiles cannot store magical affixes/stats!
                 if (pet[slot]) {
-                    const unequipped = pet[slot];
+                    let unequipped = pet[slot];
                     
                     // Since we are consuming the newly equipped item from a slot, it frees up 1 space, 
                     // UNLESS the item was part of a stacked pile (e.g. 2 Beast Collars).
@@ -227,6 +227,12 @@ window.ExpansionManager.register({
                     
                     if (gameState.player.inventory.length - freesSlot < invCap) {
                         unequipped.isEquipped = false; // Ensure clean state
+                        
+                        // 🚨 ROBUSTNESS WIN: Rehydrate the item to ensure it didn't lose functional logic while equipped
+                        if (typeof window.rehydrateItemArray === 'function') {
+                            unequipped = window.rehydrateItemArray([unequipped])[0];
+                        }
+                        
                         gameState.player.inventory.push(unequipped);
                         logMessage(`{gray:You removed the ${unequipped.name}.}`);
                     } else {
@@ -288,11 +294,17 @@ window.ExpansionManager.register({
                         let unequippedSomething = false;
                         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
                         
-                        // 🚨 BUG FIX: Safe Bounds Check
+                        // 🚨 BUG FIX: Safe Bounds Check & Rehydration
                         const handleUnequip = (slot) => {
-                            const item = pet[slot];
+                            let item = pet[slot];
                             if (gameState.player.inventory.length < invCap) {
                                 item.isEquipped = false; // Reset just in case
+                                
+                                // Rehydrate to restore functions stripped by Firebase payload mapping
+                                if (typeof window.rehydrateItemArray === 'function') {
+                                    item = window.rehydrateItemArray([item])[0];
+                                }
+                                
                                 gameState.player.inventory.push(item);
                                 logMessage(`{gray:You removed the ${item.name} from your ${pet.name}.}`);
                                 pet[slot] = null;
@@ -327,8 +339,32 @@ window.ExpansionManager.register({
         }
 
         // ==========================================
-        // FEATURE 4: PET COMBAT SKILLS
+        // FEATURE 4: PET COMBAT SKILLS & DEBUFF ENGINE
         // ==========================================
+        
+        // 🚨 ARCHITECTURE WIN: Secure Debuff Injector
+        // Mathematically guarantees that a Pet inflicting Poison or Stun on an Overworld enemy
+        // correctly syncs to the Firebase Realtime Database for all other clients to see!
+        const applyPetDebuff = async (targetX, targetY, debuffKey, duration) => {
+            if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
+                const e = gameState.instancedEnemies.find(en => en && en.x === targetX && en.y === targetY && en.health > 0);
+                if (e) e[debuffKey] = Math.max(e[debuffKey] || 0, duration);
+            } else {
+                const eId = `overworld:${targetX},${-targetY}`;
+                if (typeof rtdb !== 'undefined' && typeof EnemyNetworkManager !== 'undefined') {
+                    try {
+                        await rtdb.ref(EnemyNetworkManager.getPath(targetX, targetY, eId)).transaction(curr => {
+                            if (!curr || curr.health <= 0) return undefined; // Abort cleanly
+                            curr[debuffKey] = Math.max(curr[debuffKey] || 0, duration);
+                            return curr;
+                        });
+                    } catch(err) {
+                        console.error("Pet Debuff Sync Error:", err);
+                    }
+                }
+            }
+        };
+
         const origRunCompanionTurn = window.runCompanionTurn;
         
         window.runCompanionTurn = async function() {
@@ -342,105 +378,113 @@ window.ExpansionManager.register({
                 const realAtk = Number(pet.attack) || 1;
                 const realDef = Number(pet.defense) || 0;
                 
-                pet.attack = realAtk + pWpn;
-                pet.defense = realDef + pArmor;
+                // 🚨 BUG FIX & EXPLOIT GUARD: Try...Finally block guarantees the pet is restored
+                // to base stats even if the combat sequence throws a network exception!
+                try {
+                    pet.attack = realAtk + pWpn;
+                    pet.defense = realDef + pArmor;
 
-                // 2. Check for unique active skills!
-                let skillUsed = false;
-                
-                // 25% chance for pets to use their special ability instead of standard melee
-                if (Math.random() < 0.25) {
+                    // 2. Check for unique active skills!
+                    let skillUsed = false;
                     
-                    // Helper to find an enemy adjacent to the pet
-                    let target = null;
-                    const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0], [1, 1], [-1, -1], [1, -1], [-1, 1]];
-                    
-                    for (const [dx, dy] of dirs) {
-                        const tx = pet.x + dx;
-                        const ty = pet.y + dy;
+                    // 25% chance for pets to use their special ability instead of standard melee
+                    if (Math.random() < 0.25) {
                         
-                        if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-                            target = gameState.instancedEnemies.find(e => e && e.x === tx && e.y === ty && e.health > 0);
-                        } else {
-                            const enemyId = `overworld:${tx},${-ty}`;
-                            const t = gameState.sharedEnemies[enemyId];
-                            // 🚨 ROBUSTNESS WIN: Ignore dead "ghost" enemies in the overworld cache!
-                            if (t && t.health > 0) target = t;
+                        // Helper to find an enemy adjacent to the pet
+                        let target = null;
+                        const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0], [1, 1], [-1, -1], [1, -1], [-1, 1]];
+                        
+                        for (const [dx, dy] of dirs) {
+                            const tx = pet.x + dx;
+                            const ty = pet.y + dy;
+                            
+                            if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
+                                target = gameState.instancedEnemies.find(e => e && e.x === tx && e.y === ty && e.health > 0);
+                            } else {
+                                const enemyId = `overworld:${tx},${-ty}`;
+                                const t = gameState.sharedEnemies[enemyId];
+                                // 🚨 ROBUSTNESS WIN: Ignore dead "ghost" enemies in the overworld cache!
+                                if (t && t.health > 0) target = t;
+                            }
+                            if (target) break; // Found one!
                         }
-                        if (target) break; // Found one!
+
+                        if (target) {
+                            // --- WOLF: Howl (Buff Player) ---
+                            if (pet.tile === '🐺' || pet.tile === 'w') {
+                                logMessage(`{gold:Your ${pet.name} lets out a rallying howl!}`);
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(pet.x, pet.y, '#facc15', 10);
+                                
+                                gameState.player.strengthBonus = Math.max(gameState.player.strengthBonus || 0, 3);
+                                gameState.player.strengthBonusTurns = 5;
+                                logMessage("{green:You feel a surge of primal strength! (+3 Str)}");
+                                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('strengthDisplay'), 'stat-pulse-green');
+                                
+                                skillUsed = true;
+                            } 
+                            // --- BOAR: Gore (Bleed/Poison) ---
+                            // 🚨 BUG FIX: Added 'await' to all applySpellDamage calls and securely routed debuffs
+                            else if (pet.tile === '🐗') {
+                                logMessage(`{orange:Your ${pet.name} violently gores the ${target.name}!}`);
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('pierce');
+                                
+                                await applyPetDebuff(target.x, target.y, 'poisonTurns', 3);
+                                if (typeof applySpellDamage === 'function') await applySpellDamage(target.x, target.y, pet.attack, 'crush');
+                                
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(target.x, target.y, "BLEEDING", "#f97316");
+                                skillUsed = true;
+                            }
+                            // --- SPIDER: Web (Root Enemy) ---
+                            else if (pet.tile === '@' || pet.tile === '🕷️') {
+                                logMessage(`{green:Your ${pet.name} shoots a sticky web at the ${target.name}!}`);
+                                await applyPetDebuff(target.x, target.y, 'rootTurns', 3);
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(target.x, target.y, "ROOTED", "#4ade80");
+                                skillUsed = true;
+                            } 
+                            // --- REX: Terrifying Roar (Stun) ---
+                            else if (pet.tile === '🦖') {
+                                logMessage(`{red:Your ${pet.name} lets out a deafening roar!}`);
+                                gameState.screenShake = 15;
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playBossSpawn(); 
+                                
+                                await applyPetDebuff(target.x, target.y, 'stunTurns', 2);
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(target.x, target.y, "TERRIFIED", "#ef4444");
+                                skillUsed = true;
+                            }
+                            // --- DRAKE: Fire Breath (Burn Enemy) ---
+                            else if (pet.tile === '🐲') {
+                                logMessage(`{orange:Your ${pet.name} breathes fire on the ${target.name}!}`);
+                                await applyPetDebuff(target.x, target.y, 'burnTurns', 3);
+                                if (typeof applySpellDamage === 'function') await applySpellDamage(target.x, target.y, pet.attack * 2, 'fireball');
+                                
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(target.x, target.y, "BURN", "#f97316");
+                                skillUsed = true;
+                            }
+                            // --- BEAR/OGRE: Ground Slam (AoE Stun) ---
+                            else if (pet.tile === '🐻' || pet.tile === 'Ø' || pet.tile === '🧌') {
+                                logMessage(`{gray:Your ${pet.name} smashes the ground!}`);
+                                gameState.screenShake = 15;
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy');
+                                
+                                await applyPetDebuff(target.x, target.y, 'stunTurns', 2);
+                                if (typeof applySpellDamage === 'function') await applySpellDamage(target.x, target.y, pet.attack, 'crush');
+                                
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(target.x, target.y, "STUNNED", "#facc15");
+                                skillUsed = true;
+                            }
+                        }
                     }
 
-                    if (target) {
-                        // --- WOLF: Howl (Buff Player) ---
-                        if (pet.tile === '🐺' || pet.tile === 'w') {
-                            logMessage(`{gold:Your ${pet.name} lets out a rallying howl!}`);
-                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(pet.x, pet.y, '#facc15', 10);
-                            
-                            gameState.player.strengthBonus = Math.max(gameState.player.strengthBonus || 0, 3);
-                            gameState.player.strengthBonusTurns = 5;
-                            logMessage("{green:You feel a surge of primal strength! (+3 Str)}");
-                            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('strengthDisplay'), 'stat-pulse-green');
-                            
-                            skillUsed = true;
-                        } 
-                        // --- BOAR: Gore (Bleed/Poison) ---
-                        // 🚨 BUG FIX: Added 'await' to all applySpellDamage calls to prevent async log desyncs
-                        else if (pet.tile === '🐗') {
-                            logMessage(`{orange:Your ${pet.name} violently gores the ${target.name}!}`);
-                            if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('pierce');
-                            
-                            target.poisonTurns = 3; // Acts as bleed
-                            if (typeof applySpellDamage === 'function') await applySpellDamage(target.x, target.y, pet.attack, 'crush');
-                            
-                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(target.x, target.y, "BLEEDING", "#f97316");
-                            skillUsed = true;
-                        }
-                        // --- SPIDER: Web (Root Enemy) ---
-                        else if (pet.tile === '@' || pet.tile === '🕷️') {
-                            logMessage(`{green:Your ${pet.name} shoots a sticky web at the ${target.name}!}`);
-                            target.rootTurns = 3;
-                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(target.x, target.y, "ROOTED", "#4ade80");
-                            skillUsed = true;
-                        } 
-                        // --- REX: Terrifying Roar (Stun) ---
-                        else if (pet.tile === '🦖') {
-                            logMessage(`{red:Your ${pet.name} lets out a deafening roar!}`);
-                            gameState.screenShake = 15;
-                            if (typeof AudioSystem !== 'undefined') AudioSystem.playBossSpawn(); // Heavy roar sound
-                            
-                            target.stunTurns = 2;
-                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(target.x, target.y, "TERRIFIED", "#ef4444");
-                            skillUsed = true;
-                        }
-                        // --- DRAKE: Fire Breath (Burn Enemy) ---
-                        else if (pet.tile === '🐲') {
-                            logMessage(`{orange:Your ${pet.name} breathes fire on the ${target.name}!}`);
-                            target.burnTurns = 3;
-                            if (typeof applySpellDamage === 'function') await applySpellDamage(target.x, target.y, pet.attack * 2, 'fireball');
-                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(target.x, target.y, "BURN", "#f97316");
-                            skillUsed = true;
-                        }
-                        // --- BEAR/OGRE: Ground Slam (AoE Stun) ---
-                        else if (pet.tile === '🐻' || pet.tile === 'Ø' || pet.tile === '🧌') {
-                            logMessage(`{gray:Your ${pet.name} smashes the ground!}`);
-                            gameState.screenShake = 15;
-                            if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy');
-                            target.stunTurns = 2;
-                            if (typeof applySpellDamage === 'function') await applySpellDamage(target.x, target.y, pet.attack, 'crush');
-                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(target.x, target.y, "STUNNED", "#facc15");
-                            skillUsed = true;
-                        }
+                    // 3. Fallback to normal AI if no skill was used
+                    if (!skillUsed && origRunCompanionTurn) {
+                        await origRunCompanionTurn();
                     }
-                }
 
-                // 3. Fallback to normal AI if no skill was used
-                if (!skillUsed && origRunCompanionTurn) {
-                    await origRunCompanionTurn();
+                } finally {
+                    // 4. Restore original unbuffed stats flawlessly
+                    pet.attack = realAtk;
+                    pet.defense = realDef;
                 }
-
-                // 4. Restore original unbuffed stats
-                pet.attack = realAtk;
-                pet.defense = realDef;
                 
             } else if (origRunCompanionTurn) {
                 await origRunCompanionTurn();
