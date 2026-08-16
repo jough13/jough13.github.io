@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_vanguard_raids",
     name: "The Vanguard (Multiplayer Raids)",
-    version: "1.5", // Upgraded version!
+    version: "1.6", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -65,6 +65,18 @@ window.ExpansionManager.register({
             '📜vr': {
                 name: 'Vanguard\'s Log', type: 'journal', title: 'A Charred Diary', tile: '📜',
                 content: "The heat is unbearable. We sealed him away in the core, but the keys... they were scattered to the winds. If anyone finds this, I beg of you, do not turn the lock. The Molten Lord must sleep."
+            },
+            // --- EXPANSION WIN: Cosmetic Titles for Bragging Rights ---
+            '📜tv': {
+                name: 'Title: Vanguard', type: 'consumable', tile: '📜', _rarity: 'legendary', excludeFromLoot: true,
+                description: "Equips the elite title 'Vanguard' above your name and in chat.",
+                effect: (state) => {
+                    state.player.activeTitle = "Vanguard";
+                    logMessage("{red:You are now known as a Vanguard!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                    if (typeof renderStats === 'function') renderStats();
+                    return true;
+                }
             }
         },
 
@@ -215,7 +227,9 @@ window.ExpansionManager.register({
                         
                         const instanceTime = Date.now();
 
-                        const newBoss = { ...eData, tile: '👹r', x: bossX, y: bossY, spawnTime: instanceTime, raidInstanceId: instanceTime };
+                        // 🚨 BUG FIX: Apply scaling to Boss so it obeys potential Realm Mutators
+                        const bossScaled = typeof getScaledEnemy === 'function' ? getScaledEnemy(eData, bossX, bossY) : eData;
+                        const newBoss = { ...bossScaled, tile: '👹r', x: bossX, y: bossY, spawnTime: instanceTime, raidInstanceId: instanceTime };
                         spawnPayload[EnemyNetworkManager.getPath(bossX, bossY, bossId)] = newBoss;
                         
                         // Spawn Adds! (Fire Elementals at the 4 pillars)
@@ -225,7 +239,10 @@ window.ExpansionManager.register({
                         if (fData) {
                             adds.forEach((pos) => {
                                 const aId = `overworld:${pos[0]},${-pos[1]}`;
-                                const newAdd = { ...fData, tile: 'f', x: pos[0], y: pos[1], spawnTime: instanceTime };
+                                // 🚨 BUG FIX: Apply scaling to Elementals so they hit hard enough for endgame!
+                                const addScaled = typeof getScaledEnemy === 'function' ? getScaledEnemy(fData, pos[0], pos[1]) : fData;
+                                const newAdd = { ...addScaled, tile: 'f', x: pos[0], y: pos[1], spawnTime: instanceTime };
+                                
                                 spawnPayload[EnemyNetworkManager.getPath(pos[0], pos[1], aId)] = newAdd;
                                 
                                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(pos[0], pos[1], '#f97316', 15);
@@ -253,12 +270,13 @@ window.ExpansionManager.register({
                 flavor: "A massive, glowing chest dropped by the Raid Boss!",
                 onInteract: (state, x, y) => {
                     // 🚨 EXPLOIT FIX WIN: Dynamic Chunk Resolution
-                    // Chests now correctly read from their actual coordinate chunk, not just `0,0`
-                    const chunkX = Math.floor(x / 16);
-                    const chunkY = Math.floor(y / 16);
+                    // Chests now correctly read from their actual coordinate chunk!
+                    const CHUNK_SIZE = typeof chunkManager !== 'undefined' ? chunkManager.CHUNK_SIZE : 16;
+                    const chunkX = Math.floor(x / CHUNK_SIZE);
+                    const chunkY = Math.floor(y / CHUNK_SIZE);
                     const chunkId = `${chunkX},${chunkY}`;
-                    const localX = (((x % 16) + 16) % 16);
-                    const localY = (((y % 16) + 16) % 16);
+                    const localX = (((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE);
+                    const localY = (((y % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE);
                     const tileKey = `${localX},${localY}`;
                     
                     const chunkData = typeof chunkManager !== 'undefined' ? chunkManager.worldState[chunkId] : null;
@@ -289,16 +307,39 @@ window.ExpansionManager.register({
                     logMessage(`{gold:You found ${goldAmount} Gold!}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
 
-                    // Loot Table
-                    const lootTable = ['🛡️v', '⚔️v', '💍v', '🍷v', '📜vr', '💎b', '💎b', '💎'];
+                    // 🚨 CONTENT WIN: Added Title Scroll to loot table
+                    const lootTable = ['🛡️v', '⚔️v', '💍v', '🍷v', '📜vr', '📜tv', '💎b', '💎b', '💎'];
                     const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                     
+                    // Helper to scatter items securely on the ground if inventory is full
+                    const dropSafely = (tileToDrop) => {
+                        let placed = false;
+                        if (typeof chunkManager !== 'undefined') {
+                            for (let r = 0; r <= 2 && !placed; r++) {
+                                for (let dy = -r; dy <= r && !placed; dy++) {
+                                    for (let dx = -r; dx <= r && !placed; dx++) {
+                                        const tx = x + dx;
+                                        const ty = y + dy;
+                                        const tileAt = chunkManager.getTile(tx, ty);
+                                        // Raids are essentially overworlds with 'd' floors or '🌋'
+                                        if (['.', 'F', 'd', 'D', '🌋'].includes(tileAt)) {
+                                            chunkManager.setWorldTile(tx, ty, tileToDrop, 24);
+                                            placed = true;
+                                        }
+                                    }
+                                }
+                            }
+                            if (!placed) chunkManager.setWorldTile(x, y, tileToDrop, 24);
+                            state.mapDirty = true;
+                        }
+                    };
+
                     // Give 2 Items!
                     for(let i=0; i<2; i++) {
                         const itemKey = lootTable[Math.floor(Math.random() * lootTable.length)];
                         const template = window.ITEM_DATA[itemKey];
                         
-                        if (template && state.player.inventory.length < invCap) {
+                        if (template) {
                             let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
                             newItem.templateId = itemKey;
                             newItem.quantity = 1;
@@ -307,11 +348,15 @@ window.ExpansionManager.register({
                             newItem.effect = template.effect || null;
                             newItem.onHit = template.onHit || null;
                             
-                            state.player.inventory.push(newItem);
-                            logMessage(`You found: {purple:${template.name}}`);
-                            if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
-                        } else if (template) {
-                            logMessage(`{red:You found a ${template.name}, but your pack is full!}`);
+                            if (state.player.inventory.length < invCap) {
+                                state.player.inventory.push(newItem);
+                                logMessage(`You found: {purple:${template.name}}`);
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+                            } else {
+                                // 🚨 BUG FIX WIN: Safely drop raid loot on the floor so it's not lost to the void!
+                                logMessage(`{red:You found a ${template.name}, but your pack is full! It drops onto the ash.}`);
+                                dropSafely(newItem.tile || '🎒');
+                            }
                         }
                     }
 
@@ -367,11 +412,16 @@ window.ExpansionManager.register({
                 }
                 
                 const hasArmor = state.player.equipment.armor && state.player.equipment.armor.name.includes('Dragonscale');
+                const hasRing = state.player.equipment.accessory && state.player.equipment.accessory.name.includes('Molten Core');
                 const hasPotion = state.player.fireResistTurns > 0;
                 
-                if (!hasArmor && !hasPotion && !state.godMode) {
+                // 🚨 BUG FIX: Added Molten Core Ring to immunities!
+                if (!hasArmor && !hasRing && !hasPotion && !state.godMode) {
                     logMessage(`{orange:The searing heat of the Molten Core scorches your lungs! (-${ambientDmg} HP)}`);
+                    
+                    // Route securely through central dispatcher to execute the death loop cleanly
                     if (typeof window.modifyVital === 'function') window.modifyVital('health', -ambientDmg);
+                    
                     state.screenShake = 5;
                     if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('healthDisplay'), false);
                 }
@@ -464,7 +514,9 @@ window.ExpansionManager.register({
                     setTimeout(() => {
                         const cx = enemy.x; const cy = enemy.y;
                         if (typeof chunkManager !== 'undefined') {
+                            const CHUNK_SIZE = chunkManager.CHUNK_SIZE;
                             const offsets = [[1,0], [-1,0], [0,1], [0,-1]];
+                            
                             for(let i=0; i<4; i++) {
                                 const targetX = cx + offsets[i][0];
                                 const targetY = cy + offsets[i][1];
@@ -474,14 +526,16 @@ window.ExpansionManager.register({
                                 if (['d', '.', '🌋'].includes(tileAt)) {
                                     const instanceData = { t: '📦r', raidInstanceId: enemy.raidInstanceId || Date.now(), expires: Date.now() + (2 * 60 * 60 * 1000) };
                                     
-                                    const chunkX = Math.floor(targetX / 16);
-                                    const chunkY = Math.floor(targetY / 16);
-                                    const localX = (((targetX % 16) + 16) % 16);
-                                    const localY = (((targetY % 16) + 16) % 16);
+                                    // 🚨 BUG FIX: Ensure correct dynamic chunk math replaces hardcoded '16'
+                                    const chunkX = Math.floor(targetX / CHUNK_SIZE);
+                                    const chunkY = Math.floor(targetY / CHUNK_SIZE);
+                                    const localX = (((targetX % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE);
+                                    const localY = (((targetY % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE);
                                     
                                     if (!chunkManager.worldState[`${chunkX},${chunkY}`]) chunkManager.worldState[`${chunkX},${chunkY}`] = {};
                                     chunkManager.worldState[`${chunkX},${chunkY}`][`${localX},${localY}`] = instanceData;
                                     
+                                    // Pushes directly to the raid realm path dynamically to ensure sync
                                     if (typeof rtdb !== 'undefined') {
                                         rtdb.ref(`worldState/realm_raid_molten/${chunkX},${chunkY}/${localX},${localY}`).set(instanceData);
                                     }
@@ -491,16 +545,16 @@ window.ExpansionManager.register({
                             // Center Chest
                             const centerData = { t: '📦r', raidInstanceId: enemy.raidInstanceId || Date.now(), expires: Date.now() + (2 * 60 * 60 * 1000) };
                             
-                            const chunkX = Math.floor(cx / 16);
-                            const chunkY = Math.floor(cy / 16);
-                            const localX = (((cx % 16) + 16) % 16);
-                            const localY = (((cy % 16) + 16) % 16);
+                            const cChunkX = Math.floor(cx / CHUNK_SIZE);
+                            const cChunkY = Math.floor(cy / CHUNK_SIZE);
+                            const cLocalX = (((cx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE);
+                            const cLocalY = (((cy % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE);
                             
-                            if (!chunkManager.worldState[`${chunkX},${chunkY}`]) chunkManager.worldState[`${chunkX},${chunkY}`] = {};
-                            chunkManager.worldState[`${chunkX},${chunkY}`][`${localX},${localY}`] = centerData;
+                            if (!chunkManager.worldState[`${cChunkX},${cChunkY}`]) chunkManager.worldState[`${cChunkX},${cChunkY}`] = {};
+                            chunkManager.worldState[`${cChunkX},${cChunkY}`][`${cLocalX},${cLocalY}`] = centerData;
                             
                             if (typeof rtdb !== 'undefined') {
-                                rtdb.ref(`worldState/realm_raid_molten/${chunkX},${chunkY}/${localX},${localY}`).set(centerData);
+                                rtdb.ref(`worldState/realm_raid_molten/${cChunkX},${cChunkY}/${cLocalX},${cLocalY}`).set(centerData);
                             }
                             
                             gameState.mapDirty = true;
