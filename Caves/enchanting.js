@@ -14,8 +14,9 @@ const CURSE_REGEX_GI = /Cursed|Doomed|Forsaken|Blood-Starved|Whispering|Blighted
 const ENCHANT_PREFIX_REGEX = /^(Fine|Mystic|Flawless|Peerless|Exquisite|Masterwork|Divine)\s/i;
 
 // O(1) Item Lookup Cache for Enchanting
-// Decouples this file from trade.js and speeds up tooltip generation!
-window._enchantItemKeyCache = window._enchantItemKeyCache || {};
+// 🚨 SECURITY & PERFORMANCE WIN: Object.create(null) prevents prototype poisoning
+window._enchantItemKeyCache = window._enchantItemKeyCache || Object.create(null);
+
 function getEnchantItemKey(name) {
     if (window._enchantItemKeyCache[name]) return window._enchantItemKeyCache[name];
     if (typeof window.ITEM_DATA === 'undefined') return null;
@@ -46,11 +47,13 @@ let isEnchantingBusy = false;
 const ALTAR_WHISPERS = [
     "The obsidian stone feels unnaturally cold.",
     "Faint whispers echo from the cracks in the altar.",
-    "The smell of ozone and burnt ozone lingers here.",
+    "The smell of ozone and burnt sulfur lingers here.",
     "A faint purple mist clings to the surface of the stone.",
     "It demands a sacrifice of power.",
     "The leylines converge directly beneath this block.",
-    "You feel a strange urge to shatter everything you own."
+    "You feel a strange urge to shatter everything you own.",
+    "A reflection in the polished stone shows a different face.",
+    "The runes carved into the base shift when you aren't looking."
 ];
 
 function openEnchantingModal() {
@@ -134,7 +137,8 @@ function renderEnchantingModal() {
         const typeTag = generateTypeTag(item);
 
         // --- DISENCHANT LIST ---
-        if (isGear && item._rarity) {
+        // 🚨 BUG FIX: Guard against shattering crucial plot/quest artifacts!
+        if (isGear && item._rarity && !item.excludeFromLoot) {
             const yieldAmt = DUST_YIELDS[item._rarity] || 1;
             
             let rarityColor = 'text-green-400';
@@ -226,7 +230,8 @@ function renderEnchantingModal() {
 
     if (disHeader) {
         // Check if there are ANY unequipped uncommon/rare items
-        const hasMinor = player.inventory.some(i => i && !i.isEquipped && (i.type === 'weapon' || i.type === 'armor') && (i._rarity === 'uncommon' || i._rarity === 'rare'));
+        // Exclude protected items from the mass-shatter check too!
+        const hasMinor = player.inventory.some(i => i && !i.isEquipped && !i.excludeFromLoot && (i.type === 'weapon' || i.type === 'armor') && (i._rarity === 'uncommon' || i._rarity === 'rare'));
         const btnClass = hasMinor ? "bg-red-700 hover:bg-red-600 text-white cursor-pointer shadow-md" : "bg-gray-800 text-gray-500 opacity-50 cursor-not-allowed border border-gray-700 shadow-inner";
 
         disHeader.innerHTML = `
@@ -248,6 +253,12 @@ function handleDisenchant(index) {
         
         if (!item || item.isEquipped || !item._rarity) {
             logMessage("{red:You cannot shatter an equipped or invalid item!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+        
+        if (item.excludeFromLoot) {
+            logMessage("{red:This unique artifact refuses to be shattered.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
         }
@@ -288,6 +299,10 @@ function handleDisenchant(index) {
                 templateId: '&', name: 'Arcane Dust', type: 'junk', quantity: yieldAmt, tile: '✨'
             });
         }
+        
+        // --- METRICS WIN ---
+        if (!player.metrics) player.metrics = {};
+        player.metrics.itemsShattered = (player.metrics.itemsShattered || 0) + 1;
 
         let flavorText = `You shattered the ${oldName} into ${yieldAmt} Arcane Dust.`;
         if (oldRarity === 'rare') flavorText = `The ${oldName} shatters with a sharp crack, releasing ${yieldAmt} Arcane Dust.`;
@@ -297,7 +312,9 @@ function handleDisenchant(index) {
             
             // LORE WIN: Altar Resonance Buff
             logMessage("{purple:The Altar feeds on the legendary artifact. Your mind expands with forbidden knowledge!}");
-            window.modifyVital('psyche', gameState.player.maxPsyche); // Full restore
+            if (typeof window.modifyVital === 'function') {
+                window.modifyVital('psyche', gameState.player.maxPsyche); // Full restore
+            }
             if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('psycheDisplay'), 'stat-pulse-purple');
         }
 
@@ -340,7 +357,8 @@ function handleShatterMinor() {
             const item = player.inventory[i];
             if (!item) continue;
 
-            if (!item.isEquipped && (item.type === 'weapon' || item.type === 'armor') && (item._rarity === 'uncommon' || item._rarity === 'rare')) {
+            // Strict checking, excluding locked/quest items
+            if (!item.isEquipped && !item.excludeFromLoot && (item.type === 'weapon' || item.type === 'armor') && (item._rarity === 'uncommon' || item._rarity === 'rare')) {
                 const yieldAmt = DUST_YIELDS[item._rarity] || 1;
                 totalDust += yieldAmt;
                 itemsShattered++;
@@ -363,6 +381,10 @@ function handleShatterMinor() {
             } else {
                 player.inventory.push({ templateId: '&', name: 'Arcane Dust', type: 'junk', quantity: totalDust, tile: '✨' });
             }
+            
+            // --- METRICS WIN ---
+            if (!player.metrics) player.metrics = {};
+            player.metrics.itemsShattered = (player.metrics.itemsShattered || 0) + itemsShattered;
             
             // Concise, consolidated summary of what was actually destroyed!
             const summary = Object.entries(shatteredNamesCount).map(([name, qty]) => `${name}${qty > 1 ? ` (x${qty})` : ''}`).join(', ');
@@ -399,6 +421,12 @@ function handleEnchant(index) {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
         }
+        
+        if (item.type !== 'weapon' && item.type !== 'armor') {
+            logMessage("{red:You can only enchant weapons and armor.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
 
         const currentRarity = item._rarity || 'normal';
         const cost = UPGRADE_COSTS[currentRarity];
@@ -432,6 +460,15 @@ function handleEnchant(index) {
             targetItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(item) : JSON.parse(JSON.stringify(item));
             targetItem.quantity = 1;
             player.inventory.push(targetItem);
+        }
+
+        // 🚨 BUG FIX & ROBUSTNESS WIN: Explicit Function Rehydration
+        // Ensures that procs and logic functions aren't stripped by JSON stringification!
+        const tKey = targetItem.templateId || getEnchantItemKey(targetItem.name);
+        const template = typeof window.ITEM_DATA !== 'undefined' && tKey ? window.ITEM_DATA[tKey] : null;
+        if (template) {
+            targetItem.effect = template.effect;
+            targetItem.onHit = template.onHit;
         }
 
         // Detach statBonuses and tags from Global Template
@@ -516,7 +553,8 @@ function handleEnchant(index) {
             }
             
             const cleanName = targetItem.name.replace(ENCHANT_PREFIX_REGEX, '').trim();
-            const epicPrefixes = ['Aegis', 'Wrath', 'Whisper', 'Sorrow', 'Echo', 'Vanguard'];
+            // Expanded legendary prefix pool!
+            const epicPrefixes = ['Aegis', 'Wrath', 'Whisper', 'Sorrow', 'Echo', 'Vanguard', 'Eternity', 'Oblivion', 'Astral', 'Blood-Bound', 'Radiant'];
             const newPrefix = epicPrefixes[Math.floor(Math.random() * epicPrefixes.length)];
             
             targetItem.name = `${newPrefix} of ${cleanName}`;
@@ -524,6 +562,10 @@ function handleEnchant(index) {
 
             upgradeMsg = `The heavens tremble! You have forged a weapon of myth: ${targetItem.name}! [${statSummary.join(', ')}]`;
         }
+        
+        // --- METRICS WIN ---
+        if (!player.metrics) player.metrics = {};
+        player.metrics.itemsEnchanted = (player.metrics.itemsEnchanted || 0) + 1;
 
         logMessage(`{gold:${upgradeMsg}}`);
         
@@ -585,6 +627,15 @@ function handlePurify(index) {
             targetItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(item) : JSON.parse(JSON.stringify(item));
             targetItem.quantity = 1;
             player.inventory.push(targetItem);
+        }
+        
+        // 🚨 BUG FIX & ROBUSTNESS WIN: Explicit Function Rehydration
+        // Ensures that procs and logic functions aren't stripped by JSON stringification!
+        const tKey = targetItem.templateId || getEnchantItemKey(targetItem.name);
+        const template = typeof window.ITEM_DATA !== 'undefined' && tKey ? window.ITEM_DATA[tKey] : null;
+        if (template) {
+            targetItem.effect = template.effect;
+            targetItem.onHit = template.onHit;
         }
         
         // Sever tag references natively just in case
