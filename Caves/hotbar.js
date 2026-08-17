@@ -10,6 +10,11 @@ const hotbarContainerEl = document.getElementById('hotbarContainer');
 // Prevents O(N) scans of ITEM_DATA every time the hotbar renders!
 window._hotbarItemKeyCache = window._hotbarItemKeyCache || {};
 
+// 🚨 BUG FIX & ROBUSTNESS WIN: Hardware Mutex Lock
+// Prevents double-casting from faulty mice or sensitive touch screens that send 
+// two click events in under 10ms, which bypasses async engine locks!
+let _isHotbarExecuting = false;
+
 function renderHotbar() {
     if (!hotbarContainerEl) return;
     
@@ -26,11 +31,12 @@ function renderHotbar() {
     const hotbar = player.hotbar || [null, null, null, null, null];
     const cooldowns = player.cooldowns || {};
 
-    // 🚨 BUG FIX & QoL WIN: Aggregate Inventory Map
+    // 🚨 BUG FIX & QoL WIN: Aggregate Inventory Map & Equipment State
     // We now sum the quantities of fragmented stacks across the inventory so the 
     // hotbar displays the TRUE total amount of an item (e.g., 3 stacks of 5 arrows = 15 arrows).
     const inventoryTotals = new Map();
     const inventorySample = new Map(); // Keep a sample to extract tile icons and metadata
+    const inventoryEquipped = new Set(); // Tracks what is currently worn!
     
     if (player.inventory) {
         for (let i = 0; i < player.inventory.length; i++) {
@@ -44,6 +50,12 @@ function renderHotbar() {
             if (item.templateId && item.templateId !== item.name) {
                 inventoryTotals.set(item.templateId, (inventoryTotals.get(item.templateId) || 0) + item.quantity);
                 if (!inventorySample.has(item.templateId)) inventorySample.set(item.templateId, item);
+            }
+            
+            // Track Equipment State for UI overlays!
+            if (item.isEquipped) {
+                inventoryEquipped.add(item.name);
+                if (item.templateId) inventoryEquipped.add(item.templateId);
             }
         }
     }
@@ -246,6 +258,14 @@ function renderHotbar() {
                         qtyBadge.textContent = displayQty;
                         slotDiv.appendChild(qtyBadge);
 
+                        // 🌟 UX WIN: Equipped Indicator!
+                        if (inventoryEquipped.has(abilityId)) {
+                            const equipBadge = document.createElement('span');
+                            equipBadge.className = 'absolute top-0 right-0 bg-yellow-500 text-black text-[9px] px-1 py-0.5 font-bold rounded-bl-lg rounded-tr shadow-sm z-20 pointer-events-none';
+                            equipBadge.textContent = 'EQP';
+                            slotDiv.appendChild(equipBadge);
+                        }
+
                         // If they run out of non-disposable items (like a specific sword), color the border red so they know it's a dead slot
                         if (totalQty <= 0) {
                             slotDiv.classList.add('opacity-40', 'grayscale', 'border-red-900');
@@ -286,110 +306,126 @@ function renderHotbar() {
 }
 
 function useHotbarSlot(index) {
-    const player = gameState.player;
-    const abilityId = player.hotbar[index];
-    if (!abilityId) return;
+    // 🚨 BUG FIX & STABILITY WIN: Hardware Mutex Lock
+    // Prevents double-casting the same spell and dropping into negative mana if a mouse click bounces
+    if (_isHotbarExecuting) return;
+    _isHotbarExecuting = true;
 
-    // 🚨 GAMEPLAY WIN: Guard against double-casting while actively aiming
-    if (gameState.isAiming) {
-        if (gameState.abilityToAim === abilityId) {
-            // Clicking the same ability while aiming toggles it OFF!
-            gameState.isAiming = false;
-            gameState.abilityToAim = null;
-            logMessage("{gray:Aiming canceled.}");
-            if (typeof render === 'function') render();
-            renderHotbar();
-            return;
-        } else {
-            // Clicking a different ability automatically swaps your aim!
-            gameState.isAiming = false;
-        }
-    }
+    try {
+        const player = gameState.player;
+        const abilityId = player.hotbar[index];
+        if (!abilityId) return;
 
-    const triggerSlotShake = () => {
-        const slotEl = document.getElementById(`hotbarSlot-${index}`);
-        if (slotEl) {
-            slotEl.classList.remove('shake');
-            void slotEl.offsetWidth; 
-            slotEl.classList.add('shake');
-            slotEl.addEventListener('animationend', () => slotEl.classList.remove('shake'), { once: true });
-        }
-    };
-
-    const cooldowns = player.cooldowns || {};
-    if (cooldowns[abilityId] > 0) {
-        let cdMsg = `{gray:That ability is not ready yet! (${cooldowns[abilityId]} turns left)}`;
-        
-        if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) {
-            cdMsg = `{blue:The arcane energies are still gathering! (${cooldowns[abilityId]} turns left)}`;
-        } else if (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) {
-            cdMsg = `{yellow:You need a moment to recover your breath! (${cooldowns[abilityId]} turns left)}`;
-        }
-        
-        logMessage(cdMsg);
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        
-        triggerSlotShake();
-        return;
-    }
-
-    const isSkill = typeof SKILL_DATA !== 'undefined' && !!SKILL_DATA[abilityId];
-    const isSpell = typeof SPELL_DATA !== 'undefined' && !!SPELL_DATA[abilityId];
-
-    // --- 🚨 TACTILE UX WIN: OOM Pre-Shake Check ---
-    // Instantly shakes the hotbar slot *before* routing to the logic if we know we can't afford it!
-    let preCheckFailed = false;
-    if (isSkill) {
-        const cost = Number(SKILL_DATA[abilityId].cost) || 0;
-        if ((Number(player[SKILL_DATA[abilityId].costType]) || 0) < cost) preCheckFailed = true;
-    } else if (isSpell) {
-        let cost = Number(SPELL_DATA[abilityId].cost) || 0;
-        if (SPELL_DATA[abilityId].costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
-            cost = Math.floor(cost * 0.8);
-        }
-        if ((Number(player[SPELL_DATA[abilityId].costType]) || 0) < cost) preCheckFailed = true;
-    }
-
-    if (preCheckFailed) {
-        triggerSlotShake();
-        // We do NOT return here, we let the native functions execute so the player 
-        // gets the accurate error message and UI flash from magic.js / skills.js!
-    }
-
-    // Auto-dismount for combat actions
-    if (player.isMounted && (isSkill || isSpell)) {
-        player.isMounted = false;
-        logMessage(`{orange:You leap from your mount into combat!}`);
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
-        gameState.mapDirty = true;
-        if (typeof render === 'function') render();
-    }
-
-    if (isSkill) {
-        if (typeof useSkill === 'function') useSkill(abilityId);
-    } else if (isSpell) {
-        if (typeof castSpell === 'function') castSpell(abilityId);
-    } else {
-        // Evaluate dynamic names vs base templates
-        let targetName = abilityId;
-        if (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[abilityId]) {
-            targetName = ITEM_DATA[abilityId].name;
+        // 🚨 GAMEPLAY WIN: Guard against double-casting while actively aiming
+        if (gameState.isAiming) {
+            if (gameState.abilityToAim === abilityId) {
+                // Clicking the same ability while aiming toggles it OFF!
+                gameState.isAiming = false;
+                gameState.abilityToAim = null;
+                logMessage("{gray:Aiming canceled.}");
+                if (typeof render === 'function') render();
+                renderHotbar();
+                return;
+            } else {
+                // Clicking a different ability automatically swaps your aim!
+                gameState.isAiming = false;
+            }
         }
 
-        const invIndex = player.inventory.findIndex(i => 
-            i && (i.name === targetName || i.templateId === abilityId) && i.quantity > 0 
-        );
-        
-        if (invIndex > -1) {
-            if (typeof useInventoryItem === 'function') useInventoryItem(invIndex);
-        } else {
-            // LORE WIN: Visceral realization that you are out of an item in the heat of combat!
-            const safeTargetName = typeof escapeHtml === 'function' ? escapeHtml(targetName) : targetName;
-            logMessage(`{gray:Your fingers trace an empty pouch. You are out of ${safeTargetName}s!}`);
+        const triggerSlotShake = () => {
+            const slotEl = document.getElementById(`hotbarSlot-${index}`);
+            if (slotEl) {
+                slotEl.classList.remove('shake');
+                void slotEl.offsetWidth; 
+                slotEl.classList.add('shake');
+                slotEl.addEventListener('animationend', () => slotEl.classList.remove('shake'), { once: true });
+            }
+        };
+
+        const cooldowns = player.cooldowns || {};
+        if (cooldowns[abilityId] > 0) {
+            let cdMsg = `{gray:That ability is not ready yet! (${cooldowns[abilityId]} turns left)}`;
+            
+            if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) {
+                cdMsg = `{blue:The arcane energies are still gathering! (${cooldowns[abilityId]} turns left)}`;
+            } else if (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) {
+                cdMsg = `{yellow:You need a moment to recover your breath! (${cooldowns[abilityId]} turns left)}`;
+            }
+            
+            logMessage(cdMsg);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             
             triggerSlotShake();
+            return;
         }
+
+        const isSkill = typeof SKILL_DATA !== 'undefined' && !!SKILL_DATA[abilityId];
+        const isSpell = typeof SPELL_DATA !== 'undefined' && !!SPELL_DATA[abilityId];
+
+        // --- 🚨 TACTILE UX WIN: OOM Pre-Shake Check ---
+        // Instantly shakes the hotbar slot *before* routing to the logic if we know we can't afford it,
+        // or if the item is physically missing from our bag!
+        let preCheckFailed = false;
+        
+        if (isSkill) {
+            const cost = Number(SKILL_DATA[abilityId].cost) || 0;
+            if ((Number(player[SKILL_DATA[abilityId].costType]) || 0) < cost) preCheckFailed = true;
+        } else if (isSpell) {
+            let cost = Number(SPELL_DATA[abilityId].cost) || 0;
+            if (SPELL_DATA[abilityId].costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
+                cost = Math.floor(cost * 0.8);
+            }
+            if ((Number(player[SPELL_DATA[abilityId].costType]) || 0) < cost) preCheckFailed = true;
+        } else {
+            // Item Pre-Check: Do we actually have it?
+            const targetName = (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[abilityId]) ? ITEM_DATA[abilityId].name : abilityId;
+            const hasItem = player.inventory.some(i => i && (i.name === targetName || i.templateId === abilityId) && i.quantity > 0);
+            if (!hasItem) preCheckFailed = true;
+        }
+
+        if (preCheckFailed) {
+            triggerSlotShake();
+            // If it's a spell/skill, let it fall through so the core engine prints the specific "Not enough Mana" error text.
+            // If it's an item, we intercept it here to prevent the engine from silently failing.
+            if (!isSkill && !isSpell) {
+                const safeTargetName = typeof escapeHtml === 'function' ? escapeHtml(abilityId) : abilityId;
+                logMessage(`{gray:Your fingers trace an empty pouch. You are out of ${safeTargetName}s!}`);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return;
+            }
+        }
+
+        // Auto-dismount for combat actions
+        if (player.isMounted && (isSkill || isSpell)) {
+            player.isMounted = false;
+            logMessage(`{orange:You leap from your mount into combat!}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+            gameState.mapDirty = true;
+            if (typeof render === 'function') render();
+        }
+
+        if (isSkill) {
+            if (typeof useSkill === 'function') useSkill(abilityId);
+        } else if (isSpell) {
+            if (typeof castSpell === 'function') castSpell(abilityId);
+        } else {
+            // Evaluate dynamic names vs base templates
+            let targetName = abilityId;
+            if (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[abilityId]) {
+                targetName = ITEM_DATA[abilityId].name;
+            }
+
+            const invIndex = player.inventory.findIndex(i => 
+                i && (i.name === targetName || i.templateId === abilityId) && i.quantity > 0 
+            );
+            
+            if (invIndex > -1) {
+                if (typeof useInventoryItem === 'function') useInventoryItem(invIndex);
+            }
+        }
+    } finally {
+        // Unlock mutex safely after a 100ms hardware debounce
+        setTimeout(() => { _isHotbarExecuting = false; }, 100);
     }
 }
 
@@ -605,13 +641,20 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
  */
 
 window.triggerAbilityCooldown = function(abilityId) {
-    const data = (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) || 
-                 (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]);
+    let data = (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) || 
+               (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) ||
+               (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[abilityId]); // Future-proofing
 
     if (data && data.cooldown) {
         if (!gameState.player.cooldowns) gameState.player.cooldowns = {};
 
         let cd = data.cooldown;
+
+        // 🚨 EXPANDABILITY WIN: Call Expansion hook to allow modifications to cooldowns dynamically!
+        if (typeof window.ExpansionManager !== 'undefined') {
+            const hookRes = window.ExpansionManager.triggerHook('onCalculateCooldown', { abilityId, baseCooldown: cd, player: gameState.player });
+            if (hookRes && hookRes.baseCooldown !== undefined) cd = hookRes.baseCooldown;
+        }
 
         // --- Class specific Cooldown Reduction! ---
         if (gameState.player.talents) {
