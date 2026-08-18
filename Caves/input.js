@@ -22,10 +22,8 @@ window.MOVEMENT_MAP = {
     '3': [1, 1], 'Numpad3': [1, 1], 'PageDown': [1, 1]
 };
 
-// O(1) Key Lookups & Expanded Browser Protections
-// Moved out of the event listener so they aren't instantiated on every single keystroke.
-// Added Tab and Enter to prevent unwanted browser scrolling/focus-shifting while playing.
-// Added '/' to block Firefox's default "Quick Find" feature!
+// 🚀 PERFORMANCE WIN: O(1) Set Caching for Game Keys
+// Prevents array reallocation and linear scanning on every single keystroke!
 const BLOCKED_SCROLL_KEYS = new Set([
     'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', ' ',
     'Home', 'End', 'PageUp', 'PageDown', 'Tab', 'Enter', '/'
@@ -35,6 +33,10 @@ const INSTANT_KEYS = new Set([
     'Escape', 'i', 'm', 'b', 'k', 'c', 'p', 'h', 'd', 'g', 'q', 'j', 'z', 'l', '/', 't',
     'I', 'M', 'B', 'K', 'C', 'P', 'H', 'D', 'G', 'Q', 'J', 'Z', 'L', 'T',
     '+', '=', '-', '_'
+]);
+
+const ACTION_KEYS = new Set([
+    'q', 'z', 'g', 'r', ' ', '5', 'numpad5', 'clear', '.'
 ]);
 
 // Dynamic Hotkey Mapping
@@ -179,12 +181,23 @@ window.WAIT_FLAVORS = {
         "You pause in the quiet halls.",
         "You listen for the sound of marching boots.",
         "Dust motes dance in a faint shaft of light."
+    ],
+    // --- LORE EXPANSION WAITS ---
+    GUILD: [
+        "You polish your guild insignia proudly.",
+        "You stand tall, representing your comrades.",
+        "You check the perimeter for rival guild members."
+    ],
+    STEALTH: [
+        "You hold your breath in the shadows.",
+        "You remain perfectly, unnervingly still.",
+        "You meld into the darkness."
     ]
 };
 
 // 🚨 ROBUSTNESS WIN: Safe Async execution wrapper
 // Guarantees that the global engine lock (`isProcessingMove`) remains active 
-// for the entire duration of an asynchronous action chain!
+// for the entire duration of an asynchronous action chain, even if it throws!
 const _safeExecuteWithLock = async (actionFunc) => {
     if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
     if (typeof actionFunc !== 'function') return;
@@ -229,6 +242,13 @@ function handleInput(key) {
         return; // Ignore absolutely all keyboard input while rebuilding the DB
     }
 
+    // 🚨 EXPANDABILITY WIN: Global Input Interceptor Hook
+    // Allows modules like Bard Instruments or Minigames to intercept raw keypresses BEFORE the engine processes them!
+    if (typeof window.ExpansionManager !== 'undefined') {
+        const hookRes = window.ExpansionManager.triggerHook('onBeforeInput', { key: key, handled: false });
+        if (hookRes && hookRes.handled) return;
+    }
+
     // 2. Audio Context Resume (Browser Policy)
     if (typeof AudioSystem !== 'undefined' && AudioSystem._ctx && AudioSystem._ctx.state === 'suspended') {
         try { AudioSystem._ctx.resume().catch(() => {}); } catch(e){}
@@ -256,7 +276,7 @@ function handleInput(key) {
     let numericTestStr = key.startsWith('Numpad') ? key.replace('Numpad', '') : key;
     const isNumberKey = !isNaN(parseInt(numericTestStr, 10)) && parseInt(numericTestStr, 10) >= 1 && parseInt(numericTestStr, 10) <= 9;
     
-    const isGameplayKey = window.MOVEMENT_MAP[key] || ['q', 'z', 'g', 'r', ' ', '5', 'numpad5', 'clear', '.'].includes(lowerKey) || isNumberKey;
+    const isGameplayKey = window.MOVEMENT_MAP[key] || ACTION_KEYS.has(lowerKey) || isNumberKey;
     
     if (gameState.player.stunTurns > 0 && isGameplayKey) {
         
@@ -364,10 +384,20 @@ function handleInput(key) {
     const mapping = HOTKEY_MAPPINGS[lowerKey];
     if (mapping) {
         const modalEl = document.getElementById(mapping.modal);
+        const activeModal = _modalCache.getActive();
+
         if (modalEl) {
             // Locate the functions dynamically via the window object
             const openFunc = typeof window[mapping.openFunc] === 'function' ? window[mapping.openFunc] : null;
             const closeFunc = mapping.closeFunc && typeof window[mapping.closeFunc] === 'function' ? window[mapping.closeFunc] : null;
+
+            // 🚨 UX WIN: Smart Modal Swapping
+            // If a DIFFERENT modal is already open, close it seamlessly before opening the new one!
+            // Prevents the Z-index overlap nightmare of multiple menus stacked on top of each other.
+            if (activeModal && activeModal !== modalEl) {
+                activeModal.classList.add('hidden');
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            }
             
             if (typeof window.toggleModal === 'function') {
                 window.toggleModal(modalEl, openFunc, closeFunc);
@@ -576,19 +606,24 @@ function handleInput(key) {
     }
 
     // --- ATMOSPHERIC WAITING ---
-    if ([' ', '5', 'numpad5', 'clear', '.'].includes(lowerKey)) {
+    if (ACTION_KEYS.has(lowerKey)) {
         
         let waitFlavors = window.WAIT_FLAVORS.DEFAULT;
 
-        // --- VEHICLE & MOUNT SYNERGIES ---
-        if (gameState.player.isMounted && gameState.player.companion) {
+        // --- LORE WIN: Dynamic Thematic Waiting Messages ---
+        // Adapts seamlessly to expansions and states!
+        if (gameState.player.stealthTurns > 0) {
+            waitFlavors = window.WAIT_FLAVORS.STEALTH;
+        } else if (gameState.player.isMounted && gameState.player.companion) {
             waitFlavors = window.WAIT_FLAVORS.MOUNTED;
         } else if (gameState.player.isSailing) {
             waitFlavors = window.WAIT_FLAVORS.SAILING;
         } else if (gameState.player.isBoating) {
             waitFlavors = window.WAIT_FLAVORS.BOATING;
-        } 
-        // --- MULTIVERSE LORE ---
+        } else if (gameState.mapMode === 'castle' && gameState.currentCastleId && gameState.currentCastleId.includes('village') && gameState.player.guildTag) {
+            // Using the new Guild Expansion flavors if standing in a safe haven!
+            if (window.WAIT_FLAVORS.GUILD) waitFlavors = window.WAIT_FLAVORS.GUILD;
+        }
         else if (gameState.currentRealm !== 0 && gameState.currentRealm) {
             if (gameState.realmMutators && gameState.realmMutators.includes('frozen_wastes')) {
                 waitFlavors = window.WAIT_FLAVORS.FROZEN_WASTES;
@@ -680,14 +715,14 @@ document.addEventListener('keydown', (event) => {
 
     // --- THE INPUT QUEUE ROUTER ---
     // Dead check before queueing
-    if (gameState && gameState.player && gameState.player.health <= 0) return;
+    if (typeof gameState !== 'undefined' && gameState.player && gameState.player.health <= 0) return;
     
     // Check if the key matches a menu toggle
     const isMenuKey = !!HOTKEY_MAPPINGS[inputStr.toLowerCase()];
     
     // 🚨 BUG FIX WIN: Hard Capped Input Queue!
     // Prevents the "infinite slide" bug where lag buffering causes the player to walk directly into lava.
-    if (_modalCache.isAnyOpen() || INSTANT_KEYS.has(inputStr) || isMenuKey || gameState.isDroppingItem || gameState.inventoryMode) {
+    if (_modalCache.isAnyOpen() || INSTANT_KEYS.has(inputStr) || isMenuKey || (typeof gameState !== 'undefined' && (gameState.isDroppingItem || gameState.inventoryMode))) {
         handleInput(inputStr); // Execute instantly
     } else {
         // Gameplay actions (Movement, Combat, Aiming) queue up seamlessly!
