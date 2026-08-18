@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "alchemy_and_throwables",
     name: "Alchemy & Throwables",
-    version: "1.3", // Upgraded version!
+    version: "1.4", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -58,6 +58,27 @@ window.ExpansionManager.register({
                     return false;
                 }
             },
+            // --- EXPANSION WIN: New Elemental Flasks ---
+            '🧪ll': {
+                name: 'Liquid Lightning', type: 'consumable', tile: '🧪', pColor: '#facc15', pSize: 35,
+                description: "Throw to release a localized electrical storm. Deals massive Lightning damage and stuns machines.",
+                effect: (state) => {
+                    if (typeof logMessage === 'function') logMessage("{yellow:Select a direction to throw the Liquid Lightning... (WASD/Arrows)}");
+                    state.isAiming = true;
+                    state.abilityToAim = 'throwPotion_Liquid Lightning';
+                    return false;
+                }
+            },
+            '🧪ff': {
+                name: 'Frostfire Flask', type: 'consumable', tile: '🧪', pColor: '#38bdf8', pSize: 35,
+                description: "An unstable mixture of absolute cold and raging heat. Deals both Fire and Frost damage.",
+                effect: (state) => {
+                    if (typeof logMessage === 'function') logMessage("{cyan:Select a direction to throw the Frostfire Flask... (WASD/Arrows)}");
+                    state.isAiming = true;
+                    state.abilityToAim = 'throwPotion_Frostfire Flask';
+                    return false;
+                }
+            },
             '🧪str': {
                 name: 'Elixir of Strength', type: 'buff_potion', tile: '🧪',
                 description: "A potent brew. {red:+8 Strength for 30 turns.}",
@@ -75,7 +96,6 @@ window.ExpansionManager.register({
                     return true;
                 }
             },
-            // --- EXPANSION WIN: New Tactical Throwable ---
             '💣f': {
                 name: 'Flash Powder', type: 'consumable', tile: '💣', pColor: '#ffffff', pSize: 50, _rarity: 'rare',
                 description: "Throw to detonate a massive blinding flash. Stuns all enemies in a huge 5x5 radius.",
@@ -111,6 +131,8 @@ window.ExpansionManager.register({
             "Smoke Bomb": { materials: { "Bat Wing": 2, "Wood Log": 1, "Stone": 1 }, xp: 35, level: 2, yield: 2 },
             "Holy Water": { materials: { "Clean Water": 2, "Moonbloom Petal": 1, "Bone Shard": 1 }, xp: 60, level: 3, yield: 1 },
             "Elixir of Strength": { materials: { "Orc Tusk": 2, "Wildberry": 3, "Clean Water": 1 }, xp: 50, level: 3, yield: 1 },
+            "Liquid Lightning": { materials: { "Void Dust": 1, "Clean Water": 1, "Empty Bottle": 1 }, xp: 80, level: 4, yield: 1 },
+            "Frostfire Flask": { materials: { "Frost Essence": 1, "Fire Elemental Core": 1, "Empty Bottle": 1 }, xp: 90, level: 4, yield: 1 },
             "Void-Fire Flask": { materials: { "Void Dust": 2, "Fire Elemental Core": 1, "Empty Bottle": 1 }, xp: 100, level: 4, yield: 1 },
             "Flash Powder": { materials: { "Void Dust": 2, "Stone": 2 }, xp: 50, level: 3, yield: 2 }
         }
@@ -125,10 +147,14 @@ window.ExpansionManager.register({
             const originalGenerateCampsite = chunkManager.generateCampsite;
             chunkManager.generateCampsite = function() {
                 const map = originalGenerateCampsite.call(this); // Call original base layout
-                const upgrades = gameState.player.campsiteUpgrades || [];
                 
-                // Place the mortar next to the workbench
-                if (upgrades.includes('mortar')) map[4][2] = '⚗️'; 
+                // 🚨 GHOST GUARD: Ensure player and upgrades exist before evaluating
+                const upgrades = (typeof gameState !== 'undefined' && gameState.player && gameState.player.campsiteUpgrades) ? gameState.player.campsiteUpgrades : [];
+                
+                // Place the mortar next to the workbench if the map array is properly sized
+                if (upgrades.includes('mortar') && map[4] && map[4][2] !== undefined) {
+                    map[4][2] = '⚗️'; 
+                }
                 return map;
             };
         }
@@ -169,6 +195,15 @@ window.ExpansionManager.register({
                                 const btn = document.getElementById('btn_mortar');
                                 if (btn) {
                                     btn.onclick = () => {
+                                        // 🚨 ROBUSTNESS WIN: Double check affordability right at click time!
+                                        if (countMat('Wood Log') < 10 || countMat('Stone') < 15) {
+                                            if (typeof logMessage === 'function') logMessage("{red:You lack the materials to build this!}");
+                                            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                                            return;
+                                        }
+
+                                        btn.disabled = true;
+
                                         let wNeeded = 10, sNeeded = 15;
                                         for (let i = p.inventory.length - 1; i >= 0; i--) {
                                             let item = p.inventory[i];
@@ -187,12 +222,17 @@ window.ExpansionManager.register({
                                         p.campsiteUpgrades.push('mortar');
                                         if (typeof logMessage === 'function') logMessage('{green:Campsite upgraded: ALCHEMY MORTAR!}');
                                         if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-                                        document.getElementById('loreModal').classList.add('hidden');
+                                        
+                                        const loreModal = document.getElementById('loreModal');
+                                        if (loreModal) loreModal.classList.add('hidden');
                                         
                                         if (typeof chunkManager !== 'undefined') chunkManager.generateCampsite();
                                         gameState.mapDirty = true;
                                         if (typeof render === 'function') render();
-                                        if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ campsiteUpgrades: p.campsiteUpgrades, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : p.inventory });
+                                        
+                                        if (typeof triggerDebouncedSave === 'function') {
+                                            triggerDebouncedSave({ campsiteUpgrades: p.campsiteUpgrades, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : p.inventory });
+                                        }
                                         if (typeof renderInventory === 'function') renderInventory();
                                     };
                                 }
@@ -228,7 +268,7 @@ window.ExpansionManager.register({
                     
                     // Safe Bottle Drop
                     // If the player drinks/throws a flask, we MUST give them the empty bottle back safely!
-                    if (potionTemplate && (potionTemplate.tile === '🧪' || potionTemplate.name.includes('Flask'))) {
+                    if (potionTemplate && (potionTemplate.tile === '🧪' || potionTemplate.name.includes('Flask') || potionTemplate.name.includes('Liquid'))) {
                         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
                         const emptyStack = player.inventory.find(i => i && i.name === 'Empty Bottle' && !i.isEquipped);
                         
@@ -242,42 +282,44 @@ window.ExpansionManager.register({
                         } else {
                             if (typeof logMessage === 'function') logMessage("{red:Inventory full! The Empty Bottle drops to the ground.}");
                             
-                            // 🚨 BUG FIX WIN: Safe Outward Spiral Drop
-                            // If the inventory was full, the engine dropped the bottle directly onto the player's coordinate.
-                            // If the player was standing on a dungeon exit ('<'), it permanently overwrote the stairs!
-                            // This ensures the bottle scatters to an adjacent empty floor tile.
-                            let placed = false;
-                            let validFloor = '.';
-                            if (gameState.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[gameState.currentCaveTheme]) {
-                                validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
-                            }
+                            // 🚨 ROBUSTNESS WIN: Rely on Centralized EventManager Dropper if available
+                            if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
+                                window.EventManager.safeDropItem(gameState, player.x, player.y, '🫙');
+                            } else {
+                                // 🚨 BUG FIX WIN: Safe Outward Spiral Drop Fallback
+                                let placed = false;
+                                let validFloor = '.';
+                                if (gameState.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[gameState.currentCaveTheme]) {
+                                    validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
+                                }
 
-                            if (typeof chunkManager !== 'undefined') {
-                                for (let r = 0; r <= 2 && !placed; r++) {
-                                    for (let dy = -r; dy <= r && !placed; dy++) {
-                                        for (let dx = -r; dx <= r && !placed; dx++) {
-                                            const tx = player.x + dx;
-                                            const ty = player.y + dy;
-                                            let tileAt;
-                                            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
-                                            else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
-                                            else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
+                                if (typeof chunkManager !== 'undefined') {
+                                    for (let r = 0; r <= 2 && !placed; r++) {
+                                        for (let dy = -r; dy <= r && !placed; dy++) {
+                                            for (let dx = -r; dx <= r && !placed; dx++) {
+                                                const tx = player.x + dx;
+                                                const ty = player.y + dy;
+                                                let tileAt;
+                                                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
+                                                else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
+                                                else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
 
-                                            if (tileAt === validFloor || tileAt === '.') {
-                                                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(tx, ty, '🫙', 24);
-                                                else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = '🫙';
-                                                else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = '🫙';
-                                                placed = true;
+                                                if (tileAt === validFloor || tileAt === '.') {
+                                                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(tx, ty, '🫙', 24);
+                                                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = '🫙';
+                                                    else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = '🫙';
+                                                    placed = true;
+                                                }
                                             }
                                         }
                                     }
+                                    if (!placed) { // Absolute fallback
+                                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(player.x, player.y, '🫙', 24);
+                                        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = '🫙';
+                                        else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = '🫙';
+                                    }
+                                    gameState.mapDirty = true;
                                 }
-                                if (!placed) { // Absolute fallback
-                                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(player.x, player.y, '🫙', 24);
-                                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = '🫙';
-                                    else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = '🫙';
-                                }
-                                gameState.mapDirty = true;
                             }
                         }
                     }
@@ -339,47 +381,53 @@ window.ExpansionManager.register({
                 const explosionColor = (potionTemplate && potionTemplate.pColor) ? potionTemplate.pColor : '#ffffff';
                 const explosionSize = (potionTemplate && potionTemplate.pSize) ? potionTemplate.pSize : 20;
 
+                // --- HELPER: Process generic AoE ---
+                const processAoE = async (radius, spellType, baseDmg, selfDamage = 0, selfDebuff = null) => {
+                    for (let y = targetY - radius; y <= targetY + radius; y++) {
+                        for (let x = targetX - radius; x <= targetX + radius; x++) {
+                            // Friendly Fire!
+                            if (x === player.x && y === player.y && !gameState.godMode) {
+                                if (selfDamage > 0) {
+                                    if (typeof logMessage === 'function') logMessage(`{red:You are caught in your own blast! (-${selfDamage} HP)}`);
+                                    if (typeof window.modifyVital === 'function') window.modifyVital('health', -selfDamage);
+                                } else {
+                                    if (typeof logMessage === 'function') logMessage("{gray:You are splashed by your own potion!}");
+                                }
+
+                                if (selfDebuff) {
+                                    player[selfDebuff.stat] = (player[selfDebuff.stat] || 0) + selfDebuff.turns;
+                                }
+
+                                if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), false);
+                                continue;
+                            }
+
+                            // 🚨 ROBUSTNESS: Use Try/Catch to prevent network failure from stopping the explosion loop
+                            try {
+                                if (typeof applySpellDamage === 'function') {
+                                    const res = await applySpellDamage(x, y, baseDmg, spellType, true);
+                                    if (res && res.hit) Object.assign(batchedPayload, res.payload);
+                                }
+                            } catch (e) {
+                                console.error("AoE Damage application failed on tile", x, y, e);
+                            }
+                        }
+                    }
+                };
+
                 // --- VENOM FLASK ---
                 if (potionName === 'Venom Flask') {
                     if (typeof logMessage === 'function') logMessage("{green:The flask shatters, spraying toxic venom!}");
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, explosionColor, explosionSize);
                     
-                    for (let y = targetY - 1; y <= targetY + 1; y++) {
-                        for (let x = targetX - 1; x <= targetX + 1; x++) {
-                            // Friendly Fire!
-                            if (x === player.x && y === player.y && !gameState.godMode) {
-                                if (typeof logMessage === 'function') logMessage("{green:You are splashed by your own venom!}");
-                                player.poisonTurns = 3;
-                                if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), false);
-                                continue;
-                            }
-                            if (typeof applySpellDamage === 'function') {
-                                const res = await applySpellDamage(x, y, 10, 'poisonBolt', true);
-                                if (res && res.hit) Object.assign(batchedPayload, res.payload);
-                            }
-                        }
-                    }
+                    await processAoE(1, 'poisonBolt', 10, 0, { stat: 'poisonTurns', turns: 3 });
                 }
                 // --- ACID FLASK ---
                 else if (potionName === 'Acid Flask') {
                     if (typeof logMessage === 'function') logMessage("{green:The flask erupts in corrosive acid!}");
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, explosionColor, explosionSize);
                     
-                    for (let y = targetY - 1; y <= targetY + 1; y++) {
-                        for (let x = targetX - 1; x <= targetX + 1; x++) {
-                            if (x === player.x && y === player.y && !gameState.godMode) {
-                                if (typeof logMessage === 'function') logMessage("{green:The acid burns your skin! (-10 HP)}");
-                                if (typeof window.modifyVital === 'function') window.modifyVital('health', -10);
-                                player.poisonTurns = 2;
-                                if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), false);
-                                continue;
-                            }
-                            if (typeof applySpellDamage === 'function') {
-                                const res = await applySpellDamage(x, y, 20, 'poisonBolt', true);
-                                if (res && res.hit) Object.assign(batchedPayload, res.payload);
-                            }
-                        }
-                    }
+                    await processAoE(1, 'poisonBolt', 20, 10, { stat: 'poisonTurns', turns: 2 });
                 }
                 // --- SMOKE BOMB ---
                 else if (potionName === 'Smoke Bomb') {
@@ -474,8 +522,10 @@ window.ExpansionManager.register({
                                 continue; 
                             }
                             if (typeof applySpellDamage === 'function') {
-                                const res = await applySpellDamage(x, y, 30, 'divineLight', true);
-                                if (res && res.hit) Object.assign(batchedPayload, res.payload);
+                                try {
+                                    const res = await applySpellDamage(x, y, 30, 'divineLight', true);
+                                    if (res && res.hit) Object.assign(batchedPayload, res.payload);
+                                } catch (e) { console.error("AoE Damage application failed", e); }
                             }
                         }
                     }
@@ -486,21 +536,24 @@ window.ExpansionManager.register({
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, explosionColor, explosionSize);
                     gameState.screenShake = 20;
                     
-                    for (let y = targetY - 1; y <= targetY + 1; y++) {
-                        for (let x = targetX - 1; x <= targetX + 1; x++) {
-                            if (x === player.x && y === player.y && !gameState.godMode) {
-                                if (typeof logMessage === 'function') logMessage("{purple:You are caught in your own void inferno! (-20 HP)}");
-                                if (typeof window.modifyVital === 'function') window.modifyVital('health', -20);
-                                player.burnTurns = 3;
-                                if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), false);
-                                continue;
-                            }
-                            if (typeof applySpellDamage === 'function') {
-                                const res = await applySpellDamage(x, y, 40, 'fireball', true);
-                                if (res && res.hit) Object.assign(batchedPayload, res.payload);
-                            }
-                        }
-                    }
+                    await processAoE(1, 'fireball', 40, 20, { stat: 'burnTurns', turns: 3 });
+                }
+                // --- LIQUID LIGHTNING ---
+                else if (potionName === 'Liquid Lightning') {
+                    if (typeof logMessage === 'function') logMessage("{yellow:The flask shatters, unleashing a localized electrical storm!}");
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, explosionColor, explosionSize);
+                    gameState.screenShake = 15;
+                    
+                    await processAoE(1, 'thunderbolt', 25, 10, { stat: 'stunTurns', turns: 1 });
+                }
+                // --- FROSTFIRE FLASK ---
+                else if (potionName === 'Frostfire Flask') {
+                    if (typeof logMessage === 'function') logMessage("{cyan:The flask erupts in a contradictory blast of heat and absolute zero!}");
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, explosionColor, explosionSize);
+                    gameState.screenShake = 15;
+                    
+                    // We apply frostBolt logic for environmental synergies (freezing water), but with hefty damage
+                    await processAoE(1, 'frostBolt', 30, 15, { stat: 'frostbiteTurns', turns: 3 });
                 }
                 // --- GLACIAL SHARD ---
                 // 🚨 BUG FIX WIN: The Glacial Shard actually executes here!
@@ -509,21 +562,7 @@ window.ExpansionManager.register({
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, explosionColor, explosionSize);
                     gameState.screenShake = 10;
                     
-                    for (let y = targetY - 1; y <= targetY + 1; y++) {
-                        for (let x = targetX - 1; x <= targetX + 1; x++) {
-                            if (x === player.x && y === player.y && !gameState.godMode) {
-                                if (typeof logMessage === 'function') logMessage("{cyan:You are caught in the freezing blast!}");
-                                player.frostbiteTurns = 5;
-                                if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('staminaDisplay'), false);
-                                continue;
-                            }
-                            if (typeof applySpellDamage === 'function') {
-                                // Maps directly to the 'frostBolt' logic in the engine so it naturally extinguishes fires and creates ice bridges!
-                                const res = await applySpellDamage(x, y, 15, 'frostBolt', true);
-                                if (res && res.hit) Object.assign(batchedPayload, res.payload);
-                            }
-                        }
-                    }
+                    await processAoE(1, 'frostBolt', 15, 0, { stat: 'frostbiteTurns', turns: 5 });
                 }
                 // --- BONE HARPOON (From Monster Hunter) ---
                 else if (potionName === 'Bone Harpoon') {
@@ -531,21 +570,8 @@ window.ExpansionManager.register({
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, explosionColor, explosionSize);
                     gameState.screenShake = 15;
                     
-                    for (let y = targetY - 1; y <= targetY + 1; y++) {
-                        for (let x = targetX - 1; x <= targetX + 1; x++) {
-                            if (x === player.x && y === player.y && !gameState.godMode) {
-                                if (typeof logMessage === 'function') logMessage("{red:You impaled your own foot! (-10 HP)}");
-                                if (typeof window.modifyVital === 'function') window.modifyVital('health', -10);
-                                if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), false);
-                                continue;
-                            }
-                            if (typeof applySpellDamage === 'function') {
-                                // Uses 'poisonBolt' as a proxy to inflict the bleeding/poison dot naturally
-                                const res = await applySpellDamage(x, y, 25, 'poisonBolt', true);
-                                if (res && res.hit) Object.assign(batchedPayload, res.payload);
-                            }
-                        }
-                    }
+                    // Uses 'poisonBolt' as a proxy to inflict the bleeding/poison dot naturally
+                    await processAoE(1, 'poisonBolt', 25, 10, null);
                 }
 
                 // Push the entire AoE payload to Firebase instantly
@@ -566,7 +592,8 @@ window.ExpansionManager.register({
                         poisonTurns: player.poisonTurns,
                         burnTurns: player.burnTurns,
                         stealthTurns: player.stealthTurns,
-                        frostbiteTurns: player.frostbiteTurns
+                        frostbiteTurns: player.frostbiteTurns,
+                        stunTurns: player.stunTurns
                     });
                 }
                 
