@@ -4,113 +4,142 @@
 // LORE, QUESTS, & WORLD BUILDING DATA
 // ==========================================
 
-window.LORE_SETS = {
+// 🚀 PERFORMANCE WIN: Deeply freezing static lore dictionaries and arrays.
+// This prevents accidental runtime mutations and allows the V8 engine to allocate 
+// these massive data structures in read-only memory, drastically reducing GC churn!
+
+window.LORE_SETS = Object.freeze({
     // --- EARLY GAME SETS ---
-    "wanderers_almanac": {
+    "wanderers_almanac": Object.freeze({
         name: "The Wanderer's Almanac",
         description: "Scattered pages from a master cartographer who went mad trying to map the shifting leylines.",
         bonus: "Eagle-Eyed: +1 Base Perception.",
         items: ["📄", "📜r", "📜m"] 
-    },
-    "adventurer_tips": {
+    }),
+    "adventurer_tips": Object.freeze({
         name: "The Survivalist's Guide",
         description: "Scraps of practical advice left by those who came before and perished.",
         bonus: "Hardy: Hunger/Thirst drain 10% slower.",
         items: ["1", "2", "q"] // Refers to Conscript's Orders, Thief's Map, Bandit's Note
-    },
-    "beastmaster_guide": {
+    }),
+    "beastmaster_guide": Object.freeze({
         name: "The Beastmaster's Guide",
         description: "A tattered, blood-stained guide to the creatures of this world.",
         bonus: "Tracker: +1 Base Perception.",
         items: ["🐾1", "🐾2", "🐾3"] 
-    },
+    }),
     
     // --- MID GAME SETS (THE MAIN STORYLINE) ---
-    "king_fall": {
+    "king_fall": Object.freeze({
         name: "The Fall of Alaric",
         description: "The true, unfiltered history of the First King, the betrayal of the Archmage, and the shattering of the Crown.",
         bonus: "Authority: Shop prices reduced by 10%.",
         items: ["📜1", "📜2", "📜3", "📜4", "📜5"] 
-    },
-    "anglers_almanac": {
+    }),
+    "anglers_almanac": Object.freeze({
         name: "The Old Mariner's Tale",
         description: "The rantings of a sailor who realized the ocean's tides are caused by the breathing of a sleeping god.",
         bonus: "Sea Legs: +1 Base Luck.",
         items: ["⚓", "🍾", "🐚"] 
-    },
-    "deep_delver": {
+    }),
+    "deep_delver": Object.freeze({
         name: "The Deep Delver",
         description: "Accounts from the most dangerous, subterranean corners of the world.",
         bonus: "Tireless: +5 Max Stamina.",
         items: ["📘", "J", "L"] 
-    },
-    "architects_ledger": {
+    }),
+    "architects_ledger": Object.freeze({
         name: "The Architect's Ledger",
         description: "Blueprints detailing the true purpose of the ancient fortresses: they were prisons, not castles.",
         bonus: "Stalwart: +5 Max Health.",
         items: ["📜f", "🧱", "▤"] 
-    },
-    "dwarven_mining_logs": {
+    }),
+    "dwarven_mining_logs": Object.freeze({
         name: "Dwarven Mining Logs",
         description: "Sturdy leather-bound notes detailing exactly what the dwarves found when they dug too deep into the crust.",
         bonus: "Demolitionist: +1 Base Constitution.",
         items: ["🧨", "⛏️", "💎r"] 
-    },
+    }),
 
     // --- LATE GAME / MULTIVERSE SETS ---
-    "void_research": {
+    "void_research": Object.freeze({
         name: "Notes from the Void",
         description: "Forbidden research notes left by the First Mage, detailing how to tear reality apart to reach the 'Sleeping One'.",
         bonus: "Clarity: +10 Max Mana.",
         items: ["3", "j", "4"] // Refers to Burned Scroll, Acolyte's Scribblings, Mad Scrawlings
-    },
-    "mythos_of_the_stars": {
+    }),
+    "mythos_of_the_stars": Object.freeze({
         name: "Mythos of the Stars",
         description: "Constellations charted by a lonely stargazer tracking the rifts in the firmament.",
         bonus: "Cosmic Insight: +2 Base Willpower.",
         items: ["constellation_1", "constellation_2", "constellation_3"] 
-    },
-    "the_shadowed_hand": {
+    }),
+    "the_shadowed_hand": Object.freeze({
         name: "The Shadowed Hand",
         description: "A dossier compiled by the Inquisitor detailing the Cult's goal: reforge the Crown to wake the Leviathan.",
         bonus: "Zealot's Bane: +1 Base Strength.",
         items: ["📜c", "🧿s", "z"] 
-    },
+    }),
     
     // --- EXPANSION LORE SETS ---
-    "fae_tales": {
+    "fae_tales": Object.freeze({
         name: "Tales of the Feywild",
         description: "Accounts of those who stepped into the Fairy Rings and returned... changed.",
         bonus: "Trickster's Grace: +2 Base Dexterity.",
         items: ["fae_1", "fae_2", "fae_3"] 
-    },
-    "infernal_mechanics": {
+    }),
+    "infernal_mechanics": Object.freeze({
         name: "Infernal Mechanics",
         description: "The blueprints of the Clockwork Guardians and the Efreet that power them.",
         bonus: "Engineer: +1 Base Wits.",
         items: ["⚙️", "🔥c", "📜l"] 
-    },
-    "chronicles_of_the_abyss": {
+    }),
+    "chronicles_of_the_abyss": Object.freeze({
         name: "Chronicles of the Abyss",
         description: "The final, waterlogged journal of the explorer who discovered the Leviathan's trench.",
         bonus: "Deep Lung: +5 Max Stamina.",
         items: ["📦w", "💎b", "💀d"]
-    },
-    "explorers_guild": {
+    }),
+    "explorers_guild": Object.freeze({
         name: "The Cartographer's Notes",
         description: "The sprawling, often inaccurate field notes of the Guild's most ambitious trailblazers.",
         bonus: "Wayfarer: Leyline travel costs reduced by 10%.",
         items: ["🗺️", "🧭", "🧭v"]
-    },
-    "bard_songs": {
+    }),
+    "bard_songs": Object.freeze({
         name: "Songs of the Wandering Bard",
         description: "Transcribed lyrics of the songs heard echoing across the empty plains.",
         bonus: "Silver Tongue: +2 Base Charisma.",
         items: ["🎵", "📜r", "📜c"]
-    }
-};
+    }),
+    // 🌟 CONTENT WIN: New High-Level Expansion Sets
+    "the_bloodline_legacy": Object.freeze({
+        name: "The Bloodline Legacy",
+        description: "Whispers of the Ascendants who cast off their mortal shells to forge the Spire.",
+        bonus: "Timeless: +10 Max Psyche.",
+        items: ["⌛", "🩸p", "🗼"]
+    }),
+    "vanguard_records": Object.freeze({
+        name: "The Vanguard Records",
+        description: "Charred remnants of the soldiers who sealed the Molten Lord in the deepest caldera.",
+        bonus: "Heatborn: Passively resist the first turn of Burn damage.",
+        items: ["📜vr", "🗝️r", "👹r"]
+    }),
+    "syndicate_manifesto": Object.freeze({
+        name: "The Syndicate Manifesto",
+        description: "A blood-stained ledger containing the true identities of the realm's most wanted outlaws.",
+        bonus: "Executioner: Critical Hits deal an additional +10% damage.",
+        items: ["📜p", "🧭b", "💰b"]
+    }),
+    "deep_core_mining": Object.freeze({
+        name: "Deep Core Stratigraphy",
+        description: "A geological survey of the crushing layers between the crust and the abyssal mantle.",
+        bonus: "Subterranean: Mining uncovers an additional +1 Stone or Iron.",
+        items: ["📜ud", "🦴u", "🪖m"]
+    })
+});
 
-window.LORE_STONE_MESSAGES = [
+window.LORE_STONE_MESSAGES = Object.freeze([
     // Original Messages
     "The stars align when the five thrones are empty.",
     "Iron rots, but obsidian remembers.",
@@ -147,7 +176,7 @@ window.LORE_STONE_MESSAGES = [
     "Before there were castles, there were the Crystal Spires. The dwarves shattered them out of greed.",
     "The fairies trade in memories, not gold. A Memory Shard is worth a fortune in the Deep Woods.",
     
-    // NEW EXPANDED LORE
+    // EXPANDED LORE
     "Alaric did not go mad. He shattered his own Crown to hide the pieces from the First Mage.",
     "The Leviathan slumbers, but its dreams cause the tides. When it wakes, the oceans will boil.",
     "The Cult of the Shadowed Hand seeks to reforge the shattered crown to unlock the Abyssal Trench.",
@@ -167,14 +196,17 @@ window.LORE_STONE_MESSAGES = [
     "He who pulls the blade from the stone must bear the weight of the kingdom. The further from civilization, the heavier the crown.",
     "The Lost City sank beneath the dunes not from a storm, but to hide from the stars.",
     "Do not trust the voices of the spirits. They only remember their pain, not their lives.",
-    "The {purple:Void Blade} is not forged. It is grown, piece by piece, from the dying screams of stars."
-];
+    "The {purple:Void Blade} is not forged. It is grown, piece by piece, from the dying screams of stars.",
+    "The {gold:Ascendants} did not die. They merely discarded their flesh to build the Infinite Spire.",
+    "The Vanguard did not kill the Molten Lord. They locked the door and prayed he would not wake.",
+    "An outlaw's blood pays the kingdom's debts. A {red:Bounty Compass} only points to guilt."
+]);
 
 // ==========================================
 // BIOME SPECIFIC FLAVOR TEXT (Waystones & Overworld)
 // ==========================================
 
-window.LORE_PLAINS = [
+window.LORE_PLAINS = Object.freeze([
     "The wind whispers of the Old King's return.",
     "These fields were once a great battlefield. Rusty arrowheads still surface after rain.",
     "Travelers say the safe haven lies to the west, past the old ruins.",
@@ -210,9 +242,9 @@ window.LORE_PLAINS = [
     "A shallow trench runs through the plains, perfectly straight for miles.",
     "You notice that your shadow seems to be pointing toward the sun.",
     "A tiny, intricately carved stone frog sits atop a boulder."
-];
+]);
 
-window.LORE_FOREST = [
+window.LORE_FOREST = Object.freeze([
     "The trees remember what the axe forgets.",
     "Wolves guard the heart of the wood. Tread lightly.",
     "Beware the shadows that move against the wind.",
@@ -248,9 +280,9 @@ window.LORE_FOREST = [
     "The air here smells strongly of honey and decaying meat.",
     "Every leaf on the trees around you is a striking, luminescent blue.",
     "You hear the faint, haunting melody of a flute playing from deep in the woods."
-];
+]);
 
-window.LORE_MOUNTAIN = [
+window.LORE_MOUNTAIN = Object.freeze([
     "The stone is hollow. The dark deepens.",
     "Dragons once roosted on these peaks. Now, only the wind remains.",
     "The Prospector seeks gold, but he will find only madness.",
@@ -286,9 +318,9 @@ window.LORE_MOUNTAIN = [
     "The mountain peak above you seems to be floating entirely disconnected from the rock.",
     "You find a frozen pond with something massive trapped just beneath the ice.",
     "A deep fissure exhales a constant stream of scalding hot steam."
-];
+]);
 
-window.LORE_SWAMP = [
+window.LORE_SWAMP = Object.freeze([
     "The water tastes of rot and old magic.",
     "Sickness takes the weak. Endurance is key.",
     "The spiders... they are growing larger.",
@@ -323,9 +355,9 @@ window.LORE_SWAMP = [
     "You find a perfect circle of dead lily pads.",
     "A massive footprint in the mud looks suspiciously like a webbed hand.",
     "The rotting hull of a galleon lies here, miles from the ocean."
-];
+]);
 
-window.LORE_DESERT = [
+window.LORE_DESERT = Object.freeze([
     "The heat rising from the sand distorts the air.",
     "Your throat feels dry just looking at the dunes.",
     "The wind shifts the sand, erasing your footprints.",
@@ -355,9 +387,9 @@ window.LORE_DESERT = [
     "A trail of massive, heavy footprints abruptly stops in the middle of a dune.",
     "You see an entire ship buried in the sand, completely intact.",
     "The dunes here sing with a low, vibrating hum as the wind shifts the grains."
-];
+]);
 
-window.LORE_DEADLANDS = [
+window.LORE_DEADLANDS = Object.freeze([
     "The ash falls from the sky like dirty snow.",
     "The earth here is cracked and devoid of all life.",
     "A fissure in the ground glows with a sickly purple light.",
@@ -386,13 +418,13 @@ window.LORE_DEADLANDS = [
     "The cracked earth here reveals a geometric pattern far too precise to be natural.",
     "You find a shadow permanently burned into a rock wall, hands raised in terror.",
     "A rusted crown sits in the dirt, completely fused to a skull."
-];
+]);
 
 // ==========================================
 // DYNAMIC TUTORIALS & VILLAGER RUMORS
 // ==========================================
 
-window.VILLAGER_RUMORS = [
+window.VILLAGER_RUMORS = Object.freeze([
     // --- COMBAT & MECHANICS ---
     "I heard spiders hate {red:fire}. Burn 'em, I say!",
     "The skeletons are stupid, but they never tire. A spear is useless against them; you need something heavy to {gold:crush} the bones.",
@@ -427,7 +459,7 @@ window.VILLAGER_RUMORS = [
     "Careful in combat while riding a beast. If you take a heavy hit, you might get {red:violently knocked off}!",
     "You can't swing a sword while riding a bear. If you use an attack or a spell, you'll {orange:leap off your mount} directly into combat!",
 
-    // --- NEW LANDMARKS & OVERWORLD EVENTS ---
+    // --- EXPANSION RUMORS ---
     "Legends speak of a {gold:Sword in the Stone}. Only the strongest can pull it. And the further from civilization it lies, the heavier it is.",
     "They say a {gray:Fallen Titan} lies rusted in the wasteland. If you have a Pickaxe, you might pry loose its Star-Metal core.",
     "The {red:Blood Altars} in the swamps... they demand half your life force. But the power they grant is permanent, if you survive.",
@@ -439,6 +471,11 @@ window.VILLAGER_RUMORS = [
     "If you see a falling star, chase it! Star-metal is worth an absolute fortune.",
     "I wouldn't touch those {green:Bouncer Caps} in the fungal jungle. Might launch you straight into a cavern ceiling.",
     "Did you feel the ground shake? Some poor fool must have struck the {purple:Whispering Monolith} in the deadlands.",
+    "If you reach Level 50 and conquer the Spire, you can cast off your mortal flesh and {gold:Ascend}. They say it makes you reborn stronger.",
+    "The {red:Molten Lord} sleeps deep within the volcanic caldera. Only a Vanguard Key can wake him. Don't go alone.",
+    "If you see a player with a {red:Bounty Compass}, run. The Syndicate is hunting outlaws.",
+    "You can build a {blue:Guild Stronghold} by claiming a Dark Castle ruin with a Guild Charter. Then your friends can share a massive vault!",
+    "If you dig too deep in the {gray:Underworld}, the rocks start to pulse and chew. Bring a heavy pickaxe and a light.",
 
     // --- EXPLORATION & WORLD ---
     "If you find a pickaxe, try the mountains. Good {gray:Iron Ore} there.",
@@ -483,13 +520,13 @@ window.VILLAGER_RUMORS = [
     "They say the Old King isn't dead, just... waiting in the deep.",
     "The mages in the tower used to turn lead into gold. Now they just try to erase what they've done.",
     "They say the Old King's crown was shattered into five pieces. Not by the Cult... but by his own hand. Why would he do that?"
-];
+]);
 
 // ==========================================
 // SCATTERED LORE (Journals & Papers)
 // ==========================================
 
-window.RANDOM_JOURNAL_PAGES = [
+window.RANDOM_JOURNAL_PAGES = Object.freeze([
     "Day 4: My boots are soaked. The swamp is trying to swallow me whole. I swear I saw a spider the size of a wolf.",
     "I've heard tales of a safe village, but the paths are hidden. The guards say it's for our own good.",
     "The recipe for a 'Machete'? Why would I need... oh. The forest. Of course.",
@@ -547,9 +584,9 @@ window.RANDOM_JOURNAL_PAGES = [
     "T. was a coward, but he was right. We shouldn't have brought the gold to the fortress.",
     "K. went back into the mines yesterday. He was muttering about totems and glory. We won't see him again.",
     "The Cartographer's Guild has officially stopped updating the maps. They say the borders of reality are no longer fixed."
-];
+]);
 
-window.LORE_FRAGMENTS = [
+window.LORE_FRAGMENTS = Object.freeze([
     "My dearest Elara, the crops failed again. The soil tastes of ash...",
     "Order 66: Burn the library. The King commands it. He says the books are whispering to him.",
     "I hid the gold under the loose stone in the... (the rest is smeared with blood).",
@@ -574,13 +611,13 @@ window.LORE_FRAGMENTS = [
     "I found the Lost City. The rumors were true. The streets are paved with gold and bones.",
     "The line went taut, and the ship pitched forward. It wasn't a fish. It was the ocean itself pulling us down.",
     "I swear the clockwork spider looked at me with human eyes before I crushed it."
-];
+]);
 
 // ==========================================
 // VISIONS OF THE PAST (Obelisks)
 // ==========================================
 
-window.VISIONS_OF_THE_PAST = [
+window.VISIONS_OF_THE_PAST = Object.freeze([
     "A VISION: Five knights kneel before a dark altar. They drink from a chalice of black ichor, and their eyes turn to blue ice.",
     "A VISION: The sky burns. Not with fire, but with {purple:arcane light}. The mages scream as their tower collapses, shattering into dust.",
     "A VISION: A lone figure seals the crypt doors. He is weeping. 'Sleep well, my brothers,' he whispers. 'Sleep until the world breaks.'",
@@ -620,15 +657,16 @@ window.VISIONS_OF_THE_PAST = [
     // UNIFIED STORY VISIONS
     "A VISION: You see a golden king standing atop the fortress. He takes off his crown and smashes it against the stone. 'They cannot open the Rift without it,' he whispers.",
     "A VISION: You are underwater, sinking into the abyss. A massive, glowing eye opens beneath you. It is larger than a city. The Leviathan is awake."
-];
+]);
 
 // ==========================================
 // RIDDLE DATA (Statues)
 // ==========================================
 // PERFORMANCE: All answers are strictly lowercase to prevent case-conversion misses!
 // BUG FIX: Massively expanded synonym arrays to prevent unfair player punishment!
+// POLISH: Removed exact duplicate concepts and replaced them with fresh puzzles.
 
-window.RIDDLE_DATA = [
+window.RIDDLE_DATA = Object.freeze([
     {
         id: "fire",
         question: "I have no mouth, but I always consume. I have no life, but I must be fed. What am I?",
@@ -819,11 +857,11 @@ window.RIDDLE_DATA = [
         message: "{gold:The statue acknowledges you. You feel more influential.}"
     },
     {
-        id: "fire_2",
-        question: "Feed me and I live, yet give me a drink and I die. What am I?",
-        answers: ["fire", "a fire", "flame", "a flame", "campfire"],
-        reward: "strength", 
-        message: "{red:A spark flares in the statue's eye. Your strength ignites.}"
+        id: "dream",
+        question: "I have no voice, but I speak to you. I have no body, but I dance in the dark. In the morning, I vanish. What am I?",
+        answers: ["dream", "a dream", "dreams", "nightmare", "the dream"],
+        reward: "psyche", 
+        message: "{purple:A fleeting vision dances before your eyes. Your mind expands.}"
     },
     {
         id: "needle",
@@ -1015,13 +1053,27 @@ window.RIDDLE_DATA = [
         reward: "constitution",
         message: "{red:You feel ground down to your core, yet unbroken.}"
     },
-    // --- MORE NEW RIDDLES ---
+    // --- NEW REPLACEMENTS ---
     {
-        id: "map_2",
-        question: "I speak without a voice, I write without ink. I tell you where you are, but not who you are. What am I?",
-        answers: ["map", "a map", "the map", "maps"],
-        reward: "wits",
-        message: "{blue:The statue traces an invisible line in the dust. Your mind feels sharper.}"
+        id: "door",
+        question: "I can be flipped and broken but I never move. I can be closed, and opened, and sometimes removed. What am I?",
+        answers: ["door", "a door", "the door", "lock", "a lock"],
+        reward: "perception",
+        message: "{gold:The statue points forward. You suddenly notice details you missed before.}"
+    },
+    {
+        id: "bomb",
+        question: "I wear a jacket of steel and a heart of ash. I destroy what I protect. What am I?",
+        answers: ["bomb", "a bomb", "tnt", "dynamite", "explosive"],
+        reward: "constitution",
+        message: "{red:The statue vibrates with explosive force. You feel resilient to shock.}"
+    },
+    {
+        id: "trust",
+        question: "It takes years to build, seconds to break, and forever to repair. What is it?",
+        answers: ["trust", "confidence", "reputation"],
+        reward: "charisma",
+        message: "{gold:The statue's stern face softens. Your presence inspires loyalty.}"
     },
     {
         id: "magma",
@@ -1038,37 +1090,29 @@ window.RIDDLE_DATA = [
         message: "{red:The statue grips an invisible hilt. Your arms swell with power.}" 
     },
     {
-        id: "sword_real",
-        question: "I have a tongue but cannot taste. I have a spine but no bones. I draw blood but have no heart. What am I?",
-        answers: ["sword", "a sword", "the sword", "blade", "a blade", "dagger", "knife"],
-        reward: "strength",
-        message: "{red:The statue grips an invisible hilt. Your arms swell with power.}"
+        id: "shield",
+        question: "I have no life, but I can die for you. I have no blood, but I catch the blows meant for you. What am I?",
+        answers: ["shield", "a shield", "armor", "the shield"],
+        reward: "constitution",
+        message: "{blue:The stone solidifies before you. Your body hardens against impact.}"
     },
     {
-        id: "silence_2",
-        question: "I am always hungry, but I never eat. I have no lungs, but I must breathe. What am I?",
-        answers: ["fire", "a fire", "flame"], // Fire again? Let's do something new.
-        reward: "strength",
-        message: "{red:You feel warm.}"
+        id: "ice",
+        question: "I am water's bone, forged by winter's breath. What am I?",
+        answers: ["ice", "the ice", "icicle", "frost", "snow"],
+        reward: "willpower",
+        message: "{cyan:A freezing chill runs down your spine. Your resolve hardens.}"
     },
     {
-        id: "secret_3",
-        question: "I am light as a feather, but even a troll can't hold me for long. What am I?",
-        answers: ["breath", "my breath"], // Breath again. Let's do a completely new one.
-        reward: "endurance",
-        message: "{green:You inhale deeply.}"
-    },
-    {
-        id: "echo_2",
-        question: "I cannot be bought, but I can be stolen with a glance. I am worthless to one, but priceless to two. What am I?",
-        answers: ["love", "a kiss", "heart", "affection"],
-        reward: "charisma",
-        message: "{gold:The statue's stern face softens. Your presence becomes more charming.}"
+        id: "skull",
+        question: "A bowl with no soup, a cage with no bird, a face with no eyes. What am I?",
+        answers: ["skull", "a skull", "skeleton head", "the skull", "bone", "bones"],
+        reward: "wits",
+        message: "{purple:The hollow gaze of the statue pierces you. Your intellect sharpens.}"
     }
+]);
 
-];
-
-window.REGION_HISTORY = [
+window.REGION_HISTORY = Object.freeze([
     // Original Regions
     "A great battle was fought here in the Second Age. The earth still remembers the blood.",
     "Once a thriving trade route, now abandoned to the wilds.",
@@ -1115,43 +1159,43 @@ window.REGION_HISTORY = [
     "This area was cursed by a dying witch. The rain here always tastes like salt and tears.",
     "An ancient amphitheater lies buried beneath the topsoil here. The blood spilled there still stains the dirt red.",
     "The stars above this sector are slightly misaligned compared to the rest of the world."
-];
+]);
 
 // PERFORMANCE & MEMORY LEAK WIN: Extracting this data dictionary out of the function body
 // prevents the V8 engine from having to instantiate and garbage-collect 6 arrays 
 // every single time a player takes a step in a shattered realm!
-window.MUTATOR_HISTORY_DATA = {
-    'lava_oceans': [
+window.MUTATOR_HISTORY_DATA = Object.freeze({
+    'lava_oceans': Object.freeze([
         "The air here burns your lungs. The oceans boiled away centuries ago.",
         "A civilization of fire elementals once built castles on the magma lakes here.",
         "You find a ship made entirely of obsidian, stranded on a cooling basalt flow."
-    ],
-    'eternal_night': [
+    ]),
+    'eternal_night': Object.freeze([
         "You cannot tell if it is day or night. The stars do not move.",
         "The shadows here seem to stretch toward you, regardless of the light.",
         "A kingdom of vampires ruled this sector until they starved to death."
-    ],
-    'frozen_wastes': [
+    ]),
+    'frozen_wastes': Object.freeze([
         "The ice here is blue and harder than steel. It will never melt.",
         "You find a massive dire wolf perfectly preserved mid-leap in a glacier.",
         "The wind carries the sound of shattering glass as trees snap in the cold."
-    ],
-    'overgrown': [
+    ]),
+    'overgrown': Object.freeze([
         "The vines here grow visibly, inching forward while you watch.",
         "A ruined keep is completely choked by massive, thorny brambles.",
         "The smell of blooming flowers is so thick it makes you dizzy."
-    ],
-    'wild_magic': [
+    ]),
+    'wild_magic': Object.freeze([
         "The laws of physics are merely a suggestion in this sector.",
         "You see a rock fall upward into the sky.",
         "The grass here glows with an unnatural, pulsating light."
-    ],
-    'crystalline': [
+    ]),
+    'crystalline': Object.freeze([
         "The ground chimes like a bell with every step you take.",
         "Massive quartz pillars pierce the clouds above.",
         "The reflection in the crystals shows a world that isn't this one."
-    ]
-};
+    ])
+});
 
 // Dynamic history overrides based on the active Mutator in a Shattered Realm
 window.getMutatorHistoryOverride = function(mutatorKey, baseHistory) {
