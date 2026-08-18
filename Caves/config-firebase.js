@@ -174,6 +174,11 @@ rtdb.ref('.info/serverTimeOffset').on('value', function(snap) {
     
     // Dispatch an event so the UI can update a ping meter if desired
     window.dispatchEvent(new CustomEvent('firebase-ping-updated', { detail: { ping: window.FirebaseNetworkState.ping } }));
+    
+    // 🚨 EXPANSION HOOK: Allow extensions to react to latency shifts
+    if (typeof window.ExpansionManager !== 'undefined') {
+        window.ExpansionManager.triggerHook('onPingUpdated', { ping: window.FirebaseNetworkState.ping });
+    }
 });
 
 // Use this to get the exact millisecond time on the server without an API call
@@ -338,6 +343,11 @@ function handleConnectionEstablished() {
     
     hasInitiallyConnected = true;
     wasConnected = true;
+
+    // 🚨 EXPANSION HOOK
+    if (typeof window.ExpansionManager !== 'undefined') {
+        window.ExpansionManager.triggerHook('onNetworkRestored', { ping: window.FirebaseNetworkState.ping });
+    }
 }
 
 function handleConnectionLost() {
@@ -371,6 +381,12 @@ function handleConnectionLost() {
             }
         }
         wasConnected = false;
+
+        // 🚨 EXPANSION HOOK
+        if (typeof window.ExpansionManager !== 'undefined') {
+            window.ExpansionManager.triggerHook('onNetworkSevered');
+        }
+
     }, 2000); 
 }
 
@@ -410,7 +426,7 @@ let _authErrorCache = null;
 function handleAuthError(error) {
     let friendlyMessage = '';
     
-    // Thematic, universe-appropriate error messages
+    // 🚨 LORE WIN: Thematic, universe-appropriate error messages, expanded heavily!
     switch (error.code) {
         case 'auth/invalid-email':
             friendlyMessage = 'The Akashic Records cannot decipher this soul-signature. (Invalid Email)';
@@ -430,7 +446,7 @@ function handleAuthError(error) {
             friendlyMessage = 'The Weavers of Fate are exhausted by your repeated attempts. Wait a moment.';
             break;
         case 'auth/user-disabled':
-            friendlyMessage = 'This soul has been banished by the Archmages. (Account Disabled)';
+            friendlyMessage = 'This soul has been banished by the Archmages to the deep Void. (Account Disabled)';
             break;
         case 'auth/network-request-failed':
             friendlyMessage = 'The leylines are silent. Check your connection to the physical world.';
@@ -463,7 +479,7 @@ function handleAuthError(error) {
             friendlyMessage = 'A fundamental law of reality just broke. The Leylines are currently unstable.';
             break;
         default:
-            friendlyMessage = 'The Void stirs. An unexpected error occurred: ' + (error.message || '');
+            friendlyMessage = 'The Void stirs. An unexpected anomaly occurred: ' + (error.message || '');
             break;
     }
     
@@ -480,6 +496,11 @@ function handleAuthError(error) {
     
     if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
     console.error("%c[AKASHIC ENGINE] Auth Rejection:", "color: #ef4444; font-weight: bold;", error); 
+
+    // 🚨 EXPANSION HOOK
+    if (typeof window.ExpansionManager !== 'undefined') {
+        window.ExpansionManager.triggerHook('onAuthError', { error: error, message: friendlyMessage });
+    }
 }
 
 /**
@@ -599,6 +620,11 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
     }
     
     // If it's a complex class instance rather than a plain Object/Array, pass it through safely
+    // Includes fallback for Int8Array, Uint8Array, etc.
+    if (ArrayBuffer.isView(obj)) {
+         return Array.from(obj); // Safe conversion of TypedArrays for Firebase
+    }
+
     if (obj.constructor !== Object && !Array.isArray(obj)) return obj;
 
     // 8. Handle Arrays
