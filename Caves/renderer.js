@@ -233,8 +233,8 @@ const TileRenderer = {
 
     // --- DECORATION HELPERS ---
     drawGrassTuft: (ctx, x, y, color) => {
-        const tx = x * TILE_SIZE;
-        const ty = y * TILE_SIZE;
+        const tx = Math.trunc(x * TILE_SIZE);
+        const ty = Math.trunc(y * TILE_SIZE);
         ctx.strokeStyle = color;
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -245,8 +245,8 @@ const TileRenderer = {
     },
 
     drawFlower: (ctx, x, y, seedX, seedY) => {
-        const tx = x * TILE_SIZE;
-        const ty = y * TILE_SIZE;
+        const tx = Math.trunc(x * TILE_SIZE);
+        const ty = Math.trunc(y * TILE_SIZE);
         ctx.strokeStyle = '#166534';
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(tx + 10, ty + 16); ctx.lineTo(tx + 10, ty + 8); ctx.stroke();
@@ -255,15 +255,15 @@ const TileRenderer = {
     },
 
     drawPebble: (ctx, x, y, color, seedX, seedY) => {
-        const tx = x * TILE_SIZE + (Math.abs(seedX) * 3 % 10) + 2;
-        const ty = y * TILE_SIZE + (Math.abs(seedY) * 7 % 10) + 5;
+        const tx = Math.trunc(x * TILE_SIZE + (Math.abs(seedX) * 3 % 10) + 2);
+        const ty = Math.trunc(y * TILE_SIZE + (Math.abs(seedY) * 7 % 10) + 5);
         ctx.fillStyle = color;
         ctx.beginPath(); ctx.arc(tx, ty, 2, 0, TWO_PI); ctx.fill();
     },
 
     drawBone: (ctx, x, y) => {
-        const tx = x * TILE_SIZE + 10;
-        const ty = y * TILE_SIZE + 10;
+        const tx = Math.trunc(x * TILE_SIZE + 10);
+        const ty = Math.trunc(y * TILE_SIZE + 10);
         ctx.strokeStyle = '#d4d4d8';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -286,8 +286,8 @@ const TileRenderer = {
         // Draw 1 or 2 mushrooms organically
         const count = rand > 0.5 ? 2 : 1;
         for(let i=0; i<count; i++) {
-            const ox = tx + 4 + (rand * 8) + (i * 6);
-            const oy = ty + 10 + (rand * 6) - (i * 4);
+            const ox = Math.trunc(tx + 4 + (rand * 8) + (i * 6));
+            const oy = Math.trunc(ty + 10 + (rand * 6) - (i * 4));
             
             // Fungal Stalk
             ctx.fillStyle = '#f3f4f6';
@@ -313,8 +313,8 @@ const TileRenderer = {
         const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
         const rand = seed - Math.floor(seed);
         
-        const tx = x * TILE_SIZE;
-        const ty = y * TILE_SIZE;
+        const tx = Math.trunc(x * TILE_SIZE);
+        const ty = Math.trunc(y * TILE_SIZE);
         
         // Draw worn cobblestones
         ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'; // Darker stones
@@ -333,8 +333,8 @@ const TileRenderer = {
         const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
         const rand = seed - Math.floor(seed);
         
-        const tx = x * TILE_SIZE;
-        const ty = y * TILE_SIZE;
+        const tx = Math.trunc(x * TILE_SIZE);
+        const ty = Math.trunc(y * TILE_SIZE);
         
         // Crystal Ambient Glow
         ctx.fillStyle = 'rgba(34, 211, 238, 0.2)'; 
@@ -366,21 +366,22 @@ const TileRenderer = {
 
         const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
         const rand = seed - Math.floor(seed);
+        const tx = Math.trunc(x * TILE_SIZE);
+        const ty = Math.trunc(y * TILE_SIZE);
 
         ctx.fillStyle = accentColor;
-        if (rand > 0.6) ctx.fillRect((x * TILE_SIZE) + 3, (y * TILE_SIZE) + 6, 8, 2);
-        if (rand < 0.4) ctx.fillRect((x * TILE_SIZE) + 10, (y * TILE_SIZE) + 14, 6, 2);
+        if (rand > 0.6) ctx.fillRect(tx + 3, ty + 6, 8, 2);
+        if (rand < 0.4) ctx.fillRect(tx + 10, ty + 14, 6, 2);
         if (rand > 0.9) {
             ctx.beginPath();
-            ctx.arc((x * TILE_SIZE) + 15, (y * TILE_SIZE) + 5, 1.5, 0, TWO_PI);
+            ctx.arc(tx + 15, ty + 5, 1.5, 0, TWO_PI);
             ctx.fill();
         }
     },
 
     // 🌲 Procedural Pine Forests (Animated Wind Sway)
     drawForest: (ctx, x, y, mapX, mapY, baseColor) => {
-        ctx.fillStyle = baseColor;
-        ctx.fillRect(Math.trunc(x * TILE_SIZE - 0.5), Math.trunc(y * TILE_SIZE - 0.5), TILE_SIZE + 1, TILE_SIZE + 1);
+        TileRenderer.drawBase(ctx, x, y, baseColor);
 
         const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
         const rand = seed - Math.floor(seed);
@@ -434,8 +435,8 @@ const TileRenderer = {
         const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
         const rand = seed - Math.floor(seed); 
 
-        const tx = x * TILE_SIZE;
-        const ty = y * TILE_SIZE;
+        const tx = Math.trunc(x * TILE_SIZE);
+        const ty = Math.trunc(y * TILE_SIZE);
 
         TileRenderer.drawBase(ctx, x, y, baseColor);
 
@@ -450,13 +451,13 @@ const TileRenderer = {
 
         const drawPeak = (offsetX, offsetY, scaleW, scaleH) => {
             const jitterX = (rand - 0.5) * 4;
-            const peakX = tx + (TILE_SIZE / 2) + offsetX + jitterX;
-            const peakY = ty + (TILE_SIZE * 0.1) + offsetY;
+            const peakX = Math.trunc(tx + (TILE_SIZE / 2) + offsetX + jitterX);
+            const peakY = Math.trunc(ty + (TILE_SIZE * 0.1) + offsetY);
             const width = TILE_SIZE * scaleW;
             const height = TILE_SIZE * scaleH;
-            const baseLeft = peakX - (width / 2);
-            const baseRight = peakX + (width / 2);
-            const baseBottom = ty + TILE_SIZE;
+            const baseLeft = Math.trunc(peakX - (width / 2));
+            const baseRight = Math.trunc(peakX + (width / 2));
+            const baseBottom = Math.trunc(ty + TILE_SIZE);
 
             const gradient = ctx.createLinearGradient(peakX, peakY, peakX, baseBottom);
             gradient.addColorStop(0, '#78716c'); 
@@ -480,13 +481,13 @@ const TileRenderer = {
 
             // Snow Cap
             if (scaleH > 0.85) {
-                const snowLine = peakY + (height * 0.25);
+                const snowLine = Math.trunc(peakY + (height * 0.25));
                 ctx.fillStyle = '#f3f4f6'; 
                 ctx.beginPath();
                 ctx.moveTo(peakX, peakY);
-                ctx.lineTo(peakX + (width * 0.2), snowLine + 2);
+                ctx.lineTo(Math.trunc(peakX + (width * 0.2)), snowLine + 2);
                 ctx.lineTo(peakX, snowLine - 1); 
-                ctx.lineTo(peakX - (width * 0.2), snowLine + 2);
+                ctx.lineTo(Math.trunc(peakX - (width * 0.2)), snowLine + 2);
                 ctx.fill();
             }
         };
@@ -515,8 +516,8 @@ const TileRenderer = {
         } else if ((mapX * 123 + mapY * 456) % 7 === 0) { 
             ctx.strokeStyle = accentColor;
             ctx.lineWidth = 1;
-            const tx = x * TILE_SIZE + TILE_SIZE / 2;
-            const ty = y * TILE_SIZE + TILE_SIZE / 2;
+            const tx = Math.trunc(x * TILE_SIZE + TILE_SIZE / 2);
+            const ty = Math.trunc(y * TILE_SIZE + TILE_SIZE / 2);
             ctx.beginPath(); ctx.moveTo(tx - 2, ty + 2); ctx.lineTo(tx, ty - 2); ctx.lineTo(tx + 2, ty + 2); ctx.stroke();
         }
     },
@@ -534,8 +535,8 @@ const TileRenderer = {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         const rand = TileRenderer.getPseudoRandom(mapX, mapY);
         if (rand > 0.7) { 
-            const tx = x * TILE_SIZE;
-            const ty = y * TILE_SIZE;
+            const tx = Math.trunc(x * TILE_SIZE);
+            const ty = Math.trunc(y * TILE_SIZE);
             ctx.strokeStyle = '#d97706';
             ctx.lineWidth = 1;
             ctx.beginPath(); ctx.moveTo(tx + 4, ty + 10); ctx.lineTo(tx + 16, ty + 10); ctx.stroke();
@@ -546,8 +547,8 @@ const TileRenderer = {
     drawWater: (ctx, x, y, mapX, mapY, baseColor, accentColor, isDeep = false) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         
-        const tx = x * TILE_SIZE;
-        const ty = y * TILE_SIZE;
+        const tx = Math.trunc(x * TILE_SIZE);
+        const ty = Math.trunc(y * TILE_SIZE);
 
         const time = performance.now() / (isDeep ? 2500 : 1500);
         
@@ -586,8 +587,8 @@ const TileRenderer = {
     drawFire: (ctx, x, y, baseColor, mapX, mapY) => { 
         TileRenderer.drawBase(ctx, x, y, baseColor || '#451a03'); 
 
-        const tx = x * TILE_SIZE + TILE_SIZE / 2;
-        const ty = y * TILE_SIZE + TILE_SIZE - 2;
+        const tx = Math.trunc(x * TILE_SIZE + TILE_SIZE / 2);
+        const ty = Math.trunc(y * TILE_SIZE + TILE_SIZE - 2);
         const time = performance.now();
         const flicker = Math.sin(time / 100) * 3;
 
@@ -608,8 +609,8 @@ const TileRenderer = {
     // Ω Void Rift
     drawVoid: (ctx, x, y, mapX, mapY) => {
         TileRenderer.drawBase(ctx, x, y, '#000');
-        const tx = x * TILE_SIZE + TILE_SIZE / 2;
-        const ty = y * TILE_SIZE + TILE_SIZE / 2;
+        const tx = Math.trunc(x * TILE_SIZE + TILE_SIZE / 2);
+        const ty = Math.trunc(y * TILE_SIZE + TILE_SIZE / 2);
         
         const now = performance.now();
         const pulse = Math.sin(now / 300);
@@ -634,21 +635,21 @@ const TileRenderer = {
 
     // 🧱 Walls
     drawWall: (ctx, x, y, baseColor, accentColor, style = 'rough') => {
-        const tx = x * TILE_SIZE;
-        const ty = y * TILE_SIZE;
+        const tx = Math.trunc(x * TILE_SIZE);
+        const ty = Math.trunc(y * TILE_SIZE);
 
         TileRenderer.drawBase(ctx, x, y, baseColor);
         ctx.fillStyle = accentColor;
 
         if (style === 'brick') {
-            const brickH = TILE_SIZE / 4;
+            const brickH = Math.trunc(TILE_SIZE / 4);
             ctx.fillRect(tx, ty, TILE_SIZE, 1);
-            ctx.fillRect(tx + TILE_SIZE / 2, ty, 1, Math.trunc(brickH));
+            ctx.fillRect(tx + Math.trunc(TILE_SIZE / 2), ty, 1, brickH);
             ctx.fillRect(tx, ty + brickH, TILE_SIZE, 1);
-            ctx.fillRect(tx + TILE_SIZE / 4, ty + brickH, 1, Math.trunc(brickH));
-            ctx.fillRect(tx + (TILE_SIZE * 0.75), ty + brickH, 1, Math.trunc(brickH));
+            ctx.fillRect(tx + Math.trunc(TILE_SIZE / 4), ty + brickH, 1, brickH);
+            ctx.fillRect(tx + Math.trunc(TILE_SIZE * 0.75), ty + brickH, 1, brickH);
             ctx.fillRect(tx, ty + (brickH * 2), TILE_SIZE, 1);
-            ctx.fillRect(tx + TILE_SIZE / 2, ty + (brickH * 2), 1, Math.trunc(brickH));
+            ctx.fillRect(tx + Math.trunc(TILE_SIZE / 2), ty + (brickH * 2), 1, brickH);
         } else {
             const seed = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
             const rand = seed - Math.floor(seed);
@@ -662,8 +663,8 @@ const TileRenderer = {
     },
 
     drawTelegraph: (ctx, x, y) => {
-        const tx = x * TILE_SIZE;
-        const ty = y * TILE_SIZE;
+        const tx = Math.trunc(x * TILE_SIZE);
+        const ty = Math.trunc(y * TILE_SIZE);
 
         const alpha = 0.3 + (Math.sin(performance.now() / 150) * 0.15); 
 
@@ -694,8 +695,8 @@ const TileRenderer = {
         if (safeMax <= 0 || safeCurrent >= safeMax || safeCurrent <= 0) return; 
         
         const percent = Math.max(0, safeCurrent / safeMax);
-        const tx = x * TILE_SIZE;
-        const ty = y * TILE_SIZE;
+        const tx = Math.trunc(x * TILE_SIZE);
+        const ty = Math.trunc(y * TILE_SIZE);
 
         const barWidth = TILE_SIZE - 2; 
         const barHeight = 4;
@@ -730,7 +731,7 @@ const TileRenderer = {
     drawShadow: (ctx, x, y) => {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
         ctx.beginPath();
-        ctx.ellipse(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE - 3, TILE_SIZE / 3, TILE_SIZE / 6, 0, 0, TWO_PI);
+        ctx.ellipse(Math.trunc(x * TILE_SIZE + TILE_SIZE / 2), Math.trunc(y * TILE_SIZE + TILE_SIZE - 3), TILE_SIZE / 3, TILE_SIZE / 6, 0, 0, TWO_PI);
         ctx.fill();
     }
 };
@@ -840,7 +841,16 @@ function renderTerrainCache(startX, startY) {
                     tile = baseTerrain;
                     if (chunkManager.worldState[chunkId] && chunkManager.worldState[chunkId][tileKey] !== undefined) {
                         const val = chunkManager.worldState[chunkId][tileKey];
-                        tile = (typeof val === 'object' && val !== null) ? val.t : val;
+                        if (typeof val === 'object' && val !== null) {
+                            // 🚨 BUG FIX: Check expiration natively in the renderer to prevent ghost rendering of expired world items
+                            if (val.expires && Date.now() > val.expires) {
+                                // Do nothing, let it fall back to baseTerrain
+                            } else {
+                                tile = val.t;
+                            }
+                        } else {
+                            tile = val;
+                        }
                     }
                 } else {
                     tile = '.';
@@ -949,12 +959,12 @@ function renderTerrainCache(startX, startY) {
                     TileRenderer.drawMountain(terrainCtx, x, y, mapX, mapY, bgColor || '#22c55e', isCave);
                     if (isCave) {
                         terrainCtx.fillStyle = '#1f2937';
-                        terrainCtx.fillRect((x * TILE_SIZE) + (TILE_SIZE * 0.4), (y * TILE_SIZE) + (TILE_SIZE * 0.7), TILE_SIZE * 0.2, TILE_SIZE * 0.3);
+                        terrainCtx.fillRect(Math.trunc((x * TILE_SIZE) + (TILE_SIZE * 0.4)), Math.trunc((y * TILE_SIZE) + (TILE_SIZE * 0.7)), Math.trunc(TILE_SIZE * 0.2), Math.trunc(TILE_SIZE * 0.3));
                     }
                 } else {
                     terrainCtx.fillStyle = fgColor;
                     terrainCtx.font = isWideCharCheck(fgChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
-                    terrainCtx.fillText(fgChar, x * TILE_SIZE + halfTile, y * TILE_SIZE + halfTile);
+                    terrainCtx.fillText(fgChar, Math.trunc(x * TILE_SIZE + halfTile), Math.trunc(y * TILE_SIZE + halfTile));
                 }
             }
         }
@@ -1047,7 +1057,7 @@ function render() {
                     TileRenderer.drawShadow(ctx, x, y); 
                     ctx.fillStyle = 'rgba(168, 85, 247, 0.6)'; 
                     ctx.font = `bold ${TILE_SIZE}px monospace`;
-                    ctx.fillText('👻', x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2 + floatY);
+                    ctx.fillText('👻', Math.trunc(x * TILE_SIZE + TILE_SIZE / 2), Math.trunc(y * TILE_SIZE + TILE_SIZE / 2 + floatY));
                 }
             } 
             else if (tile === '~' || tile === '≈') {
@@ -1060,7 +1070,7 @@ function render() {
                     TileRenderer.drawFire(ctx, x, y, null, mapX, mapY);
                 } else {
                     ctx.fillStyle = fgColor;
-                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    ctx.fillRect(Math.trunc(x * TILE_SIZE), Math.trunc(y * TILE_SIZE), TILE_SIZE, TILE_SIZE);
                 }
             } else if (tile === 'Ω') {
                 TileRenderer.drawVoid(ctx, x, y, mapX, mapY);
@@ -1072,7 +1082,7 @@ function render() {
                 }
                 ctx.fillStyle = tile === '#' ? '#a855f7' : '#facc15';
                 ctx.font = `bold ${TILE_SIZE}px monospace`;
-                ctx.fillText(tile, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+                ctx.fillText(tile, Math.trunc(x * TILE_SIZE + TILE_SIZE / 2), Math.trunc(y * TILE_SIZE + TILE_SIZE / 2));
             }
         }
     }
@@ -1131,17 +1141,17 @@ function render() {
         ctx.strokeStyle = '#000000'; 
         ctx.lineWidth = 3; 
         ctx.lineJoin = 'round';
-        ctx.strokeText(char, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2 + breathOffset);
+        ctx.strokeText(char, Math.trunc(x * TILE_SIZE + TILE_SIZE / 2), Math.trunc(y * TILE_SIZE + TILE_SIZE / 2 + breathOffset));
         
         ctx.fillStyle = entity.color || '#ef4444';
-        ctx.fillText(char, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2 + breathOffset);
+        ctx.fillText(char, Math.trunc(x * TILE_SIZE + TILE_SIZE / 2), Math.trunc(y * TILE_SIZE + TILE_SIZE / 2 + breathOffset));
         
         if (entity.type === 'spirit') ctx.globalAlpha = 1.0; 
         
         if (entity.isElite) {
             ctx.strokeStyle = entity.color || '#facc15';
             ctx.lineWidth = 1;
-            ctx.strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2 + breathOffset, TILE_SIZE - 4, TILE_SIZE - 4);
+            ctx.strokeRect(Math.trunc(x * TILE_SIZE + 2), Math.trunc(y * TILE_SIZE + 2 + breathOffset), TILE_SIZE - 4, TILE_SIZE - 4);
         }
         
         TileRenderer.drawHealthBar(ctx, x, y, entity.health, entity.maxHealth);
@@ -1163,8 +1173,9 @@ function render() {
     };
 
     if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-        for (const key in gameState.sharedEnemies) {
-            const enemy = gameState.sharedEnemies[key];
+        const sharedKeys = Object.keys(gameState.sharedEnemies);
+        for (let i = 0; i < sharedKeys.length; i++) {
+            const enemy = gameState.sharedEnemies[sharedKeys[i]];
             if (!enemy) continue; // 🚨 BUG FIX: Guard against undefined/ghost enemies
             
             const { vx, vy } = lerpEntity(enemy);
@@ -1199,8 +1210,8 @@ function render() {
             if (op.stealthTurns > 0) continue; 
 
             const { vx, vy } = lerpEntity(op);
-            const screenX = (vx - startX) * TILE_SIZE;
-            const screenY = (vy - startY) * TILE_SIZE;
+            const screenX = Math.trunc((vx - startX) * TILE_SIZE);
+            const screenY = Math.trunc((vy - startY) * TILE_SIZE);
             
             if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
                 const opBreath = Math.sin(now / 300 + (op.x * 12.3 + op.y * 7.1)) * (TILE_SIZE * 0.08);
@@ -1209,12 +1220,12 @@ function render() {
                 
                 ctx.fillStyle = '#f97316';
                 ctx.font = `bold ${TILE_SIZE}px monospace`;
-                ctx.fillText('@', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 + opBreath);
+                ctx.fillText('@', Math.trunc(screenX + TILE_SIZE / 2), Math.trunc(screenY + TILE_SIZE / 2 + opBreath));
                 
                 if (op.companion) {
                     ctx.fillStyle = '#86efac';
                     ctx.font = `bold ${Math.trunc(TILE_SIZE * 0.7)}px monospace`;
-                    ctx.fillText(op.companion.tile || '?', screenX + TILE_SIZE - 2, screenY + 6 + opBreath);
+                    ctx.fillText(op.companion.tile || '?', Math.trunc(screenX + TILE_SIZE - 2), Math.trunc(screenY + 6 + opBreath));
                 }
                 
                 // 🚨 BUG FIX & UX WIN: Stop chat bubbles shaking violently due to camera tracking
@@ -1223,10 +1234,10 @@ function render() {
                     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
                     // We measure the text here, but bind it purely to the player's smoothed XY
                     const textWidth = ctx.measureText(op.chatBubble).width;
-                    ctx.fillRect(screenX + TILE_SIZE/2 - textWidth/2 - 4, screenY - 20 + opBreath, textWidth + 8, 16);
+                    ctx.fillRect(Math.trunc(screenX + TILE_SIZE/2 - textWidth/2 - 4), Math.trunc(screenY - 20 + opBreath), textWidth + 8, 16);
                     
                     ctx.fillStyle = 'white';
-                    ctx.fillText(op.chatBubble, screenX + TILE_SIZE/2, screenY - 12 + opBreath);
+                    ctx.fillText(op.chatBubble, Math.trunc(screenX + TILE_SIZE/2), Math.trunc(screenY - 12 + opBreath));
                 }
             }
         }
@@ -1236,8 +1247,8 @@ function render() {
     const playerChar = gameState.player.isSailing ? '⛵' : (gameState.player.isBoating ? 'c' : gameState.player.character);
     
     const playerBreath = Math.sin(now / 300 + (p.x * 12.3 + p.y * 7.1)) * (TILE_SIZE * 0.08);
-    const pScreenX = (visX - startX) * TILE_SIZE + TILE_SIZE / 2;
-    const pScreenY = (visY - startY) * TILE_SIZE + TILE_SIZE / 2 + playerBreath;
+    const pScreenX = Math.trunc((visX - startX) * TILE_SIZE + TILE_SIZE / 2);
+    const pScreenY = Math.trunc((visY - startY) * TILE_SIZE + TILE_SIZE / 2 + playerBreath);
 
     TileRenderer.drawShadow(ctx, visX - startX, visY - startY);
 
@@ -1255,9 +1266,9 @@ function render() {
         ctx.fillText(gameState.player.companion.tile, pScreenX, pScreenY);
 
         ctx.font = `bold ${Math.trunc(TILE_SIZE * 0.6)}px monospace`;
-        ctx.strokeText(playerChar, pScreenX, pScreenY - (TILE_SIZE * 0.35));
+        ctx.strokeText(playerChar, pScreenX, Math.trunc(pScreenY - (TILE_SIZE * 0.35)));
         ctx.fillStyle = '#3b82f6';
-        ctx.fillText(playerChar, pScreenX, pScreenY - (TILE_SIZE * 0.35));
+        ctx.fillText(playerChar, pScreenX, Math.trunc(pScreenY - (TILE_SIZE * 0.35)));
     } else {
         ctx.font = isWideCharCheck(playerChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
         ctx.strokeText(playerChar, pScreenX, pScreenY);
@@ -1272,10 +1283,10 @@ function render() {
         ctx.font = `bold 12px monospace`;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         const textWidth = ctx.measureText(gameState.player.chatBubble).width;
-        ctx.fillRect(pScreenX - textWidth/2 - 4, pScreenY - TILE_SIZE - 12, textWidth + 8, 16);
+        ctx.fillRect(Math.trunc(pScreenX - textWidth/2 - 4), Math.trunc(pScreenY - TILE_SIZE - 12), textWidth + 8, 16);
         
         ctx.fillStyle = 'white';
-        ctx.fillText(gameState.player.chatBubble, pScreenX, pScreenY - TILE_SIZE - 4);
+        ctx.fillText(gameState.player.chatBubble, pScreenX, Math.trunc(pScreenY - TILE_SIZE - 4));
     }
 
     // --- UX WIN: AIMING RETICLES ---
@@ -1284,8 +1295,8 @@ function render() {
         ctx.fillStyle = `rgba(234, 179, 8, ${0.4 + pulse * 0.4})`; 
         ctx.font = `bold ${TILE_SIZE}px monospace`;
         
-        const purePxX = (visX - startX) * TILE_SIZE + TILE_SIZE / 2;
-        const purePxY = (visY - startY) * TILE_SIZE + TILE_SIZE / 2;
+        const purePxX = Math.trunc((visX - startX) * TILE_SIZE + TILE_SIZE / 2);
+        const purePxY = Math.trunc((visY - startY) * TILE_SIZE + TILE_SIZE / 2);
 
         ctx.fillText('✛', purePxX, purePxY - TILE_SIZE); 
         ctx.fillText('✛', purePxX, purePxY + TILE_SIZE); 
@@ -1348,7 +1359,7 @@ function render() {
         }
 
         ctx.save();
-        ctx.translate((visX - startX) * TILE_SIZE + TILE_SIZE / 2, (visY - startY) * TILE_SIZE + TILE_SIZE / 2);
+        ctx.translate(Math.trunc((visX - startX) * TILE_SIZE + TILE_SIZE / 2), Math.trunc((visY - startY) * TILE_SIZE + TILE_SIZE / 2));
         ctx.fillStyle = _cachedGradient;
         
         const coverW = VIEWPORT_WIDTH * TILE_SIZE * 2;
@@ -1532,16 +1543,17 @@ function render() {
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 18px monospace';
                 ctx.textAlign = 'center';
+                
                 // Double text stroke for perfect legibility over backgrounds
                 ctx.strokeStyle = 'rgba(0,0,0,0.8)';
                 ctx.lineWidth = 4;
                 ctx.lineJoin = 'round';
-                ctx.strokeText(activeBoss.name, (canvas.width / dpr) / 2, barY - 10);
-                ctx.fillText(activeBoss.name, (canvas.width / dpr) / 2, barY - 10);
+                ctx.strokeText(activeBoss.name, Math.trunc(canvas.width / dpr / 2), barY - 10);
+                ctx.fillText(activeBoss.name, Math.trunc(canvas.width / dpr / 2), barY - 10);
 
                 ctx.font = 'bold 12px monospace';
-                ctx.strokeText(`${Math.trunc(activeBoss.health)} / ${Math.trunc(safeMaxHealth)}`, (canvas.width / dpr) / 2, barY + 16);
-                ctx.fillText(`${Math.trunc(activeBoss.health)} / ${Math.trunc(safeMaxHealth)}`, (canvas.width / dpr) / 2, barY + 16);
+                ctx.strokeText(`${Math.trunc(activeBoss.health)} / ${Math.trunc(safeMaxHealth)}`, Math.trunc(canvas.width / dpr / 2), barY + 16);
+                ctx.fillText(`${Math.trunc(activeBoss.health)} / ${Math.trunc(safeMaxHealth)}`, Math.trunc(canvas.width / dpr / 2), barY + 16);
             }
         }
     }
@@ -1552,6 +1564,17 @@ function render() {
         ctx.scale(dpr, dpr);
         ctx.fillStyle = `rgba(220, 38, 38, ${Math.min(0.3, gameState.screenShake / 50)})`; 
         ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    }
+    
+    // 🚨 EXPANSION HOOK: Custom Overlay Rendering
+    if (typeof window.ExpansionManager !== 'undefined') {
+        window.ExpansionManager.triggerHook('onRenderOverlay', {
+            ctx: ctx,
+            startX: startX,
+            startY: startY,
+            dpr: dpr,
+            now: now
+        });
     }
 
     ctx.restore();
@@ -1578,6 +1601,12 @@ function syncPlayerState() {
                 y: gameState.player.companion.y  
             } : null
         };
+        
+        // 🚨 EXPANSION HOOK
+        if (typeof window.ExpansionManager !== 'undefined') {
+            window.ExpansionManager.triggerHook('onSyncPlayerState', { stateToSync: stateToSync });
+        }
+        
         onlinePlayerRef.set(stateToSync).catch(() => {});
     }
 }
