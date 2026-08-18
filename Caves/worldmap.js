@@ -38,7 +38,7 @@ const MAX_CACHED_CHUNKS = window.innerWidth <= 1024 ? 150 : 500;
 
 // Pre-compiled RGB Arrays
 // Bypasses the incredibly expensive parseInt(hex, 16) operation inside the 16x16 loop!
-const MAP_COLORS = {
+const MAP_COLORS = Object.freeze({
     WHITE: [248, 250, 252, 255],
     DARK_RED: [153, 27, 27, 255],
     CAVE: [15, 23, 42, 255],
@@ -73,11 +73,13 @@ const MAP_COLORS = {
     LOST_CITY: [234, 179, 8, 255],
     BLOOD_ALTAR: [153, 27, 27, 255],
     RADIANT_SPRING: [34, 211, 238, 255]
-};
+});
 
 // 🚀 PERFORMANCE WIN: O(1) Dictionary Lookup for Tile Colors
 // Completely replaces the expensive 15+ array .includes() checks that used to run 256 times per chunk!
-const TILE_COLOR_MAP = {
+// 🚨 SECURITY WIN: Object.create(null) prevents prototype pollution!
+const TILE_COLOR_MAP = Object.create(null);
+Object.assign(TILE_COLOR_MAP, {
     'V': MAP_COLORS.WHITE, '🏰': MAP_COLORS.WHITE, '♛': MAP_COLORS.WHITE, '🏛️': MAP_COLORS.WHITE, '🚪': MAP_COLORS.WHITE, '🎓': MAP_COLORS.WHITE,
     '🕍': MAP_COLORS.DARK_RED,
     '⛰': MAP_COLORS.CAVE, '♣': MAP_COLORS.CAVE, '🏝️': MAP_COLORS.CAVE,
@@ -103,8 +105,20 @@ const TILE_COLOR_MAP = {
     '🍄r': MAP_COLORS.FAIRY_RING,
     '⚙️d': MAP_COLORS.CLOCKWORK,
     '⛰️m': MAP_COLORS.MINE,
-    'Ω': MAP_COLORS.VOID, '🕳️': MAP_COLORS.VOID
-};
+    'Ω': MAP_COLORS.VOID, '🕳️': MAP_COLORS.VOID,
+    
+    // --- EXPANSION INJECTIONS ---
+    '🚷': MAP_COLORS.BUILT, '🛎️': MAP_COLORS.BUILT, '🏠': MAP_COLORS.BUILT, '⚒️t': MAP_COLORS.BUILT, '👩‍🌾': MAP_COLORS.BUILT, '🎸': MAP_COLORS.BARD,
+    '🗼': MAP_COLORS.VOID, '📊': MAP_COLORS.BUILT, '🧞': MAP_COLORS.MAGIC, '🚪r': MAP_COLORS.MAGIC, '🩸r': MAP_COLORS.BLOOD_ALTAR, '🌀r': MAP_COLORS.MAGIC, '📦r': MAP_COLORS.FLOTSAM,
+    '🐾': MAP_COLORS.DESERT, '🥩d': MAP_COLORS.RED, '🥩v': MAP_COLORS.MAGIC, '🥩b': MAP_COLORS.MOUNTAIN, '🥩s': MAP_COLORS.FOREST,
+    '🐉L': MAP_COLORS.RED, '👁️L': MAP_COLORS.VOID, '🦍L': MAP_COLORS.MOUNTAIN, '🕸️L': MAP_COLORS.FOREST,
+    '💎n': MAP_COLORS.CRYSTAL, '🛒b': MAP_COLORS.BUILT,
+    '⚓c': MAP_COLORS.MOUNTAIN, '🚢g': MAP_COLORS.CAVE,
+    '🕸️b': MAP_COLORS.CAVE, '🌲h': MAP_COLORS.FOREST, '🧊c': MAP_COLORS.ICE, '🔥s': MAP_COLORS.RED, '🏝️g': MAP_COLORS.SHALLOW, '🏰r': MAP_COLORS.CAVE,
+    '🕍c': MAP_COLORS.DARK_RED, '🌠e': MAP_COLORS.STAR, '⛺e': MAP_COLORS.BUILT, '🛒d': MAP_COLORS.BUILT,
+    '🏰g': MAP_COLORS.BUILT,
+    '🛤️': MAP_COLORS.BUILT, '🛒': MAP_COLORS.BUILT
+});
 
 function getCachedMapChunk(cx, cy) {
     const key = `${cx},${cy}`;
@@ -154,7 +168,7 @@ function getCachedMapChunk(cx, cy) {
 
 // Determines accurate colors including Nautical, Night, and Void items
 function getTileColorForMap(worldX, worldY) {
-    const tile = chunkManager.getTile(worldX, worldY); 
+    const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(worldX, worldY) : '.'; 
 
     // O(1) Fast-Path lookup for specific features/landmarks
     if (TILE_COLOR_MAP[tile]) return TILE_COLOR_MAP[tile];
@@ -185,7 +199,7 @@ function getMapTileName(x, y) {
     const chunkId = `${Math.floor(x / MAP_CHUNK_SIZE)},${Math.floor(y / MAP_CHUNK_SIZE)}`;
     
     // LORE WIN: Dynamic Uncharted labeling based on distance and dimension
-    if (!gameState.exploredChunks.has(chunkId)) {
+    if (typeof gameState !== 'undefined' && gameState.exploredChunks && !gameState.exploredChunks.has(chunkId)) {
         if (gameState.currentRealm !== 0 && gameState.currentRealm) return "Unknown Dimensional Void";
         const distSq = (x * x) + (y * y);
         if (distSq > 2250000) return "The Deep Uncharted"; // > 1500 tiles away
@@ -218,14 +232,24 @@ function getMapTileName(x, y) {
         '🧊': "Slippery Glacial Ice", '❄️': "Deep Tundra Snow", '🌲': "Frozen Pine Forest",
         '💎c': "Crystalline Spires", '🍄': "Towering Fungal Jungle", '🕸': "Infested Spider Nest",
         '⛺k': "Abandoned Campfire", '⚰️': "Forgotten Grave", '?': "Whispering Statue",
-        '|': "Ancient Obelisk", '⛲': "Wishing Well", '⛩️': "Ruined Shrine", 'V': "Village Wall",
+        '|': "Ancient Obelisk", '⛲': "Wishing Well", '⛩️': "Ruined Shrine",
         '🎵': "Wandering Bard", '⛺a': "Abandoned Campsite", '🕍': "Dark Castle Ruins",
         
-        // New Expansions
+        // Expansion Injections
         '🏛️c': "The Lost City of the Sands", '🩸a': "Altar of Blood",
         '🤺w': "Wounded Knight", '🦹': "Shady Smuggler",
         '🗡️r': "Sword in the Stone", '⛲r': "Radiant Spring",
-        '⚙️g': "Fallen Titan", '🪦m': "Whispering Monolith"
+        '⚙️g': "Fallen Titan", '🪦m': "Whispering Monolith",
+        '🚷': "Caged Prisoner", '🛎️': "Town Bell", '🏠': "Cozy House", '⚒️t': "Town Blacksmith", '👩‍🌾': "Camp Botanist", '🎸': "Camp Bard",
+        '🗼': "The Infinite Spire", '📊': "Spire Leaderboard", '🧞': "Spire Vendor", '🚪r': "Raid Exit", '🩸r': "Summoning Altar", '🌀r': "Vanguard Portal", '📦r': "Vanguard Cache",
+        '🐾': "Monster Tracks", '🥩d': "Slain Drake", '🥩v': "Slain Void Terror", '🥩b': "Slain Behemoth", '🥩s': "Slain Broodmother",
+        '🐉L': "Scorched Roost", '👁️L': "Tear in Reality", '🦍L': "Shattered Cavern", '🕸️L': "Infested Burrow",
+        '💎n': "Gemstone Vein", '🛒b': "Overturned Cart",
+        '⚓c': "Pirate Cove", '🚢g': "Derelict Galleon",
+        '🕸️b': "Spider Burrow", '🌲h': "Hollowed Elder Tree", '🧊c': "Glacial Crevasse", '🔥s': "Scorched Sinkhole", '🏝️g': "Oasis Grotto", '🏰r': "Forgotten Cellar",
+        '🕍c': "Cultist Outpost", '🌠e': "Strange Crater", '⛺e': "Royal Emissary Camp", '🛒d': "Dwarven Steam-Cart",
+        '🏰g': "Guild Stronghold",
+        '🛤️': "Minecart Track", '🛒': "Minecart"
     };
 
     if (names[tile]) {
@@ -244,6 +268,8 @@ function getMapTileName(x, y) {
 function openWorldMap() {
     mapChunkCache.clear(); 
     mapModal.classList.remove('hidden');
+    
+    if (typeof gameState === 'undefined' || !gameState.player) return;
     
     mapCamera.x = gameState.player.x;
     mapCamera.y = gameState.player.y;
@@ -275,7 +301,7 @@ function closeWorldMap() {
     worldMapCanvas.height = 0;
 
     // Memory release for chunks outside our immediate view
-    if (typeof chunkManager !== 'undefined' && chunkManager.unloadOutOfRangeChunks && gameState.player) {
+    if (typeof chunkManager !== 'undefined' && chunkManager.unloadOutOfRangeChunks && typeof gameState !== 'undefined' && gameState.player) {
         const currentChunkX = Math.floor(gameState.player.x / MAP_CHUNK_SIZE);
         const currentChunkY = Math.floor(gameState.player.y / MAP_CHUNK_SIZE);
         chunkManager.unloadOutOfRangeChunks(currentChunkX, currentChunkY);
@@ -312,7 +338,7 @@ function mapLoop() {
 }
 
 function renderWorldMap() {
-    if (!gameState.player.exploredChunks) return;
+    if (typeof gameState === 'undefined' || !gameState.player || !gameState.exploredChunks) return;
 
     const logicalWidth = worldMapCanvas.clientWidth;
     const logicalHeight = worldMapCanvas.clientHeight;
@@ -343,9 +369,9 @@ function renderWorldMap() {
     }
     worldMapCtx.stroke();
 
-    // PERFORMANCE WIN: Bitwise rounding (`| 0`) is significantly faster than Math.floor()
-    const centerX = (logicalWidth / 2) | 0;
-    const centerY = (logicalHeight / 2) | 0;
+    // PERFORMANCE WIN: Math.floor correctly maps negative values
+    const centerX = Math.floor(logicalWidth / 2);
+    const centerY = Math.floor(logicalHeight / 2);
     const chunkSizeOnScreen = MAP_CHUNK_SIZE * currentMapScale;
     const now = Date.now(); 
 
@@ -367,8 +393,8 @@ function renderWorldMap() {
             const chunkWorldX = cx * MAP_CHUNK_SIZE;
             const chunkWorldY = cy * MAP_CHUNK_SIZE;
 
-            const screenX = ((chunkWorldX - mapCamera.x) * currentMapScale + centerX) | 0;
-            const screenY = ((chunkWorldY - mapCamera.y) * currentMapScale + centerY) | 0;
+            const screenX = Math.floor((chunkWorldX - mapCamera.x) * currentMapScale + centerX);
+            const screenY = Math.floor((chunkWorldY - mapCamera.y) * currentMapScale + centerY);
 
             const chunkCanvas = getCachedMapChunk(cx, cy);
             if (chunkCanvas) {
@@ -426,6 +452,11 @@ function renderWorldMap() {
 
     // LORE EXPANSION: Dynamic Region Watermarks
     const regSize = typeof REGION_SIZE !== 'undefined' ? REGION_SIZE : 160;
+    const startWorldX = (0 - centerX) / currentMapScale + mapCamera.x;
+    const endWorldX = (logicalWidth - centerX) / currentMapScale + mapCamera.x;
+    const startWorldY = (0 - centerY) / currentMapScale + mapCamera.y;
+    const endWorldY = (logicalHeight - centerY) / currentMapScale + mapCamera.y;
+
     const startRegX = Math.floor(startWorldX / regSize);
     const endRegX = Math.floor(endWorldX / regSize);
     const startRegY = Math.floor(startWorldY / regSize);
@@ -630,7 +661,7 @@ function renderWorldMap() {
         worldMapCtx.fillStyle = '#f97316'; // Distinct Orange
         worldMapCtx.beginPath();
         Object.values(otherPlayers).forEach(op => {
-            if (op.mapMode === 'overworld' && op.x !== undefined && op.y !== undefined) {
+            if (op && op.mapMode === 'overworld' && typeof op.x === 'number' && typeof op.y === 'number') {
                 const opX = (op.x - mapCamera.x) * currentMapScale + centerX;
                 const opY = (op.y - mapCamera.y) * currentMapScale + centerY;
                 
@@ -865,6 +896,20 @@ function renderWorldMap() {
     worldMapCtx.fillText('50m', 20 + scaleBarWidth/2, logicalHeight - 28);
 
     updateMapUI();
+    
+    // 🚨 EXPANSION HOOK
+    if (typeof window.ExpansionManager !== 'undefined') {
+        window.ExpansionManager.triggerHook('onRenderWorldMap', {
+            ctx: worldMapCtx,
+            currentMapScale: currentMapScale,
+            mapCamera: mapCamera,
+            centerX: centerX,
+            centerY: centerY,
+            logicalWidth: logicalWidth,
+            logicalHeight: logicalHeight,
+            now: now
+        });
+    }
 }
 
 // PERFORMANCE WIN: Cache the DOM string to prevent expensive layout recalculations
@@ -931,6 +976,9 @@ function doMapDrag(clientX, clientY) {
     const dx = clientX - lastMouseX;
     const dy = clientY - lastMouseY;
     
+    // 🚨 BUG FIX: Guard against dividing by near-zero scale
+    if (currentMapScale < 0.1) return;
+    
     targetMapCamera.x -= dx / currentMapScale;
     targetMapCamera.y -= dy / currentMapScale;
     mapCamera.x = targetMapCamera.x;
@@ -970,15 +1018,18 @@ worldMapCanvas.addEventListener('mousemove', (e) => {
             const centerX = Math.floor(worldMapCanvas.clientWidth / 2);
             const centerY = Math.floor(worldMapCanvas.clientHeight / 2);
             
-            hoverWorldX = Math.floor((mouseX - centerX) / currentMapScale + mapCamera.x);
-            hoverWorldY = Math.floor((mouseY - centerY) / currentMapScale + mapCamera.y);
+            // 🚨 BUG FIX: Ensure we don't divide by 0
+            if (currentMapScale > 0) {
+                hoverWorldX = Math.floor((mouseX - centerX) / currentMapScale + mapCamera.x);
+                hoverWorldY = Math.floor((mouseY - centerY) / currentMapScale + mapCamera.y);
+            }
         }
     });
 });
 
 // Double click features
 worldMapCanvas.addEventListener('dblclick', () => {
-    if (hoverWorldX !== null && hoverWorldY !== null && gameState.player.unlockedWaypoints) {
+    if (hoverWorldX !== null && hoverWorldY !== null && typeof gameState !== 'undefined' && gameState.player && gameState.player.unlockedWaypoints) {
         const isUnlocked = gameState.player.unlockedWaypoints.some(wp => wp.x === hoverWorldX && wp.y === hoverWorldY);
         if (isUnlocked && typeof handleFastTravel === 'function') {
             handleFastTravel(hoverWorldX, hoverWorldY);
@@ -987,16 +1038,19 @@ worldMapCanvas.addEventListener('dblclick', () => {
         }
     }
 
-    // Default: Center on player
-    targetMapCamera.x = gameState.player.x;
-    targetMapCamera.y = gameState.player.y;
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+    if (typeof gameState !== 'undefined' && gameState.player) {
+        // Default: Center on player
+        targetMapCamera.x = gameState.player.x;
+        targetMapCamera.y = gameState.player.y;
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+    }
 });
 
 // Custom Map Pins (Right-Click)
 worldMapCanvas.addEventListener('contextmenu', (e) => {
     e.preventDefault(); 
     if (hoverWorldX === null || hoverWorldY === null) return;
+    if (typeof gameState === 'undefined' || !gameState.player) return;
     
     if (!gameState.player.customPins) gameState.player.customPins = [];
     
@@ -1024,7 +1078,7 @@ worldMapCanvas.addEventListener('touchstart', (e) => {
         // UX WIN: Mobile Double-Tap Detection
         const now = Date.now();
         if (now - lastMapTouchTime < 300) {
-            if (hoverWorldX !== null && hoverWorldY !== null && gameState.player.unlockedWaypoints) {
+            if (hoverWorldX !== null && hoverWorldY !== null && typeof gameState !== 'undefined' && gameState.player && gameState.player.unlockedWaypoints) {
                 const isUnlocked = gameState.player.unlockedWaypoints.some(wp => wp.x === hoverWorldX && wp.y === hoverWorldY);
                 if (isUnlocked && typeof handleFastTravel === 'function') {
                     handleFastTravel(hoverWorldX, hoverWorldY);
@@ -1032,9 +1086,11 @@ worldMapCanvas.addEventListener('touchstart', (e) => {
                     return;
                 }
             }
-            targetMapCamera.x = gameState.player.x;
-            targetMapCamera.y = gameState.player.y;
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+            if (typeof gameState !== 'undefined' && gameState.player) {
+                targetMapCamera.x = gameState.player.x;
+                targetMapCamera.y = gameState.player.y;
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+            }
         }
         lastMapTouchTime = now;
     }
@@ -1052,9 +1108,11 @@ worldMapCanvas.addEventListener('touchstart', (e) => {
         touchPinchCentroid.y = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
     }
     hoverWorldX = null; 
-}, { passive: false });
+}, { passive: false }); // 🚨 Important: passive: false allows e.preventDefault() in touchmove
 
 worldMapCanvas.addEventListener('touchmove', (e) => {
+    // 🚨 BUG FIX WIN: Prevent the browser from triggering a "Pull to Refresh" or scrolling 
+    // the page while the player is trying to drag the map around on their phone!
     e.preventDefault(); 
     
     if (isDraggingMap && e.touches.length === 1) {
@@ -1077,20 +1135,26 @@ worldMapCanvas.addEventListener('touchmove', (e) => {
         const centerY = Math.floor(worldMapCanvas.clientHeight / 2);
 
         // 1. Find exactly what world coordinate the pinch is hovering over right now
-        const worldXAtPinch = (touchPinchCentroid.x - centerX) / targetMapScale + targetMapCamera.x;
-        const worldYAtPinch = (touchPinchCentroid.y - centerY) / targetMapScale + targetMapCamera.y;
+        // 🚨 BUG FIX: Guard against dividing by 0 if targetMapScale got corrupted
+        if (targetMapScale > 0) {
+            const worldXAtPinch = (touchPinchCentroid.x - centerX) / targetMapScale + targetMapCamera.x;
+            const worldYAtPinch = (touchPinchCentroid.y - centerY) / targetMapScale + targetMapCamera.y;
 
-        // 2. Apply the zoom
-        targetMapScale *= zoomDelta;
-        targetMapScale = Math.max(0.5, Math.min(32, targetMapScale));
+            // 2. Apply the zoom
+            targetMapScale *= zoomDelta;
+            targetMapScale = Math.max(0.5, Math.min(32, targetMapScale));
 
-        // 3. Shift the camera so the world coordinate stays perfectly pinned under the fingers!
-        targetMapCamera.x = worldXAtPinch - (touchPinchCentroid.x - centerX) / targetMapScale;
-        targetMapCamera.y = worldYAtPinch - (touchPinchCentroid.y - centerY) / targetMapScale;
+            // 3. Shift the camera so the world coordinate stays perfectly pinned under the fingers!
+            targetMapCamera.x = worldXAtPinch - (touchPinchCentroid.x - centerX) / targetMapScale;
+            targetMapCamera.y = worldYAtPinch - (touchPinchCentroid.y - centerY) / targetMapScale;
+        }
     }
 }, { passive: false });
 
 window.addEventListener('touchend', (e) => {
+    // 🚨 BUG FIX WIN: Accurate Touch Count Handling
+    // `e.touches` contains the REMAINING active touches. 
+    // If we had 2 fingers down and lifted 1, `e.touches.length` is 1!
     if (e.touches.length < 2) initialPinchDist = null;
     if (e.touches.length === 0) stopMapDrag();
 });
@@ -1109,24 +1173,25 @@ worldMapCanvas.addEventListener('wheel', (e) => {
     // 🚨 BUG FIX WIN: Accurate Zoom-to-Cursor
     // Previously used `targetMapScale`, which caused the cursor tracking to drift wildly 
     // because `currentMapScale` lerps smoothly over time. Now it locks perfectly to the visual layer!
-    const worldXAtMouse = (mouseX - centerX) / currentMapScale + mapCamera.x;
-    const worldYAtMouse = (mouseY - centerY) / currentMapScale + mapCamera.y;
+    if (currentMapScale > 0) {
+        const worldXAtMouse = (mouseX - centerX) / currentMapScale + mapCamera.x;
+        const worldYAtMouse = (mouseY - centerY) / currentMapScale + mapCamera.y;
 
-    // 2. Apply the zoom smoothly via a multiplier rather than a raw addition
-    if (e.deltaY < 0) {
-        targetMapScale *= 1.25; 
-    } else {
-        targetMapScale /= 1.25; 
+        // 2. Apply the zoom smoothly via a multiplier rather than a raw addition
+        if (e.deltaY < 0) {
+            targetMapScale *= 1.25; 
+        } else {
+            targetMapScale /= 1.25; 
+        }
+        
+        // Clamp limits to prevent layout collapse
+        targetMapScale = Math.max(0.5, Math.min(32, targetMapScale));
+
+        // 3. Shift the camera so the world coordinate stays perfectly pinned under the mouse!
+        // Notice we use the NEW targetMapScale here so the camera lerp knows where it needs to end up!
+        targetMapCamera.x = worldXAtMouse - (mouseX - centerX) / targetMapScale;
+        targetMapCamera.y = worldYAtMouse - (mouseY - centerY) / targetMapScale;
     }
-    
-    // Clamp limits to prevent layout collapse
-    targetMapScale = Math.max(0.5, Math.min(32, targetMapScale));
-
-    // 3. Shift the camera so the world coordinate stays perfectly pinned under the mouse!
-    // Notice we use the NEW targetMapScale here so the camera lerp knows where it needs to end up!
-    targetMapCamera.x = worldXAtMouse - (mouseX - centerX) / targetMapScale;
-    targetMapCamera.y = worldYAtMouse - (mouseY - centerY) / targetMapScale;
-    
 }, { passive: false });
 
 // --- END OF FILE worldmap.js ---
