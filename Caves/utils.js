@@ -756,7 +756,7 @@ window.getRelativePositionText = function(dx, dy, atmospheric = false) {
 // DEEP OBJECT MANAGEMENT
 // ==========================================
 
-// 🚀 PERFORMANCE & ROBUSTNESS WIN: High-speed recursive clone. 
+// High-speed recursive clone. 
 // Completely replaces JSON.parse(JSON.stringify()) with a V8-optimized deep copy.
 // Uses Object.keys() and pre-allocated Arrays to bypass all prototype chain overhead!
 // Now safely supports cloning `Set`, `Map`, `RegExp`, and `Error` objects without corrupting them!
@@ -767,13 +767,13 @@ window.fastClone = function(obj, seen = new WeakMap()) {
     // Base case: null, undefined, strings, numbers, booleans
     if (obj === null || typeof obj !== 'object') return obj;
     
-    // 🚨 BUG FIX WIN: Explicit RegExp support prevents regexes becoming `{}` on clone!
+    // Explicit RegExp support prevents regexes becoming `{}` on clone!
     if (obj instanceof RegExp) return new RegExp(obj);
     
     // Explicit Date support (Prevents dates becoming empty objects)
     if (obj instanceof Date) return new Date(obj.getTime());
     
-    // 🚨 BUG FIX WIN: Explicit Error support prevents logs dropping silent `{}` entries!
+    // Explicit Error support prevents logs dropping silent `{}` entries!
     if (obj instanceof Error) {
         const err = new Error(obj.message);
         err.stack = obj.stack;
@@ -784,24 +784,21 @@ window.fastClone = function(obj, seen = new WeakMap()) {
     // Explicit TypedArray & DataView support 
     // Prevents turning Perlin noise grids or audio buffers into slow, broken dictionaries!
     if (ArrayBuffer.isView(obj)) {
-        // 🚨 MEMORY LEAK FIX: We only slice from byteOffset to byteLength. 
-        // Previously, `obj.buffer.slice(0)` copied the ENTIRE massive underlying buffer 
-        // even if this TypedArray was just a tiny view into it!
+        // We only slice from byteOffset to byteLength. 
         return new obj.constructor(obj.buffer.slice(obj.byteOffset, obj.byteOffset + obj.byteLength));
     }
     
-    // ROBUSTNESS WIN: Never attempt to clone DOM Elements or functions that might have snuck into state
+    // Never attempt to clone DOM Elements or functions that might have snuck into state
     if (typeof HTMLElement !== 'undefined' && obj instanceof HTMLElement) return obj;
     if (typeof obj === 'function') return obj;
     
-    // ROBUSTNESS WIN: Circular Reference Protection!
+    // Circular Reference Protection!
     if (seen.has(obj)) return seen.get(obj);
     
     // Explicit Map and Set support
     if (obj instanceof Set) {
         const clonedSet = new Set();
         seen.set(obj, clonedSet);
-        // Using iterators for top-tier performance on ES6 collections
         for (const x of obj) {
             clonedSet.add(window.fastClone(x, seen));
         }
@@ -818,9 +815,19 @@ window.fastClone = function(obj, seen = new WeakMap()) {
     
     // Fast-path for Arrays
     if (Array.isArray(obj)) {
-        const arr = new Array(obj.length);
+        // Anti-Memory Bomb Guard
+        // Prevent malicious actors or corrupted state from injecting arrays with length 4,294,967,295.
+        // Cap cloning at 10,000 items, which is more than enough for any valid game structure.
+        const len = Math.min(obj.length, 10000);
+        if (obj.length > 10000) {
+            console.warn(`%c[AKASHIC ENGINE] Array length anomaly detected (${obj.length}). Truncating clone to prevent heap exhaustion.`, "color: #facc15;");
+        }
+
+        // Using [] instead of new Array(len) prevents V8 from instantly allocating 
+        // massive contiguous memory blocks if the array is artificially sparse.
+        const arr = [];
         seen.set(obj, arr);
-        for(let i = 0; i < obj.length; i++) {
+        for(let i = 0; i < len; i++) {
             // Arrays can be sparse! Only clone if the index physically exists
             if (i in obj) arr[i] = window.fastClone(obj[i], seen);
         }
@@ -831,10 +838,18 @@ window.fastClone = function(obj, seen = new WeakMap()) {
     const cloned = Object.create(Object.getPrototypeOf(obj) || null);
     seen.set(obj, cloned);
     const keys = Object.keys(obj);
-    for (let i = 0; i < keys.length; i++) {
+    
+    // Object Key Limit Guard (Prevents JSON dictionary bombing)
+    const maxKeys = Math.min(keys.length, 10000);
+    if (keys.length > 10000) {
+        console.warn(`%c[AKASHIC ENGINE] Object key anomaly detected (${keys.length}). Truncating clone to prevent CPU locking.`, "color: #facc15;");
+    }
+    
+    for (let i = 0; i < maxKeys; i++) {
         const key = keys[i];
         cloned[key] = window.fastClone(obj[key], seen);
     }
+    
     return cloned;
 };
 
