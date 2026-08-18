@@ -9,7 +9,7 @@ window.ExpansionManager = {
     expansions: new Map(),
     
     // Global Event Bus for Lifecycle Hooks
-    activeHooks: {},
+    activeHooks: Object.create(null), // 🚨 SECURITY WIN: Object.create(null) prevents prototype poisoning
 
     // 🚨 ARCHITECTURE WIN: Deferred Loading Queue
     // Expansions waiting for their dependencies to load sit here safely.
@@ -102,7 +102,17 @@ window.ExpansionManager = {
             const missing = exp.requires.filter(reqId => !this.has(reqId));
             if (missing.length > 0) {
                 console.warn(`%c[AKASHIC ENGINE] Pausing Timeline: '${exp.name}' requires missing expansions: [${missing.join(', ')}]. Queuing for later.`, "color: #facc15; font-style: italic;");
+                
                 this._pendingQueue.push(exp);
+                
+                // 🚨 ROBUSTNESS WIN: Deadlock Watchdog
+                // Alerts the developer if an expansion is stuck in the queue for more than 3 seconds
+                setTimeout(() => {
+                    if (this._pendingQueue.includes(exp)) {
+                        console.error(`%c[AKASHIC ENGINE] FATAL PARADOX: Expansion '${exp.name}' is permanently deadlocked waiting for dependencies: [${exp.requires.filter(reqId => !this.has(reqId)).join(', ')}].`, "color: #ef4444; font-weight: bold;");
+                    }
+                }, 3000);
+                
                 return;
             }
         }
@@ -146,6 +156,18 @@ window.ExpansionManager = {
             window._COMPILED_LORE_REGEXES.sort((a, b) => b.keyword.length - a.keyword.length);
         }
 
+        // --- 1.5. CSS & STYLE INJECTION (EXPANDABILITY WIN) ---
+        if (exp.css) {
+            const styleId = `akashic-style-${exp.id}`;
+            if (!document.getElementById(styleId)) {
+                const styleEl = document.createElement('style');
+                styleEl.id = styleId;
+                styleEl.textContent = exp.css;
+                document.head.appendChild(styleEl);
+                console.log(`%c[AKASHIC ENGINE] Injected custom leyline aesthetics for '${exp.id}'.`, "color: #a855f7; font-style: italic;");
+            }
+        }
+
         // --- 2. INJECT DICTIONARIES (O(1) Merge) ---
         const dictionaries = {
             items: 'ITEM_DATA',
@@ -165,26 +187,30 @@ window.ExpansionManager = {
             lootSuffixes: 'LOOT_SUFFIXES',
             craftingRecipes: 'CRAFTING_RECIPES',
             cookingRecipes: 'COOKING_RECIPES',
-            alchemyRecipes: 'ALCHEMY_RECIPES'
+            alchemyRecipes: 'ALCHEMY_RECIPES',
+            // 🚨 EXPANDABILITY WIN: Forward-compat mapping for future expansion concepts
+            factions: 'FACTION_DATA',
+            weatherTypes: 'WEATHER_DATA' 
         };
 
         for (const [localKey, globalKey] of Object.entries(dictionaries)) {
             if (data[localKey] && typeof data[localKey] === 'object') {
                 if (typeof window[globalKey] === 'undefined') window[globalKey] = {};
                 
-                for (const key in data[localKey]) {
-                    if (Object.prototype.hasOwnProperty.call(data[localKey], key)) {
-                        // Collision Warnings
-                        if (window[globalKey][key]) {
-                            console.warn(`%c[AKASHIC ENGINE] Overwrite Notice: '${exp.id}' is modifying existing ${localKey} entry: '${key}'.`, "color: #fb923c;");
-                        }
-                        window[globalKey][key] = data[localKey][key];
-                        dictCount++;
+                // 🚀 PERFORMANCE WIN: Object.entries is faster and safer than for...in
+                for (const [key, val] of Object.entries(data[localKey])) {
+                    // Collision Warnings
+                    if (window[globalKey][key]) {
+                        console.warn(`%c[AKASHIC ENGINE] Overwrite Notice: '${exp.id}' is modifying existing ${localKey} entry: '${key}'.`, "color: #fb923c;");
                     }
+                    window[globalKey][key] = val;
+                    dictCount++;
                 }
                 
                 // Clear the room cache so the new rooms are actually pulled into the generator!
                 if (localKey === 'roomTemplates') window.CACHED_ROOM_TEMPLATES = null; 
+                // Clear the pre-compiled minimap colors so custom tiles render correctly!
+                if (localKey === 'tiles') window._mapTileNameCache?.clear();
             }
         }
 
@@ -226,11 +252,9 @@ window.ExpansionManager = {
         // --- 4. INJECT ATMOSPHERE TEXT (Dictionary of Arrays) ---
         if (data.atmosphereText) {
             if (typeof window.ATMOSPHERE_TEXT === 'undefined') window.ATMOSPHERE_TEXT = {};
-            for (const category in data.atmosphereText) {
-                if (Object.prototype.hasOwnProperty.call(data.atmosphereText, category)) {
-                    if (!window.ATMOSPHERE_TEXT[category]) window.ATMOSPHERE_TEXT[category] = [];
-                    window.ATMOSPHERE_TEXT[category].push(...data.atmosphereText[category]);
-                }
+            for (const [category, texts] of Object.entries(data.atmosphereText)) {
+                if (!window.ATMOSPHERE_TEXT[category]) window.ATMOSPHERE_TEXT[category] = [];
+                window.ATMOSPHERE_TEXT[category].push(...texts);
             }
         }
 
@@ -244,16 +268,14 @@ window.ExpansionManager = {
                 'ascendant': 'ASCENDANT_INVENTORY'
             };
 
-            for (const shopKey in data.shops) {
-                if (!Object.prototype.hasOwnProperty.call(data.shops, shopKey)) continue;
-
+            for (const [shopKey, shopItems] of Object.entries(data.shops)) {
                 const targetGlobal = shopTargetMap[shopKey] || `${shopKey.toUpperCase()}_INVENTORY`;
                 
                 if (typeof window[targetGlobal] === 'undefined' || !Array.isArray(window[targetGlobal])) {
                     window[targetGlobal] = [];
                 }
 
-                data.shops[shopKey].forEach(newItem => {
+                shopItems.forEach(newItem => {
                     if (!newItem || !newItem.name) return;
 
                     // 🚨 GHOST GUARD: Ensure we safely scan existing stock
@@ -261,9 +283,19 @@ window.ExpansionManager = {
                     if (existingItem) {
                         existingItem.stock = (existingItem.stock || 0) + (newItem.stock || 0);
                     } else {
-                        // 🚨 BUG FIX & ROBUSTNESS: Use Object.assign instead of JSON stringify
-                        // If a modder puts a custom function inside a shop item, stringify deletes it.
-                        const itemClone = typeof window.fastClone === 'function' ? window.fastClone(newItem) : Object.assign({}, newItem);
+                        // 🚨 BUG FIX & ROBUSTNESS: Safe Shallow/Deep Clone Fallback
+                        // If a modder puts a custom function inside a shop item, JSON stringify deletes it.
+                        // If `fastClone` isn't ready yet, we perform a safe manual top-level clone.
+                        let itemClone;
+                        if (typeof window.fastClone === 'function') {
+                            itemClone = window.fastClone(newItem);
+                        } else {
+                            itemClone = Object.assign({}, newItem);
+                            // Ensure nested arrays/objects aren't passed by reference
+                            if (newItem.statBonuses) itemClone.statBonuses = Object.assign({}, newItem.statBonuses);
+                            if (newItem.tags) itemClone.tags = [...newItem.tags];
+                        }
+                        
                         window[targetGlobal].push(itemClone);
                         dictCount++;
                     }
@@ -273,28 +305,24 @@ window.ExpansionManager = {
 
         // --- 6. REGISTER LIFECYCLE HOOKS (With Priorities) ---
         if (exp.hooks) {
-            for (const hookName in exp.hooks) {
-                if (Object.prototype.hasOwnProperty.call(exp.hooks, hookName)) {
-                    const hookObj = exp.hooks[hookName];
+            for (const [hookName, hookObj] of Object.entries(exp.hooks)) {
+                // Allow simple function passing OR object with priority { func: function, priority: 10 }
+                let hookFunc = null;
+                let hookPriority = 0;
+
+                if (typeof hookObj === 'function') {
+                    hookFunc = hookObj;
+                } else if (typeof hookObj === 'object' && typeof hookObj.func === 'function') {
+                    hookFunc = hookObj.func;
+                    hookPriority = hookObj.priority || 0;
+                }
+
+                if (hookFunc) {
+                    if (!this.activeHooks[hookName]) this.activeHooks[hookName] = [];
+                    this.activeHooks[hookName].push({ id: exp.id, func: hookFunc, priority: hookPriority });
                     
-                    // Allow simple function passing OR object with priority { func: function, priority: 10 }
-                    let hookFunc = null;
-                    let hookPriority = 0;
-
-                    if (typeof hookObj === 'function') {
-                        hookFunc = hookObj;
-                    } else if (typeof hookObj === 'object' && typeof hookObj.func === 'function') {
-                        hookFunc = hookObj.func;
-                        hookPriority = hookObj.priority || 0;
-                    }
-
-                    if (hookFunc) {
-                        if (!this.activeHooks[hookName]) this.activeHooks[hookName] = [];
-                        this.activeHooks[hookName].push({ id: exp.id, func: hookFunc, priority: hookPriority });
-                        
-                        // Sort hooks so highest priority executes first!
-                        this.activeHooks[hookName].sort((a, b) => b.priority - a.priority);
-                    }
+                    // Sort hooks so highest priority executes first!
+                    this.activeHooks[hookName].sort((a, b) => b.priority - a.priority);
                 }
             }
         }
@@ -339,29 +367,29 @@ window.ExpansionManager = {
         this._checkPendingQueue();
     },
 
-    // Recursively processes the queue to load any deferred expansions whose dependencies are now met
+    // 🚀 PERFORMANCE & STABILITY WIN: Non-Recursive Iterative Queue processing
+    // Replaced the recursive structure with a `do...while` loop. 
+    // This prevents deep Call Stack overflows if a modder suddenly loads 50 tiny expansions at once!
     _checkPendingQueue: function() {
         if (this._pendingQueue.length === 0) return;
 
-        let processedAny = false;
-
-        // Loop backward so we can safely splice items out of the array
-        for (let i = this._pendingQueue.length - 1; i >= 0; i--) {
-            const exp = this._pendingQueue[i];
-            const missing = exp.requires.filter(reqId => !this.has(reqId));
+        let processedAny;
+        do {
+            processedAny = false;
             
-            if (missing.length === 0) {
-                console.log(`%c[AKASHIC ENGINE] Dependencies met. Resuming timeline weave for: '${exp.name}'`, "color: #10b981; font-style: italic;");
-                this._pendingQueue.splice(i, 1); // Remove from queue
-                this._mountExpansion(exp);       // Mount it
-                processedAny = true;
+            // Loop backward so we can safely splice items out of the array
+            for (let i = this._pendingQueue.length - 1; i >= 0; i--) {
+                const exp = this._pendingQueue[i];
+                const missing = exp.requires.filter(reqId => !this.has(reqId));
+                
+                if (missing.length === 0) {
+                    console.log(`%c[AKASHIC ENGINE] Dependencies met. Resuming timeline weave for: '${exp.name}'`, "color: #10b981; font-style: italic;");
+                    this._pendingQueue.splice(i, 1); // Remove from queue
+                    this._mountExpansion(exp);       // Mount it immediately
+                    processedAny = true;
+                }
             }
-        }
-
-        // If an expansion was mounted, it might have unblocked ANOTHER expansion, so check again!
-        if (processedAny) {
-            this._checkPendingQueue();
-        }
+        } while (processedAny); // Keep looping if we unblocked something, but flatly, no recursion!
     }
 };
 
