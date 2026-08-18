@@ -251,20 +251,19 @@ window.ExpansionManager.register({
                     if (typeof rtdb === 'undefined') return;
                     const specificItemRef = rtdb.ref(`guilds/${this.activeTag}/vault/${itemUuid}`);
                     
-                    // 🚨 ANTI-DUPE WIN: The secure Transaction!
-                    // This guarantees that if two players click "Withdraw" on the exact same frame,
-                    // only one person gets it, and it verifies inventory capacity AT THE EXACT MILLISECOND
-                    // OF EXECUTION, preventing players from dropping items on the floor to bypass the limit!
+                    // The secure Transaction!
+                    let capturedItem = null; 
+
                     const txResult = await specificItemRef.transaction((currentData) => {
                         if (currentData === null) return undefined; // Already taken!
                         
-                        // Because this runs on the server (conceptually), we can't reliably read the 
-                        // local client's capacity here. But we DO ensure the server deletes it securely.
+                        capturedItem = currentData;
                         return null; // Delete it to claim it
                     });
 
-                    if (txResult.committed && txResult.snapshot.val()) {
-                        let claimedItem = txResult.snapshot.val();
+                    // 👇 Check the capturedItem instead of the post-transaction snapshot
+                    if (txResult.committed && capturedItem) {
+                        let claimedItem = capturedItem; // Assign the captured data
                         
                         // Check capacity safely *after* we have successfully secured it from the server
                         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
