@@ -247,6 +247,16 @@ var NEW_FISHING_ITEMS = {
             
             logMessage(`You pry open the chest... Found {gold:${gold} coins}!`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+
+            // 🚨 THE FIX: Pre-emptively consume the chest
+            // This natively frees up the inventory slot in memory BEFORE we check if we have space for the prize.
+            const chestIdx = state.player.inventory.findIndex(i => i && i.name === 'Waterlogged Chest' && !i.isEquipped);
+            if (chestIdx > -1) {
+                state.player.inventory[chestIdx].quantity--;
+                if (state.player.inventory[chestIdx].quantity <= 0) {
+                    state.player.inventory.splice(chestIdx, 1);
+                }
+            }
             
             if (Math.random() < 0.4) {
                 const lootTable = ['Black Pearl', 'Rainbow Shell', 'Brass Compass', 'Trident', 'Ancient Coin'];
@@ -256,8 +266,6 @@ var NEW_FISHING_ITEMS = {
                 
                 const isStackable = template && ['junk', 'consumable', 'trade'].includes(template.type);
                 const existingPrize = state.player.inventory.find(i => i && i.name === prize && !i.isEquipped);
-                const chestStack = state.player.inventory.find(i => i && i.name === 'Waterlogged Chest' && !i.isEquipped);
-                const freesSlot = (chestStack && chestStack.quantity === 1) ? 1 : 0;
                 const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                 
                 if (existingPrize && isStackable) {
@@ -265,8 +273,9 @@ var NEW_FISHING_ITEMS = {
                     logMessage(`{purple:You also found a ${prize} hidden inside!}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                 } 
-                else if (state.player.inventory.length - freesSlot < invCap) {
-                    // 🚨 BUG FIX & ROBUSTNESS WIN: Safe deep clone to guarantee weapon traits and tags carry over!
+                // We no longer need the 'freesSlot' math!
+                else if (state.player.inventory.length < invCap) {
+                    // Safe deep clone
                     let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
                     newItem.templateId = prizeKey;
                     newItem.name = prize;
@@ -275,7 +284,6 @@ var NEW_FISHING_ITEMS = {
                     newItem.tile = template ? template.tile : '💎';
                     newItem.isEquipped = false;
                     
-                    // Explicit function re-binds for safety
                     newItem.effect = template ? template.effect : null;
                     newItem.onHit = template ? template.onHit : null;
                     
@@ -284,6 +292,7 @@ var NEW_FISHING_ITEMS = {
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                 } else {
                     logMessage(`{red:You found a ${prize}, but your inventory was full and it washed away!}`);
+                    // Optional: You could use window.EventManager.safeDropItem here if you wanted it to drop on the ground!
                 }
             }
             if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('coinsDisplay'), true);
