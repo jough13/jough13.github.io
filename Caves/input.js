@@ -293,7 +293,11 @@ function handleInput(key) {
             
             // Advance the turn securely
             if (typeof endPlayerTurn === 'function') {
-                _safeExecuteWithLock(() => endPlayerTurn());
+                _safeExecuteWithLock(() => {
+                    endPlayerTurn();
+                    // Force a render so the player can see enemies moving while stunned!
+                    if (typeof render === 'function') render(); 
+                });
             }
         }
         
