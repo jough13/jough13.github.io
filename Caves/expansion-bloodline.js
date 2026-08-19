@@ -345,8 +345,13 @@ window.ExpansionManager.register({
             // Create rags natively
             const rags = { templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true };
             
+            // Extract and preserve Spire Tokens before wiping the inventory!
+            // Ensures the player actually has currency to spend in the newly unlocked Ascendant Shop.
+            const savedTokens = player.inventory.find(i => i && i.name === 'Spire Token');
+            
             player.inventory = [rags];
             if (newPendant) player.inventory.unshift(newPendant); 
+            if (savedTokens) player.inventory.push(savedTokens); // Restore their cosmic currency
 
             player.equipment = {
                 weapon: { name: 'Fists', damage: 0, tags: ['blunt'] },
