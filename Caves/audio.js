@@ -378,7 +378,11 @@ const AudioSystem = {
         // Explicitly sever the connections and set the variable references to null so the V8
         // garbage collector can instantly reclaim the massive audio buffers instead of waiting!
         const tail = this._getTailTime(acoustics);
+        let cleaned = false; // Idempotency flag
+        
         const cleanup = () => {
+            if (cleaned) return;
+            cleaned = true;
             try { 
                 if (src) { src.disconnect(); src = null; }
                 if (filter) { filter.disconnect(); filter = null; }
@@ -386,8 +390,10 @@ const AudioSystem = {
             } catch(e) {}
             this._cleanupRoute(panner);
         };
+        
         src.onended = cleanup;
-        setTimeout(cleanup, (actualDuration + tail) * 1000);
+        // The +2 second buffer ensures it never races the natural onended event!
+        setTimeout(cleanup, (actualDuration + tail + 2) * 1000);
     },
 
     playTone: function(freq, type, duration, vol = 0.1, pitchShift = true, slideTo = null, x = null, isUI = false) {
@@ -433,15 +439,20 @@ const AudioSystem = {
         
         // 🚨 MEMORY LEAK FIX & GC HINTS
         const tail = this._getTailTime(acoustics);
+        let cleaned = false;
+        
         const cleanup = () => {
+            if (cleaned) return;
+            cleaned = true;
             try { 
                 if (osc) { osc.disconnect(); osc = null; }
                 if (gain) { gain.disconnect(); gain = null; }
             } catch(e) {}
             this._cleanupRoute(panner);
         };
+        
         osc.onended = cleanup;
-        setTimeout(cleanup, (actualDuration + tail) * 1000);
+        setTimeout(cleanup, (actualDuration + tail + 2) * 1000);
     },
 
     playChord: function(notes, type = 'sine', duration = 0.5, vol = 0.1, detune = 0, slideDown = false, x = null, isUI = false) {
@@ -483,15 +494,20 @@ const AudioSystem = {
             
             // 🚨 MEMORY LEAK FIX & GC HINTS
             const tail = this._getTailTime(acoustics);
+            let cleaned = false;
+            
             const cleanup = () => { 
+                if (cleaned) return;
+                cleaned = true;
                 try { 
                     if (osc) { osc.disconnect(); osc = null; }
                     if (gain) { gain.disconnect(); gain = null; }
                 } catch(e) {}
                 this._cleanupRoute(panner);
             };
+            
             osc.onended = cleanup;
-            setTimeout(cleanup, (actualDuration + tail) * 1000);
+            setTimeout(cleanup, (actualDuration + tail + 2) * 1000);
         });
     },
 
@@ -540,15 +556,20 @@ const AudioSystem = {
         
         // 🚨 MEMORY LEAK FIX & GC HINTS
         const tail = this._getTailTime(acoustics);
+        let cleaned = false;
+        
         const cleanup = () => { 
+            if (cleaned) return;
+            cleaned = true;
             try { 
                 if (osc) { osc.disconnect(); osc = null; }
                 if (gain) { gain.disconnect(); gain = null; }
             } catch(e) {}
             this._cleanupRoute(panner);
         };
+        
         osc.onended = cleanup;
-        setTimeout(cleanup, (totalDuration + tail) * 1000);
+        setTimeout(cleanup, (totalDuration + tail + 2) * 1000);
     },
 
     // --- SPECIFIC SOUND EFFECTS ---
