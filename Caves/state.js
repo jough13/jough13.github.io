@@ -24,7 +24,7 @@ window.getInventoryCap = function(player) {
         for (let i = 0; i < _EQUIPMENT_SLOTS.length; i++) {
             const item = player.equipment[_EQUIPMENT_SLOTS[i]];
             // Math.floor guarantees we don't get decimal slots, and Number() prevents string concatenation
-            if (item && item.statBonuses && item.statBonuses.carryCapacity) {
+            if (item && item.statBonuses && typeof item.statBonuses === 'object' && item.statBonuses.carryCapacity) {
                 cap += Math.floor(Number(item.statBonuses.carryCapacity)) || 0;
             }
         }
@@ -127,7 +127,7 @@ window._statColorCache = {
 // and preventing lag spikes when a new expansion activates a feature for the first time.
 const gameState = {
     // --- System & Engine State ---
-    saveVersion: "0.3.0", 
+    saveVersion: "0.4.0", // Bumped version for new metrics and stable shapes
     initialEnemiesLoaded: false,
     mapDirty: true,
     
@@ -248,6 +248,7 @@ const gameState = {
         lastHitDamage: 0,
         
         // --- BUFF/DEBUFF DURATIONS (Strict Shape Allocation) ---
+        // Pre-allocating ALL potential expansion debuffs guarantees O(1) object property access speeds!
         strengthBonus: 0, strengthBonusTurns: 0,
         witsBonus: 0, witsBonusTurns: 0,
         defenseBonus: 0, defenseBonusTurns: 0,
@@ -264,6 +265,7 @@ const gameState = {
         thornsValue: 0, thornsTurns: 0,
         frostbiteTurns: 0, poisonTurns: 0, burnTurns: 0,         
         rootTurns: 0, madnessTurns: 0, stunTurns: 0,         
+        bleedTurns: 0, blindTurns: 0, slowTurns: 0, hasteTurns: 0, // Expanded Scaffold
         candlelightTurns: 0, stealthTurns: 0,
         fireResistTurns: 0, waterBreathingTurns: 0,
         
@@ -281,7 +283,9 @@ const gameState = {
             dwarven_clans: 0,       
             cult_of_the_abyss: -5,
             pirates_cove: 0,
-            cartographers_guild: 0
+            cartographers_guild: 0,
+            thieves_guild: 0,       // Pre-allocated Expansion scaffolding
+            arcane_academy: 0       // Pre-allocated Expansion scaffolding
         },
 
         inventory: [],
@@ -485,10 +489,10 @@ window.modifyVital = function(vital, rawAmount) {
     
     if (amount === 0) return 0;
 
-    // The Absolute Death Shield
-    // If the player is already dead or mid-death sequence, completely ignore all further incoming damage!
-    // This prevents batched AoE attacks or direct script calls from triggering the death sequence multiple times.
-    if (vital === 'health' && amount < 0 && (p.health <= 0 || gameState.isDead || p._isDying || gameState._isExecutingDeath)) {
+    // The Absolute Death Shield & Anti-Zombification Guard
+    // If the player is already dead or mid-death sequence, completely ignore ALL further vital changes!
+    // This prevents batched AoE attacks from double-killing, and prevents passive heals (like Holy Aura) from zombifying the player!
+    if (p.health <= 0 || gameState.isDead || p._isDying || gameState._isExecutingDeath) {
         return 0;
     }
     
@@ -689,25 +693,36 @@ window.modifyVital = function(vital, rawAmount) {
     const isRestoring = typeof isBackupOperationRunning !== 'undefined' && isBackupOperationRunning;
 
     if (!isRestoring && vital === 'health' && p.health <= 0 && !gameState.isDead && !p._isDying) {
-        p._isDying = true;
-        gameState.screenFlash = { color: '#991b1b', alpha: 1.0, decay: 0.01 };
         
-        // Inject custom death quotes dynamically into the combat.js loop if active!
-        if (gameState.realmMutators && gameState.realmMutators.length > 0) {
-            p._fatalMutators = [...gameState.realmMutators];
+        // 🚨 EXPANSION WIN: Death Defiance Hook!
+        // Let expansions catch a fatal blow and reverse it (e.g. Phoenix Down, Undying Rage)
+        let deathDefied = false;
+        if (typeof window.ExpansionManager !== 'undefined') {
+            const hookRes = window.ExpansionManager.triggerHook('onFatalDamage', { player: p, damage: amount });
+            if (hookRes && hookRes.defied) deathDefied = true;
         }
-        
-        if (typeof handlePlayerDeath === 'function') {
-            // 🚨 BUG FIX & ROBUSTNESS WIN: Try/Finally inside the timeout
-            // Guarantees the death locks are released even if a plugin injected a broken item into the death loot loop!
-            setTimeout(() => {
-                try {
-                    handlePlayerDeath();
-                } finally {
-                    p._isDying = false; 
-                    p._fatalMutators = null; 
-                }
-            }, 0); 
+
+        if (!deathDefied) {
+            p._isDying = true;
+            gameState.screenFlash = { color: '#991b1b', alpha: 1.0, decay: 0.01 };
+            
+            // Inject custom death quotes dynamically into the combat.js loop if active!
+            if (gameState.realmMutators && gameState.realmMutators.length > 0) {
+                p._fatalMutators = [...gameState.realmMutators];
+            }
+            
+            if (typeof handlePlayerDeath === 'function') {
+                // 🚨 BUG FIX & ROBUSTNESS WIN: Try/Finally inside the timeout
+                // Guarantees the death locks are released even if a plugin injected a broken item into the death loot loop!
+                setTimeout(() => {
+                    try {
+                        handlePlayerDeath();
+                    } finally {
+                        p._isDying = false; 
+                        p._fatalMutators = null; 
+                    }
+                }, 0); 
+            }
         }
     }
 
