@@ -282,7 +282,13 @@ window.ExpansionManager.register({
             },
 
             offerGold: function(amount) {
-                if (this.isProcessing || this.myLock || this.scamLockActive) return;
+                // Provide auditory feedback if they are blocked by the Anti-Scam timer
+                if (this.scamLockActive) {
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                    return;
+                }
+                
+                if (this.isProcessing || this.myLock) return;
                 
                 // Strict validation
                 const safeAmt = Math.floor(Number(amount));
@@ -297,7 +303,14 @@ window.ExpansionManager.register({
             },
 
             revokeGold: function() {
-                if (this.isProcessing || this.myLock || this.scamLockActive) return;
+                // Provide auditory feedback if they are blocked by the Anti-Scam timer
+                if (this.scamLockActive) {
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                    return;
+                }
+
+                if (this.isProcessing || this.myLock) return;
+                
                 if (this.myOffer.gold > 0) {
                     this.localGold += this.myOffer.gold;
                     this.myOffer.gold = 0;
