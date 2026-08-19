@@ -194,11 +194,15 @@ function flushPendingSave(updates = null) {
                 if (sectorUpdates[sector].lore.length > 0) appendInChunks('foundLore', sectorUpdates[sector].lore);
                 
                 if (Object.keys(sectorUpdates[sector].looted).length > 0) {
-                    const docData = {};
+                    const lootedTilesObj = {};
                     for (const [k, v] of Object.entries(sectorUpdates[sector].looted)) {
-                        docData[`lootedTiles.${k}`] = (v === null) ? firebase.firestore.FieldValue.delete() : v;
+                        // We assign the coordinate directly to the nested object
+                        lootedTilesObj[k] = (v === null) ? firebase.firestore.FieldValue.delete() : v;
                     }
-                    getBatch().set(docRef, docData, { merge: true });
+                    
+                    // By passing it as a nested map, { merge: true } safely traverses into 'lootedTiles'
+                    // and updates/deletes the specific coordinates without breaking dot-notation parsing!
+                    getBatch().set(docRef, { lootedTiles: lootedTilesObj }, { merge: true });
                 }
             }
             
