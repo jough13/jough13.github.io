@@ -987,28 +987,30 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 const batchedPayload = {}; 
                 const radius = Number(spellData.radius) || 2;
                 
-                for (let y = my - radius; y <= my + radius; y++) {
-                    for (let x = mx - radius; x <= mx + radius; x++) {
-                        
-                        // Self-Damage for dropping a meteor on your own head!
-                        if (x === player.x && y === player.y) {
-                            logMessage("{red:You were caught in your own meteor strike! (-15 HP)}");
-                            if (typeof window.modifyVital === 'function') window.modifyVital('health', -15);
-                            else player.health -= 15;
-                            continue; // Let the rest of the meteor hit surrounding enemies!
-                        }
-                        
-                        // 🚨 BUG FIX: Guard against player death midway through AoE resolution!
-                        if (player.health <= 0) break;
-                        
-                        // Pass 'true' to trigger batch mode!
-                        const res = await applySpellDamage(x, y, meteorDmg, spellId, true);
-                        if (res && res.hit) {
-                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#f97316');
-                            Object.assign(batchedPayload, res.payload);
-                        }
+                for (let x = mx - radius; x <= mx + radius; x++) {
+                    
+                    // Self-Damage for dropping a meteor on your own head!
+                    if (x === player.x && y === player.y) {
+                        logMessage("{red:You were caught in your own meteor strike! (-15 HP)}");
+                        if (typeof window.modifyVital === 'function') window.modifyVital('health', -15);
+                        else player.health -= 15;
+                        continue; // Let the rest of the meteor hit surrounding enemies!
+                    }
+                    
+                    // Guard against player death midway through AoE resolution!
+                    if (player.health <= 0) break; // Escapes the X loop
+                    
+                    // Pass 'true' to trigger batch mode!
+                    const res = await applySpellDamage(x, y, meteorDmg, spellId, true);
+                    if (res && res.hit) {
+                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#f97316');
+                        Object.assign(batchedPayload, res.payload);
                     }
                 }
+                
+                // Escape the outer Y loop as well if the player died!
+                if (player.health <= 0) break;
+            }
                 
                 // Send exactly ONE network request for the entire blast radius!
                 if (Object.keys(batchedPayload).length > 0 && typeof rtdb !== 'undefined') {
