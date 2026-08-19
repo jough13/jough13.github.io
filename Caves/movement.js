@@ -3493,6 +3493,20 @@ function exitToOverworld(exitMessage) {
     if (gameState.overworldExit) {
         gameState.player.x = gameState.overworldExit.x;
         gameState.player.y = gameState.overworldExit.y;
+        
+        // Auto-board vehicles if surfacing directly beneath them
+        if (typeof chunkManager !== 'undefined') {
+            const tileAtFeet = chunkManager.getTile(gameState.player.x, gameState.player.y);
+            if (tileAtFeet === '⛵') {
+                gameState.player.isSailing = true;
+                // Reveal the water beneath the boat
+                chunkManager.setWorldTile(gameState.player.x, gameState.player.y, typeof getBaseTerrain === 'function' ? getBaseTerrain(gameState.player.x, gameState.player.y) : '~');
+            } else if (tileAtFeet === 'c') {
+                gameState.player.isBoating = true;
+                // Reveal the water beneath the canoe
+                chunkManager.setWorldTile(gameState.player.x, gameState.player.y, typeof getBaseTerrain === 'function' ? getBaseTerrain(gameState.player.x, gameState.player.y) : '≈');
+            }
+        }
     } else {
         // --- TELEPORT SAFETY FALLBACK ---
         // If we don't know where we came from, send player to spawn (0,0)
