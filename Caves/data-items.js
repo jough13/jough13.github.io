@@ -1027,6 +1027,39 @@ window.ITEM_DATA = {
     },
 
     // --- NEW ARTIFACTS & PUZZLE ITEMS ---
+        '⛈️r': {
+        name: 'Stormcaller Totem', type: 'consumable', tile: '⛈️', _rarity: 'epic',
+        description: "A wooden totem that vibrates with thunder. {yellow:Instantly summons a fierce Thunderstorm.}",
+        effect: (state) => {
+            if (state.mapMode !== 'overworld') return false; // Must be outside
+            state.weather = 'storm';
+            state.player.weatherState = 'active';
+            state.player.weatherIntensity = 1.0;
+            state.player.weatherDuration = 100; // Lasts 100 turns
+            
+            logMessage("{yellow:You shatter the totem! Thunder cracks the sky as a storm rolls in instantly!}");
+            state.screenShake = 20;
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning(); // Or a thunder sound
+            if (typeof render === 'function') render();
+            return true; // Consumes the item
+        }
+    },
+    '☀️t': {
+        name: 'Sun-Catcher Charm', type: 'consumable', tile: '☀️', _rarity: 'rare',
+        description: "A warm glass amulet. {gold:Instantly clears the skies of any bad weather.}",
+        effect: (state) => {
+            if (state.mapMode !== 'overworld') return false;
+            state.weather = 'clear';
+            state.player.weatherState = 'calm';
+            state.player.weatherIntensity = 0;
+            
+            logMessage("{gold:You crush the amulet! A blinding light burns away the clouds.}");
+            state.screenFlash = { color: '#facc15', alpha: 0.8, decay: 0.05 };
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            if (typeof render === 'function') render();
+            return true;
+        }
+    },
     '📜l': {
         name: 'Forgotten Letter',
         type: 'random_lore',
