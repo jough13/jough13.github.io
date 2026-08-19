@@ -2116,6 +2116,28 @@ function handleChatCommand(message) {
             logMessage("Cheater! (Vitals fully restored)");
             break;
 
+        case 'petname':
+            if (!gameState.player.companion) {
+                logMessage("{gray:You don't have a companion to name.}");
+                return;
+            }
+            const newName = args.join(' ').trim();
+            if (!newName || newName.length > 16) {
+                logMessage("{gray:Usage: /petname [name] (Max 16 chars)}");
+                return;
+            }
+            // Sanitize the name
+            const safePetName = typeof escapeHtml === 'function' ? escapeHtml(newName).replace(/[^a-zA-Z0-9 ]/g, '') : newName;
+            gameState.player.companion.name = safePetName;
+            
+            logMessage(`{green:Your companion will now be known as ${safePetName}!}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            
+            // Save to Firebase and update UI
+            if (typeof playerRef !== 'undefined') playerRef.update({ companion: gameState.player.companion });
+            if (typeof renderStats === 'function') renderStats();
+            if (typeof render === 'function') render(); // Updates the name on the map if they hover
+            break;
 
         case 'tp':
             if (args.length < 2) {
