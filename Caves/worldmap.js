@@ -6,11 +6,8 @@
 
 const mapModal = document.getElementById('mapModal');
 const worldMapCanvas = document.getElementById('worldMapCanvas');
-const worldMapCtx = worldMapCanvas.getContext('2d', { alpha: false }); // PERFORMANCE WIN: Disable alpha buffer for the main canvas!
+const worldMapCtx = worldMapCanvas.getContext('2d', { alpha: false }); // Disable alpha buffer for the main canvas!
 const mapCoordsDisplay = document.getElementById('mapCoords');
-
-// Localized math constants to prevent cross-file dependency crashes
-const TWO_PI = Math.PI * 2; 
 
 // Settings & State
 let currentMapScale = 4; 
