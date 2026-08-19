@@ -452,12 +452,23 @@ window.ExpansionManager.register({
                 // 4. Save & Close
                 // Clean off the temporary UIDs before saving
                 gameState.player.inventory = finalInventory.map(i => { delete i._tradeUid; return i; });
-                
+
                 if (typeof triggerDebouncedSave === 'function') {
                     triggerDebouncedSave({ coins: gameState.player.coins, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory });
                 }
-                
-                if (this.isInitiator) rtdb.ref(`trades/${this.activeTradeId}`).remove();
+
+                if (this.isInitiator) {
+                    // Cache the ID because closeTrade() will immediately nullify this.activeTradeId
+                    const tradeIdToClean = this.activeTradeId; 
+                    
+                    // Give Player B a 5-second buffer to read the 'completed' state and save their items!
+                    setTimeout(() => {
+                        if (typeof rtdb !== 'undefined') {
+                            rtdb.ref(`trades/${tradeIdToClean}`).remove().catch(e => console.error("Trade cleanup error:", e));
+                        }
+                    }, 5000); 
+                }
+
                 this.closeTrade(true);
             },
 
