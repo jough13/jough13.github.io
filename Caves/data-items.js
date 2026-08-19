@@ -821,6 +821,16 @@ window.ITEM_DATA = {
             
             logMessage(`You pry open the chest... Found {gold:${gold} coins}!`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+
+            // Pre-emptively consume the chest!
+            // This natively frees up the inventory slot in memory BEFORE we check if we have space for the prize.
+            const chestIdx = state.player.inventory.findIndex(i => i && i.name === 'Waterlogged Chest' && !i.isEquipped);
+            if (chestIdx > -1) {
+                state.player.inventory[chestIdx].quantity--;
+                if (state.player.inventory[chestIdx].quantity <= 0) {
+                    state.player.inventory.splice(chestIdx, 1);
+                }
+            }
             
             if (Math.random() < 0.4) {
                 const lootTable = ['Black Pearl', 'Rainbow Shell', 'Brass Compass', 'Trident', 'Ancient Coin'];
@@ -830,17 +840,18 @@ window.ITEM_DATA = {
                 const template = window.ITEM_DATA[prizeKey];
                 
                 const isStackable = template && ['junk', 'consumable', 'trade'].includes(template.type);
-                const existingPrize = state.player.inventory.find(i => i.name === prize && !i.isEquipped);
+                const existingPrize = state.player.inventory.find(i => i && i.name === prize && !i.isEquipped);
                 
-                const chestStack = state.player.inventory.find(i => i.name === 'Waterlogged Chest' && !i.isEquipped);
-                const freesSlot = (chestStack && chestStack.quantity === 1) ? 1 : 0;
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                 
                 if (existingPrize && isStackable) {
                     existingPrize.quantity++;
                     logMessage(`{purple:You also found a ${prize} hidden inside!}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                 } 
-                else if (state.player.inventory.length - freesSlot < (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) {
+                // We no longer need the 'freesSlot' math. If the chest was the 9th item, 
+                // the array is now natively length 8, making this check perfectly accurate!
+                else if (state.player.inventory.length < invCap) {
                     state.player.inventory.push({
                         templateId: prizeKey,
                         name: prize, 
@@ -851,7 +862,7 @@ window.ITEM_DATA = {
                         damage: template ? template.damage : null, 
                         slot: template ? template.slot : null,
                         statBonuses: template ? template.statBonuses : null,
-                        tags: template && template.tags ? [...template.tags] : null, // BUG FIX: Safe clone array
+                        tags: template && template.tags ? [...template.tags] : null,
                         _rarity: template ? (template._rarity || null) : null,
                         effect: template ? template.effect : null
                     });
