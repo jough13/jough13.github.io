@@ -21,17 +21,16 @@ function updateThemeColors() {
 const ParticleSystem = {
     pool: [],
     activeParticles: [],
-    MAX_PARTICLES: 1500, // Supports MMO chaos and massive AoE spells
+    MAX_PARTICLES: 1500, 
 
-    // Initialize the pool
     init: function() {
         for(let i=0; i<this.MAX_PARTICLES; i++) this.pool.push({ active: false });
     },
 
     spawn: function(x, y, color, type='dust', text='', size=2) {
-        if(this.pool.length === 0) return; // Pool empty, skip particle
+        if(this.pool.length === 0) return; 
         
-        const p = this.pool.pop(); // Reuse an old particle
+        const p = this.pool.pop(); 
         p.active = true;
         p.x = x + 0.5; 
         p.y = y + 0.5;
@@ -40,37 +39,34 @@ const ParticleSystem = {
         p.text = text; 
         p.size = size;
         p.life = 1.0;
-        p.friction = 1.0; // Default no friction
+        p.friction = 1.0; 
         
         if (type === 'text') {
-            p.vx = (Math.random() - 0.5) * 0.02; // Slight horizontal drift
-            p.vy = -0.04; // Slightly faster initial pop
+            p.vx = (Math.random() - 0.5) * 0.02; 
+            p.vy = -0.04; 
             p.size = 14;
-            p.gravity = -0.0015; // JUICE: Floats UP and accelerates!
+            p.gravity = -0.0015; 
             p.lifeFade = 0.025; 
         } else if (type === 'smoke') {
             p.vx = (Math.random() - 0.5) * 0.02;
             p.vy = -0.02 - (Math.random() * 0.02);
             p.gravity = 0;
-            p.lifeFade = 0.015; // Fades slowly
+            p.lifeFade = 0.015; 
             p.size = Math.random() * 4 + 2;
         } else if (type === 'sparkle') {
-            // EXPANDABILITY WIN: Magical twinkling particles
             p.vx = (Math.random() - 0.5) * 0.03;
             p.vy = (Math.random() - 0.5) * 0.03;
-            p.gravity = -0.005; // Drifts upward
+            p.gravity = -0.005; 
             p.lifeFade = 0.02 + Math.random() * 0.02;
             p.friction = 0.95;
             p.size = Math.random() * 2 + 1;
         } else {
-            // 'dust' / 'blood' / 'explosion'
-            // JUICE: Explosive radial burst with heavy friction for a "Punchy" feel
             const angle = Math.random() * TWO_PI;
             const speed = Math.random() * 0.3 + 0.1;
             p.vx = Math.cos(angle) * speed;
             p.vy = Math.sin(angle) * speed;
             p.gravity = 0.01;
-            p.friction = 0.85; // Slows down rapidly after initial burst
+            p.friction = 0.85; 
             p.lifeFade = 0.03 + Math.random() * 0.04;
         }
         this.activeParticles.push(p);
@@ -80,13 +76,11 @@ const ParticleSystem = {
         for(let i=0; i<count; i++) this.spawn(x, y, color, 'dust', '', Math.random()*4+2);
     },
 
-    // --- DIRECTIONAL FOOTSTEPS ---
     createFootstep: function(x, y, color, dx, dy, count=4) {
         for(let i=0; i<count; i++) {
             if(this.pool.length === 0) return;
             const p = this.pool.pop();
             p.active = true;
-            // Add a tiny bit of random spread to the origin point
             p.x = x + 0.5 + (Math.random() - 0.5) * 0.4; 
             p.y = y + 0.5 + (Math.random() - 0.5) * 0.4;
             p.color = color; 
@@ -95,20 +89,18 @@ const ParticleSystem = {
             p.size = Math.random() * 3 + 1;
             p.life = 1.0;
             
-            // Kick dust strictly in the OPPOSITE direction of movement (-dx, -dy)
             const spread = 0.8;
             p.vx = (-dx * 0.08) + (Math.random() - 0.5) * spread * 0.1;
             p.vy = (-dy * 0.08) + (Math.random() - 0.5) * spread * 0.1;
             
-            p.gravity = 0; // ZERO GRAVITY! Dust stays on the exact tile it was kicked from
+            p.gravity = 0; 
             p.friction = 0.85; 
-            p.lifeFade = 0.05 + Math.random() * 0.05; // Fade out rapidly
+            p.lifeFade = 0.05 + Math.random() * 0.05; 
             this.activeParticles.push(p);
         }
     },
 
     createFloatingText: function(x, y, text, color) {
-        // Add a slight random offset so simultaneous numbers don't overlap perfectly
         const offsetX = (Math.random() - 0.5) * 0.7;
         const offsetY = (Math.random() - 0.5) * 0.7;
         this.spawn(x + offsetX, y + offsetY, color, 'text', text);
@@ -119,29 +111,23 @@ const ParticleSystem = {
         for(let i=0; i<30; i++) {
             const colors = ['#facc15', '#ef4444', '#3b82f6', '#22c55e', '#a855f7'];
             this.spawn(x, y, colors[Math.floor(Math.random()*colors.length)], 'dust', '', Math.random()*3+2);
-            // Throw in some magical sparkles
             if (i % 3 === 0) this.spawn(x, y, colors[Math.floor(Math.random()*colors.length)], 'sparkle', '', Math.random()*2+1);
         }
     },
 
     update: function() {
-        // JUICE WIN: Calculate global wind once per frame for organic drifting
         const time = performance.now() / 2000;
         const windX = Math.sin(time) * 0.005;
 
-        // PERFORMANCE WIN: Swap-and-Pop Garbage Collection
         for (let i = 0; i < this.activeParticles.length; i++) {
             const p = this.activeParticles[i];
             
-            // Physics
             p.x += p.vx; 
             p.y += p.vy;
             p.vx *= p.friction; 
             p.vy *= p.friction;
             
             if(p.gravity) p.vy += p.gravity;
-            
-            // Apply wind drift to smoke, text, and sparkles!
             if (p.type === 'smoke' || p.type === 'text' || p.type === 'sparkle') p.x += windX;
 
             p.life -= p.lifeFade; 
@@ -168,7 +154,6 @@ const ParticleSystem = {
         for (let i = 0; i < len; i++) {
             const p = this.activeParticles[i];
             
-            // 🚨 PERFORMANCE WIN: Math.trunc handles huge map coordinates better than | 0 (bitwise clipping)
             const screenX = Math.trunc((p.x - startX) * TILE_SIZE); 
             const screenY = Math.trunc((p.y - startY) * TILE_SIZE);
 
@@ -199,7 +184,6 @@ const ParticleSystem = {
                 ctx.fill();
                 ctx.globalAlpha = 1.0; 
             } else if (p.type === 'sparkle') {
-                // JUICE WIN: Twinkling effect via sine wave tied to remaining life
                 ctx.globalAlpha = alpha * Math.abs(Math.sin(p.life * 15)); 
                 ctx.fillStyle = p.color;
                 ctx.fillRect(screenX, screenY, p.size, p.size);
@@ -227,11 +211,9 @@ const TileRenderer = {
 
     drawBase: (ctx, x, y, color) => {
         ctx.fillStyle = color;
-        // Draws slightly larger than 1 tile to prevent hairline seam tearing on sub-pixel zooms
         ctx.fillRect(Math.trunc(x * TILE_SIZE - 0.5), Math.trunc(y * TILE_SIZE - 0.5), TILE_SIZE + 1, TILE_SIZE + 1);
     },
 
-    // --- DECORATION HELPERS ---
     drawGrassTuft: (ctx, x, y, color) => {
         const tx = Math.trunc(x * TILE_SIZE);
         const ty = Math.trunc(y * TILE_SIZE);
@@ -272,9 +254,6 @@ const TileRenderer = {
         ctx.stroke();
     },
 
-    // --- BIOME RENDERERS ---
-
-    // 🍄 Fungal Jungle (LORE WIN: Beautiful procedural glowing mushrooms)
     drawFungal: (ctx, x, y, mapX, mapY, baseColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
@@ -283,23 +262,19 @@ const TileRenderer = {
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
         
-        // Draw 1 or 2 mushrooms organically
         const count = rand > 0.5 ? 2 : 1;
         for(let i=0; i<count; i++) {
             const ox = Math.trunc(tx + 4 + (rand * 8) + (i * 6));
             const oy = Math.trunc(ty + 10 + (rand * 6) - (i * 4));
             
-            // Fungal Stalk
             ctx.fillStyle = '#f3f4f6';
             ctx.fillRect(ox + 2, oy, 2, 6);
             
-            // Fungal Cap (Pinkish or Deep Purple)
             ctx.fillStyle = rand > 0.8 ? '#f0abfc' : '#d946ef'; 
             ctx.beginPath();
             ctx.arc(ox + 3, oy, 4, Math.PI, TWO_PI);
             ctx.fill();
             
-            // Fungal Ambient Glow
             ctx.fillStyle = 'rgba(217, 70, 239, 0.2)';
             ctx.beginPath();
             ctx.arc(ox + 3, oy, 8, 0, TWO_PI);
@@ -307,7 +282,6 @@ const TileRenderer = {
         }
     },
 
-    // ▤ Ancient Roads (Procedural Cobblestone)
     drawPath: (ctx, x, y, mapX, mapY, baseColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
@@ -316,18 +290,16 @@ const TileRenderer = {
         const tx = Math.trunc(x * TILE_SIZE);
         const ty = Math.trunc(y * TILE_SIZE);
         
-        // Draw worn cobblestones
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'; // Darker stones
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'; 
         if (rand > 0.1) ctx.fillRect(tx + 2, ty + 2, 6, 4);
         if (rand > 0.4) ctx.fillRect(tx + 10, ty + 8, 8, 5);
         if (rand > 0.7) ctx.fillRect(tx + 4, ty + 14, 5, 4);
         
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)'; // Lighter stones
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)'; 
         if (rand < 0.3) ctx.fillRect(tx + 12, ty + 2, 5, 5);
         if (rand > 0.3 && rand < 0.6) ctx.fillRect(tx + 2, ty + 8, 5, 4);
     },
 
-    // 💎 Crystal Peaks (Jagged procedural crystal formations)
     drawCrystal: (ctx, x, y, mapX, mapY, baseColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
@@ -336,14 +308,12 @@ const TileRenderer = {
         const tx = Math.trunc(x * TILE_SIZE);
         const ty = Math.trunc(y * TILE_SIZE);
         
-        // Crystal Ambient Glow
         ctx.fillStyle = 'rgba(34, 211, 238, 0.2)'; 
         ctx.beginPath();
         ctx.arc(tx + TILE_SIZE/2, ty + TILE_SIZE/2, 10 + (rand * 2), 0, TWO_PI);
         ctx.fill();
 
-        // Jagged Crystal Geometry
-        ctx.fillStyle = '#06b6d4'; // Deep cyan
+        ctx.fillStyle = '#06b6d4'; 
         ctx.beginPath();
         ctx.moveTo(tx + 10, ty + 18);
         ctx.lineTo(tx + 6, ty + 10);
@@ -351,7 +321,6 @@ const TileRenderer = {
         ctx.lineTo(tx + 14, ty + 10);
         ctx.fill();
         
-        // Bright edge highlight to sell the crystalline material
         ctx.fillStyle = '#67e8f9';
         ctx.beginPath();
         ctx.moveTo(tx + 10, ty + 18);
@@ -360,7 +329,6 @@ const TileRenderer = {
         ctx.fill();
     },
 
-    // 🐊 Swamp (Static - Stagnant Muck)
     drawSwamp: (ctx, x, y, mapX, mapY, baseColor, accentColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
 
@@ -379,7 +347,6 @@ const TileRenderer = {
         }
     },
 
-    // 🌲 Procedural Pine Forests (Animated Wind Sway)
     drawForest: (ctx, x, y, mapX, mapY, baseColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
 
@@ -400,19 +367,16 @@ const TileRenderer = {
             const height = (TILE_SIZE * 0.8) + (rand * (TILE_SIZE * 0.4)) - (i * 5);
             const width = height * 0.6;
 
-            // Ground Drop Shadow
             ctx.fillStyle = 'rgba(0,0,0,0.2)';
             ctx.beginPath();
             ctx.ellipse(tx, ty, width * 0.4, width * 0.2, 0, 0, TWO_PI);
             ctx.fill();
 
-            // Trunk
             ctx.fillStyle = '#451a03'; 
             ctx.fillRect(tx - 2, ty - (height * 0.2), 4, height * 0.2);
 
             const treeColor = (rand > 0.95) ? '#b45309' : ((mapX + mapY) % 2 === 0 ? '#166534' : '#15803d');
 
-            // Draw Foliage (With Wind Sway at the top vertex)
             ctx.fillStyle = treeColor;
             ctx.beginPath();
             ctx.moveTo(tx + windSway, ty - height); 
@@ -420,7 +384,6 @@ const TileRenderer = {
             ctx.lineTo(tx - (width / 2), ty - (height * 0.2)); 
             ctx.fill();
 
-            // Foliage Shadow
             ctx.fillStyle = 'rgba(0,0,0,0.15)';
             ctx.beginPath();
             ctx.moveTo(tx + windSway, ty - height);
@@ -430,7 +393,6 @@ const TileRenderer = {
         }
     },
 
-    // ⛰️ Mountain (Gradient Shading)
      drawMountain: (ctx, x, y, mapX, mapY, baseColor, isCave = false) => {
         const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
         const rand = seed - Math.floor(seed); 
@@ -440,7 +402,6 @@ const TileRenderer = {
 
         TileRenderer.drawBase(ctx, x, y, baseColor);
 
-        // Valley Space
         if (rand > 0.85 && !isCave) {
             ctx.fillStyle = '#44403c'; 
             ctx.beginPath();
@@ -463,7 +424,6 @@ const TileRenderer = {
             gradient.addColorStop(0, '#78716c'); 
             gradient.addColorStop(1, '#57534e'); 
 
-            // Shadow Side
             ctx.fillStyle = '#292524';
             ctx.beginPath();
             ctx.moveTo(peakX, peakY);
@@ -471,7 +431,6 @@ const TileRenderer = {
             ctx.lineTo(peakX, baseBottom);
             ctx.fill();
 
-            // Sunlit Side
             ctx.fillStyle = gradient;
             ctx.beginPath();
             ctx.moveTo(peakX, peakY);
@@ -479,7 +438,6 @@ const TileRenderer = {
             ctx.lineTo(baseLeft, baseBottom);
             ctx.fill();
 
-            // Snow Cap
             if (scaleH > 0.85) {
                 const snowLine = Math.trunc(peakY + (height * 0.25));
                 ctx.fillStyle = '#f3f4f6'; 
@@ -504,7 +462,6 @@ const TileRenderer = {
         }
     },
 
-    // . Plains
     drawPlains: (ctx, x, y, mapX, mapY, baseColor, accentColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         const rand = TileRenderer.getPseudoRandom(mapX, mapY);
@@ -522,7 +479,6 @@ const TileRenderer = {
         }
     },
 
-    // d Deadlands
     drawDeadlands: (ctx, x, y, mapX, mapY, baseColor, accentColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         const rand = TileRenderer.getPseudoRandom(mapX, mapY);
@@ -530,7 +486,6 @@ const TileRenderer = {
         else if (rand < 0.15) TileRenderer.drawPebble(ctx, x, y, '#52525b', mapX, mapY);
     },
 
-    // D Desert
     drawDesert: (ctx, x, y, mapX, mapY, baseColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         const rand = TileRenderer.getPseudoRandom(mapX, mapY);
@@ -543,7 +498,6 @@ const TileRenderer = {
         }
     },
 
-    // 🌊 Water (Animated - Organic Flow + Glints)
     drawWater: (ctx, x, y, mapX, mapY, baseColor, accentColor, isDeep = false) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         
@@ -557,7 +511,6 @@ const TileRenderer = {
 
         ctx.strokeStyle = accentColor;
         
-        // Primary Wave
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         const yOffset1 = Math.sin(wavePhase1) * (isDeep ? 4 : 2);
@@ -565,7 +518,6 @@ const TileRenderer = {
         ctx.bezierCurveTo(tx + 8, ty + TILE_SIZE / 2 + yOffset1 - 2, tx + 12, ty + TILE_SIZE / 2 + yOffset1 + 2, tx + TILE_SIZE - 2, ty + TILE_SIZE / 2 + yOffset1);
         ctx.stroke();
 
-        // Secondary Faint Wave
         ctx.globalAlpha = 0.5; 
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -583,7 +535,6 @@ const TileRenderer = {
         }
     },
 
-    // 🔥 Fire
     drawFire: (ctx, x, y, baseColor, mapX, mapY) => { 
         TileRenderer.drawBase(ctx, x, y, baseColor || '#451a03'); 
 
@@ -606,7 +557,6 @@ const TileRenderer = {
         }
     },
 
-    // Ω Void Rift
     drawVoid: (ctx, x, y, mapX, mapY) => {
         TileRenderer.drawBase(ctx, x, y, '#000');
         const tx = Math.trunc(x * TILE_SIZE + TILE_SIZE / 2);
@@ -633,7 +583,6 @@ const TileRenderer = {
         ctx.restore();
     },
 
-    // 🧱 Walls
     drawWall: (ctx, x, y, baseColor, accentColor, style = 'rough') => {
         const tx = Math.trunc(x * TILE_SIZE);
         const ty = Math.trunc(y * TILE_SIZE);
@@ -686,9 +635,7 @@ const TileRenderer = {
         ctx.globalAlpha = 1.0; 
     },
 
-    // 🩸 UI: High-Fidelity Health Bars
     drawHealthBar: (ctx, x, y, current, max) => {
-        // 🚨 BUG FIX & PERFORMANCE WIN: Ensure safe numbers to prevent NaN crash
         const safeMax = (typeof max === 'number' && !isNaN(max) && max > 0) ? max : 1;
         const safeCurrent = (typeof current === 'number' && !isNaN(current)) ? current : 0;
         
@@ -708,15 +655,14 @@ const TileRenderer = {
         ctx.fillStyle = '#111827'; 
         ctx.beginPath(); ctx.roundRect(tx + 1, ty + yOffset, barWidth, barHeight, 2); ctx.fill();
 
-        let colorTop = '#4ade80'; let colorBot = '#16a34a'; // Green
-        if (percent < 0.5) { colorTop = '#fde047'; colorBot = '#ca8a04'; } // Yellow
-        if (percent < 0.25) { colorTop = '#f87171'; colorBot = '#dc2626'; } // Red
+        let colorTop = '#4ade80'; let colorBot = '#16a34a'; 
+        if (percent < 0.5) { colorTop = '#fde047'; colorBot = '#ca8a04'; } 
+        if (percent < 0.25) { colorTop = '#f87171'; colorBot = '#dc2626'; } 
 
         const grad = ctx.createLinearGradient(0, ty + yOffset, 0, ty + yOffset + barHeight);
         grad.addColorStop(0, colorTop);
         grad.addColorStop(1, colorBot);
 
-        // 🚨 BUG FIX: Ensure the inside bar fits cleanly inside the stroke border!
         ctx.fillStyle = grad;
         ctx.beginPath(); 
         ctx.roundRect(tx + 1.5, ty + yOffset + 0.5, (barWidth - 1) * percent, barHeight - 1, 2); 
@@ -727,7 +673,6 @@ const TileRenderer = {
         ctx.beginPath(); ctx.roundRect(tx + 1, ty + yOffset, barWidth, barHeight, 2); ctx.stroke();
     },
 
-    // JUICE WIN: Dynamic Drop Shadows
     drawShadow: (ctx, x, y) => {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
         ctx.beginPath();
@@ -736,11 +681,9 @@ const TileRenderer = {
     }
 };
 
-// --- PERFORMANCE WIN: GLOBAL LIGHTING CACHE ---
 let _cachedGradient = null;
 let _cachedGradientParams = "";
 
-// --- HEAVY RENDERING (Only runs when moving) ---
 function renderTerrainCache(startX, startY) {
     const padSize = TILE_SIZE * 2;
     const halfTile = TILE_SIZE / 2;
@@ -766,7 +709,6 @@ function renderTerrainCache(startX, startY) {
     let activeMapMode = gameState.mapMode;
 
     if (activeMapMode === 'dungeon') {
-        // BUG FIX: Provide robust fallback if colors aren't defined in the theme object
         currentCaveThemeObj = typeof CAVE_THEMES !== 'undefined' ? (CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK) : { colors: { floor: '#000', wall: '#333' }, wall: '▓', floor: '.' };
         if (!currentCaveThemeObj.colors) {
             currentCaveThemeObj.colors = { floor: '#000', wall: '#333' };
@@ -819,7 +761,6 @@ function renderTerrainCache(startX, startY) {
                 }
             } 
             else { 
-                // 🚨 PERFORMANCE WIN: Calculate the chunk coordinates ONCE using Math.floor
                 const cX = Math.floor(mapX / 16);
                 const cY = Math.floor(mapY / 16);
                 const lX = ((mapX % 16) + 16) % 16;
@@ -829,7 +770,6 @@ function renderTerrainCache(startX, startY) {
 
                 let baseTerrain = '.';
                 if (typeof chunkManager !== 'undefined') {
-                    // Generate the chunk on the fly if the screen is wider than our pre-loaded bounds!
                     if (!chunkManager.loadedChunks[chunkId]) {
                         chunkManager.generateChunk(cX, cY);
                     }
@@ -842,7 +782,6 @@ function renderTerrainCache(startX, startY) {
                     if (chunkManager.worldState[chunkId] && chunkManager.worldState[chunkId][tileKey] !== undefined) {
                         const val = chunkManager.worldState[chunkId][tileKey];
                         if (typeof val === 'object' && val !== null) {
-                            // 🚨 BUG FIX: Check expiration natively in the renderer to prevent ghost rendering of expired world items
                             if (val.expires && Date.now() > val.expires) {
                                 // Do nothing, let it fall back to baseTerrain
                             } else {
@@ -863,9 +802,6 @@ function renderTerrainCache(startX, startY) {
                     else if (baseTerrain === '🍄') bgColor = '#4a044e'; 
                     else if (baseTerrain === '💎c') bgColor = '#083344'; 
                 } else {
-                    // 🚨 BUG FIX WIN: True Biome Background Resolution
-                    // For structures (Castles, Villages, Dig Spots) or dropped items, 
-                    // we recalculate the noise at this coordinate to guarantee it blends seamlessly into the native biome!
                     const realmOffset = (typeof gameState !== 'undefined' && gameState.currentRealm) ? gameState.currentRealm * 100 : 0;
                     const elev = typeof elevationNoise !== 'undefined' ? elevationNoise.noise(mapX / 70, mapY / 70, realmOffset) : 0.5;
                     const moist = typeof moistureNoise !== 'undefined' ? moistureNoise.noise(mapX / 50, mapY / 50, realmOffset) : 0.5;
@@ -876,19 +812,17 @@ function renderTerrainCache(startX, startY) {
                     else if (elev < 0.4 && moist > 0.7) baseTileType = '≈';
                     else if (elev > 0.85 && moist < 0.2) baseTileType = '💎c';
                     else if (elev > 0.8) baseTileType = '^';
-                    else if (elev > 0.75) baseTileType = '❄️'; // Snow line just below mountains
+                    else if (elev > 0.75) baseTileType = '❄️'; 
                     else if (elev > 0.6 && moist < 0.3) baseTileType = 'd';
                     else if (moist < 0.15) baseTileType = 'D';
                     else if (moist > 0.55) baseTileType = 'F';
 
-                    // Spawn Safety Overrides (must match data-maps.js exactly)
                     if (realmOffset === 0 && (mapX * mapX + mapY * mapY) <= 100) {
                         if (['^', '~', '≈', 'd'].includes(baseTileType)) {
                             baseTileType = moist > 0.5 ? 'F' : '.';
                         }
                     }
 
-                    // --- 🚨 APPLY MUTATORS FOR ALTERNATE REALMS ---
                     if (typeof gameState !== 'undefined' && gameState.realmMutators) {
                         if (gameState.realmMutators.includes('lava_oceans') && (baseTileType === '~' || baseTileType === '≈')) baseTileType = '🌋';
                         if (gameState.realmMutators.includes('overgrown') && (baseTileType === 'd' || baseTileType === 'D')) baseTileType = 'F';
@@ -897,7 +831,6 @@ function renderTerrainCache(startX, startY) {
                         if (gameState.realmMutators.includes('crystalline') && (baseTileType === '^')) baseTileType = '💎c';
                     }
 
-                    // Map baseTileType to Background Color
                     if (baseTileType === '~' || baseTileType === '🧊') bgColor = '#1e3a8a';
                     else if (baseTileType === '≈') bgColor = '#422006';
                     else if (baseTileType === '🍄') bgColor = '#4a044e';
@@ -908,17 +841,15 @@ function renderTerrainCache(startX, startY) {
                     else if (baseTileType === 'D') bgColor = '#fde047';
                     else if (baseTileType === 'F') bgColor = '#14532d';
                     else if (baseTileType === '🌋') bgColor = '#450a0a';
-                    else bgColor = '#22c55e'; // Plains
+                    else bgColor = '#22c55e'; 
                 }
 
                 TileRenderer.drawBase(terrainCtx, x, y, bgColor);
 
-                // Add mystical components to animated loop so we can attach custom particle emitters
                 if (['~', '≈', '🔥', 'Ω', '👻k', '#', '✨'].includes(tile) || (tile === 'D' && gameState.currentCaveTheme === 'FIRE') || (tile === '🌋' && activeMapMode === 'underworld')) {
                     gameState.visibleAnimatedTiles.push({ screenX: x, screenY: y, mapX: mapX, mapY: mapY, tile: tile });
                 }
 
-                // If not an animated tile, do static rendering
                 if (!['~', '≈', '🔥', 'Ω'].includes(tile) && !(tile === 'D' && gameState.currentCaveTheme === 'FIRE')) {
                     switch (tile) {
                         case '▓': TileRenderer.drawWall(terrainCtx, x, y, '#1e293b', 'rgba(0,0,0,0.5)', 'rough'); break;
@@ -938,19 +869,19 @@ function renderTerrainCache(startX, startY) {
                         case '🌋': fgChar = '🌋'; break; 
                         default:
                             fgChar = tile;
-                            // Catch corrupted Unicode characters
                             if (fgChar === '\uFFFD' || fgChar === '') { 
                                 fgChar = '❓'; 
                                 fgColor = '#facc15'; 
                             } 
-                            // Do NOT render enemy characters on the static terrain layer!
-                            // Let the live entity renderer handle them so they don't leave white ghost trails.
-                            else if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tile]) {
-                                fgChar = null; 
-                            }
                             break;
                     }
                 }
+            }
+
+            // 🚨 BUG FIX & ROBUSTNESS WIN: Stripping enemy sprites cleanly from the static background cache
+            // Explicitly force `fgChar` to `null` if the tile belongs to an enemy, ensuring no white ghost trails are left behind!
+            if (typeof window.ENEMY_DATA !== 'undefined' && window.ENEMY_DATA[tile]) {
+                fgChar = null; 
             }
 
             if (fgChar) {
@@ -976,24 +907,20 @@ function renderTerrainCache(startX, startY) {
 function render() {
     if (!gameState.mapMode) return;
 
-    // --- SETUP ---
     if (!cachedThemeColors.canvasBg) updateThemeColors();
     const { canvasBg } = cachedThemeColors;
     
-    // 🚨 GHOST GUARD: Ensure inventory exists
     const inv = gameState.player.inventory || [];
     const hasLens = inv.some(i => i && i.name === 'Spirit Lens'); 
     
     const now = Date.now();
 
-    // 1. Clear & Fill Background
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0); 
     ctx.fillStyle = canvasBg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.restore(); 
 
-    // --- SCREEN SHAKE ---
     let shakeX = 0; let shakeY = 0;
     if (gameState.screenShake > 0) {
         shakeX = (Math.random() - 0.5) * gameState.screenShake;
@@ -1004,7 +931,6 @@ function render() {
 
     ctx.save(); 
     
-    // --- 1. SMOOTH CAMERA MATH ---
     const p = gameState.player;
     const visX = p.visualX !== undefined ? p.visualX : p.x;
     const visY = p.visualY !== undefined ? p.visualY : p.y;
@@ -1021,26 +947,22 @@ function render() {
         gameState.lastStartY = startY;
     }
 
-    // Smooth panning offset
     const offsetX = (visX - Math.trunc(visX)) * TILE_SIZE;
     const offsetY = (visY - Math.trunc(visY)) * TILE_SIZE;
     
     ctx.translate(Math.round(shakeX - offsetX), Math.round(shakeY - offsetY));
 
-    // --- 2. UPDATE TERRAIN CACHE ---
     if (gameState.mapDirty) {
         renderTerrainCache(startX, startY);
         gameState.mapDirty = false;
     }
 
-    // --- 3. DRAW CACHED TERRAIN ---
     const dpr = window.devicePixelRatio || 1;
     const logicalW = (VIEWPORT_WIDTH + 4) * TILE_SIZE;
     const logicalH = (VIEWPORT_HEIGHT + 4) * TILE_SIZE;
 
     ctx.drawImage(terrainCanvas, -(TILE_SIZE * 2), -(TILE_SIZE * 2), logicalW, logicalH);
 
-    // --- EFFICIENT ANIMATED TILE LOOP ---
     if (gameState.visibleAnimatedTiles) {
         const len = gameState.visibleAnimatedTiles.length;
         for (let i = 0; i < len; i++) {
@@ -1075,7 +997,6 @@ function render() {
             } else if (tile === 'Ω') {
                 TileRenderer.drawVoid(ctx, x, y, mapX, mapY);
             } else if (tile === '#' || tile === '✨') {
-                // LORE WIN: Waystones and Loot passively draw the eye by emitting sparkles!
                 if (Math.random() < 0.03 && typeof ParticleSystem !== 'undefined') {
                     const sparkColor = tile === '#' ? '#a855f7' : '#facc15';
                     ParticleSystem.spawn(mapX, mapY, sparkColor, 'sparkle', '', 2);
@@ -1087,13 +1008,10 @@ function render() {
         }
     }
 
-    // --- ENTITIES & PLAYERS ---
-    
-    // Attack Telegraphs
     if (gameState.mapMode === 'overworld') {
         for (const key in gameState.sharedEnemies) {
             const enemy = gameState.sharedEnemies[key];
-            if (enemy && enemy.pendingAttacks) { // 🚨 GHOST GUARD
+            if (enemy && enemy.pendingAttacks) { 
                 for (let j = 0; j < enemy.pendingAttacks.length; j++) {
                     const t = enemy.pendingAttacks[j];
                     const screenX = t.x - startX;
@@ -1108,7 +1026,7 @@ function render() {
         const len = gameState.instancedEnemies.length;
         for (let i = 0; i < len; i++) {
             const enemy = gameState.instancedEnemies[i];
-            if (enemy && enemy.pendingAttacks) { // 🚨 GHOST GUARD
+            if (enemy && enemy.pendingAttacks) { 
                 for (let j = 0; j < enemy.pendingAttacks.length; j++) {
                     const t = enemy.pendingAttacks[j];
                     const screenX = t.x - startX;
@@ -1176,7 +1094,7 @@ function render() {
         const sharedKeys = Object.keys(gameState.sharedEnemies);
         for (let i = 0; i < sharedKeys.length; i++) {
             const enemy = gameState.sharedEnemies[sharedKeys[i]];
-            if (!enemy) continue; // 🚨 BUG FIX: Guard against undefined/ghost enemies
+            if (!enemy) continue; 
             
             const { vx, vy } = lerpEntity(enemy);
             const screenX = vx - startX;
@@ -1189,7 +1107,7 @@ function render() {
         const len = gameState.instancedEnemies.length;
         for (let i = 0; i < len; i++) {
             const enemy = gameState.instancedEnemies[i];
-            if (!enemy) continue; // 🚨 GHOST GUARD
+            if (!enemy) continue; 
             
             const { vx, vy } = lerpEntity(enemy);
             const screenX = vx - startX;
@@ -1204,9 +1122,8 @@ function render() {
         const opKeys = Object.keys(otherPlayers);
         for (let i = 0; i < opKeys.length; i++) {
             const op = otherPlayers[opKeys[i]];
-            if (!op || op.mapMode !== gameState.mapMode || op.mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue; // 🚨 GHOST GUARD
+            if (!op || op.mapMode !== gameState.mapMode || op.mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue; 
             
-            // --- PVP INVISIBILITY CHECK ---
             if (op.stealthTurns > 0) continue; 
 
             const { vx, vy } = lerpEntity(op);
@@ -1228,11 +1145,9 @@ function render() {
                     ctx.fillText(op.companion.tile || '?', Math.trunc(screenX + TILE_SIZE - 2), Math.trunc(screenY + 6 + opBreath));
                 }
                 
-                // 🚨 BUG FIX & UX WIN: Stop chat bubbles shaking violently due to camera tracking
                 if (op.chatBubble && Date.now() < op.chatTimer) {
                     ctx.font = `bold 12px monospace`;
                     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                    // We measure the text here, but bind it purely to the player's smoothed XY
                     const textWidth = ctx.measureText(op.chatBubble).width;
                     ctx.fillRect(Math.trunc(screenX + TILE_SIZE/2 - textWidth/2 - 4), Math.trunc(screenY - 20 + opBreath), textWidth + 8, 16);
                     
@@ -1243,7 +1158,6 @@ function render() {
         }
     }
 
-    // --- DRAW PLAYER & MOUNTS ---
     const playerChar = gameState.player.isSailing ? '⛵' : (gameState.player.isBoating ? 'c' : gameState.player.character);
     
     const playerBreath = Math.sin(now / 300 + (p.x * 12.3 + p.y * 7.1)) * (TILE_SIZE * 0.08);
@@ -1278,7 +1192,6 @@ function render() {
 
     if (isStealthy) ctx.globalAlpha = 1.0;
 
-    // 🚨 BUG FIX & UX WIN: Stop chat bubbles shaking violently due to camera tracking
     if (gameState.player.chatBubble && Date.now() < gameState.player.chatTimer) {
         ctx.font = `bold 12px monospace`;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -1289,7 +1202,6 @@ function render() {
         ctx.fillText(gameState.player.chatBubble, pScreenX, Math.trunc(pScreenY - TILE_SIZE - 4));
     }
 
-    // --- UX WIN: AIMING RETICLES ---
     if (gameState.isAiming) {
         const pulse = (Math.sin(now / 150) + 1) / 2;
         ctx.fillStyle = `rgba(234, 179, 8, ${0.4 + pulse * 0.4})`; 
@@ -1304,10 +1216,9 @@ function render() {
         ctx.fillText('✛', purePxX - TILE_SIZE, purePxY); 
     }
 
-    // --- 4. OPTIMIZED LIGHTING OVERLAY ---
     let ambientLight = 0.0;
     let baseRadius = 10;
-    const hasTorch = inv.some(item => item && item.name === 'Torch'); // 🚨 GHOST GUARD
+    const hasTorch = inv.some(item => item && item.name === 'Torch'); 
     const torchBonus = hasTorch ? 6 : 0;
     const candleBonus = (gameState.player.candlelightTurns > 0) ? 8 : 0;
 
@@ -1321,7 +1232,6 @@ function render() {
         if (themeName === 'ICE') { r = 100; g = 200; b = 255; }
         else if (themeName === 'VOID' || gameState.mapMode === 'underworld') { 
             r = 168; g = 85; b = 247; 
-            // VOID PULSE: The darkness breathes organically
             ambientLight = 0.85 + (Math.sin(now / 800) * 0.05); 
         }
         
@@ -1368,7 +1278,6 @@ function render() {
         ctx.restore();
     }
 
-    // --- LORE & ATMOSPHERE WIN: Biome-Specific Ambient Particles ---
     if ((gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') && typeof chunkManager !== 'undefined') {
         const centerTile = chunkManager.getTile(p.x, p.y);
         const isNight = outerDarkness > 0.4;
@@ -1413,7 +1322,6 @@ function render() {
         }
     }
 
-    // --- Dynamic Weather Particles ---
     const intensity = gameState.player.weatherIntensity || 0;
     if (intensity > 0 && gameState.weather !== 'clear' && gameState.mapMode === 'overworld') {
         ctx.save();
@@ -1485,14 +1393,11 @@ function render() {
         ctx.restore();
     }
 
-    // --- Particle Render ---
     if (typeof ParticleSystem !== 'undefined') {
         ParticleSystem.draw(ctx, startX, startY);
     }
 
-    // --- Boss Health Bars ---
     if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-        // 🚨 GHOST GUARD
         const bosses = gameState.instancedEnemies.filter(e => e && e.isBoss);
         if (bosses.length > 0) {
             let activeBoss = bosses[0];
@@ -1500,7 +1405,7 @@ function render() {
             
             for (let i = 0; i < bosses.length; i++) {
                 const b = bosses[i];
-                if (!b) continue; // 🚨 GHOST GUARD
+                if (!b) continue; 
                 const d = Math.sqrt(Math.pow(b.x - gameState.player.x, 2) + Math.pow(b.y - gameState.player.y, 2));
                 if (d < minDist) {
                     minDist = d;
@@ -1517,7 +1422,6 @@ function render() {
                 const barX = ((canvas.width / dpr) - barWidth) / 2;
                 const barY = 40;
 
-                // Highly polished MMO-style boss frame
                 ctx.strokeStyle = '#facc15'; 
                 ctx.lineWidth = 2;
                 ctx.strokeRect(barX - 2, barY - 2, barWidth + 4, barHeight + 4);
@@ -1525,7 +1429,6 @@ function render() {
                 ctx.fillStyle = '#450a0a'; 
                 ctx.fillRect(barX, barY, barWidth, barHeight);
 
-                // 🚨 BUG FIX & PERFORMANCE WIN: Prevent NaN division if an enemy has 0 max health
                 const safeMaxHealth = (typeof activeBoss.maxHealth === 'number' && !isNaN(activeBoss.maxHealth) && activeBoss.maxHealth > 0) ? activeBoss.maxHealth : 1; 
                 const healthPercent = Math.max(0, activeBoss.health / safeMaxHealth);
                 
@@ -1533,7 +1436,6 @@ function render() {
                 grad.addColorStop(0, '#ef4444');
                 grad.addColorStop(1, '#991b1b');
                 
-                // JUICE WIN: Smooth lerp the health bar width for a premium feel
                 if (typeof activeBoss._visualHpPct === 'undefined') activeBoss._visualHpPct = healthPercent;
                 activeBoss._visualHpPct += (healthPercent - activeBoss._visualHpPct) * 0.1;
                 
@@ -1544,7 +1446,6 @@ function render() {
                 ctx.font = 'bold 18px monospace';
                 ctx.textAlign = 'center';
                 
-                // Double text stroke for perfect legibility over backgrounds
                 ctx.strokeStyle = 'rgba(0,0,0,0.8)';
                 ctx.lineWidth = 4;
                 ctx.lineJoin = 'round';
@@ -1558,7 +1459,6 @@ function render() {
         }
     }
 
-    // --- Visceral Blood Overlay for heavy hits ---
     if (gameState.screenShake > 8) {
         ctx.setTransform(1, 0, 0, 1, 0, 0); 
         ctx.scale(dpr, dpr);
@@ -1566,7 +1466,6 @@ function render() {
         ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
     }
     
-    // 🚨 EXPANSION HOOK: Custom Overlay Rendering
     if (typeof window.ExpansionManager !== 'undefined') {
         window.ExpansionManager.triggerHook('onRenderOverlay', {
             ctx: ctx,
@@ -1602,7 +1501,6 @@ function syncPlayerState() {
             } : null
         };
         
-        // 🚨 EXPANSION HOOK
         if (typeof window.ExpansionManager !== 'undefined') {
             window.ExpansionManager.triggerHook('onSyncPlayerState', { stateToSync: stateToSync });
         }
