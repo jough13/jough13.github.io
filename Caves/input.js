@@ -4,11 +4,8 @@
 // INPUT HANDLING & QUEUE SYSTEM
 // ==========================================
 
-// --- GLOBALS & SAFETY ---
-window.inputQueue = window.inputQueue || []; // Guarantee queue exists regardless of load order
+window.inputQueue = window.inputQueue || [];
 
-// O(1) Directional Mapping
-// Replaces massive if/else and switch statements with a single instant dictionary lookup
 window.MOVEMENT_MAP = {
     // Cardinals
     'ArrowUp': [0, -1], 'w': [0, -1], 'W': [0, -1], '8': [0, -1], 'Numpad8': [0, -1],
@@ -22,8 +19,6 @@ window.MOVEMENT_MAP = {
     '3': [1, 1], 'Numpad3': [1, 1], 'PageDown': [1, 1]
 };
 
-// 🚀 PERFORMANCE WIN: O(1) Set Caching for Game Keys
-// Prevents array reallocation and linear scanning on every single keystroke!
 const BLOCKED_SCROLL_KEYS = new Set([
     'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', ' ',
     'Home', 'End', 'PageUp', 'PageDown', 'Tab', 'Enter', '/'
@@ -39,22 +34,18 @@ const ACTION_KEYS = new Set([
     'q', 'z', 'g', 'r', ' ', '5', 'numpad5', 'clear', '.'
 ]);
 
-// Dynamic Hotkey Mapping
-// Radically simplifies adding new UI panels without writing messy if/else chains.
 const HOTKEY_MAPPINGS = {
     'i': { modal: 'inventoryModal',   openFunc: 'openInventoryModal',  closeFunc: 'closeInventoryModal' },
     'm': { modal: 'mapModal',         openFunc: 'openWorldMap',        closeFunc: 'closeWorldMap' },
     'b': { modal: 'spellModal',       openFunc: 'openSpellbook',       closeFunc: null },
     'k': { modal: 'skillModal',       openFunc: 'openSkillbook',       closeFunc: null },
     'c': { modal: 'collectionsModal', openFunc: 'openCollections',     closeFunc: null },
-    'l': { modal: 'collectionsModal', openFunc: 'openCollections',     closeFunc: null }, // QoL Alias for Library
+    'l': { modal: 'collectionsModal', openFunc: 'openCollections',     closeFunc: null }, 
     'p': { modal: 'talentModal',      openFunc: 'openTalentModal',     closeFunc: null },
     'j': { modal: 'questModal',       openFunc: 'openBountyBoard',     closeFunc: null },
     'h': { modal: 'helpModal',        openFunc: null,                  closeFunc: null } 
 };
 
-// Live HTMLCollection Cache for O(1) Modal Checks
-// Completely eliminates the need to run document.querySelector on every single keystroke!
 const _modalCache = {
     collection: null,
     getActive: () => {
@@ -67,8 +58,6 @@ const _modalCache = {
     isAnyOpen: () => !!_modalCache.getActive()
 };
 
-// PERFORMANCE WIN: Static memory allocation for Atmospheric Wait flavors
-// Prevents massive V8 garbage collection churn when holding down the spacebar
 window.WAIT_FLAVORS = {
     DEFAULT: [
         "You pause to catch your breath.",
@@ -182,7 +171,6 @@ window.WAIT_FLAVORS = {
         "You listen for the sound of marching boots.",
         "Dust motes dance in a faint shaft of light."
     ],
-    // --- LORE EXPANSION WAITS ---
     GUILD: [
         "You polish your guild insignia proudly.",
         "You stand tall, representing your comrades.",
@@ -195,9 +183,6 @@ window.WAIT_FLAVORS = {
     ]
 };
 
-// 🚨 ROBUSTNESS WIN: Safe Async execution wrapper
-// Guarantees that the global engine lock (`isProcessingMove`) remains active 
-// for the entire duration of an asynchronous action chain, even if it throws!
 const _safeExecuteWithLock = async (actionFunc) => {
     if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
     if (typeof actionFunc !== 'function') return;
@@ -215,14 +200,8 @@ const _safeExecuteWithLock = async (actionFunc) => {
     }
 };
 
-// --- CENTRAL INPUT HANDLER ---
 function handleInput(key) {
 
-    // 1. INPUT LOCK & WATCHDOG: Prevent spamming while network/animations are processing
-    // 🚨 BUG FIX & UX WIN: The "Infinite Lock" Watchdog
-    // If Firebase drops a transaction silently or an error bypasses a `finally` block, 
-    // the game used to permanently soft-lock. This tracks how long inputs have been ignored 
-    // and forces an engine unlock if it exceeds 5 seconds!
     if (typeof isProcessingMove !== 'undefined' && isProcessingMove) {
         if (!window._lastLockRejectTime) {
             window._lastLockRejectTime = Date.now();
@@ -235,27 +214,22 @@ function handleInput(key) {
             return;
         }
     } else {
-        window._lastLockRejectTime = null; // Clean state
+        window._lastLockRejectTime = null; 
     }
     
     if (typeof isBackupOperationRunning !== 'undefined' && isBackupOperationRunning) {
-        return; // Ignore absolutely all keyboard input while rebuilding the DB
+        return; 
     }
 
-    // 🚨 EXPANDABILITY WIN: Global Input Interceptor Hook
-    // Allows modules like Bard Instruments or Minigames to intercept raw keypresses BEFORE the engine processes them!
     if (typeof window.ExpansionManager !== 'undefined') {
         const hookRes = window.ExpansionManager.triggerHook('onBeforeInput', { key: key, handled: false });
         if (hookRes && hookRes.handled) return;
     }
 
-    // 2. Audio Context Resume (Browser Policy)
     if (typeof AudioSystem !== 'undefined' && AudioSystem._ctx && AudioSystem._ctx.state === 'suspended') {
         try { AudioSystem._ctx.resume().catch(() => {}); } catch(e){}
     }
 
-    // 3. Robust Safety Check
-    // 🚨 BUG FIX: Guard against undefined inputs from raw browser event streams
     if (!key || typeof key !== 'string') return;
     if (typeof player_id === 'undefined' || !player_id || typeof gameState === 'undefined' || !gameState.player) {
         return;
@@ -264,50 +238,35 @@ function handleInput(key) {
     const gc = document.getElementById('gameContainer');
     if (!gc || gc.classList.contains('hidden')) return;
 
-    // 4. Dead Check
     if (gameState.player.health <= 0) return;
 
-    // Cache the lowercased key to prevent repeated string allocations
     const lowerKey = key.toLowerCase();
 
-    // --- INCAPACITATION GUARD (STUNS) ---
-    // Extracted gameplay keys into a clear check so players can't drink/mount/loot while stunned!
-    // Clean numeric parsing allows Numpad keys to correctly register as disabled during stuns!
     let numericTestStr = key.startsWith('Numpad') ? key.replace('Numpad', '') : key;
     const isNumberKey = !isNaN(parseInt(numericTestStr, 10)) && parseInt(numericTestStr, 10) >= 1 && parseInt(numericTestStr, 10) <= 9;
     
     const isGameplayKey = window.MOVEMENT_MAP[key] || ACTION_KEYS.has(lowerKey) || isNumberKey;
     
     if (gameState.player.stunTurns > 0 && isGameplayKey) {
-        
-        // Throttle the stun turn advancement!
-        // Uses the global ACTION_COOLDOWN to ensure mashing keys doesn't accelerate enemy AI to light-speed.
         const currentCooldown = window.ACTION_COOLDOWN || 150;
         
         if (Date.now() - (window.lastActionTime || 0) >= currentCooldown) {
             logMessage("{yellow:You are stunned and cannot act!}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             
-            window.inputQueue.length = 0; // Force clear the queue
-            window.lastActionTime = Date.now();  // Record the action time to enforce the throttle!
+            window.inputQueue.length = 0; 
+            window.lastActionTime = Date.now();  
             
-            // Advance the turn securely
             if (typeof endPlayerTurn === 'function') {
                 _safeExecuteWithLock(() => {
                     endPlayerTurn();
-                    // Force a render so the player can see enemies moving while stunned!
                     if (typeof render === 'function') render(); 
                 });
             }
         }
-        
-        // Always return to block the actual keypress, even if the cooldown blocked the turn from ticking
         return;
     }
 
-    // --- STATE CANCELLATION ---
-    // If the player is aiming or dropping an item, but presses a UI hotkey (like 'I' for inventory),
-    // automatically cancel the active state so the game doesn't get soft-locked!
     if (HOTKEY_MAPPINGS[lowerKey] || key === 'Escape') {
         let stateCanceled = false;
         
@@ -326,20 +285,16 @@ function handleInput(key) {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "Canceled", "#9ca3af");
             
-            if (typeof render === 'function') render(); // Clear telegraphs instantly
+            if (typeof render === 'function') render(); 
             if (typeof renderInventory === 'function') renderInventory();
             
-            // If they just pressed Escape, stop here. If they pressed 'I', continue to open the inventory!
             if (key === 'Escape') return; 
         }
     }
 
-    // --- ESCAPE KEY / MODAL CLOSER ---
     if (key === 'Escape') {
-        // Aggressively clear the queue if the user panics and mashes Escape
         window.inputQueue.length = 0; 
 
-        // Find any active modal and close it using our ultra-fast cache
         const activeModal = _modalCache.getActive();
         if (activeModal) {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
@@ -348,13 +303,11 @@ function handleInput(key) {
             else if (activeModal.id === 'mapModal' && typeof closeWorldMap === 'function') closeWorldMap();
             else activeModal.classList.add('hidden'); 
             
-            // Return focus to game so WASD works immediately
             if (document.activeElement) document.activeElement.blur();
         }
         return; 
     }
 
-    // Keyboard Zoom Controls (Allowed while menus are open)
     if (key === '=' || key === '+') {
         window.currentZoom = Math.min(40, window.currentZoom + 2);
         if (typeof resizeCanvas === 'function') resizeCanvas();
@@ -366,38 +319,30 @@ function handleInput(key) {
         return;
     }
 
-    // Direct Chat Input focus wrapper
     if (key === 'Enter') { 
         const chatIn = document.getElementById('chatInput');
         if (chatIn) chatIn.focus(); 
         return; 
     }
 
-    // QoL WIN: MMO Chat Slash-Command Shortcut
     if (key === '/') {
         const chatIn = document.getElementById('chatInput');
         if (chatIn) {
-            // Focus and pre-fill the slash for them!
             chatIn.focus();
             chatIn.value = '/';
         }
         return;
     }
 
-    // --- MENU TOGGLES (With Centralized Dynamic Hooks) ---
     const mapping = HOTKEY_MAPPINGS[lowerKey];
     if (mapping) {
         const modalEl = document.getElementById(mapping.modal);
         const activeModal = _modalCache.getActive();
 
         if (modalEl) {
-            // Locate the functions dynamically via the window object
             const openFunc = typeof window[mapping.openFunc] === 'function' ? window[mapping.openFunc] : null;
             const closeFunc = mapping.closeFunc && typeof window[mapping.closeFunc] === 'function' ? window[mapping.closeFunc] : null;
 
-            // 🚨 UX WIN: Smart Modal Swapping
-            // If a DIFFERENT modal is already open, close it seamlessly before opening the new one!
-            // Prevents the Z-index overlap nightmare of multiple menus stacked on top of each other.
             if (activeModal && activeModal !== modalEl) {
                 activeModal.classList.add('hidden');
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
@@ -406,7 +351,6 @@ function handleInput(key) {
             if (typeof window.toggleModal === 'function') {
                 window.toggleModal(modalEl, openFunc, closeFunc);
             } else {
-                // Fallback just in case ui.js hasn't hooked up yet
                 window.inputQueue.length = 0; 
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
                 if (!modalEl.classList.contains('hidden')) {
@@ -422,8 +366,6 @@ function handleInput(key) {
         return;
     }
 
-    // 🚨 UI BLOCKER: Do not process gameplay keys if any menu is open!
-    // BUG FIX: Moved this ABOVE the gameplay bindings (q, z, g, etc) to prevent interaction while menus are open
     if (_modalCache.isAnyOpen() || gameState.inventoryMode) {
         return;
     }
@@ -432,14 +374,12 @@ function handleInput(key) {
     // --- GAMEPLAY ACTIONS ---
     // ==========================================
 
-    // --- DROP MODE ---
     if (gameState.isDroppingItem) {
-        // Clean numeric parsing for extended Numpad dropping
         let numericKeyStr = key.startsWith('Numpad') ? key.replace('Numpad', '') : key;
         const keyNum = parseInt(numericKeyStr, 10);
         
         if (!isNaN(keyNum) && keyNum >= 1) {
-            if (typeof handleItemDrop === 'function') handleItemDrop(keyNum.toString()); // Force string for handleItemDrop
+            if (typeof handleItemDrop === 'function') handleItemDrop(keyNum.toString()); 
         } else {
             logMessage("{gray:Select an item to drop, or press Esc to cancel.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -447,9 +387,7 @@ function handleInput(key) {
         return;
     }
 
-    // --- AIMING MODE ---
     if (gameState.isAiming) {
-        // Guard against missing abilities if they somehow aimed without an ID
         const abilityId = gameState.abilityToAim;
         if (!abilityId) {
             gameState.isAiming = false;
@@ -462,13 +400,9 @@ function handleInput(key) {
             const [dirX, dirY] = dir;
             window.lastActionTime = Date.now();
             
-            // Make the player physically turn to face the direction they are aiming!
             if (dirX > 0) gameState.player.facing = 'right';
             else if (dirX < 0) gameState.player.facing = 'left';
 
-            // 🚨 EXPANDABILITY WIN: Native Expansion Aiming Hook
-            // Allows new modules (like guns or grenades) to intercept the aim vector 
-            // BEFORE it hits the hardcoded list!
             let expansionHandled = false;
             if (typeof window.ExpansionManager !== 'undefined') {
                 const hookRes = window.ExpansionManager.triggerHook('onAimAbility', { abilityId, dirX, dirY, handled: false });
@@ -476,7 +410,6 @@ function handleInput(key) {
             }
 
             if (!expansionHandled) {
-                // Legacy Aiming Router
                 if (abilityId === 'lunge') { if (typeof executeLunge === 'function') executeLunge(dirX, dirY); }
                 else if (abilityId === 'ranged_attack') { if (typeof executeRangedAttack === 'function') executeRangedAttack(dirX, dirY); }
                 else if (['shieldBash', 'cleave', 'kick', 'crush'].includes(abilityId)) { if (typeof executeMeleeSkill === 'function') executeMeleeSkill(abilityId, dirX, dirY); }
@@ -486,14 +419,13 @@ function handleInput(key) {
                 else if (abilityId === 'inflictMadness') { if (typeof executeInflictMadness === 'function') executeInflictMadness(dirX, dirY); }
                 else if (abilityId === 'tame') { if (typeof executeTame === 'function') executeTame(dirX, dirY); }
                 else if (abilityId === 'throwTNT') { if (typeof executeThrowTNT === 'function') executeThrowTNT(dirX, dirY); }
-                else if (abilityId.startsWith('throwPotion_')) { if (typeof executeThrowPotion === 'function') executeThrowPotion(abilityId, dirX, dirY); } // ALCHEMY POTIONS
+                else if (abilityId.startsWith('throwPotion_')) { if (typeof executeThrowPotion === 'function') executeThrowPotion(abilityId, dirX, dirY); } 
                 else logMessage("{red:Unknown ability. Aiming canceled.}");
             }
 
             gameState.isAiming = false;
             gameState.abilityToAim = null;
         } else {
-            // JUICE WIN: Dynamic visual/audio feedback for pressing invalid keys while aiming
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "?", "#ef4444");
             logMessage("{gray:Invalid direction. Use Arrow keys or WASD to aim. (Esc) to cancel.}");
@@ -501,7 +433,6 @@ function handleInput(key) {
         return;
     }
 
-    // --- DROP MODE TOGGLE ---
     if (gameState.inventoryMode && lowerKey === 'd') {
         if (gameState.player.inventory.length === 0) {
             logMessage("{gray:Inventory empty.}");
@@ -523,7 +454,6 @@ function handleInput(key) {
         return;
     }
 
-    // --- NUMBER KEYS & UI INVENTORY CLICKS ---
     let numericKeyStr = key;
     if (numericKeyStr.startsWith('Numpad')) {
         numericKeyStr = numericKeyStr.replace('Numpad', '');
@@ -536,14 +466,12 @@ function handleInput(key) {
             return;
         }
 
-        // Outside of inventory, numbers 1-9 activate the Hotbar
         if (keyNum <= 9) {
             if (typeof useHotbarSlot === 'function') useHotbarSlot(keyNum - 1);
             return;
         }
     }
 
-    // --- UTILITY KEYS ---
     if (lowerKey === 'q') {
         _safeExecuteWithLock(() => {
             if (typeof drinkFromSource === 'function') drinkFromSource();
@@ -556,7 +484,6 @@ function handleInput(key) {
         return;
     }
 
-    // --- GROUND LOOTING ---
     if (lowerKey === 'g') {
         let tileId;
         if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileId = `${gameState.player.x},${-gameState.player.y}`;
@@ -568,11 +495,9 @@ function handleInput(key) {
 
         if (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[currentTile]) {
             logMessage("You scour the ground for items...");
-            // Let attemptMovePlayer handle its own locks!
             if (typeof attemptMovePlayer === 'function') attemptMovePlayer(gameState.player.x, gameState.player.y); 
             return;
         } else {
-            // JUICE WIN: Clearer visual/audio rejection for failed looting
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "Nothing", "#9ca3af");
             logMessage("{gray:There is nothing here to pick up.}");
@@ -588,7 +513,6 @@ function handleInput(key) {
         return;
     }
 
-    // --- DIRECTIONAL MOVEMENT ---
     const dir = window.MOVEMENT_MAP[key];
 
     if (dir) {
@@ -596,26 +520,20 @@ function handleInput(key) {
         let newX = gameState.player.x + dirX;
         let newY = gameState.player.y + dirY;
 
-        // Store facing direction for rendering
         if (newX > gameState.player.x) gameState.player.facing = 'right';
         else if (newX < gameState.player.x) gameState.player.facing = 'left';
 
-        // Reset timers on ANY movement attempt, even if they hit a wall!
         window.lastActionTime = Date.now(); 
         window._lastAutoTickTime = Date.now();
         
-        // Let attemptMovePlayer handle its own locks!
         if (typeof attemptMovePlayer === 'function') attemptMovePlayer(newX, newY);
         return;
     }
 
-    // --- ATMOSPHERIC WAITING ---
     if (ACTION_KEYS.has(lowerKey)) {
         
         let waitFlavors = window.WAIT_FLAVORS.DEFAULT;
 
-        // --- LORE WIN: Dynamic Thematic Waiting Messages ---
-        // Adapts seamlessly to expansions and states!
         if (gameState.player.stealthTurns > 0) {
             waitFlavors = window.WAIT_FLAVORS.STEALTH;
         } else if (gameState.player.isMounted && gameState.player.companion) {
@@ -625,7 +543,6 @@ function handleInput(key) {
         } else if (gameState.player.isBoating) {
             waitFlavors = window.WAIT_FLAVORS.BOATING;
         } else if (gameState.mapMode === 'castle' && gameState.currentCastleId && gameState.currentCastleId.includes('village') && gameState.player.guildTag) {
-            // Using the new Guild Expansion flavors if standing in a safe haven!
             if (window.WAIT_FLAVORS.GUILD) waitFlavors = window.WAIT_FLAVORS.GUILD;
         }
         else if (gameState.currentRealm !== 0 && gameState.currentRealm) {
@@ -660,7 +577,6 @@ function handleInput(key) {
             waitFlavors = window.WAIT_FLAVORS.CASTLE;
         }
 
-        // LORE WIN: O(1) Dynamic String Interpolation for mounts!
         let msg = waitFlavors[Math.floor(Math.random() * waitFlavors.length)];
         if (msg.includes('%MOUNT%')) {
             msg = msg.replace(/%MOUNT%/g, gameState.player.companion ? gameState.player.companion.name : 'companion');
@@ -668,7 +584,6 @@ function handleInput(key) {
 
         logMessage(`{gray:${msg}}`);
         
-        // Better visual feedback for passing time!
         if (typeof ParticleSystem !== 'undefined') {
             ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "...", "#9ca3af");
         }
@@ -681,21 +596,14 @@ function handleInput(key) {
     }
 }
 
-// --- EVENT LISTENERS ---
 document.addEventListener('keydown', (event) => {
-    // 1. MAC OS & WINDOWS MODIFIER KEY GUARD
-    // Prevents shortcuts like Ctrl+R, Cmd+W, or Alt+Tab from triggering game actions!
     if (event.ctrlKey || event.altKey || event.metaKey) return;
 
-    // 2. UNIVERSAL INPUT PROTECTOR
-    // Ignore WASD and Hotkeys if the user is typing in ANY input field (Chat, Riddle, Character Name)
     if (document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
 
     if (!event.key) return; 
 
-    // 3. Prevent default scrolling for game keys
     if (BLOCKED_SCROLL_KEYS.has(event.key)) {
-        // 🚨 BUG FIX WIN: Allow native scrolling if a modal is open!
         if (typeof _modalCache !== 'undefined' && _modalCache.isAnyOpen()) {
             // Do not prevent default!
         } else {
@@ -703,41 +611,28 @@ document.addEventListener('keydown', (event) => {
         }
     }
 
-    // --- Differentiate Numpad from Top Row ---
-    // ROBUSTNESS WIN: Safely handles bluetooth tablet keyboards that sometimes lack .code properties
     let inputStr = event.key;
     if (event.code && event.code.startsWith('Numpad') && !isNaN(parseInt(event.key))) {
         inputStr = 'Numpad' + event.key;
     }
 
-    // 4. AUTO-REPEAT SPAM GUARD (Bug Fix)
-    // If the player holds down 'I', it won't toggle the inventory 60 times a second.
-    // Movement keys (WASD) bypass this so you can still hold to walk!
     if (event.repeat && INSTANT_KEYS.has(inputStr)) {
         return;
     }
 
-    // --- THE INPUT QUEUE ROUTER ---
-    // Dead check before queueing
     if (typeof gameState !== 'undefined' && gameState.player && gameState.player.health <= 0) return;
     
-    // Check if the key matches a menu toggle
     const isMenuKey = !!HOTKEY_MAPPINGS[inputStr.toLowerCase()];
     
-    // 🚨 BUG FIX WIN: Hard Capped Input Queue!
-    // Prevents the "infinite slide" bug where lag buffering causes the player to walk directly into lava.
     if (_modalCache.isAnyOpen() || INSTANT_KEYS.has(inputStr) || isMenuKey || (typeof gameState !== 'undefined' && (gameState.isDroppingItem || gameState.inventoryMode))) {
-        handleInput(inputStr); // Execute instantly
+        handleInput(inputStr); 
     } else {
-        // Gameplay actions (Movement, Combat, Aiming) queue up seamlessly!
-        // The queue is capped at 3 to prevent sliding into lava after releasing the key.
         if (window.inputQueue.length < 3) {
             window.inputQueue.push(inputStr);
         }
     }
 }, { passive: false });
 
-// DEBOUNCE RESIZE: Only resize once the user STOPS dragging the window (saves CPU)
 let resizeTimer;
 window.addEventListener('resize', () => { 
     clearTimeout(resizeTimer); 
