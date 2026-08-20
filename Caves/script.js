@@ -2097,6 +2097,41 @@ function handleChatCommand(message) {
             }
             break;
 
+        case 'dance':
+            logMessage(`{blue:${gameState.player.name} breaks into a dance!}`);
+            // Broadcast to the server so others see the chat message
+            if (typeof rtdb !== 'undefined') {
+                rtdb.ref('chat').push().set({
+                    senderId: player_id, email: auth.currentUser.email,
+                    message: `{blue:* ${gameState.player.name} dances! *}`,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+            }
+            // Spawn musical notes floating up from the player
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "🎵", "#60a5fa");
+                setTimeout(() => ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "🎶", "#a855f7"), 300);
+                setTimeout(() => ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "🎵", "#facc15"), 600);
+            }
+            // Player does a little hop
+            gameState.player.visualY -= 0.5; 
+            break;
+
+        case 'cheer':
+            logMessage(`{gold:${gameState.player.name} cheers victoriously!}`);
+            if (typeof rtdb !== 'undefined') {
+                rtdb.ref('chat').push().set({
+                    senderId: player_id, email: auth.currentUser.email,
+                    message: `{gold:* ${gameState.player.name} cheers! *}`,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+            }
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#facc15', 15);
+            }
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp(); // Cheerful sound
+            break;
+
         case 'heal':
             gameState.player.health = gameState.player.maxHealth;
             gameState.player.mana = gameState.player.maxMana;
