@@ -396,7 +396,7 @@ async function castSpell(spellId) {
 
                 if (typeof triggerAbilityCooldown === 'function') triggerAbilityCooldown(spellId);
 
-                if (typeof endPlayerTurn === 'function') endPlayerTurn();
+                if (typeof endPlayerTurn === 'function') await endPlayerTurn();
                 if (typeof renderStats === 'function') renderStats();
             } else {
                 // Refund the cost if the spell failed (e.g., shield already active)
