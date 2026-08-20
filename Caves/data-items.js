@@ -1243,7 +1243,6 @@ window.ITEM_DATA = {
         tile: '👢',
         excludeFromLoot: true
     },
-
     '🍞': {
         name: 'Hardtack',
         type: 'consumable',
@@ -2049,6 +2048,62 @@ window.ITEM_DATA = {
         },
         description: "Restored to its former glory. You act with the authority of the Old World.",
         excludeFromLoot: true
+    },
+    '🎺w': {
+        name: 'Bone Whistle', type: 'consumable', tile: '🎺', _rarity: 'rare',
+        description: "Blow the whistle to instantly call a wild Dire Wolf to your side as a loyal companion.",
+        effect: (state) => {
+            if (state.player.companion) {
+                logMessage("{red:You already have a companion! Dismiss them first.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return false;
+            }
+            
+            logMessage("{cyan:You blow the whistle. A piercing howl answers back!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            
+            // Hook natively into your Menagerie system!
+            state.player.companion = {
+                name: "Summoned Wolf", tile: "🐺", type: "beast",
+                hp: 25, maxHp: 25, attack: 6, defense: 1,
+                x: state.player.x, y: state.player.y, carryCapacity: 5,
+                level: 1, xp: 0, xpToNext: 50 // Ready for pet leveling
+            };
+            
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#9ca3af', 20);
+            if (typeof playerRef !== 'undefined') playerRef.update({ companion: state.player.companion });
+            if (typeof window.renderPetUI === 'function') window.renderPetUI();
+            
+            return true; // Consumes the whistle
+        }
+    },
+    '💎p': {
+        name: "Philosopher's Stone", type: 'tool', tile: '💎', _rarity: 'legendary',
+        description: "Use to transmute 1 Iron Ore into 25 Gold Coins. Does not consume the stone.",
+        effect: (state) => {
+            const p = state.player;
+            const idx = p.inventory.findIndex(i => i && i.name === 'Iron Ore' && !i.isEquipped);
+            if (idx === -1) {
+                logMessage("{gray:You need Iron Ore in your bag to transmute.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return false;
+            }
+            
+            // Consume 1 Iron Ore
+            p.inventory[idx].quantity--;
+            if (p.inventory[idx].quantity <= 0) p.inventory.splice(idx, 1);
+            
+            // Add Gold safely
+            p.coins += 25;
+            if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(25);
+            
+            logMessage("{gold:The stone flares brightly! The Iron turns into 25 Gold Coins.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#facc15', 10);
+            if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('coinsDisplay'), true);
+            
+            return true; // Uses a turn, but tool type ensures the Stone isn't deleted!
+        }
     },
     '💍': {
         name: 'Signet Ring',
