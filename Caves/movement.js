@@ -3485,7 +3485,7 @@ if (gameState.player.health <= 0) {
         }
 
         // Pass the updates object in so Firebase actually saves your loot/exploration!
-        if (typeof endPlayerTurn === 'function') endPlayerTurn(updates); 
+        if (typeof endPlayerTurn === 'function') await endPlayerTurn(updates); 
 
     } catch (error) {
         console.error("🚨 Critical movement error caught! Unlocking engine to prevent deadlock:", error);
