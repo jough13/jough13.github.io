@@ -1886,7 +1886,7 @@ loreModal.addEventListener('click', (event) => {
     }
 });
 
-function drinkFromSource() {
+async function drinkFromSource() {
     const player = gameState.player;
 
     // 1. Define offsets to check (Current tile + N/S/E/W)
@@ -1964,7 +1964,7 @@ function drinkFromSource() {
         }
 
         // Cost 1 turn
-        endPlayerTurn();
+        await endPlayerTurn();
         renderStats();
 
     } else {
@@ -2292,7 +2292,8 @@ function handleChatCommand(message) {
     }
 }
 
-function restPlayer() {
+async function restPlayer() {
+
     // 1. Check Survival Constraints
     if (gameState.player.hunger <= 0 || gameState.player.thirst <= 0) {
         logMessage("{red:You are too weak from hunger or thirst to rest effectively.}");
@@ -2389,7 +2390,7 @@ function restPlayer() {
     }
     
     // 7. End Turn (This saves Health, Stamina, AND your pending XP)
-    if (typeof endPlayerTurn === 'function') endPlayerTurn();
+    if (typeof endPlayerTurn === 'function') await endPlayerTurn();
 }
 
 function triggerRaidBossSpawn(playerX, playerY) {
