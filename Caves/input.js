@@ -470,8 +470,8 @@ function handleInput(key) {
     }
 
     if (lowerKey === 'q') {
-        _safeExecuteWithLock(() => {
-            if (typeof drinkFromSource === 'function') drinkFromSource();
+        _safeExecuteWithLock(async () => {
+            if (typeof drinkFromSource === 'function') await drinkFromSource();
         });
         return;
     }
@@ -503,8 +503,8 @@ function handleInput(key) {
     }
 
     if (lowerKey === 'r') {
-        _safeExecuteWithLock(() => {
-            if (typeof restPlayer === 'function') restPlayer();
+        _safeExecuteWithLock(async () => {
+            if (typeof restPlayer === 'function') await restPlayer();
             window.lastActionTime = Date.now(); 
         });
         return;
@@ -585,8 +585,8 @@ function handleInput(key) {
             ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "...", "#9ca3af");
         }
         
-        _safeExecuteWithLock(() => {
-            if (typeof endPlayerTurn === 'function') endPlayerTurn();
+        _safeExecuteWithLock(async () => {
+            if (typeof endPlayerTurn === 'function') await endPlayerTurn();
             window.lastActionTime = Date.now(); 
         });
         return;
