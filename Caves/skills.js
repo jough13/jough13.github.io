@@ -290,7 +290,7 @@ async function useSkill(skillId) {
                 if (skillModal) skillModal.classList.add('hidden');
                 
                 triggerAbilityCooldown(skillId);
-                if (typeof endPlayerTurn === 'function') endPlayerTurn();
+                if (typeof endPlayerTurn === 'function') await endPlayerTurn();
                 if (typeof renderEquipment === 'function') renderEquipment(); 
             } else {
                 // Refund stamina if skill failed 
@@ -492,7 +492,7 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
         }
 
         triggerAbilityCooldown(skillId);
-        if (typeof endPlayerTurn === 'function') endPlayerTurn();
+        if (typeof endPlayerTurn === 'function') await endPlayerTurn();
         if (typeof render === 'function') render();
 
     } finally {
@@ -814,8 +814,8 @@ async function executeRangedAttack(dirX, dirY) {
         }
         if (typeof statDisplays !== 'undefined') triggerStatFlash(statDisplays.stamina, false); 
         
-        if (typeof endPlayerTurn === 'function') endPlayerTurn(); 
-        if (typeof renderEquipment === 'function') renderEquipment(); // Refresh UI ammo count
+        if (typeof endPlayerTurn === 'function') await endPlayerTurn(); 
+        if (typeof renderEquipment === 'function') renderEquipment();
         if (typeof render === 'function') render(); 
 
     } finally {
@@ -959,9 +959,9 @@ async function executeLunge(dirX, dirY) {
         }
         if (typeof statDisplays !== 'undefined') triggerStatFlash(statDisplays.stamina, false); 
         
-        triggerAbilityCooldown('lunge');
-        if (typeof endPlayerTurn === 'function') endPlayerTurn(); 
-        if (typeof render === 'function') render(); 
+       triggerAbilityCooldown('lunge');
+        if (typeof endPlayerTurn === 'function') await endPlayerTurn(); 
+        if (typeof render === 'function') render();
 
     } finally {
         isProcessingMove = false;
@@ -1042,7 +1042,7 @@ function executeQuickstep(dirX, dirY) {
 
         player.stamina -= skillData.cost;
         triggerAbilityCooldown('quickstep');
-        if (typeof endPlayerTurn === 'function') endPlayerTurn();
+        if (typeof endPlayerTurn === 'function') await endPlayerTurn();
         if (typeof render === 'function') render();
         return;
     }
@@ -1067,7 +1067,7 @@ function executeQuickstep(dirX, dirY) {
         if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('light');
 
         triggerAbilityCooldown('quickstep');
-        if (typeof endPlayerTurn === 'function') endPlayerTurn();
+        if (typeof endPlayerTurn === 'function') await endPlayerTurn();
         if (typeof render === 'function') render();
     } else {
         logMessage("{gray:Path blocked.}");
@@ -1177,7 +1177,7 @@ function executePacify(dirX, dirY) {
     if (typeof statDisplays !== 'undefined') triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
     
     triggerAbilityCooldown('pacify');
-    if (typeof endPlayerTurn === 'function') endPlayerTurn();
+    if (typeof endPlayerTurn === 'function') await endPlayerTurn();
     if (typeof render === 'function') render();
 }
 
