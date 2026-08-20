@@ -1711,14 +1711,24 @@ async function attemptMovePlayer(newX, newY) {
     // --- STAIRS LOGIC (Z-AXIS) ---
     if (newTile === '<' && gameState.mapMode === 'dungeon') {
         
-        // 1. Parse current floor
+        // 1. Parse current floor dynamically to protect Expansion Map IDs
         const parts = gameState.currentCaveId.split('_');
-        const cX = parts[1] || 0;
-        const cY = parts[2] || 0;
-        const currentZ = parts.length > 3 ? parseInt(parts[3]) : 1;
+        let currentZ = 1;
+        let baseId = gameState.currentCaveId;
+
+        // Check if it already has a Z-index (the last 3 parts are numbers: X, Y, Z)
+        // e.g., 'cave_10_20_2' vs 'shipwreck_10_20'
+        if (parts.length >= 4 && 
+            !isNaN(parseInt(parts[parts.length - 1])) && 
+            !isNaN(parseInt(parts[parts.length - 2])) && 
+            !isNaN(parseInt(parts[parts.length - 3]))) {
+            
+            currentZ = parseInt(parts.pop()); // Extract and remove the Z index
+            baseId = parts.join('_');         // Reconstruct the base ID
+        }
         
         const nextZ = currentZ + 1;
-        const nextCaveId = `cave_${cX}_${cY}_${nextZ}`;
+        const nextCaveId = `${baseId}_${nextZ}`;
         
         logMessage(`{purple:You descend deeper into the darkness... (Floor ${nextZ})}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
