@@ -1863,6 +1863,32 @@ window.ITEM_DATA = {
     },
 
     // --- NEW WEAPONS ---
+    '🗡️s': {
+    name: 'Shadow-Weaver Dirk',
+    type: 'weapon',
+    tags: ['dagger', 'blade'],
+    tile: '🗡️',
+    damage: 6,
+    slot: 'weapon',
+    description: "{red:+6 Dmg}. Coated in void ash. {purple:(20% chance to cast Void Step on hit, instantly granting Stealth!)}",
+    _rarity: 'epic',
+    onHit: 'voidStep',
+    procChance: 0.20
+},
+'🔨e': {
+    name: 'Earthshaker Gavel',
+    type: 'weapon',
+    tags: ['blunt'],
+    tile: '🔨',
+    damage: 10,
+    isTwoHanded: true,
+    slot: 'weapon',
+    statBonuses: { strength: 4, dexterity: -2 },
+    description: "{red:+10 Dmg}, {green:+4 Str}. A massive dwarven hammer. {yellow:(25% chance to cast Earth Spike on hit, rooting the target!)}",
+    _rarity: 'epic',
+    onHit: 'earthSpike',
+    procChance: 0.25
+},
     '🔱': {
         name: 'Trident',
         type: 'weapon',
