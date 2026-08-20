@@ -188,6 +188,15 @@ const _safeExecuteWithLock = async (actionFunc) => {
     if (typeof actionFunc !== 'function') return;
 
     isProcessingMove = true;
+    
+    // Self-resolving asynchronous watchdog
+    const watchdog = setTimeout(() => {
+        if (isProcessingMove) {
+            console.warn("[AKASHIC ENGINE] Watchdog forced engine unlock.");
+            isProcessingMove = false;
+        }
+    }, 5000);
+
     try {
         const result = actionFunc();
         if (result instanceof Promise) {
@@ -196,26 +205,14 @@ const _safeExecuteWithLock = async (actionFunc) => {
     } catch (e) {
         console.error("[AKASHIC ENGINE] Action execution failed:", e);
     } finally {
+        clearTimeout(watchdog);
         isProcessingMove = false;
     }
 };
 
 function handleInput(key) {
-
-    if (typeof isProcessingMove !== 'undefined' && isProcessingMove) {
-        if (!window._lastLockRejectTime) {
-            window._lastLockRejectTime = Date.now();
-            return;
-        } else if (Date.now() - window._lastLockRejectTime > 5000) {
-            console.warn("%c[AKASHIC ENGINE] Input Lock Watchdog triggered. Forcing engine unlock to prevent soft-lock.", "color: #ef4444; font-weight: bold;");
-            isProcessingMove = false;
-            window._lastLockRejectTime = null;
-        } else {
-            return;
-        }
-    } else {
-        window._lastLockRejectTime = null; 
-    }
+    // 🚨 Clean, O(1) lock check. The old manual watchdog check here is removed!
+    if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
     
     if (typeof isBackupOperationRunning !== 'undefined' && isBackupOperationRunning) {
         return; 
