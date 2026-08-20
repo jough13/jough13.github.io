@@ -15,6 +15,10 @@ window.ExpansionManager = {
     // Expansions waiting for their dependencies to load sit here safely.
     _pendingQueue: [],
 
+    // 🌟 FEATURE WIN: Live Mod Toggling
+    // Allows us to mute an expansion's active hooks on the fly (for a future Mod Manager UI)
+    disabledExpansions: new Set(),
+
     // API Helper: Allows expansions to alter behavior if they know another specific expansion is running
     has: function(expansionId) {
         return this.expansions.has(expansionId);
@@ -30,6 +34,21 @@ window.ExpansionManager = {
         return Array.from(this.expansions.values());
     },
 
+    // API Helper: Toggle an expansion's hooks on/off
+    toggleExpansion: function(expansionId, state) {
+        if (!this.has(expansionId)) return false;
+        
+        const turnOn = state !== undefined ? state : this.disabledExpansions.has(expansionId);
+        if (turnOn) {
+            this.disabledExpansions.delete(expansionId);
+            console.log(`%c[AKASHIC ENGINE] Timeline Restored: Expansion '${expansionId}' hooks re-enabled.`, "color: #3b82f6; font-style: italic;");
+        } else {
+            this.disabledExpansions.add(expansionId);
+            console.log(`%c[AKASHIC ENGINE] Timeline Suppressed: Expansion '${expansionId}' hooks disabled.`, "color: #fb923c; font-style: italic;");
+        }
+        return turnOn;
+    },
+
     // Centralized Hook Trigger with Veto Power and Context Enrichment
     triggerHook: function(hookName, context = {}) {
         if (!this.activeHooks[hookName]) return context;
@@ -40,6 +59,10 @@ window.ExpansionManager = {
         
         for (let i = 0; i < hooksToRun.length; i++) {
             const hook = hooksToRun[i];
+            
+            // Skip disabled expansions
+            if (this.disabledExpansions.has(hook.id)) continue;
+
             try {
                 const result = hook.func(context);
                 
@@ -128,6 +151,28 @@ window.ExpansionManager = {
         const data = exp.data || {};
         let dictCount = 0;
         let arrCount = 0;
+        let assetCount = 0;
+
+        // --- 0. ASSET PRELOADER (PERFORMANCE WIN) ---
+        // Automatically injects link-preload tags to the document head so custom mod images/audio 
+        // load asynchronously before the player encounters them, preventing visual pop-in!
+        if (data.assets && Array.isArray(data.assets)) {
+            data.assets.forEach(url => {
+                if (!document.querySelector(`link[href="${url}"]`)) {
+                    const link = document.createElement('link');
+                    link.rel = 'preload';
+                    link.href = url;
+                    
+                    // Best-guess determination of the 'as' type based on extension
+                    if (url.match(/\.(png|jpg|jpeg|gif|webp|svg)$/i)) link.as = 'image';
+                    else if (url.match(/\.(mp3|wav|ogg)$/i)) link.as = 'audio';
+                    else link.as = 'fetch';
+                    
+                    document.head.appendChild(link);
+                    assetCount++;
+                }
+            });
+        }
 
         // --- 1. LORE & ATMOSPHERE INJECTION ---
         if (data.loreKeywords) {
@@ -156,7 +201,7 @@ window.ExpansionManager = {
             window._COMPILED_LORE_REGEXES.sort((a, b) => b.keyword.length - a.keyword.length);
         }
 
-        // --- 1.5. CSS & STYLE INJECTION (EXPANDABILITY WIN) ---
+        // --- 1.5. CSS & STYLE INJECTION ---
         if (exp.css) {
             const styleId = `akashic-style-${exp.id}`;
             if (!document.getElementById(styleId)) {
@@ -188,10 +233,20 @@ window.ExpansionManager = {
             craftingRecipes: 'CRAFTING_RECIPES',
             cookingRecipes: 'COOKING_RECIPES',
             alchemyRecipes: 'ALCHEMY_RECIPES',
-            // 🚨 EXPANDABILITY WIN: Forward-compat mapping for future expansion concepts
+            // Forward-compat mapping for future expansion concepts
             factions: 'FACTION_DATA',
             weatherTypes: 'WEATHER_DATA' 
         };
+
+        // 🌟 EXPANDABILITY WIN: Custom Global Registries!
+        // Expansions can now define `customDictionaries` to dynamically spawn new global
+        // state tables without hardcoding them into the engine core.
+        if (data.customDictionaries) {
+            for (const [localKey, globalKey] of Object.entries(data.customDictionaries)) {
+                if (typeof window[globalKey] === 'undefined') window[globalKey] = {};
+                dictionaries[localKey] = globalKey; // Add it to the loop mapping dynamically
+            }
+        }
 
         for (const [localKey, globalKey] of Object.entries(dictionaries)) {
             if (data[localKey] && typeof data[localKey] === 'object') {
@@ -203,14 +258,23 @@ window.ExpansionManager = {
                     if (window[globalKey][key]) {
                         console.warn(`%c[AKASHIC ENGINE] Overwrite Notice: '${exp.id}' is modifying existing ${localKey} entry: '${key}'.`, "color: #fb923c;");
                     }
-                    window[globalKey][key] = val;
+                    
+                    // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Shallow Clone
+                    // We apply a top-level clone so that if the engine later mutates `ITEM_DATA[key].health`, 
+                    // it does not corrupt the source `data.items[key]` inside the expansion object memory!
+                    let safeVal = val;
+                    if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+                        safeVal = Object.assign({}, val);
+                    }
+                    
+                    window[globalKey][key] = safeVal;
                     dictCount++;
                 }
                 
                 // Clear the room cache so the new rooms are actually pulled into the generator!
                 if (localKey === 'roomTemplates') window.CACHED_ROOM_TEMPLATES = null; 
                 // Clear the pre-compiled minimap colors so custom tiles render correctly!
-                if (localKey === 'tiles') window._mapTileNameCache?.clear();
+                if (localKey === 'tiles' && window._mapTileNameCache) window._mapTileNameCache.clear();
             }
         }
 
@@ -232,6 +296,14 @@ window.ExpansionManager = {
             castlePrefixes: 'CASTLE_PREFIXES',
             castleSuffixes: 'CASTLE_SUFFIXES'
         };
+
+        // Custom Array Registries Injection
+        if (data.customArrays) {
+            for (const [localKey, globalKey] of Object.entries(data.customArrays)) {
+                if (typeof window[globalKey] === 'undefined') window[globalKey] = [];
+                globalArrays[localKey] = globalKey;
+            }
+        }
 
         for (const [localKey, globalKey] of Object.entries(globalArrays)) {
             if (data[localKey] && Array.isArray(data[localKey])) {
@@ -335,7 +407,9 @@ window.ExpansionManager = {
                 const endTime = performance.now();
                 
                 const executionTime = (endTime - startTime).toFixed(2);
-                console.log(`%c[AKASHIC ENGINE] ↳ Initialization logic compiled in ${executionTime}ms. (Injected ${dictCount} Dicts, ${arrCount} Arrays)`, "color: #94a3b8; font-style: italic; font-family: monospace;");
+                let logs = `[AKASHIC ENGINE] ↳ Initialization logic compiled in ${executionTime}ms. (Injected ${dictCount} Dicts, ${arrCount} Arrays`;
+                if (assetCount > 0) logs += `, Preloaded ${assetCount} Assets`;
+                console.log(`%c${logs})`, "color: #94a3b8; font-style: italic; font-family: monospace;");
                 
                 if (executionTime > 50) {
                     console.warn(`%c[AKASHIC ENGINE] ⚠️ Warning: '${exp.name}' took longer than 50ms to initialize. This may cause stuttering on boot.`, "color: #facc15; font-weight: bold;");
