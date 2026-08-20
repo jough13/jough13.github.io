@@ -2151,6 +2151,34 @@ function handleChatCommand(message) {
             logMessage("Cheater! (Vitals fully restored)");
             break;
 
+            case 'roll':
+                // Usage: /roll 1d20, /roll 2d6+4, or just /roll
+                const dice = args[0] || '1d20';
+                const result = window.MathUtils.rollDiceString(dice);
+                
+                // Broadcast the roll to the server so everyone sees it!
+                if (typeof rtdb !== 'undefined') {
+                    rtdb.ref('chat').push().set({
+                        senderId: player_id, email: auth.currentUser.email,
+                        message: `{cyan:🎲 ${gameState.player.name} rolled a ${result} (${dice})!}`,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    });
+                }
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); // Sounds like dice hitting a table
+                break;
+
+            case 'flip':
+                const coin = Math.random() < 0.5 ? "Heads" : "Tails";
+                if (typeof rtdb !== 'undefined') {
+                    rtdb.ref('chat').push().set({
+                        senderId: player_id, email: auth.currentUser.email,
+                        message: `{gold:🪙 ${gameState.player.name} flipped a coin: ${coin}!}`,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    });
+                }
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+                break;
+
         case 'petname':
             if (!gameState.player.companion) {
                 logMessage("{gray:You don't have a companion to name.}");
