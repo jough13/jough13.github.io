@@ -1329,17 +1329,24 @@ function render() {
         ctx.scale(dpr, dpr);
         ctx.globalAlpha = intensity;
         
+        const logicalWidth = canvas.width / dpr;
+        const logicalHeight = canvas.height / dpr;
+        
+        // 🚨 VISUAL & PERFORMANCE WIN: Scale particle count based on screen width!
+        // Keeps density consistent on 4K/Ultrawide monitors, and saves battery on mobile phones!
+        const densityMult = logicalWidth / 800;
+        
         if (gameState.weather === 'rain') {
             ctx.fillStyle = 'rgba(0, 0, 100, 0.2)';
-            ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+            ctx.fillRect(0, 0, logicalWidth, logicalHeight);
             ctx.strokeStyle = 'rgba(120, 140, 255, 0.6)';
             ctx.lineWidth = 1;
             
-            const dropCount = Math.floor(200 * intensity);
+            const dropCount = Math.floor(200 * intensity * densityMult);
             const windShift = Math.sin(now / 1500) * 5; 
             for (let i = 0; i < dropCount; i++) {
-                const rx = Math.random() * (canvas.width / dpr);
-                const ry = Math.random() * (canvas.height / dpr);
+                const rx = Math.random() * logicalWidth;
+                const ry = Math.random() * logicalHeight;
                 const len = 10 + Math.random() * 10;
                 ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 5 + windShift, ry + len); ctx.stroke();
                 
@@ -1353,13 +1360,13 @@ function render() {
         }
         else if (gameState.weather === 'snow') {
             ctx.fillStyle = 'rgba(200, 200, 220, 0.15)';
-            ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+            ctx.fillRect(0, 0, logicalWidth, logicalHeight);
             ctx.fillStyle = 'white';
             
-            const flakeCount = Math.floor(150 * intensity);
+            const flakeCount = Math.floor(150 * intensity * densityMult);
             for (let i = 0; i < flakeCount; i++) {
-                const rx = Math.random() * (canvas.width / dpr);
-                const ry = Math.random() * (canvas.height / dpr);
+                const rx = Math.random() * logicalWidth;
+                const ry = Math.random() * logicalHeight;
                 const size = Math.random() * 2 + 1;
                 const drift = Math.sin(now / 2000 + ry) * 10;
                 ctx.fillRect(rx + drift, ry, size, size);
@@ -1367,28 +1374,29 @@ function render() {
         }
         else if (gameState.weather === 'storm') {
             ctx.fillStyle = 'rgba(10, 10, 30, 0.4)';
-            ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+            ctx.fillRect(0, 0, logicalWidth, logicalHeight);
             ctx.strokeStyle = 'rgba(150, 150, 255, 0.5)';
             ctx.lineWidth = 2;
-            const dropCount = Math.floor(300 * intensity);
+            
+            const dropCount = Math.floor(300 * intensity * densityMult);
             const windShift = Math.sin(now / 1000) * 8;
             for (let i = 0; i < dropCount; i++) {
-                const rx = Math.random() * (canvas.width / dpr);
-                const ry = Math.random() * (canvas.height / dpr);
+                const rx = Math.random() * logicalWidth;
+                const ry = Math.random() * logicalHeight;
                 ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 8 + windShift, ry + 15); ctx.stroke();
             }
             
             if (Math.random() < 0.02 * intensity) {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-                ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+                ctx.fillRect(0, 0, logicalWidth, logicalHeight);
             } else if (Math.random() < 0.05 * intensity) {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-                ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+                ctx.fillRect(0, 0, logicalWidth, logicalHeight);
             }
         }
         else if (gameState.weather === 'fog') {
             ctx.fillStyle = `rgba(200, 200, 200, ${0.5 * intensity})`;
-            ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+            ctx.fillRect(0, 0, logicalWidth, logicalHeight);
         }
         ctx.restore();
     }
