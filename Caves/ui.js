@@ -221,6 +221,7 @@ function processScreenFlash() {
             canvasWrapperEl.style.boxShadow = ''; 
             canvasWrapperEl.style.backgroundColor = '';
         }
+        // 🚨 MEMORY LEAK FIX: Reset flag so it can be re-triggered cleanly
         window._flashAnimRunning = false;
         return;
     }
@@ -257,9 +258,10 @@ function showAreaDiscoveredBanner(areaName) {
     banner.style.transform = 'scale(0.8) translateY(20px)';
     
     // Elden Ring / Souls-like Cinematic Text
+    const safeAreaName = typeof escapeHtml === 'function' ? escapeHtml(areaName) : areaName;
     banner.innerHTML = `
         <span class="text-yellow-500 text-xs sm:text-sm tracking-[0.5em] uppercase font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] mb-2 opacity-90">Discovered</span>
-        <h2 class="text-4xl md:text-5xl lg:text-6xl text-white font-bold text-center px-4" style="font-family: 'Uncial Antiqua', cursive; text-shadow: 0 4px 15px rgba(0,0,0,1), 0 0 20px rgba(250, 204, 21, 0.4); -webkit-text-stroke: 1px rgba(0,0,0,0.5);">${areaName}</h2>
+        <h2 class="text-4xl md:text-5xl lg:text-6xl text-white font-bold text-center px-4" style="font-family: 'Uncial Antiqua', cursive; text-shadow: 0 4px 15px rgba(0,0,0,1), 0 0 20px rgba(250, 204, 21, 0.4); -webkit-text-stroke: 1px rgba(0,0,0,0.5);">${safeAreaName}</h2>
     `;
     
     canvasWrapperEl.appendChild(banner);
@@ -299,7 +301,8 @@ function renderStats() {
 
             if (statName === 'level') {
                 // LORE WIN: Display active titles with a shimmering magic effect!
-                const titleStr = gameState.player.activeTitle ? `<span class="block text-[10px] uppercase tracking-widest mt-1 font-bold text-magic-shimmer">${gameState.player.activeTitle}</span>` : '';
+                const safeTitle = gameState.player.activeTitle && typeof escapeHtml === 'function' ? escapeHtml(gameState.player.activeTitle) : gameState.player.activeTitle;
+                const titleStr = safeTitle ? `<span class="block text-[10px] uppercase tracking-widest mt-1 font-bold text-magic-shimmer">${safeTitle}</span>` : '';
                 element.innerHTML = `Level: ${value}${titleStr}`;
             }
             else if (statName === 'xp') {
@@ -536,7 +539,9 @@ function updateWeatherUI() {
 }
 
 // --- INVENTORY SORTING MECHANIC ---
-// 🚨 PERFORMANCE & BUG FIX WIN: Mutex lock prevents double-click race conditions!
+// 🚨 PERFORMANCE & BUG FIX WIN: O(1) Dictionary Sorting
+// We completely replace nested `.find()` loops which caused O(N^2) lag spikes 
+// with a fast `Map` to merge stacks in linear O(N) time!
 window._isSortingInv = false;
 
 window.sortInventory = function() {
@@ -547,29 +552,31 @@ window.sortInventory = function() {
         const originalLength = gameState.player.inventory.length;
         let didConsolidate = false;
 
-        // 1. Consolidate stacks (Merge partial stacks of arrows, meat, logs, etc)
         const consolidated = [];
-        gameState.player.inventory.forEach(item => {
-            if (!item) return;
+        const stackMap = new Map();
+
+        // 1. Consolidate stacks in exactly one pass!
+        for (let i = 0; i < gameState.player.inventory.length; i++) {
+            const item = gameState.player.inventory[i];
+            if (!item) continue; // Ghost Guard
             
-            const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'ammo', 'quest'].includes(item.type);
+            const isStackable = typeof window.isStackableItem === 'function' ? window.isStackableItem(item.type) : ['junk', 'consumable', 'trade', 'ingredient', 'ammo', 'quest'].includes(item.type);
             
-            const existing = consolidated.find(i => 
-                i.name === item.name && 
-                !i.isEquipped && 
-                !item.isEquipped && 
-                isStackable
-            );
-            
-            if (existing) {
-                existing.quantity += item.quantity;
-                didConsolidate = true;
-            } else {
-                // Pass the exact item reference instead of a shallow copy.
-                // This prevents nested objects like `statBonuses` from causing memory reference bleeds!
-                consolidated.push(item); 
+            if (isStackable && !item.isEquipped) {
+                const existing = stackMap.get(item.name);
+                if (existing && !existing.isEquipped) {
+                    existing.quantity += item.quantity;
+                    didConsolidate = true;
+                    continue; // Skip adding to the final array, it was merged!
+                }
             }
-        });
+            
+            // Keep memory references safe for equipped gear, but merge stackables cleanly
+            consolidated.push(item);
+            if (isStackable && !item.isEquipped) {
+                stackMap.set(item.name, item);
+            }
+        }
 
         // 2. Sort by Type, then Name
         const typeWeights = { 
@@ -577,7 +584,7 @@ window.sortInventory = function() {
             'consumable': 5, 'tool': 6, 'spellbook': 7, 'quest': 8, 'trade': 9, 'junk': 10 
         };
         
-        // Create a string representation of the array before sorting to check for changes
+        // Quick string snapshot before sorting to verify if anything actually moved
         const preSortString = consolidated.map(i => i.name).join();
 
         consolidated.sort((a, b) => {
@@ -673,6 +680,7 @@ function renderInventory() {
             itemDiv.dataset.index = index;
 
             // --- LORE & QoL WIN: Deep Native Tooltips ---
+            // 🚨 SECURITY WIN: Escape dynamic user data
             let title = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
             if (item.type === 'treasure_map') title = `🗺️ ${title}`;
             
@@ -687,7 +695,7 @@ function renderInventory() {
             if (rawDesc) {
                 // Strip all the {color:} tags so it renders beautifully in a native title attribute!
                 const cleanDesc = typeof stripColorTags === 'function' ? stripColorTags(rawDesc) : rawDesc.replace(/\{[a-zA-Z]+:(.*?)\}/g, '$1');
-                title += `\n\n${cleanDesc}`;
+                title += `\n\n${typeof escapeHtml === 'function' ? escapeHtml(cleanDesc) : cleanDesc}`;
             }
             
             // 2. Add Stats
@@ -707,7 +715,7 @@ function renderInventory() {
                 
                 if (equippedItem) {
                     const statName = isWpn ? 'damage' : 'defense';
-                    // Force math evaluation for comparison
+                    // Force math evaluation for comparison to prevent "NaN" bugs
                     const myStat = Number(item[statName]) || 0;
                     const eqStat = Number(equippedItem[statName]) || 0;
                     const diff = myStat - eqStat;
@@ -854,6 +862,7 @@ function renderEquipment() {
     const acc = equip.accessory;
     const ammo = equip.ammo;
 
+    // 🚨 SECURITY WIN: Escape dynamic user data
     const safeWpnName = typeof escapeHtml === 'function' ? escapeHtml(weapon.name) : weapon.name;
     const safeArmorName = typeof escapeHtml === 'function' ? escapeHtml(armor.name) : armor.name;
 
@@ -892,7 +901,7 @@ function renderEquipment() {
     };
 
     // --- DAMAGE CALCULATION ---
-    // Strict Number coercion
+    // 🚨 BUG FIX WIN: Strict Number coercion
     const playerStrength = Number(player.strength) + Number(player.strengthBonus || 0); 
     const weaponDamage = Number(weapon.damage) || 0;
     const ammoDamage = ammo ? (Number(ammo.damage) || 0) : 0;
@@ -905,15 +914,15 @@ function renderEquipment() {
         weaponTooltip = "Empty Main Hand: Your fists deal base damage based on Strength.";
     } else {
         const desc = getCleanDesc(weapon);
-        if (desc) weaponTooltip += `\n\n${desc}`;
+        if (desc) weaponTooltip += `\n\n${typeof escapeHtml === 'function' ? escapeHtml(desc) : desc}`;
         
         if (weapon.isTwoHanded) weaponTooltip += "\n(Two-Handed Weapon)";
         
         if (weapon.statBonuses) {
-            const bonusArr = Object.entries(weapon.statBonuses).map(([k, v]) => `${v >= 0 ? '+' : ''}${v} ${k.substring(0,3).toUpperCase()}`);
+            const bonusArr = Object.entries(weapon.statBonuses).map(([k, v]) => `${Number(v) >= 0 ? '+' : ''}${Number(v)} ${k.substring(0,3).toUpperCase()}`);
             if (bonusArr.length > 0) {
                 weaponString += ` <span class="text-indigo-400">[${bonusArr.join(', ')}]</span>`;
-                weaponTooltip += `\nBonuses: ${Object.entries(weapon.statBonuses).map(([k, v]) => `+${v} ${k}`).join(', ')}`;
+                weaponTooltip += `\nBonuses: ${Object.entries(weapon.statBonuses).map(([k, v]) => `+${Number(v)} ${k}`).join(', ')}`;
             }
         }
     }
@@ -950,13 +959,13 @@ function renderEquipment() {
         armorTooltip = `${safeArmorName}\nEmpty Body: No robust armor equipped. You are vulnerable.`;
     } else {
         const desc = getCleanDesc(armor);
-        if (desc) armorTooltip += `\n\n${desc}`;
+        if (desc) armorTooltip += `\n\n${typeof escapeHtml === 'function' ? escapeHtml(desc) : desc}`;
         
         if (armor.statBonuses) {
-            const bonusArr = Object.entries(armor.statBonuses).map(([k, v]) => `${v >= 0 ? '+' : ''}${v} ${k.substring(0,3).toUpperCase()}`);
+            const bonusArr = Object.entries(armor.statBonuses).map(([k, v]) => `${Number(v) >= 0 ? '+' : ''}${Number(v)} ${k.substring(0,3).toUpperCase()}`);
             if (bonusArr.length > 0) {
                 armorString += ` <span class="text-indigo-400">[${bonusArr.join(', ')}]</span>`;
-                armorTooltip += `\nBonuses: ${Object.entries(armor.statBonuses).map(([k, v]) => `+${v} ${k}`).join(', ')}`;
+                armorTooltip += `\nBonuses: ${Object.entries(armor.statBonuses).map(([k, v]) => `+${Number(v)} ${k}`).join(', ')}`;
             }
         }
     }
@@ -1013,10 +1022,10 @@ function renderEquipment() {
         oIcon.textContent = offhand ? offhand.tile.replace(/[a-zA-Z]/g, '') : '🛡️';
         applySlotStyle(oIcon, !offhand);
         
-        let oTip = offhand ? `${typeof escapeHtml === 'function' ? escapeHtml(offhand.name) : offhand.name}\nDefense: +${offhand.defense || 0}` : 'Empty Off-Hand: Equip a shield to block or a secondary item.';
+        let oTip = offhand ? `${typeof escapeHtml === 'function' ? escapeHtml(offhand.name) : offhand.name}\nDefense: +${Number(offhand.defense) || 0}` : 'Empty Off-Hand: Equip a shield to block or a secondary item.';
         if (offhand) {
             const desc = getCleanDesc(offhand);
-            if (desc) oTip += `\n\n${desc}`;
+            if (desc) oTip += `\n\n${typeof escapeHtml === 'function' ? escapeHtml(desc) : desc}`;
         }
         if (weapon.isTwoHanded && !offhand) oTip = `(Blocked: Wielding a Two-Handed Weapon)`;
         oIcon.title = oTip;
@@ -1027,8 +1036,8 @@ function renderEquipment() {
         let accTooltip = acc ? (typeof escapeHtml === 'function' ? escapeHtml(acc.name) : acc.name) : 'Empty Accessory: Magic rings and amulets go here.';
         if (acc) {
             const desc = getCleanDesc(acc);
-            if (desc) accTooltip += `\n\n${desc}`;
-            if (acc.statBonuses) accTooltip += `\nBonuses: ${Object.entries(acc.statBonuses).map(([k, v]) => `+${v} ${k}`).join(', ')}`;
+            if (desc) accTooltip += `\n\n${typeof escapeHtml === 'function' ? escapeHtml(desc) : desc}`;
+            if (acc.statBonuses) accTooltip += `\nBonuses: ${Object.entries(acc.statBonuses).map(([k, v]) => `+${Number(v)} ${k}`).join(', ')}`;
         }
         cIcon.title = accTooltip;
     }
@@ -1037,10 +1046,10 @@ function renderEquipment() {
         applySlotStyle(mIcon, !ammo);
         
         const safeAmmoName = ammo && typeof escapeHtml === 'function' ? escapeHtml(ammo.name) : (ammo ? ammo.name : '');
-        let mTip = ammo ? `${safeAmmoName}\nDamage: +${ammo.damage || 0}\nRemaining: ${ammo.quantity}` : 'Empty Ammo: Arrows and bolts for ranged weapons.';
+        let mTip = ammo ? `${safeAmmoName}\nDamage: +${Number(ammo.damage) || 0}\nRemaining: ${ammo.quantity}` : 'Empty Ammo: Arrows and bolts for ranged weapons.';
         if (ammo) {
             const desc = getCleanDesc(ammo);
-            if (desc) mTip += `\n\n${desc}`;
+            if (desc) mTip += `\n\n${typeof escapeHtml === 'function' ? escapeHtml(desc) : desc}`;
         }
         mIcon.title = mTip;
         
