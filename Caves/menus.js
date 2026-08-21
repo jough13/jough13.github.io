@@ -77,7 +77,7 @@ function renderTalentTree() {
     const player = gameState.player;
     const playerTalents = player.talents || [];
 
-    pointsDiv.innerHTML = `Mastery Points: <span class="text-purple-300 drop-shadow-md">${player.talentPoints || 0}</span>`;
+    pointsDiv.innerHTML = `Mastery Points: <span class="text-purple-300 drop-shadow-md">${Number(player.talentPoints) || 0}</span>`;
 
     // PERFORMANCE: Use DocumentFragment to batch DOM inserts
     const fragment = document.createDocumentFragment();
@@ -91,7 +91,7 @@ function renderTalentTree() {
         }
 
         const isLearned = playerTalents.includes(key);
-        const canAfford = ((player.talentPoints || 0) > 0);
+        const canAfford = ((Number(player.talentPoints) || 0) > 0);
 
         const div = document.createElement('div');
         div.className = `panel p-4 rounded-lg border-2 transition-all duration-200 ${isLearned ? 'border-purple-500 bg-purple-900 bg-opacity-20 shadow-[0_0_15px_rgba(168,85,247,0.2)] transform scale-[1.02]' : 'border-gray-700 hover:border-gray-500 bg-black bg-opacity-20'}`;
@@ -211,7 +211,7 @@ function openEvolutionModal() {
                 ${mechanicDesc}
             </div>
             <div class="text-[10px] font-bold text-green-400 bg-black bg-opacity-50 p-2 rounded border border-gray-700 flex-shrink-0 text-center uppercase tracking-widest shadow-inner drop-shadow-sm">
-                ${Object.entries(evo.stats).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${k.substring(0,3)}`).join(' | ')}
+                ${Object.entries(evo.stats).map(([k, v]) => `${Number(v) > 0 ? '+' : ''}${Number(v)} ${k.substring(0,3)}`).join(' | ')}
             </div>
         `;
         fragment.appendChild(div);
@@ -259,10 +259,10 @@ function executeEvolution(evoData) {
     try {
         const player = gameState.player;
 
-        // 1. Apply Stats
+        // 1. Apply Stats (🚨 STRICT COERCION FIX)
         for (const stat in evoData.stats) {
             if (player.hasOwnProperty(stat)) {
-                player[stat] += evoData.stats[stat];
+                player[stat] = Math.max(0, Number(player[stat]) + Number(evoData.stats[stat]));
             }
         }
 
@@ -273,22 +273,27 @@ function executeEvolution(evoData) {
 
         // 3. Add Talent
         if (!player.talents) player.talents = [];
-        player.talents.push(evoData.talent);
+        if (!player.talents.includes(evoData.talent)) {
+            player.talents.push(evoData.talent);
+        }
 
         // 4. Update max health/mana if constitution/wits changed
         if (typeof recalculateDerivedStats === 'function') {
             recalculateDerivedStats();
         } else {
-            if (evoData.stats.constitution) player.maxHealth += (evoData.stats.constitution * 5);
-            if (evoData.stats.wits) player.maxMana += (evoData.stats.wits * 5);
-            if (evoData.stats.maxMana) player.maxMana += evoData.stats.maxMana; 
+            if (evoData.stats.constitution) player.maxHealth += (Number(evoData.stats.constitution) * 5);
+            if (evoData.stats.wits) player.maxMana += (Number(evoData.stats.wits) * 5);
+            if (evoData.stats.maxMana) player.maxMana += Number(evoData.stats.maxMana); 
         }
 
-        // 5. Full Heal on Evolve
-        player.health = player.maxHealth;
-        player.mana = player.maxMana;
-        player.stamina = player.maxStamina;
-        player.psyche = player.maxPsyche;
+        // 5. Full Heal on Evolve using unified clamped logic
+        if (typeof window.clampAllVitals === 'function') window.clampAllVitals();
+        else {
+            player.health = player.maxHealth;
+            player.mana = player.maxMana;
+            player.stamina = player.maxStamina;
+            player.psyche = player.maxPsyche;
+        }
 
         const safeName = typeof escapeHtml === 'function' ? escapeHtml(evoData.name) : evoData.name;
 
@@ -438,7 +443,7 @@ function renderBountyBoard() {
                 </div>`;
         } else if (playerQuest.status === 'active') {
             // --- Scenario 2: Quest is In-Progress ---
-            const progress = `(${playerQuest.kills || 0} / ${quest.needed})`;
+            const progress = `(${Number(playerQuest.kills) || 0} / ${quest.needed})`;
             let actionButton = '';
 
             if (playerQuest.kills >= quest.needed) {
@@ -572,8 +577,8 @@ function turnInQuest(questId) {
                 hasRequirements = false;
             }
         } else {
-            // Checking kills
-            if ((playerQuest.kills || 0) < quest.needed) {
+            // Checking kills (Strict Coercion!)
+            if ((Number(playerQuest.kills) || 0) < quest.needed) {
                 logMessage("{gray:Quest is not ready to turn in.}");
                 hasRequirements = false;
             }
@@ -625,11 +630,16 @@ function turnInQuest(questId) {
             AudioSystem.playCoin();
         }
         
-        logMessage(`{green:Bounty Claimed! You gained ${quest.reward.xp} XP and ${quest.reward.coins} Gold!}`);
+        // Strict Number Coercion for Rewards
+        const rewardXp = Number(quest.reward.xp) || 0;
+        const rewardCoins = Number(quest.reward.coins) || 0;
         
-        if (typeof grantXp === 'function') grantXp(quest.reward.xp || 0);
-        player.coins += (quest.reward.coins || 0);
-        if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(quest.reward.coins || 0);
+        logMessage(`{green:Bounty Claimed! You gained ${rewardXp} XP and ${rewardCoins} Gold!}`);
+        
+        if (rewardXp > 0 && typeof grantXp === 'function') grantXp(rewardXp);
+        
+        player.coins = (Number(player.coins) || 0) + rewardCoins;
+        if (rewardCoins > 0 && typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(rewardCoins);
 
         // Track completed bounties in lifetime metrics!
         if (!player.metrics) player.metrics = {};
@@ -637,7 +647,7 @@ function turnInQuest(questId) {
 
         // Floating Particles for Reward! (Explosion of gold)
         if (typeof ParticleSystem !== 'undefined') {
-            ParticleSystem.createFloatingText(player.x, player.y, `+${quest.reward.coins || 0}g`, "#facc15");
+            ParticleSystem.createFloatingText(player.x, player.y, `+${rewardCoins}g`, "#facc15");
             ParticleSystem.createExplosion(player.x, player.y, '#facc15', 20);
         }
         
@@ -694,9 +704,9 @@ function turnInQuest(questId) {
             }
 
             if (rewardItemTemplate) {
-                const totalQtyGranted = quest.reward.itemQty || 1;
+                const totalQtyGranted = Number(quest.reward.itemQty) || 1;
                 const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
-                const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(rewardItemTemplate.type);
+                const isStackable = window.isStackableItem ? window.isStackableItem(rewardItemTemplate.type) : ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(rewardItemTemplate.type);
                 
                 const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(rewardItemTemplate.name) : rewardItemTemplate.name;
 
@@ -733,7 +743,7 @@ function turnInQuest(questId) {
                     }
 
                 } else {
-                    // --- 🚨 UNSTACKABLE GEAR LOGIC (BUG FIX) ---
+                    // --- 🚨 UNSTACKABLE GEAR LOGIC ---
                     // Must loop and generate individual, distinct clones of the weapon/armor!
                     let itemsAdded = 0;
                     let itemsDropped = 0;
@@ -773,6 +783,11 @@ function turnInQuest(questId) {
                 
                 if (gameState.mapDirty && typeof render === 'function') render();
             }
+        }
+        
+        // --- EXPANDABILITY WIN: Fire Global Hook! ---
+        if (typeof window.ExpansionManager !== 'undefined') {
+            window.ExpansionManager.triggerHook('onQuestCompleted', { questId, quest, player });
         }
 
         // Debounce the save
@@ -853,7 +868,7 @@ function renderBestiary() {
         const safeName = typeof escapeHtml === 'function' ? escapeHtml(data.name) : data.name;
 
         // JUICE WIN: Dynamic Tag Badges based on the entity data!
-        const tagsHtml = (data.tags || []).map(t => {
+        let tagsHtml = (data.tags || []).map(t => {
             let color = 'text-gray-300';
             if (t === 'undead' || t === 'bone') color = 'text-gray-400';
             if (t === 'beast' || t === 'bug' || t === 'reptile') color = 'text-green-400';
@@ -865,6 +880,17 @@ function renderBestiary() {
             
             return `<span class="text-[8px] uppercase tracking-widest bg-gray-900 ${color} px-1.5 py-0.5 rounded mr-1 border border-gray-700 shadow-inner relative -top-0.5 inline-block">${t}</span>`;
         }).join('');
+        
+        // 🌟 CONTENT WIN: Add visual mechanics badges to the tags list!
+        let mechanicsHtml = '';
+        if (data.caster) mechanicsHtml += `<span title="Spellcaster" class="text-sm mr-1 drop-shadow-md cursor-help">🔮</span>`;
+        if (data.isRanged) mechanicsHtml += `<span title="Ranged Attacker" class="text-sm mr-1 drop-shadow-md cursor-help">🏹</span>`;
+        if (data.teleporter) mechanicsHtml += `<span title="Teleports/Blinks" class="text-sm mr-1 drop-shadow-md cursor-help">🌌</span>`;
+        if (data.mountable) mechanicsHtml += `<span title="Mountable (Can be tamed and ridden)" class="text-sm mr-1 drop-shadow-md cursor-help">🐎</span>`;
+        
+        if (mechanicsHtml !== '') {
+            tagsHtml += `<span class="ml-1 border-l border-gray-600 pl-2 inline-flex items-center">${mechanicsHtml}</span>`;
+        }
 
         // LORE WIN: 100% Mastered Badge
         const masteryBadge = unlockedLoot ? `<span class="text-[9px] text-yellow-500 bg-yellow-900 bg-opacity-40 px-1.5 py-0.5 rounded border border-yellow-700 shadow-inner ml-2 uppercase tracking-widest relative -top-0.5 font-bold">100% Researched</span>` : '';
@@ -944,6 +970,32 @@ function renderLibrary() {
     const foundEntries = new Set(player.foundCodexEntries || []);
     const fragment = document.createDocumentFragment();
 
+    // 🌟 CONTENT WIN: Global Library Progress
+    let totalItems = 0;
+    let foundItems = 0;
+
+    for (const setKey in window.LORE_SETS) {
+        const set = window.LORE_SETS[setKey];
+        totalItems += set.items.length;
+        foundItems += set.items.filter(id => foundEntries.has(id)).length;
+    }
+
+    const totalPct = totalItems > 0 ? (foundItems / totalItems) * 100 : 0;
+    
+    const globalHeader = document.createElement('div');
+    globalHeader.className = "mb-4 pb-4 border-b-2 border-gray-700";
+    globalHeader.innerHTML = `
+        <div class="flex justify-between items-end mb-2">
+            <span class="text-sm font-bold text-gray-300 uppercase tracking-widest">Global Completion</span>
+            <span class="text-sm font-bold text-blue-400">${foundItems} / ${totalItems} (${Math.floor(totalPct)}%)</span>
+        </div>
+        <div class="w-full bg-gray-900 rounded h-2 border border-gray-700 shadow-inner overflow-hidden">
+            <div class="bg-blue-500 h-full transition-all duration-500" style="width: ${totalPct}%"></div>
+        </div>
+    `;
+    fragment.appendChild(globalHeader);
+
+    // Render individual Sets
     for (const setKey in window.LORE_SETS) {
         const set = window.LORE_SETS[setKey];
         const isComplete = player.completedLoreSets && player.completedLoreSets.includes(setKey);
@@ -1068,8 +1120,8 @@ function renderSkillTrainerModal() {
     
     listDiv.innerHTML = ''; 
     const player = gameState.player;
-    pointsDiv.textContent = `Mastery Points: ${player.talentPoints || 0}`;
-    const canAfford = (player.talentPoints || 0) > 0;
+    pointsDiv.textContent = `Mastery Points: ${Number(player.talentPoints) || 0}`;
+    const canAfford = (Number(player.talentPoints) || 0) > 0;
     const MAX_LEVEL = 10;
     
     const fragment = document.createDocumentFragment();
@@ -1081,6 +1133,9 @@ function renderSkillTrainerModal() {
         let buttonHtml = '';
         let levelText = '';
 
+        // Dynamic cost mapping to future-proof against expansions altering base skill costs
+        const mpCost = skillData.upgradeCost || 1;
+
         if (currentLevel >= MAX_LEVEL) {
             levelText = `<span class="text-[10px] uppercase font-bold tracking-widest text-yellow-500 bg-yellow-900 bg-opacity-30 px-2 py-1 rounded border border-yellow-700 shadow-inner">MAXED</span>`;
             buttonHtml = `<button class="bg-gray-800 text-gray-500 px-3 py-2 rounded text-xs font-bold border border-gray-700 cursor-not-allowed shadow-inner" disabled>Max Level</button>`;
@@ -1088,13 +1143,13 @@ function renderSkillTrainerModal() {
         else if (currentLevel === 0) {
             levelText = '<span class="text-[10px] uppercase font-bold tracking-widest text-red-500">Not Learned</span>';
             if (player.level >= skillData.requiredLevel) {
-                buttonHtml = `<button style="transform: translate3d(0,0,0);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50 border-b-2 border-blue-800 active:border-b-0 active:mt-0.5" data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Learn (1 MP)</button>`;
+                buttonHtml = `<button style="transform: translate3d(0,0,0);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50 border-b-2 border-blue-800 active:border-b-0 active:mt-0.5" data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Learn (${mpCost} MP)</button>`;
             } else {
                 buttonHtml = `<button class="bg-gray-800 text-gray-500 px-3 py-2 rounded text-xs font-bold opacity-75 cursor-not-allowed border border-gray-700 shadow-inner" disabled>Requires Lvl ${skillData.requiredLevel}</button>`;
             }
         } else {
             levelText = `<span class="text-[10px] uppercase font-bold tracking-widest text-blue-400">Level: ${currentLevel} / ${MAX_LEVEL}</span>`;
-            buttonHtml = `<button style="transform: translate3d(0,0,0);" class="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50 border-b-2 border-green-800 active:border-b-0 active:mt-0.5" data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Upgrade (1 MP)</button>`;
+            buttonHtml = `<button style="transform: translate3d(0,0,0);" class="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50 border-b-2 border-green-800 active:border-b-0 active:mt-0.5" data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Upgrade (${mpCost} MP)</button>`;
         }
         
         const safeName = typeof escapeHtml === 'function' ? escapeHtml(skillData.name) : skillData.name;
@@ -1145,11 +1200,14 @@ function handleLearnSkill(skillId) {
         const player = gameState.player;
         const skillData = typeof window.SKILL_DATA !== 'undefined' ? window.SKILL_DATA[skillId] : null;
 
-        if ((player.talentPoints || 0) <= 0) {
+        if (!skillData) return;
+        
+        const mpCost = skillData.upgradeCost || 1;
+
+        if ((Number(player.talentPoints) || 0) < mpCost) {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
         }
-        if (!skillData) return;
 
         const currentLevel = player.skillbook[skillId] || 0;
         if (currentLevel === 0 && player.level < skillData.requiredLevel) {
@@ -1162,7 +1220,8 @@ function handleLearnSkill(skillId) {
             return;
         }
 
-        player.talentPoints--;
+        // Strict Math Max to prevent negative anomalies
+        player.talentPoints = Math.max(0, Number(player.talentPoints) - mpCost);
 
         const safeName = typeof escapeHtml === 'function' ? escapeHtml(skillData.name) : skillData.name;
 
@@ -1228,7 +1287,7 @@ function openSpellbook() {
         // BUG FIX: Ensure the spell data exists before attempting to map it!
         if (!spellData) return null;
 
-        let displayCost = spellData.cost || 0;
+        let displayCost = Number(spellData.cost) || 0;
         if (spellData.costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
             displayCost = Math.floor(displayCost * 0.8);
         }
@@ -1327,9 +1386,9 @@ function openSkillbook() {
         if (!skillData) return null;
 
         let canUse = false;
-        if (skillData.costType === 'stamina') canUse = player.stamina >= skillData.cost;
-        else if (skillData.costType === 'psyche') canUse = player.psyche >= skillData.cost;
-        else if (skillData.costType === 'health') canUse = player.health > skillData.cost;
+        if (skillData.costType === 'stamina') canUse = player.stamina >= (Number(skillData.cost) || 0);
+        else if (skillData.costType === 'psyche') canUse = player.psyche >= (Number(skillData.cost) || 0);
+        else if (skillData.costType === 'health') canUse = player.health > (Number(skillData.cost) || 0);
 
         let sortWeight = canUse ? 1 : 2;
         return { skillId, skillLevel, skillData, canUse, sortWeight };
