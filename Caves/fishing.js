@@ -853,15 +853,30 @@ function executeFishing() {
             }
 
             player.fishingXp += xpGained;
-            const xpNeeded = player.fishingLevel * 50;
 
-            if (player.fishingXp >= xpNeeded && player.fishingLevel < 20) {
-                player.fishingXp -= xpNeeded;
-                player.fishingLevel++;
-                logMessage(`{blue:FISHING LEVEL UP! You are now a Level ${player.fishingLevel} Angler.}`);
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(player.x, player.y);
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+            // Use a while loop to catch multi-level jumps (e.g., catching a Legendary at level 1)
+            while (player.fishingLevel < 20) {
+                // Calculate requirement inside the loop so it scales up with each iteration
+                const xpNeeded = player.fishingLevel * 50;
+                
+                if (player.fishingXp >= xpNeeded) {
+                    player.fishingXp -= xpNeeded;
+                    player.fishingLevel++;
+                    
+                    logMessage(`{blue:FISHING LEVEL UP! You are now a Level ${player.fishingLevel} Angler.}`);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(player.x, player.y);
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                } else {
+                    // Break the loop if we don't have enough XP for the next level
+                    break; 
+                }
             }
+
+            // Cap the internal XP once they hit max level to prevent the number from bloating infinitely
+            if (player.fishingLevel >= 20) {
+                player.fishingXp = player.fishingLevel * 50; 
+            }
+
 
             if (typeof playerRef !== 'undefined' && playerRef) {
                 // Debounce this to save database bandwidth!
