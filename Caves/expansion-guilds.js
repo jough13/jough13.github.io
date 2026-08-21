@@ -284,32 +284,17 @@ window.ExpansionManager.register({
                         
                         // Did our inventory fill up while waiting for the server?
                         if (gameState.player.inventory.length >= invCap) {
-                            logMessage(`{red:Your inventory filled up! The ${claimedItem.name} falls to the ground.}`);
+                            logMessage(`{red:Your inventory is full! The ${claimedItem.name} was returned to the vault.}`);
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                             
-                            // 🚨 SAFELY SPIRAL DROP IT
-                            let placed = false;
-                            if (typeof chunkManager !== 'undefined') {
-                                for (let r = 0; r <= 2 && !placed; r++) {
-                                    for (let dy = -r; dy <= r && !placed; dy++) {
-                                        for (let dx = -r; dx <= r && !placed; dx++) {
-                                            const tx = gameState.player.x + dx;
-                                            const ty = gameState.player.y + dy;
-                                            const tileAt = chunkManager.getTile(tx, ty);
-                                            if (['.', 'F', 'd', 'D', '❄️'].includes(tileAt)) {
-                                                chunkManager.setWorldTile(tx, ty, claimedItem.tile || '🎒', 24);
-                                                placed = true;
-                                            }
-                                        }
-                                    }
-                                }
-                                if (!placed) chunkManager.setWorldTile(gameState.player.x, gameState.player.y, claimedItem.tile || '🎒', 24);
-                                gameState.mapDirty = true;
-                            }
+                            // 🚨 BUG FIX: Refund the item back to the Guild Vault instead of dropping it into the instanced void!
+                            const newItemRef = rtdb.ref(`guilds/${this.activeTag}/vault`).push();
+                            await newItemRef.set(claimedItem);
                         } else {
                             gameState.player.inventory.push(claimedItem);
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
                         }
+
                         
                         if (typeof triggerDebouncedSave === 'function') {
                             triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory });
