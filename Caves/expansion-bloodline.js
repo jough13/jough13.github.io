@@ -325,6 +325,12 @@ window.ExpansionManager.register({
             // 4. Wipe Inventory & Equip Bloodline Pendant
             const genMult = player.generation * 2; // +2 All Stats per generation!
             
+            // Purge old generational artifacts from the Stash!
+            // Prevents players from stashing their Gen 1 pendant, ascending, and hoarding/trading them!
+            if (player.bank && Array.isArray(player.bank)) {
+                player.bank = player.bank.filter(item => item && item.templateId !== '🩸p' && item.name !== 'Bloodline Pendant');
+            }
+            
             // Safe Clone prevents the pendant's stats from leaking globally or failing on load
             const pendant = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['🩸p'] : null;
             let newPendant = null;
