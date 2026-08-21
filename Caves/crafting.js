@@ -5,8 +5,9 @@
 // ==========================================
 
 // O(1) Item Lookup Cache for Crafting
-// 🚀 PERFORMANCE WIN: Prevents scanning the massive ITEM_DATA object every time the modal renders
-const _craftItemKeyCache = {};
+// 🚀 PERFORMANCE & SECURITY WIN: Object.create(null) prevents prototype poisoning!
+const _craftItemKeyCache = Object.create(null);
+
 function getCraftItemKey(name) {
     if (_craftItemKeyCache[name]) return _craftItemKeyCache[name];
     if (typeof window.ITEM_DATA === 'undefined') return null;
@@ -148,8 +149,13 @@ function handleCraftItem(recipeName, requestBatch = false) {
             }
         }
 
-        // Clean empty stacks (🚨 GHOST GUARD: filters out nulls simultaneously)
-        player.inventory = player.inventory.filter(item => item && item.quantity > 0);
+        // 🚨 PERFORMANCE & MEMORY LEAK WIN: In-place Array Mutation
+        // Prevents overwriting the inventory array reference, ensuring external caches remain valid.
+        for (let i = player.inventory.length - 1; i >= 0; i--) {
+            if (player.inventory[i] && player.inventory[i].quantity <= 0) {
+                player.inventory.splice(i, 1);
+            }
+        }
 
         // --- EXPANSION & LORE WIN: Class/Talent Synergy Calculations ---
         const levelDiff = playerCraftLevel - (recipe.level || 1);
@@ -166,50 +172,76 @@ function handleCraftItem(recipeName, requestBatch = false) {
         let outputTracker = {}; 
         let culinaryCrits = 0;
         
-        // Centralized robust drop helper to prevent overwriting tiles
-        const usedDropTiles = new Set();
-        const dropCraftedItemSafely = (tileToDrop) => {
-            let placed = false;
-            let validFloor = '.';
-            if (gameState.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[gameState.currentCaveTheme]) {
-                validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
+        // 🚨 QoL WIN: Vault Overflow Routing & Safe Drop
+        // Fixes the Safe Haven black hole bug where crafted items were dropped on instanced floors and lost forever.
+        const routeCraftedItemSafely = (newItemObj) => {
+            const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+            const stashCap = typeof window.MAX_STASH_SLOTS !== 'undefined' ? window.MAX_STASH_SLOTS : 50;
+            const safeName = typeof escapeHtml === 'function' ? escapeHtml(newItemObj.name) : newItemObj.name;
+
+            // 1. Attempt Inventory
+            if (player.inventory.length < invCap) {
+                player.inventory.push(newItemObj);
+                return;
+            } 
+            // 2. Attempt Stash Vault (Massive QoL Fallback)
+            else if (player.bank && player.bank.length < stashCap) {
+                player.bank.push(newItemObj);
+                logMessage(`{blue:Your pack is full! The ${safeName} was safely routed to your Dimensional Vault.}`);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                return;
             }
+            
+            // 3. Absolute Fallback: Drop to floor
+            logMessage(`{red:Your pack and vault are full! The ${safeName} drops to the floor.}`);
+            if (gameState.mapMode === 'castle') {
+                logMessage(`{red:WARNING: Items dropped in settlements will be lost when you leave!}`);
+            }
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
 
-            if (typeof chunkManager !== 'undefined') {
-                for (let r = 0; r <= 3 && !placed; r++) {
-                    for (let dy = -r; dy <= r && !placed; dy++) {
-                        for (let dx = -r; dx <= r && !placed; dx++) {
-                            const tx = player.x + dx;
-                            const ty = player.y + dy;
-                            const tKey = `${tx},${ty}`;
+            // Rely on central event manager if available, else manual outward spiral
+            if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
+                window.EventManager.safeDropItem(gameState, player.x, player.y, newItemObj.tile || '🎒');
+            } else {
+                let placed = false;
+                let validFloor = '.';
+                if (gameState.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[gameState.currentCaveTheme]) {
+                    validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
+                }
 
-                            if (usedDropTiles.has(tKey)) continue;
+                if (typeof chunkManager !== 'undefined') {
+                    for (let r = 0; r <= 3 && !placed; r++) {
+                        for (let dy = -r; dy <= r && !placed; dy++) {
+                            for (let dx = -r; dx <= r && !placed; dx++) {
+                                const tx = player.x + dx;
+                                const ty = player.y + dy;
+                                const tKey = `${tx},${ty}`;
 
-                            let tileAt;
-                            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
-                            else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
-                            else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
+                                let tileAt;
+                                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
+                                else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
+                                else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
 
-                            if (tileAt === validFloor || tileAt === '.') {
-                                usedDropTiles.add(tKey);
-                                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(tx, ty, tileToDrop, 24); 
-                                else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = tileToDrop;
-                                else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = tileToDrop;
-                                
-                                let unlootTileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') ? `${tx},${-ty}` : `${gameState.currentCaveId || gameState.currentCastleId}:${tx},${-ty}`;
-                                gameState.lootedTiles.delete(unlootTileId);
-                                placed = true;
+                                if (tileAt === validFloor || tileAt === '.') {
+                                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(tx, ty, newItemObj.tile || '🎒', 24); 
+                                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = newItemObj.tile || '🎒';
+                                    else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = newItemObj.tile || '🎒';
+                                    
+                                    let unlootTileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') ? `${tx},${-ty}` : `${gameState.currentCaveId || gameState.currentCastleId}:${tx},${-ty}`;
+                                    gameState.lootedTiles.delete(unlootTileId);
+                                    placed = true;
+                                }
                             }
                         }
                     }
+                    if (!placed) {
+                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(player.x, player.y, newItemObj.tile || '🎒', 24);
+                        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = newItemObj.tile || '🎒';
+                        else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = newItemObj.tile || '🎒';
+                    }
                 }
-                if (!placed) {
-                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(player.x, player.y, tileToDrop, 24);
-                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = tileToDrop;
-                    else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = tileToDrop;
-                }
+                gameState.mapDirty = true;
             }
-            gameState.mapDirty = true;
         };
 
         // 🚀 PERFORMANCE WIN: Fast-Path Bulk Crafting!
@@ -241,15 +273,7 @@ function handleCraftItem(recipeName, requestBatch = false) {
             if (curStack && isStackable) {
                 curStack.quantity += totalYield;
             } else {
-                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
-                if (player.inventory.length < invCap) {
-                    player.inventory.push(newItem);
-                } else {
-                    const safeName = typeof escapeHtml === 'function' ? escapeHtml(newItem.name) : newItem.name;
-                    logMessage(`{red:Your pack is full! The ${safeName} drops to the floor.}`);
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
-                    dropCraftedItemSafely(newItem.tile);
-                }
+                routeCraftedItemSafely(newItem);
             }
         } 
         else {
@@ -293,10 +317,15 @@ function handleCraftItem(recipeName, requestBatch = false) {
                     newItem.description = (newItem.description || "") + `\n\n{purple:Forged with exceptional skill by ${player.name || 'an Artisan'}.}`;
 
                     if (!newItem.statBonuses) newItem.statBonuses = {};
-                    const stats = ['strength', 'wits', 'dexterity', 'constitution', 'luck'];
                     
-                    const randomStat1 = stats[Math.floor(Math.random() * stats.length)];
-                    const randomStat2 = stats[Math.floor(Math.random() * stats.length)];
+                    // 🌟 GAMEPLAY WIN: Intelligent Masterwork Stats!
+                    // Weapons prefer offensive stats, Armor prefers defensive stats
+                    let statsPool = ['luck', 'charisma', 'wits'];
+                    if (newItem.type === 'weapon') statsPool = ['strength', 'dexterity', 'luck', 'wits'];
+                    if (newItem.type === 'armor') statsPool = ['constitution', 'endurance', 'luck', 'willpower'];
+                    
+                    const randomStat1 = statsPool[Math.floor(Math.random() * statsPool.length)];
+                    const randomStat2 = statsPool[Math.floor(Math.random() * statsPool.length)];
                     
                     // 🚨 BUG FIX WIN: Number coercion prevents "51" string concatenation bug!
                     newItem.statBonuses[randomStat1] = (Number(newItem.statBonuses[randomStat1]) || 0) + 1;
@@ -322,16 +351,7 @@ function handleCraftItem(recipeName, requestBatch = false) {
                 if (curStack && isStackable && !isMasterwork) {
                     curStack.quantity += newItem.quantity; 
                 } else {
-                    const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
-                    if (player.inventory.length < invCap) {
-                        player.inventory.push(newItem);
-                    } else {
-                        const safeName = typeof escapeHtml === 'function' ? escapeHtml(newItem.name) : newItem.name;
-                        logMessage(`{red:Your pack is full! The ${safeName} drops to the floor.}`);
-                        if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
-                        
-                        dropCraftedItemSafely(newItem.tile);
-                    }
+                    routeCraftedItemSafely(newItem);
                 }
             }
         }
@@ -414,6 +434,7 @@ function handleCraftItem(recipeName, requestBatch = false) {
         if (typeof triggerDebouncedSave === 'function') {
             triggerDebouncedSave({
                 inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory,
+                bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : (player.bank || []),
                 craftingLevel: player.craftingLevel,
                 craftingXp: player.craftingXp,
                 craftingXpToNext: player.craftingXpToNext,
