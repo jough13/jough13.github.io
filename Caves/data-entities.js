@@ -53,7 +53,6 @@ window.PLAYER_RACES = {
         stats: { willpower: 2, wits: 1 }, 
         icon: '🌌'
     },
-    // --- LORE EXPANSION: NEW RACES ---
     'automaton': {
         name: 'Automaton',
         description: "A ticking, brass-forged soul from the Second Age. You awoke with no master.",
@@ -65,6 +64,19 @@ window.PLAYER_RACES = {
         description: "Cold-blooded desert dwellers. They remember when the dunes were oceans.",
         stats: { dexterity: 1, perception: 2 },
         icon: '🦎'
+    },
+    // --- LORE EXPANSION: NEW RACES ---
+    'dhampir': {
+        name: 'Dhampir',
+        description: "Half-vampire, half-mortal. You walk in the sunlight, but the thirst remains.",
+        stats: { strength: 1, charisma: 1, willpower: 1 },
+        icon: '🧛'
+    },
+    'sylph': {
+        name: 'Sylph',
+        description: "Spirits of the wind bound to physical forms. You are virtually weightless.",
+        stats: { dexterity: 2, intuition: 1 },
+        icon: '💨'
     }
 };
 
@@ -137,7 +149,6 @@ window.PLAYER_BACKGROUNDS = {
             { templateId: 'idol', name: 'Strange Idol', type: 'trade', quantity: 1, tile: '🗿', tags: [] }
         ]
     },
-    // --- LORE EXPANSION CLASSES ---
     'defector': {
         name: 'Cult Defector',
         description: 'You fled the Shadowed Hand, stealing their forbidden secrets on the way out.',
@@ -156,6 +167,27 @@ window.PLAYER_BACKGROUNDS = {
             { templateId: '⛏️', name: 'Pickaxe', type: 'tool', quantity: 1, tile: '⛏️', tags: [] },
             { templateId: '-', name: 'Machete', type: 'tool', quantity: 1, tile: '-', tags: ['blade'] },
             { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor', tags: ['clothing'] }
+        ]
+    },
+    // --- LORE EXPANSION CLASSES ---
+    'monk': {
+        name: 'Monk',
+        description: 'A disciplined ascetic who turns their own body into a lethal weapon.',
+        stats: { endurance: 2, intuition: 1 },
+        items: [
+            { templateId: '🦯', name: 'Quarterstaff', type: 'weapon', quantity: 1, tile: '🦯', damage: 1, defense: 1, slot: 'weapon', tags: ['staff', 'blunt'] },
+            { templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', tags: ['clothing'] },
+            { templateId: '🥋', name: 'Manual: Flurry', type: 'skillbook', quantity: 1, tile: '📓', skillId: 'flurry', tags: [] }
+        ]
+    },
+    'peddler': {
+        name: 'Peddler',
+        description: 'A charismatic merchant. You start with a heavy purse but very light armor.',
+        stats: { charisma: 3 },
+        items: [
+            { templateId: '🏏', name: 'Wooden Club', type: 'weapon', quantity: 1, tile: '🏏', damage: 2, slot: 'weapon', tags: ['blunt'] },
+            { templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', tags: ['clothing'] },
+            { templateId: '$', name: 'Gold Coin', type: 'instant', quantity: 500, tile: '$', tags: [] } // Starts with 500g!
         ]
     }
 };
@@ -196,6 +228,15 @@ window.EVOLUTION_DATA = {
     'artisan': [
         { id: 'runesmith', name: 'Runesmith', icon: '⚒️', description: "Master of enchanted arms and armor.", stats: { strength: 3, endurance: 4 }, talent: 'arcane_steel' },
         { id: 'tinkerer', name: 'Tinkerer', icon: '⚙️', description: "You build contraptions to survive.", stats: { wits: 4, dexterity: 3 }, talent: 'pack_mule' }
+    ],
+    // --- LORE EXPANSION EVOLUTIONS ---
+    'monk': [
+        { id: 'brawler', name: 'Brawler', icon: '💢', description: "A brutal, bare-knuckle pugilist.", stats: { strength: 4, endurance: 3 }, talent: 'unarmed_mastery' },
+        { id: 'ascetic', name: 'Ascetic', icon: '🧘', description: "You have transcended physical limitations.", stats: { intuition: 4, willpower: 3, maxStamina: 20 }, talent: 'evasion' }
+    ],
+    'peddler': [
+        { id: 'merchant_prince', name: 'Merchant Prince', icon: '💰', description: "Gold rules the world, and you rule the gold.", stats: { charisma: 6, luck: 3 }, talent: 'silver_tongue' },
+        { id: 'smuggler_king', name: 'Smuggler King', icon: '🦹', description: "Master of the black markets and illegal goods.", stats: { dexterity: 4, perception: 3 }, talent: 'pack_mule' }
     ]
 };
 
@@ -366,6 +407,12 @@ window.QUEST_DATA = {
         description: "\"The forests are turning black. Corrupted Treants ('🌳c') are spreading the blight. Chop down 5 of them.\"",
         type: 'kill', enemy: '🌳c', itemNeeded: null, needed: 5, itemTile: null,
         reward: { xp: 600, coins: 400, item: null, itemQty: 0 }
+    },
+    "abyssalHunger": {
+        title: "Bounty: The Abyssal Hunger",
+        description: "\"A massive Gore-Maw Crawler ('🐛d') is collapsing the dwarven tunnels. Slay it before the mines are lost entirely.\"",
+        type: 'kill', enemy: '🐛d', itemNeeded: null, needed: 1, itemTile: null,
+        reward: { xp: 1500, coins: 800, item: 'Fossilized Titan Bone', itemQty: 1 }
     }
 };
 
@@ -450,6 +497,16 @@ window.ENEMY_PREFIXES = {
         description: "Blinks in and out of the timeline rapidly.",
         statModifiers: { attack: 0, defense: 2, maxHealth: 0 },
         special: null, xpMult: 1.5, color: '#6366f1'
+    },
+    "Colossal": {
+        description: "An absolute unit. Monumental health pool but very slow.",
+        statModifiers: { attack: 1, defense: 2, maxHealth: 30 },
+        special: null, xpMult: 2.5, color: '#991b1b'
+    },
+    "Vengeful": {
+        description: "Surrounded by a razor-sharp aura that damages attackers.",
+        statModifiers: { attack: 1, defense: 1, maxHealth: 0 },
+        special: 'thorns', xpMult: 1.6, color: '#b91c1c'
     }
 };
 
@@ -608,6 +665,14 @@ window.ENEMY_DATA = {
         inflicts: null, inflictChance: 0, teleporter: false,
         loot: '❄️f', color: '#78350f', isBoss: false, excludeFromLoot: false,
         flavor: "A towering wall of muscle and fur. It fiercely defends its territory."
+    },
+    '🐻d': {
+        name: 'Dire Bear', tags: ['beast', 'giant', 'mountable'], mountable: true,
+        maxHealth: 35, attack: 6, defense: 3, xp: 75,
+        caster: false, castRange: 0, spellDamage: 0, isRanged: false, range: 0,
+        inflicts: null, inflictChance: 0, teleporter: false,
+        loot: '❄️f', color: '#57534e', isBoss: false, excludeFromLoot: false,
+        flavor: "Twice the size of a normal bear. Its roar shakes the leaves from the trees."
     },
     '🦌': {
         name: 'Stag', tags: ['beast'], mountable: false,
@@ -822,6 +887,14 @@ window.ENEMY_DATA = {
         inflicts: 'poison', inflictChance: 0.2, teleporter: false, // "Poison" as a proxy for disease/blood drain
         loot: '🦇w', color: '#9f1239', isBoss: false, excludeFromLoot: false,
         flavor: "Unnaturally large and thirsty for warm blood."
+    },
+    '👻w': {
+        name: 'Weeping Wraith', tags: ['undead', 'ethereal', 'void'], type: 'spirit', mountable: false,
+        maxHealth: 20, attack: 0, defense: 5, xp: 40,
+        caster: true, castRange: 4, spellDamage: 6, isRanged: false, range: 0,
+        inflicts: 'madness', inflictChance: 0.6, teleporter: true,
+        loot: 'ectoplasm', color: '#cbd5e1', isBoss: false, excludeFromLoot: false,
+        flavor: "It floats silently, weeping dark tears. Hearing its cries shatters your mind."
     },
 
     // --- LEVEL 6+ (Elites) ---
@@ -1272,6 +1345,31 @@ window.SPELL_DATA = {
         scalingStat: "intuition",
         cost: 14, costType: "mana", requiredLevel: 4, target: "aimed", baseDamage: 6, inflicts: "root", inflictChance: 0.8, element: "earth",
         cooldown: 3, type: null, duration: 0, baseHeal: 0, baseShield: 0, baseRestore: 0, baseReflect: 0, healPercent: 0, radius: 0, AoE: false
+    },
+    // --- LORE EXPANSION SPELLS ---
+    "haste": {
+        name: "Haste",
+        description: "{green:+10 Dexterity} for 15 turns.",
+        flavor: "Time seems to crawl around you as you accelerate beyond normal limits.",
+        scalingStat: null,
+        cost: 20, costType: "mana", requiredLevel: 4, target: "self", type: "buff", duration: 15, element: "magic",
+        cooldown: 10, baseDamage: 0, baseHeal: 0, baseShield: 0, baseRestore: 0, baseReflect: 0, healPercent: 0, radius: 0, AoE: false, inflicts: null, inflictChance: 0
+    },
+    "blizzard": {
+        name: "Blizzard",
+        description: "Calls down a raging ice storm in a 3x3 area. Inflicts {cyan:Frostbite}. Scales with {blue:Wits}.",
+        flavor: "The temperature drops instantly, freezing the blood of your enemies.",
+        scalingStat: "wits",
+        cost: 25, costType: "mana", requiredLevel: 7, target: "aimed", baseDamage: 6, element: "frost", radius: 1, AoE: true,
+        cooldown: 5, type: null, duration: 0, baseHeal: 0, baseShield: 0, baseRestore: 0, baseReflect: 0, healPercent: 0, inflicts: 'frostbite', inflictChance: 1.0
+    },
+    "bloodSacrifice": {
+        name: "Blood Sacrifice",
+        description: "Sacrifice {red:10 Health} to restore {green:15 Stamina}.",
+        flavor: "You burn your own lifeforce to push your muscles further.",
+        scalingStat: null,
+        cost: 10, costType: "health", requiredLevel: 3, target: "self", baseRestore: 15, element: "dark",
+        cooldown: 3, type: null, duration: 0, baseDamage: 0, baseHeal: 0, baseShield: 0, baseReflect: 0, healPercent: 0, radius: 0, AoE: false, inflicts: null, inflictChance: 0
     }
 };
 
@@ -1398,6 +1496,20 @@ window.TALENT_DATA = {
         description: "Step through {purple:Phase Walls} without taking damage.",
         flavor: "You walk between the worlds.",
         class: "void_touched", icon: "👁️"
+    },
+    
+    // --- LORE EXPANSION TALENTS ---
+    "unarmed_mastery": {
+        name: "Unarmed Mastery",
+        description: "Bare fists scale {red:100% harder} with Strength.",
+        flavor: "Your hands are deadlier than any blade.",
+        class: "brawler", icon: "👊"
+    },
+    "silver_tongue": {
+        name: "Silver Tongue",
+        description: "Shop discounts from Charisma are {gold:doubled}.",
+        flavor: "You could sell sand to a desert nomad.",
+        class: "merchant_prince", icon: "🗣️"
     }
 };
 
@@ -1574,6 +1686,22 @@ window.SKILL_DATA = {
         flavor: "They never hear it coming.",
         scalingStat: "dexterity",
         cost: 10, costType: "stamina", requiredLevel: 6, target: "aimed", baseDamageMultiplier: 3.5, cooldown: 15, weaponTags: ['dagger'],
+        type: null, baseDefense: 0, duration: 0, AoE: false
+    },
+    "flurry": {
+        name: "Flurry of Blows",
+        description: "A rapid sequence of unarmed strikes. {cyan:No weapon required.}",
+        flavor: "Your hands move as a blur of devastating martial arts.",
+        scalingStat: "dexterity",
+        cost: 8, costType: "stamina", requiredLevel: 3, target: "aimed", baseDamageMultiplier: 1.5, cooldown: 4, weaponTags: [],
+        type: null, baseDefense: 0, duration: 0, AoE: false
+    },
+    "pommel_strike": {
+        name: "Pommel Strike",
+        description: "Hit the target with the hilt of your weapon, dealing minor damage and {yellow:Stunning} them.",
+        flavor: "A tactical strike to the head, leaving them dazed.",
+        scalingStat: "strength",
+        cost: 10, costType: "stamina", requiredLevel: 3, target: "aimed", baseDamageMultiplier: 0.3, cooldown: 6, weaponTags: ['blade', 'blunt'],
         type: null, baseDefense: 0, duration: 0, AoE: false
     }
 };
