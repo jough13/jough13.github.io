@@ -52,28 +52,33 @@ window.EVENT_DATA = {
                     },
                     {
                         text: "Sneak inside and steal their loot.",
-                        req: (player) => player.dexterity >= 5, 
+                        req: (player) => (Number(player.dexterity) + Number(player.dexterityBonus || 0)) >= 5, 
                         reqHint: "Requires 5 Dexterity", 
                         action: (state, ctx) => {
                             logMessage("{green:You slip into the shadows, bypassing the guards, and find their stash!}");
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
                             
-                            state.player.coins += 250;
+                            state.player.coins = (Number(state.player.coins) || 0) + 250;
+                            if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(250);
                             
                             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
+                            const scroll = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['🩸'] : { name: 'Scroll of Siphoning', type: 'spellbook', tile: '🩸' };
+                            let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(scroll) : JSON.parse(JSON.stringify(scroll));
+                            
+                            newItem.templateId = '🩸';
+                            newItem.quantity = 1;
+                            newItem.tile = scroll.tile || '🩸';
+                            newItem.isEquipped = false;
+
                             if (state.player.inventory.length < invCap) {
-                                const scroll = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['🩸'] : { name: 'Scroll of Siphoning', type: 'spellbook' };
-                                let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(scroll) : JSON.parse(JSON.stringify(scroll));
-                                
-                                newItem.templateId = '🩸';
-                                newItem.quantity = 1;
-                                newItem.tile = '🩸';
-                                newItem.isEquipped = false;
-                                
                                 state.player.inventory.push(newItem);
                                 logMessage("{purple:You stole a Scroll of Siphoning and 250 Gold!}");
                             } else {
-                                logMessage("{gold:You stole 250 Gold, but your pack is too full for the Scroll!}");
+                                // 🚨 BUG FIX WIN: Fallback to safe spiral drop if inventory is full!
+                                logMessage("{gold:You stole 250 Gold, but your pack is too full for the Scroll! It drops to the floor.}");
+                                if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
+                                    window.EventManager.safeDropItem(state, ctx.x, ctx.y, newItem.tile);
+                                }
                             }
 
                             // Clear the investigation
@@ -99,7 +104,9 @@ window.EVENT_DATA = {
                         action: (state, ctx) => {
                             logMessage("{gray:The knight presses something into your hand before going still.}");
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal();
-                            state.player.coins += 50;
+                            
+                            state.player.coins = (Number(state.player.coins) || 0) + 50;
+                            if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(50);
                             
                             // 1. Resolve the NPC tile cleanup securely
                             window.EventManager.replaceEventTile(state, ctx.x, ctx.y, '⚰️');
@@ -115,10 +122,11 @@ window.EVENT_DATA = {
                                     existing.quantity++;
                                     logMessage("{gold:You received an Elixir of Life and 50 Gold.}");
                                 } else if (state.player.inventory.length < invCap) {
+                                    // 🚨 ROBUSTNESS WIN: Safe deep clone
                                     let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(potion) : JSON.parse(JSON.stringify(potion));
                                     newItem.templateId = '🍷';
                                     newItem.quantity = 1;
-                                    newItem.tile = '🍷';
+                                    newItem.tile = potion.tile || '🍷';
                                     newItem.isEquipped = false;
                                     newItem.effect = potion.effect;
                                     state.player.inventory.push(newItem);
@@ -126,7 +134,9 @@ window.EVENT_DATA = {
                                 } else {
                                     logMessage("{gold:You received 50 Gold, but your pack is too full! The Elixir drops to the ground.}");
                                     // 🚨 THE FIX: Drop the item via outward spiral to prevent map corruption
-                                    window.EventManager.safeDropItem(state, state.player.x, state.player.y, '🍷');
+                                    if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
+                                        window.EventManager.safeDropItem(state, state.player.x, state.player.y, potion.tile || '🍷');
+                                    }
                                 }
                             }
                         }
@@ -147,7 +157,11 @@ window.EVENT_DATA = {
                         text: "{red:Sacrifice Life Force}",
                         action: (state, ctx) => {
                             const sacrificeAmount = Math.max(1, Math.floor(state.player.health / 2));
-                            window.modifyVital('health', -sacrificeAmount);
+                            if (typeof window.modifyVital === 'function') {
+                                window.modifyVital('health', -sacrificeAmount);
+                            } else {
+                                state.player.health -= sacrificeAmount;
+                            }
                             
                             logMessage(`{red:You slash your palm over the altar! (-${sacrificeAmount} HP)}`);
                             state.screenShake = 20;
@@ -167,9 +181,10 @@ window.EVENT_DATA = {
                                 if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(ctx.x+1, ctx.y, enemyId)).set(state.sharedEnemies[enemyId]);
                             } else {
                                 if (Math.random() < 0.5) {
-                                    state.player.bonusMaxHealth = (state.player.bonusMaxHealth || 0) + 3;
+                                    state.player.bonusMaxHealth = (Number(state.player.bonusMaxHealth) || 0) + 3;
                                     if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
                                     logMessage("{gold:The blood boils in your veins. Your vitality permanently increases! (+3 Max HP)}");
+                                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(state.player.x, state.player.y, "+3 MAX HP", "#facc15");
                                 } else {
                                     const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                                     const fallbackWeapon = { name: 'Blood Blade', type: 'weapon', quantity: 1, damage: 10, tile: '🗡️', isEquipped: false, tags: ['blade'], statBonuses: {} };
@@ -181,8 +196,9 @@ window.EVENT_DATA = {
                                         if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
                                     } else {
                                         logMessage(`{red:The altar offers the ${loot.name}, but your pack is full! It drops to the ground.}`);
-                                        // 🚨 THE FIX: Drop via safe outward spiral
-                                        window.EventManager.safeDropItem(state, ctx.x, ctx.y, loot.tile || '🗡️');
+                                        if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
+                                            window.EventManager.safeDropItem(state, ctx.x, ctx.y, loot.tile || '🗡️');
+                                        }
                                     }
                                 }
                             }
@@ -191,6 +207,59 @@ window.EVENT_DATA = {
                     },
                     {
                         text: "Step away."
+                    }
+                ]
+            }
+        }
+    },
+    // --- 🌟 LORE WIN: New Event! ---
+    'CURSED_SWORD_STONE': {
+        title: "The Bleeding Stone",
+        oncePerTile: true,
+        lootedMessage: "The stone is cracked and lifeless.",
+        nodes: {
+            'start': {
+                text: "A pitch-black blade is thrust deep into a block of jagged obsidian. The stone itself seems to be slowly bleeding a thick, dark liquid.\n\nThe air around it is freezing cold.",
+                choices: [
+                    {
+                        text: "Pull the blade. (Requires 20 HP)",
+                        req: (player) => player.health > 20,
+                        reqHint: "Requires > 20 Health",
+                        action: (state, ctx) => {
+                            // Deduct massive health
+                            if (typeof window.modifyVital === 'function') window.modifyVital('health', -15);
+                            else state.player.health -= 15;
+                            
+                            logMessage("{red:You grasp the hilt! Black veins crawl up your arms, draining your life force! (-15 HP)}");
+                            state.screenShake = 30;
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(ctx.x, ctx.y, '#991b1b', 40);
+                            
+                            const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
+                            const cursedWeapon = {
+                                templateId: '🗡️v', name: 'Cursed Obsidian Edge', type: 'weapon', tags: ['blade'], tile: '🗡️',
+                                quantity: 1, damage: 15, slot: 'weapon', isEquipped: false, _rarity: 'epic',
+                                statBonuses: { luck: -3, willpower: -2 }, inflicts: 'madness', inflictChance: 0.3,
+                                description: "{red:+15 Dmg}, {gray:-3 Luck, -2 Will}. The blade whispers to you. Can inflict Madness on targets."
+                            };
+
+                            if (state.player.inventory.length < invCap) {
+                                state.player.inventory.push(cursedWeapon);
+                                logMessage(`{purple:The stone shatters! You acquired the ${cursedWeapon.name}!}`);
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+                            } else {
+                                logMessage(`{red:The stone shatters, but your pack is full! The ${cursedWeapon.name} drops to the ground.}`);
+                                if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
+                                    window.EventManager.safeDropItem(state, ctx.x, ctx.y, cursedWeapon.tile);
+                                }
+                            }
+                            
+                            window.EventManager.replaceEventTile(state, ctx.x, ctx.y, '🏚');
+                            state.lootedTiles.add(ctx.tileId);
+                        }
+                    },
+                    {
+                        text: "Leave it. It's not worth the risk."
                     }
                 ]
             }
@@ -228,20 +297,20 @@ window.EVENT_DATA = {
                                     logMessage("{green:You open the box and find a massive cache of supplies!}");
                                 } else if (state.player.inventory.length < invCap) {
                                     const template = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['♥'] : null;
-                                    state.player.inventory.push({ 
-                                        templateId: '♥', 
-                                        name: 'Healing Potion', 
-                                        type: 'consumable', 
-                                        quantity: 3, 
-                                        tile: '♥', 
-                                        effect: template ? template.effect : null, 
-                                        isEquipped: false 
-                                    });
+                                    // Safe deep clone
+                                    const newItem = template && typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : { name: 'Healing Potion', type: 'consumable', tile: '♥' };
+                                    
+                                    newItem.templateId = '♥'; 
+                                    newItem.quantity = 3; 
+                                    newItem.isEquipped = false; 
+                                    
+                                    state.player.inventory.push(newItem);
                                     logMessage("{green:You open the box and find a massive cache of supplies!}");
                                 } else {
                                     logMessage("{red:You open the box, but your inventory is full! The potions spill to the ground.}");
-                                    // 🚨 THE FIX: Drop on player coords securely
-                                    window.EventManager.safeDropItem(state, state.player.x, state.player.y, '♥');
+                                    if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
+                                        window.EventManager.safeDropItem(state, state.player.x, state.player.y, '♥');
+                                    }
                                 }
                             } else {
                                 logMessage("{purple:You open the box... A Legendary Artifact is inside!}");
@@ -255,89 +324,15 @@ window.EVENT_DATA = {
                                     state.player.inventory.push(loot);
                                 } else {
                                     logMessage("{red:Your inventory is full! The artifact falls to the ground.}");
-                                    window.EventManager.safeDropItem(state, state.player.x, state.player.y, loot.tile || '🗡️');
+                                    if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
+                                        window.EventManager.safeDropItem(state, state.player.x, state.player.y, loot.tile || '🗡️');
+                                    }
                                 }
                             }
                         }
                     },
                     {
                         text: "Leave him be."
-                    }
-                ]
-            }
-        }
-    },
-    'WHISPERING_MONOLITH': {
-        title: "Whispering Monolith",
-        oncePerTile: true,
-        lootedMessage: "The runes are dark. It has nothing more to teach you.",
-        nodes: {
-            'start': {
-                text: "A towering slab of black stone covered in glowing, shifting runes. The voices call to you.",
-                choices: [
-                    {
-                        text: "Touch the monolith.",
-                        action: (state, ctx) => {
-                            logMessage("{purple:You touch the Monolith. Forbidden knowledge floods your mind!}");
-                            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
-                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(ctx.x, ctx.y, '#a855f7', 30);
-                            
-                            state.screenShake = 15;
-                            
-                            if (typeof grantXp === 'function') grantXp(1000);
-                            state.player.madnessTurns = (state.player.madnessTurns || 0) + 5;
-                            logMessage("{red:The sheer weight of the truth shatters your sanity! (Madness)}");
-
-                            state.lootedTiles.add(ctx.tileId);
-                        }
-                    }
-                ]
-            }
-        }
-    },
-    'FALLEN_TITAN': {
-        title: "Fallen Titan",
-        oncePerTile: true,
-        lootedMessage: "You've already salvaged all the usable parts from this behemoth.",
-        nodes: {
-            'start': {
-                text: "A rusted clockwork automaton the size of a castle, half-buried in the earth.",
-                choices: [
-                    {
-                        text: "Pry loose the gears",
-                        req: (player) => player.inventory.some(i => i && !i.isEquipped && (i.name === 'Pickaxe' || i.name === 'Diamond Tipped Pickaxe')),
-                        reqHint: "Requires Pickaxe",
-                        action: (state, ctx) => {
-                            logMessage("{orange:You strike the rusted joints, prying loose valuable metals!}");
-                            if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
-                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(ctx.x, ctx.y, '#f59e0b', 15);
-
-                            state.player.stamina = Math.max(0, state.player.stamina - 5);
-                            
-                            const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
-                            const yieldAmt = 3 + Math.floor(Math.random() * 3);
-                            
-                            const ironStack = state.player.inventory.find(i => i && i.name === 'Iron Ore' && !i.isEquipped);
-                            if (ironStack) ironStack.quantity += yieldAmt;
-                            else if (state.player.inventory.length < invCap) state.player.inventory.push({ templateId: '•', name: 'Iron Ore', type: 'junk', quantity: yieldAmt, tile: '•', isEquipped: false });
-                            else window.EventManager.safeDropItem(state, ctx.x, ctx.y, '•'); // Drop overflowing iron
-                            
-                            if (Math.random() < 0.30) {
-                                logMessage("{purple:You found the Titan's power core! (Star-Metal Ore)}");
-                                const starStack = state.player.inventory.find(i => i && i.name === 'Star-Metal Ore' && !i.isEquipped);
-                                if (starStack) starStack.quantity += 1;
-                                else if (state.player.inventory.length < invCap) state.player.inventory.push({ templateId: '☄️', name: 'Star-Metal Ore', type: 'junk', quantity: 1, tile: '☄️', isEquipped: false });
-                                else {
-                                    logMessage("{red:Inventory full! The Star-Metal drops to the floor.}");
-                                    window.EventManager.safeDropItem(state, ctx.x, ctx.y, '☄️');
-                                }
-                            }
-
-                            state.lootedTiles.add(ctx.tileId);
-                        }
-                    },
-                    {
-                        text: "Walk away."
                     }
                 ]
             }
@@ -385,14 +380,20 @@ window.EVENT_DATA = {
                                 existing.quantity++;
                                 logMessage(`{purple:You received a Void Astrolabe!}`);
                             } else if (state.player.inventory.length < invCap) {
-                                state.player.inventory.push({
-                                    templateId: '🧭v', name: 'Void Astrolabe', type: 'consumable', quantity: 1, tile: '🧭',
-                                    description: "Tunes the leylines to a parallel dimension.", effect: window.ITEM_DATA ? window.ITEM_DATA['🧭v'].effect : null, isEquipped: false
-                                });
+                                const template = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['🧭v'] : null;
+                                let newItem = template && typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : { name: 'Void Astrolabe', type: 'consumable', tile: '🧭' };
+                                
+                                newItem.templateId = '🧭v';
+                                newItem.quantity = 1;
+                                newItem.isEquipped = false;
+                                
+                                state.player.inventory.push(newItem);
                                 logMessage(`{purple:You received a Void Astrolabe!}`);
                             } else {
                                 logMessage(`{red:The merchant hands you the Astrolabe, but your pack is full! It drops.}`);
-                                window.EventManager.safeDropItem(state, ctx.x, ctx.y, '🧭');
+                                if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
+                                    window.EventManager.safeDropItem(state, ctx.x, ctx.y, '🧭');
+                                }
                             }
                             
                             state.lootedTiles.add(ctx.tileId);
@@ -417,7 +418,7 @@ window.EVENT_DATA = {
                                 if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(ex, ey, enemyId)).set(state.sharedEnemies[enemyId]);
                             }
 
-                            state.player.alignment = (state.player.alignment || 0) - 10;
+                            state.player.alignment = (Number(state.player.alignment) || 0) - 10;
                             logMessage("{gray:Your soul darkens... (-10 Alignment)}");
 
                             state.lootedTiles.add(ctx.tileId);
@@ -443,17 +444,17 @@ window.EVENT_DATA = {
                         req: (player) => player.coins >= 1,
                         reqHint: "Requires 1 Gold",
                         action: (state, ctx) => {
-                            state.player.coins -= 1;
+                            state.player.coins = Math.max(0, (Number(state.player.coins) || 0) - 1);
                             
                             if (Math.random() < 0.5) {
                                 logMessage("{green:\"Shiny! I love it! Here, step lightly, mortal!\"}");
-                                state.player.dexterityBonus = (state.player.dexterityBonus || 0) + 5;
-                                state.player.dexterityBonusTurns = 100;
+                                state.player.dexterityBonus = (Number(state.player.dexterityBonus) || 0) + 5;
+                                state.player.dexterityBonusTurns = Math.max(Number(state.player.dexterityBonusTurns) || 0, 100);
                                 logMessage("{cyan:You feel impossibly light on your feet! (+5 Dexterity for 100 turns)}");
                                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                             } else {
                                 logMessage("{purple:\"Boring! I wanted something else! Catch!\"}");
-                                state.player.madnessTurns = (state.player.madnessTurns || 0) + 5;
+                                state.player.madnessTurns = (Number(state.player.madnessTurns) || 0) + 5;
                                 logMessage("{red:The Fae blows sparkling dust in your face. Your mind reels! (Madness)}");
                                 if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                                 state.screenShake = 15;
@@ -477,10 +478,10 @@ window.EventManager = {
 
     // 🚨 ARCHITECTURE WIN: Global Helper Methods
     // Provides a robust, cross-dimensional way for ANY expansion to modify map tiles during events
-    replaceEventTile: function(state, x, y, newTile) {
+    replaceEventTile: function(state, x, y, newTile, ttlHours = 0) {
         if (typeof chunkManager !== 'undefined') {
             if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
-                chunkManager.setWorldTile(x, y, newTile);
+                chunkManager.setWorldTile(x, y, newTile, ttlHours);
             } else if (state.mapMode === 'dungeon') {
                 chunkManager.caveMaps[state.currentCaveId][y][x] = newTile;
             } else if (state.mapMode === 'castle') {
@@ -498,6 +499,7 @@ window.EventManager = {
         }
 
         if (typeof chunkManager !== 'undefined') {
+            // Spiral outwards up to 2 tiles away looking for an empty floor
             for (let r = 0; r <= 2 && !placed; r++) {
                 for (let dy = -r; dy <= r && !placed; dy++) {
                     for (let dx = -r; dx <= r && !placed; dx++) {
@@ -518,7 +520,7 @@ window.EventManager = {
                     }
                 }
             }
-            if (!placed) { // Absolute fallback
+            if (!placed) { // Absolute fallback to exact coordinate
                 if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(startX, startY, itemTile, 24);
                 else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][startY][startX] = itemTile;
                 else if (state.mapMode === 'castle') chunkManager.castleMaps[state.currentCastleId][startY][startX] = itemTile;
@@ -538,6 +540,9 @@ window.EventManager = {
             logMessage(`{gray:${eventData.lootedMessage || "There is nothing more to do here."}}`);
             return;
         }
+
+        // Add a subtle entrance audio cue for events to draw attention
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playHover();
 
         this.renderNode('start');
     },
@@ -560,8 +565,8 @@ window.EventManager = {
         // 1. Render ONLY the text inside the scrollable lore container
         loreContent.innerHTML = `<p class="font-serif leading-relaxed mb-2">${formatMenuText(node.text)}</p>`;
 
-        // 2. Build the buttons in a separate container
-        let btnHtml = `<div id="eventChoicesContainer" class="flex flex-col gap-3 flex-shrink-0 mt-4 border-t border-gray-700 pt-4 w-full">`;
+        // 2. Build the buttons in a separate container using strings (high performance)
+        let btnHtml = `<div id="eventChoicesContainer" class="flex flex-col gap-3 flex-shrink-0 mt-4 border-t border-gray-700 pt-4 w-full opacity-0 translate-y-2 transition-all duration-300" style="animation: fade-in-up 0.3s ease-out forwards;">`;
 
         node.choices.forEach((choice, index) => {
             const meetsReq = choice.req ? choice.req(gameState.player, this.activeContext) : true;
@@ -687,12 +692,19 @@ window.EventManager = {
                         if (closeBtn) closeBtn.classList.remove('hidden');
                         
                         // Nullify state
-                        window.EventManager.activeEvent = null;
-                        window.EventManager.activeContext = null;
+                        if (typeof window.EventManager !== 'undefined') {
+                            window.EventManager.activeEvent = null;
+                            window.EventManager.activeContext = null;
+                        }
                     }
                 });
             });
             observer.observe(loreModal, { attributes: true });
+            
+            // Inject tiny CSS animation for UI smoothness
+            const style = document.createElement('style');
+            style.innerHTML = `@keyframes fade-in-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }`;
+            document.head.appendChild(style);
         }
     }
 })();
