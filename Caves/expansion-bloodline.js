@@ -434,6 +434,10 @@ window.ExpansionManager.register({
                 resetPayload.currentRealm = 0;
                 resetPayload.realmMutators = [];
                 
+                // Explicitly pack the inventory and bank arrays to prevent massive JSON blowout!
+                resetPayload.inventory = typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory;
+                resetPayload.bank = typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank;
+                
                 await playerRef.set(resetPayload);
             }
 
