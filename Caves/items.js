@@ -569,8 +569,16 @@ function handleItemDrop(key) {
         }
 
         let isValidDropTile = false;
-        if (gameState.mapMode === 'overworld' && currentTile === '.') isValidDropTile = true;
-        else if (gameState.mapMode === 'castle' && currentTile === '.') isValidDropTile = true;
+        if (gameState.mapMode === 'overworld' && currentTile === '.') {
+            isValidDropTile = true;
+        } 
+        else if (gameState.mapMode === 'castle') {
+            // Prevent dropping items in instanced safe zones!
+            logMessage("{red:You cannot drop items in settlements. They will be lost forever.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            isItemProcessing = false;
+            return; 
+        } 
         else if (gameState.mapMode === 'dungeon') {
             const theme = typeof CAVE_THEMES !== 'undefined' ? (CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK) : { floor: '.' };
             if (currentTile === theme.floor) isValidDropTile = true;
