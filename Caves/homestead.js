@@ -7,7 +7,7 @@
 window.ExpansionManager.register({
     id: "homestead_farming",
     name: "The Homestead (Farming & Campsites)",
-    version: "1.2", // Upgraded version!
+    version: "1.3", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -15,20 +15,35 @@ window.ExpansionManager.register({
             '🌱h': { name: 'Herb Seed', type: 'seed', tile: '🌱', description: "Plant in a Garden Plot to grow Medicinal Herbs." },
             '🌱w': { name: 'Wildberry Seed', type: 'seed', tile: '🌱', description: "Plant in a Garden Plot to grow Wildberries." },
             '🍄s': { name: 'Bluecap Spore', type: 'seed', tile: '🍄', description: "Plant in a Garden Plot to grow Bluecap Mushrooms." },
-            '🌺b': { name: 'Moonbloom Bulb', type: 'seed', tile: '🧅', description: "A rare bulb. Plant in a Garden Plot to grow Moonblooms.", _rarity: 'rare' }
+            '🌺b': { name: 'Moonbloom Bulb', type: 'seed', tile: '🧅', description: "A rare bulb. Plant in a Garden Plot to grow Moonblooms.", _rarity: 'rare' },
+            // --- EXPANSION WIN: New Seeds & Fertilizer ---
+            '🌵s': { name: 'Cactus Seed', type: 'seed', tile: '🌱', description: "Plant in a Garden Plot to grow Cactus Fruit." },
+            '🦴m': { 
+                name: 'Bone Meal', type: 'consumable', tile: '🦴', _rarity: 'uncommon',
+                description: "Fertilizer made from crushed bones. {green:Instantly matures a growing Garden Plot.}",
+                effect: (state) => {
+                    logMessage("{gray:Use Bone Meal directly from the Botanical Garden interface at your camp.}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                    return false; // Prevent consuming it manually
+                }
+            }
         },
 
-        // --- 2. SHOPS ---
-        // 🌟 EXPANDABILITY WIN: Handled natively by the ExpansionManager
+        // --- 2. SHOPS & CRAFTING ---
         shops: {
             general: [
                 { name: 'Herb Seed', price: 10, stock: 5 },
                 { name: 'Wildberry Seed', price: 5, stock: 10 },
+                { name: 'Cactus Seed', price: 15, stock: 5 },
                 { name: 'Bluecap Spore', price: 15, stock: 5 }
             ],
             trader: [
-                { name: 'Moonbloom Bulb', price: 200, stock: 2 }
+                { name: 'Moonbloom Bulb', price: 200, stock: 2 },
+                { name: 'Bone Meal', price: 50, stock: 5 }
             ]
+        },
+        craftingRecipes: {
+            "Bone Meal": { materials: { "Bone Shard": 2 }, xp: 15, level: 1, yield: 2 }
         },
 
         // --- 3. MAP TILES ---
@@ -57,6 +72,7 @@ window.ExpansionManager.register({
             seeds: {
                 'Herb Seed': { yields: 'Medicinal Herb', turnsToGrow: 150, minYield: 1, maxYield: 3, xp: 20 },
                 'Wildberry Seed': { yields: 'Wildberry', turnsToGrow: 100, minYield: 2, maxYield: 4, xp: 15 },
+                'Cactus Seed': { yields: 'Cactus Fruit', turnsToGrow: 120, minYield: 1, maxYield: 3, xp: 20 },
                 'Bluecap Spore': { yields: 'Bluecap Mushroom', turnsToGrow: 200, minYield: 1, maxYield: 3, xp: 30 },
                 'Moonbloom Bulb': { yields: 'Moonbloom Petal', turnsToGrow: 400, minYield: 1, maxYield: 2, xp: 100 }
             }
@@ -76,16 +92,13 @@ window.ExpansionManager.register({
         if (typeof chunkManager !== 'undefined' && chunkManager.generateCampsite) {
             const originalGenerateCampsite = chunkManager.generateCampsite;
             chunkManager.generateCampsite = function() {
-                const map = originalGenerateCampsite.call(this); // Call original
+                const map = originalGenerateCampsite.call(this); 
                 
-                // Safe check if engine hasn't booted fully
                 if (typeof gameState === 'undefined' || !gameState.player) return map;
                 
                 const upgrades = gameState.player.campsiteUpgrades || [];
                 
                 // Safe Array Bounds Checking
-                // Prevents crashing if the base campsite map is ever altered to be smaller 
-                // in data-maps.js, or if a malformed array is returned.
                 if (map && map[1]) {
                     if (upgrades.includes('garden1') && map[1][2] !== undefined) map[1][2] = '🟫';
                     if (upgrades.includes('garden2') && map[1][5] !== undefined) map[1][5] = '🟫';
@@ -180,7 +193,7 @@ window.ExpansionManager.register({
                                     return;
                                 }
                                 
-                                btn.disabled = true; // Prevent double clicks
+                                btn.disabled = true; 
                                 
                                 consumeReqs();
                                 p.campsiteUpgrades.push(id);
@@ -200,7 +213,6 @@ window.ExpansionManager.register({
                             };
                         };
 
-                        // Re-bind actions with the new affordability check
                         bindUpgrade('stash', 
                             () => countMatCurrent('Wood Log') >= 10 && countMatCurrent('Stone') >= 5, 
                             () => { consume('Wood Log', 10); consume('Stone', 5); }, 
@@ -249,13 +261,14 @@ window.ExpansionManager.register({
                     return null;
                 };
             }
-        }, 500); // Tiny timeout ensures data-maps.js is fully loaded
+        }, 500); 
 
         // ==========================================
         // 4. FARMING LOGIC & UI EXPORTS
         // ==========================================
-        // We export these to the window so the DOM buttons can trigger them
         
+        let isFarmingProcessing = false; // 🚨 EXPLOIT FIX WIN: Mutex lock for fast clicking
+
         window.openFarmingModal = function() {
             if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
@@ -273,9 +286,10 @@ window.ExpansionManager.register({
             if (!player.gardenPlots) player.gardenPlots = [null, null, null];
             const upgrades = player.campsiteUpgrades || [];
 
-            // 🚨 PERFORMANCE WIN: Single pass seed tallying instead of array filtering inside loops
+            // 🚨 PERFORMANCE WIN: Single pass seed tallying
             const seedCounts = {};
             let hasWater = false;
+            let hasBoneMeal = false;
             
             for (let i = 0; i < player.inventory.length; i++) {
                 const itm = player.inventory[i];
@@ -285,6 +299,8 @@ window.ExpansionManager.register({
                     seedCounts[itm.name] = (seedCounts[itm.name] || 0) + itm.quantity;
                 } else if (itm.name === 'Flask of Water') {
                     hasWater = true;
+                } else if (itm.name === 'Bone Meal') {
+                    hasBoneMeal = true;
                 }
             }
 
@@ -306,7 +322,7 @@ window.ExpansionManager.register({
 
                 if (!isUnlocked) {
                     div.innerHTML = `
-                        <div class="flex items-center gap-4 opacity-50">
+                        <div class="flex items-center gap-4 opacity-50 w-full">
                             <div class="text-4xl">🔒</div>
                             <div>
                                 <h3 class="font-bold text-gray-500 text-lg">Plot Locked</h3>
@@ -316,18 +332,16 @@ window.ExpansionManager.register({
                     `;
                 } 
                 else if (!plot) {
-                    // Plot is empty and ready to plant
-                    // 🚨 SECURITY & PERFORMANCE WIN: Removed inline onclick="plantSeed(i)" for data-action attributes
                     div.innerHTML = `
-                        <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-4 w-full">
                             <div class="text-4xl drop-shadow-md">🟫</div>
-                            <div class="w-full sm:w-auto">
+                            <div class="w-full flex-grow">
                                 <h3 class="font-bold text-yellow-600 text-lg" style="font-family: 'Uncial Antiqua', cursive;">Empty Plot</h3>
                                 <div class="flex items-center gap-2 mt-2 w-full">
-                                    <select id="seedSelect_${i}" class="bg-gray-800 text-white border border-gray-600 rounded p-2 text-sm w-full sm:w-48 outline-none focus:border-green-500">
+                                    <select id="seedSelect_${i}" class="bg-gray-800 text-white border border-gray-600 rounded p-2 text-sm w-full outline-none focus:border-green-500">
                                         ${seedOptions}
                                     </select>
-                                    <button data-action="plant" data-plot="${i}" class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded shadow-md border-b-2 border-green-800 active:scale-95 active:border-b-0 active:mt-0.5">Plant</button>
+                                    <button data-action="plant" data-plot="${i}" class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded shadow-md border-b-2 border-green-800 active:scale-95 active:border-b-0 active:mt-0.5 whitespace-nowrap">Plant</button>
                                 </div>
                             </div>
                         </div>
@@ -345,17 +359,16 @@ window.ExpansionManager.register({
                     
                     let icon = '🪴';
                     if (isReady) {
-                        // Determine mature crop icon
                         if (seedData.yields === 'Bluecap Mushroom') icon = '🍄';
                         else if (seedData.yields === 'Moonbloom Petal') icon = '🌺';
+                        else if (seedData.yields === 'Cactus Fruit') icon = '🌵';
                         else icon = '🌿';
                     }
 
                     let statusHtml = '';
                     if (isReady) {
-                        // 🚨 SECURITY & PERFORMANCE WIN: Removed inline onclick for data-action attributes
                         statusHtml = `
-                            <div class="w-full">
+                            <div class="w-full flex-grow">
                                 <h3 class="font-bold text-green-400 text-lg" style="font-family: 'Uncial Antiqua', cursive;">Ready for Harvest</h3>
                                 <p class="text-xs text-gray-400 italic">Yields: ${seedData.yields}</p>
                             </div>
@@ -370,10 +383,16 @@ window.ExpansionManager.register({
                                 </div>
                                 <p class="text-[10px] text-gray-500 mt-1 uppercase tracking-widest text-right">${Math.floor(progress)}% Grown</p>
                             </div>
-                            <button data-action="water" data-plot="${i}" class="${hasWater ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-700 opacity-50 cursor-not-allowed'} text-white font-bold py-2 px-4 rounded shadow-md border-b-2 ${hasWater ? 'border-blue-800 active:scale-95 active:border-b-0 active:mt-0.5' : 'border-gray-800'} whitespace-nowrap flex flex-col items-center" ${hasWater ? '' : 'disabled'}>
-                                <span>Water</span>
-                                <span class="text-[9px] font-normal opacity-80">(Requires Flask)</span>
-                            </button>
+                            <div class="flex gap-2">
+                                <button data-action="water" data-plot="${i}" class="${hasWater && !plot.watered ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-700 opacity-50 cursor-not-allowed'} text-white font-bold py-2 px-3 rounded shadow-md border-b-2 ${hasWater && !plot.watered ? 'border-blue-800 active:scale-95 active:border-b-0 active:mt-0.5' : 'border-gray-800'} whitespace-nowrap flex flex-col items-center" ${hasWater && !plot.watered ? '' : 'disabled'}>
+                                    <span>Water</span>
+                                    <span class="text-[9px] font-normal opacity-80">(Needs Flask)</span>
+                                </button>
+                                <button data-action="fertilize" data-plot="${i}" class="${hasBoneMeal ? 'bg-purple-600 hover:bg-purple-500' : 'bg-gray-700 opacity-50 cursor-not-allowed'} text-white font-bold py-2 px-3 rounded shadow-md border-b-2 ${hasBoneMeal ? 'border-purple-800 active:scale-95 active:border-b-0 active:mt-0.5' : 'border-gray-800'} whitespace-nowrap flex flex-col items-center" ${hasBoneMeal ? '' : 'disabled'}>
+                                    <span>Fertilize</span>
+                                    <span class="text-[9px] font-normal opacity-80">(Needs Bone Meal)</span>
+                                </button>
+                            </div>
                         `;
                     }
 
@@ -395,160 +414,163 @@ window.ExpansionManager.register({
         };
 
         window.plantSeed = function(plotIndex) {
-            const select = document.getElementById(`seedSelect_${plotIndex}`);
-            const seedName = select ? select.value : null;
+            if (isFarmingProcessing) return;
+            isFarmingProcessing = true;
 
-            if (!seedName) {
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                return;
-            }
+            try {
+                const select = document.getElementById(`seedSelect_${plotIndex}`);
+                const seedName = select ? select.value : null;
 
-            const player = gameState.player;
-            const invIndex = player.inventory.findIndex(i => i && i.name === seedName && !i.isEquipped);
-
-            if (invIndex > -1) {
-                // Consume seed
-                player.inventory[invIndex].quantity--;
-                if (player.inventory[invIndex].quantity <= 0) {
-                    player.inventory.splice(invIndex, 1);
+                if (!seedName) {
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                    return;
                 }
 
-                // Set plot data
-                player.gardenPlots[plotIndex] = {
-                    seedName: seedName,
-                    plantedAt: gameState.playerTurnCount,
-                    watered: false
-                };
+                const player = gameState.player;
+                const invIndex = player.inventory.findIndex(i => i && i.name === seedName && !i.isEquipped);
 
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playDig(player.x);
-                if (typeof logMessage === 'function') logMessage(`{green:You planted a ${seedName} in the earth.}`);
-                
-                // Save
-                if (typeof triggerDebouncedSave === 'function') {
-                    triggerDebouncedSave({ gardenPlots: player.gardenPlots, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory });
+                if (invIndex > -1) {
+                    // Consume seed
+                    player.inventory[invIndex].quantity--;
+                    if (player.inventory[invIndex].quantity <= 0) {
+                        player.inventory.splice(invIndex, 1);
+                    }
+
+                    // Set plot data
+                    player.gardenPlots[plotIndex] = {
+                        seedName: seedName,
+                        plantedAt: gameState.playerTurnCount,
+                        watered: false
+                    };
+
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playDig(player.x);
+                    if (typeof logMessage === 'function') logMessage(`{green:You planted a ${seedName} in the earth.}`);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#16a34a', 10);
+                    
+                    // Save
+                    if (typeof triggerDebouncedSave === 'function') {
+                        triggerDebouncedSave({ gardenPlots: player.gardenPlots, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory });
+                    }
+                    
+                    if (typeof window.renderFarmingModal === 'function') window.renderFarmingModal();
                 }
-                
-                if (typeof window.renderFarmingModal === 'function') window.renderFarmingModal();
+            } finally {
+                isFarmingProcessing = false;
             }
         };
 
         window.waterPlot = function(plotIndex) {
-            const player = gameState.player;
-            const plot = player.gardenPlots[plotIndex];
+            if (isFarmingProcessing) return;
+            isFarmingProcessing = true;
 
-            if (!plot) return;
-            if (plot.watered) {
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                if (typeof logMessage === 'function') logMessage("{gray:This plot is already well-watered.}");
-                return;
-            }
+            try {
+                const player = gameState.player;
+                const plot = player.gardenPlots[plotIndex];
 
-            const waterIdx = player.inventory.findIndex(i => i && i.name === 'Flask of Water' && !i.isEquipped);
-            if (waterIdx > -1) {
-                // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Bottle Re-Injection
-                // If you consume a Flask of Water to water a plant, you receive an Empty Bottle.
-                // We MUST safely drop it on the ground if the inventory is somehow full!
-                player.inventory[waterIdx].quantity--;
-                
-                // Track if consuming the flask actually freed up the slot entirely
-                const freesSlot = (player.inventory[waterIdx].quantity <= 0) ? 1 : 0;
-                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+                if (!plot || plot.watered) return;
 
-                const bottleIdx = player.inventory.findIndex(i => i && i.name === 'Empty Bottle' && !i.isEquipped);
-                if (bottleIdx > -1) {
-                    player.inventory[bottleIdx].quantity++;
-                } else if (player.inventory.length - freesSlot < invCap) {
-                    player.inventory.push({ templateId: '🫙', name: 'Empty Bottle', type: 'consumable', quantity: 1, tile: '🫙' });
-                } else {
-                    if (typeof logMessage === 'function') logMessage("{red:Inventory full! The empty bottle falls to the ground.}");
+                const waterIdx = player.inventory.findIndex(i => i && i.name === 'Flask of Water' && !i.isEquipped);
+                if (waterIdx > -1) {
+                    // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Bottle Re-Injection
+                    player.inventory[waterIdx].quantity--;
                     
-                    // Safe Outward Spiral Drop
-                    let placed = false;
-                    let validFloor = '.';
-                    if (gameState.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[gameState.currentCaveTheme]) {
-                        validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
+                    // Track if consuming the flask actually freed up the slot entirely
+                    const freesSlot = (player.inventory[waterIdx].quantity <= 0) ? 1 : 0;
+                    const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+
+                    const bottleIdx = player.inventory.findIndex(i => i && i.name === 'Empty Bottle' && !i.isEquipped);
+                    if (bottleIdx > -1) {
+                        player.inventory[bottleIdx].quantity++;
+                    } else if (player.inventory.length - freesSlot < invCap) {
+                        player.inventory.push({ templateId: '🫙', name: 'Empty Bottle', type: 'consumable', quantity: 1, tile: '🫙' });
+                    } else {
+                        if (typeof logMessage === 'function') logMessage("{red:Inventory full! The empty bottle falls to the ground.}");
+                        if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
+                            window.EventManager.safeDropItem(gameState, player.x, player.y, '🫙');
+                        }
                     }
 
-                    if (typeof chunkManager !== 'undefined') {
-                        for (let r = 0; r <= 2 && !placed; r++) {
-                            for (let dy = -r; dy <= r && !placed; dy++) {
-                                for (let dx = -r; dx <= r && !placed; dx++) {
-                                    const tx = player.x + dx;
-                                    const ty = player.y + dy;
-                                    let tileAt;
-                                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
-                                    else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
-                                    else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
+                    // Splice the consumed flask
+                    if (freesSlot) player.inventory.splice(waterIdx, 1);
 
-                                    if (tileAt === validFloor || tileAt === '.') {
-                                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(tx, ty, '🫙', 24);
-                                        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = '🫙';
-                                        else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = '🫙';
-                                        placed = true;
-                                    }
-                                }
-                            }
-                        }
-                        if (!placed) { // Absolute fallback
-                            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(player.x, player.y, '🫙', 24);
-                            else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = '🫙';
-                            else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = '🫙';
-                        }
-                        gameState.mapDirty = true;
+                    plot.watered = true;
+                    // Watering speeds up growth by jumping the plantedAt time back by 30 turns!
+                    plot.plantedAt -= 30; 
+
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.05, 500); // Splash
+                    if (typeof logMessage === 'function') logMessage(`{blue:You watered the ${plot.seedName}. It looks healthier!}`);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "WATERED", "#3b82f6");
+
+                    if (typeof triggerDebouncedSave === 'function') {
+                        triggerDebouncedSave({ gardenPlots: player.gardenPlots, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory });
                     }
+
+                    if (typeof window.renderFarmingModal === 'function') window.renderFarmingModal();
                 }
+            } finally {
+                isFarmingProcessing = false;
+            }
+        };
 
-                // Splice the consumed flask
-                if (freesSlot) player.inventory.splice(waterIdx, 1);
+        window.fertilizePlot = function(plotIndex) {
+            if (isFarmingProcessing) return;
+            isFarmingProcessing = true;
 
-                plot.watered = true;
-                // Watering speeds up growth by jumping the plantedAt time back by 25 turns!
-                plot.plantedAt -= 25; 
+            try {
+                const player = gameState.player;
+                const plot = player.gardenPlots[plotIndex];
 
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.05, 500); // Splash
-                if (typeof logMessage === 'function') logMessage(`{blue:You watered the ${plot.seedName}. It looks healthier!}`);
+                if (!plot) return;
 
-                if (typeof triggerDebouncedSave === 'function') {
-                    triggerDebouncedSave({ gardenPlots: player.gardenPlots, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory });
+                const boneIdx = player.inventory.findIndex(i => i && i.name === 'Bone Meal' && !i.isEquipped);
+                if (boneIdx > -1) {
+                    player.inventory[boneIdx].quantity--;
+                    if (player.inventory[boneIdx].quantity <= 0) player.inventory.splice(boneIdx, 1);
+
+                    // Instantly mature the crop by jumping plantedAt to -1000
+                    plot.plantedAt -= 1000; 
+
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                    if (typeof logMessage === 'function') logMessage(`{purple:The Bone Meal works instantly! The ${plot.seedName} bursts into full bloom!}`);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#a855f7', 20);
+
+                    if (typeof triggerDebouncedSave === 'function') {
+                        triggerDebouncedSave({ gardenPlots: player.gardenPlots, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory });
+                    }
+
+                    if (typeof window.renderFarmingModal === 'function') window.renderFarmingModal();
                 }
-
-                if (typeof window.renderFarmingModal === 'function') window.renderFarmingModal();
+            } finally {
+                isFarmingProcessing = false;
             }
         };
 
         window.harvestPlot = function(plotIndex) {
-            const player = gameState.player;
-            const plot = player.gardenPlots[plotIndex];
-            if (!plot) return;
+            if (isFarmingProcessing) return;
+            isFarmingProcessing = true;
 
-            const seedData = window.FARMING_DATA.seeds[plot.seedName];
-            if (!seedData) return;
+            try {
+                const player = gameState.player;
+                const plot = player.gardenPlots[plotIndex];
+                if (!plot) return;
 
-            // Capacity check
-            const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
-            const existingStack = player.inventory.find(i => i && i.name === seedData.yields && !i.isEquipped);
-            
-            if (!existingStack && player.inventory.length >= invCap) {
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                if (typeof logMessage === 'function') logMessage(`{red:Your inventory is full! Make space before harvesting.}`);
-                return;
-            }
+                const seedData = window.FARMING_DATA.seeds[plot.seedName];
+                if (!seedData) return;
 
-            // Determine Yield
-            let yieldAmount = Math.floor(Math.random() * (seedData.maxYield - seedData.minYield + 1)) + seedData.minYield;
-            
-            // Talents & Bonuses
-            if (player.talents && player.talents.includes('survivalist')) {
-                yieldAmount += 1; // Survivalist guarantees extra crop!
-            }
-            if (plot.watered && Math.random() < 0.5) {
-                yieldAmount += 1; // Watering gives chance for extra
-            }
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+                const existingStack = player.inventory.find(i => i && i.name === seedData.yields && !i.isEquipped);
+                
+                // Determine Yield
+                let yieldAmount = Math.floor(Math.random() * (seedData.maxYield - seedData.minYield + 1)) + seedData.minYield;
+                
+                // Talents & Bonuses
+                if (player.talents && player.talents.includes('survivalist')) {
+                    yieldAmount += 1; // Survivalist guarantees extra crop!
+                }
+                if (plot.watered && Math.random() < 0.5) {
+                    yieldAmount += 1; // Watering gives chance for extra
+                }
 
-            // Give Item
-            if (existingStack) {
-                existingStack.quantity += yieldAmount;
-            } else {
                 // 🚨 ROBUSTNESS WIN: Fetch base template safely using the O(1) cache!
                 let baseKey = null;
                 if (typeof window.getFarmItemKey === 'function') {
@@ -556,58 +578,72 @@ window.ExpansionManager.register({
                 } else if (typeof window.ITEM_DATA !== 'undefined') {
                     baseKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === seedData.yields);
                 }
-
                 const template = window.ITEM_DATA[baseKey] || { type: 'ingredient', tile: '🌿' };
-                
-                // 🚨 BUG FIX & ROBUSTNESS WIN: Safe deep clone to guarantee traits/effects don't bleed reference
-                let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
-                newItem.templateId = baseKey;
-                newItem.name = seedData.yields;
-                newItem.type = template.type || 'ingredient';
-                newItem.quantity = yieldAmount;
-                newItem.tile = template.tile || '🌿';
-                newItem.isEquipped = false;
-                
-                // Explicit function re-binds for safety
-                newItem.effect = template.effect || null;
-                newItem.onHit = template.onHit || null;
-                
-                player.inventory.push(newItem);
+
+                // Give Item safely
+                if (existingStack) {
+                    existingStack.quantity += yieldAmount;
+                    if (typeof logMessage === 'function') logMessage(`{gold:You harvested ${yieldAmount}x ${seedData.yields}! (+${seedData.xp} Farming XP)}`);
+                } 
+                else if (player.inventory.length < invCap) {
+                    // Safe deep clone
+                    let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
+                    newItem.templateId = baseKey;
+                    newItem.name = seedData.yields;
+                    newItem.type = template.type || 'ingredient';
+                    newItem.quantity = yieldAmount;
+                    newItem.tile = template.tile || '🌿';
+                    newItem.isEquipped = false;
+                    
+                    // Explicit function re-binds for safety
+                    newItem.effect = template.effect || null;
+                    newItem.onHit = template.onHit || null;
+                    
+                    player.inventory.push(newItem);
+                    if (typeof logMessage === 'function') logMessage(`{gold:You harvested ${yieldAmount}x ${seedData.yields}! (+${seedData.xp} Farming XP)}`);
+                } 
+                else {
+                    // 🚨 BUG FIX & QoL WIN: Inventory is full! Drop it safely to the ground!
+                    if (typeof logMessage === 'function') logMessage(`{red:Your pack is full! The ${seedData.yields} falls to the ground.}`);
+                    if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
+                        window.EventManager.safeDropItem(gameState, player.x, player.y, template.tile || '🌿');
+                    }
+                }
+
+                // Give Farming XP
+                player.farmingXp = (player.farmingXp || 0) + seedData.xp;
+                const xpNeeded = (player.farmingLevel || 1) * 50;
+
+                if (player.farmingXp >= xpNeeded) {
+                    player.farmingXp -= xpNeeded;
+                    player.farmingLevel = (player.farmingLevel || 1) + 1;
+                    if (typeof logMessage === 'function') logMessage(`{green:FARMING LEVEL UP! You are now a Level ${player.farmingLevel} Botanist.}`);
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                } else {
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+                }
+
+                // Track Metric
+                if (!player.metrics) player.metrics = {};
+                player.metrics.cropsHarvested = (player.metrics.cropsHarvested || 0) + yieldAmount;
+
+                // Reset Plot
+                player.gardenPlots[plotIndex] = null;
+
+                if (typeof triggerDebouncedSave === 'function') {
+                    triggerDebouncedSave({ 
+                        gardenPlots: player.gardenPlots, 
+                        inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory,
+                        farmingXp: player.farmingXp,
+                        farmingLevel: player.farmingLevel,
+                        metrics: player.metrics
+                    });
+                }
+
+                if (typeof window.renderFarmingModal === 'function') window.renderFarmingModal();
+            } finally {
+                isFarmingProcessing = false;
             }
-
-            // Give Farming XP
-            player.farmingXp = (player.farmingXp || 0) + seedData.xp;
-            const xpNeeded = (player.farmingLevel || 1) * 50;
-            
-            if (typeof logMessage === 'function') logMessage(`{gold:You harvested ${yieldAmount}x ${seedData.yields}! (+${seedData.xp} Farming XP)}`);
-
-            if (player.farmingXp >= xpNeeded) {
-                player.farmingXp -= xpNeeded;
-                player.farmingLevel = (player.farmingLevel || 1) + 1;
-                if (typeof logMessage === 'function') logMessage(`{green:FARMING LEVEL UP! You are now a Level ${player.farmingLevel} Botanist.}`);
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-            } else {
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
-            }
-
-            // Track Metric
-            if (!player.metrics) player.metrics = {};
-            player.metrics.cropsHarvested = (player.metrics.cropsHarvested || 0) + yieldAmount;
-
-            // Reset Plot
-            player.gardenPlots[plotIndex] = null;
-
-            if (typeof triggerDebouncedSave === 'function') {
-                triggerDebouncedSave({ 
-                    gardenPlots: player.gardenPlots, 
-                    inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory,
-                    farmingXp: player.farmingXp,
-                    farmingLevel: player.farmingLevel,
-                    metrics: player.metrics
-                });
-            }
-
-            if (typeof window.renderFarmingModal === 'function') window.renderFarmingModal();
         };
 
         // 🚨 SECURITY & PERFORMANCE WIN: Event Delegation for Farming Modal
@@ -637,6 +673,7 @@ window.ExpansionManager.register({
 
                     if (action === 'plant') window.plantSeed(plotIndex);
                     else if (action === 'water') window.waterPlot(plotIndex);
+                    else if (action === 'fertilize') window.fertilizePlot(plotIndex);
                     else if (action === 'harvest') window.harvestPlot(plotIndex);
                 });
                 farmingList.dataset.listenersBound = 'true';
