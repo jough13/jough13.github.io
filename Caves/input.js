@@ -49,11 +49,30 @@ const HOTKEY_MAPPINGS = {
 const _modalCache = {
     collection: null,
     getActive: () => {
+        // Grab the live HTMLCollection of all modals
         if (!_modalCache.collection) _modalCache.collection = document.getElementsByClassName('modal-overlay');
+        
+        let topModal = null;
+        let highestZ = -1;
+        
         for (let i = 0; i < _modalCache.collection.length; i++) {
-            if (!_modalCache.collection[i].classList.contains('hidden')) return _modalCache.collection[i];
+            const modal = _modalCache.collection[i];
+            
+            if (!modal.classList.contains('hidden')) {
+                // Parse the z-index safely (browsers sometimes return 'auto' which becomes NaN)
+                const zIndexStr = window.getComputedStyle(modal).zIndex;
+                const z = zIndexStr === 'auto' ? 0 : (parseInt(zIndexStr, 10) || 0);
+                
+                // Use >= instead of > 
+                // If two modals have the exact same z-index, the browser renders the one 
+                // that appears LATER in the HTML file on top. >= ensures the later DOM element wins!
+                if (z >= highestZ) {
+                    highestZ = z;
+                    topModal = modal;
+                }
+            }
         }
-        return null;
+        return topModal;
     },
     isAnyOpen: () => !!_modalCache.getActive()
 };
