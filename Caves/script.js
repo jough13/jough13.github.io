@@ -294,41 +294,12 @@ async function manualSaveGame() {
 
     logMessage("💾 Saving game to the cloud...");
 
-    // Force any pending debounced saves to happen first
-    flushPendingSave(); 
-    
-    // Only attempt to save if we have a valid database reference
-    if (playerRef) {
-        // Explicitly gather ALL engine state so we don't lose map memory on logout!
-        const finalState = {
-            ...gameState.player,
-            inventory: getSanitizedInventory(),
-            equipment: getSanitizedEquipment(),
-            bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : (gameState.player.bank || []),
-            lootedTiles: Object.fromEntries(gameState.lootedTiles),
-            discoveredRegions: Array.from(gameState.discoveredRegions),
-            exploredChunks: Array.from(gameState.exploredChunks),
-            foundLore: Array.from(gameState.foundLore || []),
-            foundCodexEntries: Array.from(gameState.foundCodexEntries || []),
-            shopStates: gameState.shopStates || {},
-            activeTreasure: gameState.activeTreasure || null,
-        };
-
-        // Remove ephemeral visual properties
-        delete finalState.color;
-        delete finalState.character;
-
-        // Save to Firestore
-        playerRef.set(sanitizeForFirebase(finalState), { merge: true }).catch(err => {
-            console.error("Error saving on logout:", err);
-        });
-    }
-
     try {
-        // Use set with merge to ensure a clean overwrite with the current state
-        await playerRef.set(sanitizeForFirebase(finalState), { merge: true });
-        logMessage("{green:Game saved successfully!}");
+        // By passing an empty object, we force the flush to execute immediately
+        // and scrape the live state natively!
+        flushPendingSave({ _forceManualSave: true });
         
+        logMessage("{green:Game saved successfully!}");
         if (saveBtn) {
             saveBtn.textContent = "✅ Saved!";
             setTimeout(() => { 
