@@ -557,20 +557,38 @@ window.ExpansionManager.register({
                     if (typeof renderEquipment === 'function') renderEquipment();
                     if (typeof render === 'function') render();
 
-                    // Explicit Firebase Deletion
-                    // Using the native delete keyword locally doesn't tell Firebase to remove it from the DB during an update()!
-                    const deleteField = typeof window.getFirestoreDelete === 'function' ? window.getFirestoreDelete() : (typeof firebase !== 'undefined' ? firebase.firestore.FieldValue.delete() : null);
+                    // Safe Firebase Deletion
+                    // Wrapped in a try-catch to prevent a fatal ReferenceError if the Firebase 
+                    // SDK hasn't fully initialized due to a spotty connection!
+                    let deleteField = null;
+                    try {
+                        if (typeof window.getFirestoreDelete === 'function') {
+                            deleteField = window.getFirestoreDelete();
+                        } else if (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue) {
+                            deleteField = firebase.firestore.FieldValue.delete();
+                        }
+                    } catch (e) {
+                        console.warn("[AKASHIC ENGINE] Failed to fetch Firestore delete token. Falling back to null.");
+                        deleteField = null;
+                    }
 
                     // Force DB Save
-                    if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({
-                        inSpire: false,
-                        inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory,
-                        equipment: typeof getSanitizedEquipment === 'function' ? getSanitizedEquipment() : gameState.player.equipment,
-                        currentRealm: 0,
-                        realmMutators: [],
-                        spireBackupInv: deleteField,
-                        spireBackupEquip: deleteField
-                    });
+                    if (typeof triggerDebouncedSave === 'function') {
+                        const deathPayload = {
+                            inSpire: false,
+                            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory,
+                            equipment: typeof getSanitizedEquipment === 'function' ? getSanitizedEquipment() : gameState.player.equipment,
+                            currentRealm: 0,
+                            realmMutators: []
+                        };
+                        
+                        // If we got the proper delete token, tell Firestore to erase the backups. 
+                        // Otherwise, setting them to null accomplishes the same memory-clearing goal!
+                        deathPayload.spireBackupInv = deleteField !== null ? deleteField : null;
+                        deathPayload.spireBackupEquip = deleteField !== null ? deleteField : null;
+                        
+                        triggerDebouncedSave(deathPayload);
+                    }
 
                     return true; // We handled death! Abort normal permadeath wipe!
                 }
