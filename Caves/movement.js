@@ -132,8 +132,21 @@ async function claimWorldTile(x, y, expectedTile) {
     
     const tileRef = rtdb.ref(`worldState/${realmPrefix}${chunkId}/${tileKey}`);
     
-    // 🚨 BUG FIX: Determine what terrain should be left behind when the item is picked up
-    const baseTerrain = typeof getBaseTerrain === 'function' ? getBaseTerrain(x, y) : '.';
+    // Context-Aware Terrain Erasure
+    // Accurately determine what floor tile should be left behind when the item is picked up
+    // to prevent spawning Overworld Mountains inside Dungeon Hallways!
+    let baseTerrain = '.';
+    
+    if (gameState.mapMode === 'dungeon') {
+        if (typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[gameState.currentCaveTheme]) {
+            baseTerrain = CAVE_THEMES[gameState.currentCaveTheme].floor;
+        }
+    } else if (gameState.mapMode === 'castle') {
+        baseTerrain = '.'; // Castles always use '.' for their open paths
+    } else {
+        // Overworld and Underworld use procedural noise evaluation
+        baseTerrain = typeof getBaseTerrain === 'function' ? getBaseTerrain(x, y) : '.';
+    }
     
     try {
         const txResult = await tileRef.transaction(currentData => {
@@ -144,7 +157,7 @@ async function claimWorldTile(x, y, expectedTile) {
             // If it is NOT null, we check if it matches the expected tile to prevent dupes.
             if (currentData !== null && currentVal !== expectedTile) return undefined; 
             
-            // Erase the item by setting the tile permanently to the base terrain instead of null!
+            // Erase the item by setting the tile permanently to the correct contextual terrain!
             return { t: baseTerrain }; 
         });
         
