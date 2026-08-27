@@ -2,7 +2,8 @@
 
 // Globals
 
-let pendingSaveData = null;
+let pendingExplicitUpdates = {};
+let isSaveQueued = false;
 let activeChatRef = null; // Memory Leak Protection: Track the specific query ref
 
 // Groups map coordinates into 50x50 chunk sectors for efficient Firestore Subcollections
@@ -81,61 +82,93 @@ function validateStateBeforeSave(currentState) {
 
 /**
  * Queues a Firestore update. If another update comes in before the timer fires,
- * the previous one is cancelled and the new one takes its place.
+ * it extends the queue. State is scraped LIVE when the timer fires to prevent data staleness.
  */
+function triggerDebouncedSave(updates = {}) {
+    // 1. Clone the incoming payload
+    const safeUpdates = { ...updates };
+    
+    // 2. STRIP VOLATILE DATA
+    // We actively delete rapidly changing variables from the cached payload.
+    // This forces the engine to scrape the *live* state when the timer finally fires,
+    // guaranteeing no items or gold are lost while waiting!
+    const volatileKeys = [
+        'inventory', 'bank', 'equipment', 'coins', 'health', 'mana', 'stamina', 
+        'psyche', 'xp', 'level', 'statPoints', 'metrics', 'quests', 'killCounts', 
+        'lootedTiles', 'foundLore', 'exploredChunks'
+    ];
+    volatileKeys.forEach(key => delete safeUpdates[key]);
 
-function triggerDebouncedSave(updates) {
-    // Strip out legacy massive arrays to prevent 1MB Firestore blowout
-    delete updates.exploredChunks;
-    delete updates.foundLore;
-    delete updates.lootedTiles;
+    // 3. Store explicit overrides (like FieldValue.delete() from the Spire expansion)
+    pendingExplicitUpdates = { ...pendingExplicitUpdates, ...safeUpdates };
 
-    // Merge new updates into existing pending data safely
-    if (pendingSaveData === null) {
-        pendingSaveData = { ...updates };
-    } else {
-        pendingSaveData = { ...pendingSaveData, ...updates };
+    if (!isSaveQueued) {
+        isSaveQueued = true;
+        
+        // Reduced from 3 minutes (180000ms) to 15 seconds (15000ms).
+        // 15 seconds perfectly balances saving Firestore write quotas while 
+        // ensuring the player never loses meaningful progress if their browser crashes!
+        saveTimeout = setTimeout(() => {
+            flushPendingSave();
+        }, 15000); 
     }
-
-    if (saveTimeout) return;
-
-    // Set to 3 minutes (180000ms)
-    saveTimeout = setTimeout(() => {
-        flushPendingSave();
-    }, 180000); 
 }
 
-function flushPendingSave(updates = null) {
+function flushPendingSave(immediateUpdates = {}) {
     if (saveTimeout) {
         clearTimeout(saveTimeout);
         saveTimeout = null;
     }
     
-    const dataToSave = updates || pendingSaveData;
+    if (!isSaveQueued && Object.keys(immediateUpdates).length === 0) return;
+
     const saveIcon = document.getElementById('saveIndicator');
     
-    if (dataToSave && playerRef) {
-        // Strip legacy arrays
+    if (playerRef) {
+        // --- 1. SCRAPE LIVE STATE ---
+        // This guarantees we capture all items, gold, and xp acquired during the debounce wait!
+        const liveState = {
+            ...gameState.player,
+            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory,
+            equipment: typeof getSanitizedEquipment === 'function' ? getSanitizedEquipment() : gameState.player.equipment,
+            bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : (gameState.player.bank || []),
+            
+            // Root-level map state
+            mapMode: gameState.mapMode || 'overworld',
+            mapId: gameState.currentCaveId || gameState.currentCastleId || null,
+            currentRealm: gameState.currentRealm || 0,
+            realmMutators: gameState.realmMutators || [],
+            activeTreasure: gameState.activeTreasure || null,
+            shopStates: gameState.shopStates || {}
+        };
+
+        // --- 2. MERGE COMMANDS ---
+        // Applies FieldValue.delete() commands and immediate overrides over the live state
+        const dataToSave = { ...liveState, ...pendingExplicitUpdates, ...immediateUpdates };
+
+        // --- 3. STRIP SUBCOLLECTION ARRAYS ---
+        // These are handled by the batch generator below. If left in the main doc, it blows up the 1MB limit.
         delete dataToSave.exploredChunks;
         delete dataToSave.foundLore;
         delete dataToSave.lootedTiles;
 
         // --- LEGACY MIGRATION CLEANUP ---
         if (gameState.needsLegacyMapCleanup) {
-            dataToSave.exploredChunks = firebase.firestore.FieldValue.delete();
-            dataToSave.foundLore = firebase.firestore.FieldValue.delete();
-            dataToSave.lootedTiles = firebase.firestore.FieldValue.delete();
+            const deleteField = typeof window.getFirestoreDelete === 'function' ? window.getFirestoreDelete() : (typeof firebase !== 'undefined' ? firebase.firestore.FieldValue.delete() : null);
+            if (deleteField) {
+                dataToSave.exploredChunks = deleteField;
+                dataToSave.foundLore = deleteField;
+                dataToSave.lootedTiles = deleteField;
+            }
             gameState.needsLegacyMapCleanup = false;
         }
 
-        // 🚨 STABILITY WIN: Dynamic Batch Generator
-        // Firebase has a hard cap of 500 operations per batch. 
-        // We track ops and dynamically spin up new batches to prevent crashing!
+        // Dynamic Batch Generator
         const batches = [db.batch()];
         let opCount = 0;
         
         const getBatch = () => {
-            if (opCount >= 490) { // Safe buffer
+            if (opCount >= 450) { // Safe buffer before 500 limit
                 batches.push(db.batch());
                 opCount = 0;
             }
@@ -145,7 +178,7 @@ function flushPendingSave(updates = null) {
 
         let hasMapData = false;
 
-        // --- 1. PROCESS MAP SUBCOLLECTIONS (WITH SPREAD EXPLOIT FIX) ---
+        // --- 4. PROCESS MAP SUBCOLLECTIONS ---
         if (gameState.pendingMapSaves && 
            (gameState.pendingMapSaves.chunks.size > 0 || 
             gameState.pendingMapSaves.lore.size > 0 || 
@@ -174,15 +207,11 @@ function flushPendingSave(updates = null) {
             }
 
             // Write to subcollection docs (Using strict JS Spread Limits)
-            // Lowered MAX_SPREAD from 1000 to 250.
-            // Older mobile browsers (iOS Safari) have very low Call Stack limits for the Spread Operator (...slice).
-            // A limit of 250 guarantees no crashes while still keeping Firebase writes highly optimized!
             const MAX_SPREAD = 250;
 
             for (const sector in sectorUpdates) {
                 const docRef = playerRef.collection('map_data').doc(sector);
                 
-                // Helper to chunk arrays preventing "Maximum call stack size exceeded"
                 const appendInChunks = (field, arr) => {
                     for (let i = 0; i < arr.length; i += MAX_SPREAD) {
                         const slice = arr.slice(i, i + MAX_SPREAD);
@@ -196,12 +225,8 @@ function flushPendingSave(updates = null) {
                 if (Object.keys(sectorUpdates[sector].looted).length > 0) {
                     const lootedTilesObj = {};
                     for (const [k, v] of Object.entries(sectorUpdates[sector].looted)) {
-                        // We assign the coordinate directly to the nested object
                         lootedTilesObj[k] = (v === null) ? firebase.firestore.FieldValue.delete() : v;
                     }
-                    
-                    // By passing it as a nested map, { merge: true } safely traverses into 'lootedTiles'
-                    // and updates/deletes the specific coordinates without breaking dot-notation parsing!
                     getBatch().set(docRef, { lootedTiles: lootedTilesObj }, { merge: true });
                 }
             }
@@ -210,7 +235,7 @@ function flushPendingSave(updates = null) {
             gameState.pendingMapSaves = { chunks: new Set(), lore: new Set(), looted: {} };
         }
 
-        // --- 2. PROCESS MAIN PLAYER DATA ---
+        // --- 5. PROCESS MAIN PLAYER DATA ---
         if (Object.keys(dataToSave).length > 0) {
             const stateToVerify = { ...gameState.player, ...dataToSave };
             if (!validateStateBeforeSave(stateToVerify)) {
@@ -221,17 +246,16 @@ function flushPendingSave(updates = null) {
             getBatch().update(playerRef, sanitizeForFirebase(dataToSave));
         }
 
-        // --- 3. COMMIT BATCHES ---
+        // --- 6. COMMIT BATCHES ---
         if (hasMapData || Object.keys(dataToSave).length > 0) {
             if (saveIcon) {
                 saveIcon.classList.remove('opacity-0');
                 saveIcon.classList.add('opacity-100');
             }
             
-            // Commit all generated batches concurrently!
             Promise.all(batches.map(b => b.commit())).then(() => {
                 lastValidatedState = { ...gameState.player }; 
-                window.legitimateGoldDelta = 0; // Reset tracking for the next save cycle
+                window.legitimateGoldDelta = 0; 
                 window.legitimateXpDelta = 0;
                 setTimeout(() => {
                     if (saveIcon) {
@@ -245,7 +269,10 @@ function flushPendingSave(updates = null) {
             });
         }
     }
-    pendingSaveData = null;
+    
+    // Reset flags
+    pendingExplicitUpdates = {};
+    isSaveQueued = false;
 }
 
 /**
