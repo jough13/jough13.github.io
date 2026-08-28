@@ -132,29 +132,33 @@ function handleCraftItem(recipeName, requestBatch = false) {
         const batchSize = requestBatch ? Math.floor(maxCraftable) : 1;
         if (batchSize < 1) return;
 
-        // Consume Materials safely
+        // 🚨 BUG FIX WIN: Safe In-Place Array Mutation!
+        // We track the items we need to delete rather than `splicing` while looping backwards.
+        // Array.splice resizes the array, breaking index tracking and sometimes deleting the WRONG item!
+        const itemsToErase = new Set();
+
         for (const matName in recipe.materials) {
             let needed = recipe.materials[matName] * batchSize;
             
             for (let i = player.inventory.length - 1; i >= 0; i--) {
                 if (needed <= 0) break; 
                 const item = player.inventory[i];
-                if (!item) continue; // 🚨 GHOST GUARD
+                if (!item || item.isEquipped) continue; 
                 
-                if (item.name === matName && !item.isEquipped && item.quantity > 0) {
+                if (item.name === matName && item.quantity > 0) {
                     const take = Math.min(item.quantity, needed);
                     item.quantity -= take;
                     needed -= take;
+                    
+                    // Mark for deletion if empty!
+                    if (item.quantity <= 0) itemsToErase.add(i);
                 }
             }
         }
 
-        // 🚨 PERFORMANCE & MEMORY LEAK WIN: In-place Array Mutation
-        // Prevents overwriting the inventory array reference, ensuring external caches remain valid.
-        for (let i = player.inventory.length - 1; i >= 0; i--) {
-            if (player.inventory[i] && player.inventory[i].quantity <= 0) {
-                player.inventory.splice(i, 1);
-            }
+        // Now filter the array cleanly ONCE to remove the depleted materials!
+        if (itemsToErase.size > 0) {
+            player.inventory = player.inventory.filter((_, idx) => !itemsToErase.has(idx));
         }
 
         // --- EXPANSION & LORE WIN: Class/Talent Synergy Calculations ---
