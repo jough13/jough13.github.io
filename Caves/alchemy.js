@@ -1,9 +1,21 @@
 // --- START OF FILE alchemy.js ---
 
+// O(1) Item Lookup Cache for Alchemy
+// 🚀 PERFORMANCE & SECURITY WIN: Object.create(null) prevents prototype poisoning!
+window._alchemyItemKeyCache = window._alchemyItemKeyCache || Object.create(null);
+
+function getAlchemyItemKey(name) {
+    if (window._alchemyItemKeyCache[name]) return window._alchemyItemKeyCache[name];
+    if (typeof window.ITEM_DATA === 'undefined') return null;
+    const key = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === name);
+    if (key) window._alchemyItemKeyCache[name] = key;
+    return key;
+}
+
 window.ExpansionManager.register({
     id: "alchemy_and_throwables",
     name: "Alchemy & Throwables",
-    version: "1.5", // Upgraded version!
+    version: "1.6", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -231,11 +243,12 @@ window.ExpansionManager.register({
                     
                     // Wait 10ms for the DOM to populate, then inject our custom button
                     setTimeout(() => {
+                        const loreTitle = document.getElementById('loreTitle');
                         const loreContent = document.getElementById('loreContent');
                         
-                        // 🚨 BUG FIX WIN: Anti-Duplication Guard
-                        // Prevents the button from spawning twice if the player double-clicks the ledger!
-                        if (loreContent && loreContent.innerHTML.includes('Invest materials') && !document.getElementById('btn_mortar')) {
+                        // 🚨 BUG FIX WIN: Anti-Duplication Guard via Title check
+                        // Prevents the button from spawning if they opened a completely different ledger!
+                        if (loreTitle && loreTitle.textContent === 'Campsite Ledger' && loreContent && !document.getElementById('btn_mortar')) {
                             const p = state.player;
                             const upg = p.campsiteUpgrades || [];
                             
@@ -314,7 +327,7 @@ window.ExpansionManager.register({
             const potionName = abilityId.replace('throwPotion_', '');
             
             // LOCK THE ENGINE
-            if (isProcessingMove) return;
+            if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
 
             try {
                 isProcessingMove = true;
@@ -324,8 +337,8 @@ window.ExpansionManager.register({
                 let potionTemplate = null;
 
                 if (invIndex > -1) {
-                    // Extract template safely to check properties
-                    const pKey = player.inventory[invIndex].templateId || Object.keys(window.ITEM_DATA || {}).find(k => window.ITEM_DATA[k].name === potionName);
+                    // 🚀 PERFORMANCE WIN: High speed cache lookup
+                    const pKey = player.inventory[invIndex].templateId || getAlchemyItemKey(potionName);
                     potionTemplate = pKey ? window.ITEM_DATA[pKey] : null;
                     
                     // Consume the flask
@@ -389,20 +402,25 @@ window.ExpansionManager.register({
                     const checkX = player.x + (dirX * i);
                     const checkY = player.y + (dirY * i);
 
-                    // Draw a faint dust trail to show the arc
+                    // 🎨 JUICE WIN: Parabolic visual arc!
                     if (typeof ParticleSystem !== 'undefined') {
-                        setTimeout(() => { ParticleSystem.spawn(checkX, checkY, '#9ca3af', 'dust', '', 2); }, i * 30);
+                        setTimeout(() => { 
+                            const progress = i / 4; 
+                            const arcHeight = Math.sin(progress * Math.PI) * 1.5; 
+                            ParticleSystem.spawn(checkX, checkY - arcHeight, '#9ca3af', 'dust', '', 2); 
+                        }, i * 30);
                     }
 
                     let tileAt = '.';
                     if (typeof chunkManager !== 'undefined') {
-                        if (gameState.mapMode === 'overworld') tileAt = chunkManager.getTile(checkX, checkY);
+                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(checkX, checkY);
                         else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[checkY]?.[checkX] || ' ';
                         else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[checkY]?.[checkX] || ' ';
                     }
 
+                    // 🚨 BUG FIX WIN: Added `+`, `☒`, and `🔒` to the impassable throw list!
                     // If it hits a solid wall, the flask shatters one tile BEFORE the wall!
-                    if (['▓', '▒', '🧱', '^'].includes(tileAt)) {
+                    if (['▓', '▒', '🧱', '^', '+', '☒', '🔒'].includes(tileAt)) {
                         break; 
                     }
                     
