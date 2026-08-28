@@ -101,7 +101,8 @@ if (typeof firebase === 'undefined') {
                 serverTimestamp: () => Date.now(), 
                 delete: () => null, 
                 arrayUnion: () => [],
-                increment: (n) => n // 🚨 ROBUSTNESS WIN: Added increment mock for future expansions
+                arrayRemove: () => [], // 🚨 ROBUSTNESS WIN: Prevents crash if an expansion drops items from arrays
+                increment: (n) => n    // 🚨 ROBUSTNESS WIN: Added increment mock for future expansions
             }
         }),
         auth: () => ({ 
@@ -118,7 +119,7 @@ if (typeof firebase === 'undefined') {
         database: Object.assign(() => dummyRTDBRef, {
             ServerValue: { 
                 TIMESTAMP: Date.now(),
-                increment: (n) => n // 🚨 ROBUSTNESS WIN: RTDB Increment
+                increment: (n) => n 
             },
             goOnline: () => {},
             goOffline: () => {}
@@ -128,7 +129,7 @@ if (typeof firebase === 'undefined') {
     // Inject a critical UI banner instantly
     window.addEventListener('DOMContentLoaded', () => {
         const fallbackBanner = document.createElement('div');
-        fallbackBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-4 z-[999999] bg-red-950 text-red-200 border-b-4 border-red-600 shadow-[0_0_30px_rgba(220,38,38,1)] font-mono tracking-widest uppercase';
+        fallbackBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-4 z-[999999] bg-red-950 text-red-200 border-b-4 border-red-600 shadow-[0_0_30px_rgba(220,38,38,1)] font-mono tracking-widest uppercase select-none';
         fallbackBanner.innerHTML = "⚠️ CRITICAL LEYLINE FAILURE ⚠️<br><span class='text-[10px] font-normal text-red-300'>The Akashic Engine cannot connect. Please disable your Ad-Blocker or check connection. Local play enabled.</span>";
         document.body.appendChild(fallbackBanner);
     });
@@ -199,7 +200,8 @@ function initConnectionBanner() {
         
         // 🚨 PERFORMANCE WIN: Relying purely on native style.transform and will-change 
         // guarantees it never triggers layout reflows!
-        connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-transform duration-500 shadow-2xl font-mono tracking-widest uppercase backdrop-blur-md cursor-pointer';
+        // 🚨 UX WIN: Bumped z-index to 999999 so it overlays modals and full-screen maps!
+        connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[999999] transition-transform duration-500 shadow-2xl font-mono tracking-widest uppercase backdrop-blur-md cursor-pointer select-none';
         
         connectionBanner.style.textShadow = "2px 2px 0px rgba(0,0,0,0.8)"; 
         connectionBanner.style.willChange = "transform";
@@ -227,7 +229,7 @@ function showNetworkBanner(htmlContent, colorClasses, durationMs) {
     if (_bannerTimeout) clearTimeout(_bannerTimeout);
     
     if (connectionBanner) {
-        const baseClasses = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-transform duration-500 font-mono tracking-widest uppercase backdrop-blur-md cursor-pointer shadow-2xl';
+        const baseClasses = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[999999] transition-transform duration-500 font-mono tracking-widest uppercase backdrop-blur-md cursor-pointer shadow-2xl select-none';
         const fullClass = `${baseClasses} ${colorClasses}`;
         
         if (connectionBanner.className !== fullClass) connectionBanner.className = fullClass;
@@ -418,6 +420,11 @@ window.addEventListener('online', () => {
     if (typeof rtdb !== 'undefined' && rtdb.goOnline) {
         rtdb.goOnline();
     }
+    
+    // 🚨 ROBUSTNESS WIN: Force Firestore to wake up alongside RTDB
+    if (typeof db !== 'undefined' && db.enableNetwork) {
+        db.enableNetwork().catch(() => {});
+    }
 });
 
 // Cache DOM lookups for the auth error display
@@ -449,10 +456,10 @@ function handleAuthError(error) {
             friendlyMessage = 'This soul has been banished by the Archmages to the deep Void. (Account Disabled)';
             break;
         case 'auth/network-request-failed':
-            friendlyMessage = 'The leylines are silent. Check your connection to the physical world.';
+            friendlyMessage = 'The leylines are silent. The realm cannot be reached. (Check Connection)';
             break;
-        case 'auth/web-storage-unsupported': // Security / Iframe protection!
-            friendlyMessage = 'Your browser is blocking third-party cookies or web storage. Please enable them to anchor your soul to the cloud.';
+        case 'auth/web-storage-unsupported': 
+            friendlyMessage = 'Your browser is blocking the ethereal tether. Please enable web storage to anchor your soul.';
             break;
         case 'auth/popup-closed-by-user':
             friendlyMessage = 'The scrying ritual was interrupted before completion.';
@@ -570,6 +577,10 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
     }
 
     // 4. BROWSER & RTDB CRASH GUARDS
+    // Safely unroll Error objects so their stack traces survive JSON serialization!
+    if (obj instanceof Error) {
+        return { message: obj.message, stack: obj.stack, name: obj.name };
+    }
     if (obj instanceof Date) {
         const time = obj.getTime();
         return Number.isNaN(time) ? null : time; 
@@ -625,7 +636,11 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
          return Array.from(obj); // Safe conversion of TypedArrays for Firebase
     }
 
-    if (obj.constructor !== Object && !Array.isArray(obj)) return obj;
+    // 🚨 BUG FIX & ROBUSTNESS WIN: 
+    // Previously, `if (obj.constructor !== Object && !Array.isArray(obj)) return obj;`
+    // allowed custom class instances to bypass serialization, causing the Firebase SDK to crash!
+    // By allowing it to fall through to the `Object.keys()` loop below, we automatically strip 
+    // its prototype and serialize it perfectly into a POJO (Plain Old JavaScript Object)!
 
     // 8. Handle Arrays
     if (Array.isArray(obj)) {
@@ -639,7 +654,7 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
         return newArr;
     }
 
-    // 9. Handle Plain Objects
+    // 9. Handle Plain Objects (and Custom Classes!)
     const newObj = {};
     const keys = Object.keys(obj);
     for (let i = 0; i < keys.length; i++) {
