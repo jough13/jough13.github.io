@@ -20,6 +20,10 @@ window.ExpansionManager = {
     // Global Event Bus for Lifecycle Hooks
     activeHooks: Object.create(null), // 🚨 SECURITY WIN: Object.create(null) prevents prototype poisoning
 
+    // 🌟 EXPANDABILITY WIN: Inter-Expansion APIs
+    // Allows expansions to expose safe public methods for other expansions to interact with
+    apis: new Map(),
+
     // 🚨 ARCHITECTURE WIN: Deferred Loading Queue
     // Expansions waiting for their dependencies to load sit here safely.
     _pendingQueue: [],
@@ -43,13 +47,15 @@ window.ExpansionManager = {
         const clone = Object.assign({}, item);
         if (item.statBonuses) clone.statBonuses = Object.assign({}, item.statBonuses);
         if (item.tags) clone.tags = [...item.tags];
+        // 🚨 BUG FIX: Ensure onHit is also cloned if fastClone isn't available!
         if (typeof item.effect === 'function') clone.effect = item.effect;
+        if (typeof item.onHit === 'function') clone.onHit = item.onHit; 
         return clone;
     },
 
     // API Helper: Allows expansions to alter behavior if they know another specific expansion is running
     has: function(expansionId) {
-        return this.expansions.has(expansionId);
+        return this.expansions.has(expansionId) && !this.disabledExpansions.has(expansionId);
     },
     
     // API Helper: Retrieve metadata (version, timestamp) of a specific expansion
@@ -57,14 +63,43 @@ window.ExpansionManager = {
         return this.expansions.get(expansionId) || null;
     },
     
+    // API Helper: Access public methods registered by an expansion
+    getAPI: function(expansionId) {
+        if (!this.has(expansionId)) return null;
+        return this.apis.get(expansionId) || null;
+    },
+    
     // API Helper: Returns a list of all currently active expansions
     listExpansions: function() {
         return Array.from(this.expansions.values());
     },
 
+    // API Helper: Fetch an isolated, color-coded logger for an expansion
+    getLogger: function(expansionId) {
+        const name = this.expansions.has(expansionId) ? this.expansions.get(expansionId).name : expansionId;
+        return {
+            log: (msg, ...args) => console.log(`%c[${name}] ${msg}`, "color: #3b82f6;", ...args),
+            warn: (msg, ...args) => console.warn(`%c[${name}] ⚠️ ${msg}`, "color: #facc15; font-weight: bold;", ...args),
+            error: (msg, ...args) => console.error(`%c[${name}] 🚨 ${msg}`, "color: #ef4444; font-weight: bold;", ...args),
+        };
+    },
+
+    // 🌟 EXPANDABILITY WIN: Safe Monkey-Patching API
+    // Prevents mods from accidentally overwriting each other when modifying the same core function!
+    patchFunction: function(targetObj, methodName, patchFactory) {
+        if (typeof targetObj[methodName] !== 'function') {
+            console.error(`%c[AKASHIC ENGINE] Patch failed: ${methodName} is not a valid function on the target object.`, "color: #ef4444; font-weight: bold;");
+            return false;
+        }
+        
+        const originalFunc = targetObj[methodName];
+        targetObj[methodName] = patchFactory(originalFunc.bind(targetObj));
+        return true;
+    },
+
     // API Helper: Toggle an expansion's hooks on/off
     toggleExpansion: function(expansionId, state) {
-        if (!this.has(expansionId)) return false;
+        if (!this.expansions.has(expansionId)) return false;
         
         const turnOn = state !== undefined ? state : this.disabledExpansions.has(expansionId);
         if (turnOn) {
@@ -73,6 +108,12 @@ window.ExpansionManager = {
         } else {
             this.disabledExpansions.add(expansionId);
             console.log(`%c[AKASHIC ENGINE] Timeline Suppressed: Expansion '${expansionId}' hooks disabled.`, "color: #fb923c; font-style: italic;");
+        }
+        
+        // 🚨 BUG FIX WIN: Ensure injected CSS stylesheets are also disabled/enabled!
+        const styleEl = document.getElementById(`akashic-style-${expansionId}`);
+        if (styleEl) {
+            styleEl.disabled = !turnOn;
         }
         
         // Persist the choice!
@@ -139,7 +180,7 @@ window.ExpansionManager = {
         }
 
         // Version Conflict Guard
-        if (this.has(exp.id)) {
+        if (this.expansions.has(exp.id)) {
             const existing = this.expansions.get(exp.id);
             if (this._compareVersions(exp.version, existing.version) <= 0) {
                 console.warn(`%c[AKASHIC ENGINE] Timeline Collision: Expansion '${exp.id}' (v${existing.version}) is already woven into reality. Skipping duplicate/older load.`, "color: #facc15; font-weight: bold;");
@@ -246,8 +287,10 @@ window.ExpansionManager = {
                 document.head.appendChild(styleEl);
                 console.log(`%c[AKASHIC ENGINE] Injected custom leyline aesthetics for '${exp.id}'.`, "color: #a855f7; font-style: italic;");
             }
-            // 🚨 ROBUSTNESS WIN: Always assign textContent so hot-reloading an expansion actually updates the CSS!
+            // Always assign textContent so hot-reloading an expansion actually updates the CSS!
             styleEl.textContent = exp.css;
+            // Instantly apply the active disabled state to the new stylesheet
+            styleEl.disabled = this.disabledExpansions.has(exp.id);
         }
 
         // --- 2. INJECT DICTIONARIES (O(1) Merge) ---
@@ -398,7 +441,12 @@ window.ExpansionManager = {
             }
         }
 
-        // --- 6. REGISTER LIFECYCLE HOOKS (With Priorities) ---
+        // --- 6. REGISTER PUBLIC APIS ---
+        if (exp.api && typeof exp.api === 'object') {
+            this.apis.set(exp.id, exp.api);
+        }
+
+        // --- 7. REGISTER LIFECYCLE HOOKS (With Priorities) ---
         if (exp.hooks) {
             for (const [hookName, hookObj] of Object.entries(exp.hooks)) {
                 // Allow simple function passing OR object with priority { func: function, priority: 10 }
@@ -422,7 +470,7 @@ window.ExpansionManager = {
             }
         }
 
-        // --- 7. CUSTOM INITIALIZATION HOOK ---
+        // --- 8. CUSTOM INITIALIZATION HOOK ---
         if (typeof exp.init === 'function') {
             try {
                 const startTime = performance.now();
@@ -459,7 +507,7 @@ window.ExpansionManager = {
             window.dispatchEvent(new CustomEvent('expansionLoaded', { detail: { id: exp.id, name: exp.name, version: exp.version } }));
         }
 
-        // --- 8. PROCESS QUEUE ---
+        // --- 9. PROCESS QUEUE ---
         // Check if loading this expansion unblocked any waiting expansions in the queue!
         this._checkPendingQueue();
     },
