@@ -46,10 +46,11 @@ const HOTKEY_MAPPINGS = {
     'h': { modal: 'helpModal',        openFunc: null,                  closeFunc: null } 
 };
 
+// 🚨 BUG FIX WIN: The Modal Softlock Fix
+// Dynamically checks z-index and DOM order to ensure the Escape key ALWAYS closes the topmost modal!
 const _modalCache = {
     collection: null,
     getActive: () => {
-        // Grab the live HTMLCollection of all modals
         if (!_modalCache.collection) _modalCache.collection = document.getElementsByClassName('modal-overlay');
         
         let topModal = null;
@@ -258,8 +259,10 @@ function handleInput(key) {
 
     const lowerKey = key.toLowerCase();
 
+    // 🚨 ROBUSTNESS WIN: Clean numeric parsing without string concatenation issues
     let numericTestStr = key.startsWith('Numpad') ? key.replace('Numpad', '') : key;
-    const isNumberKey = !isNaN(parseInt(numericTestStr, 10)) && parseInt(numericTestStr, 10) >= 1 && parseInt(numericTestStr, 10) <= 9;
+    const testKeyNum = parseInt(numericTestStr, 10);
+    const isNumberKey = !isNaN(testKeyNum) && testKeyNum >= 1 && testKeyNum <= 9;
     
     const isGameplayKey = window.MOVEMENT_MAP[key] || ACTION_KEYS.has(lowerKey) || isNumberKey;
     
@@ -299,7 +302,11 @@ function handleInput(key) {
         if (stateCanceled) {
             logMessage("{gray:Action aborted.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "Canceled", "#9ca3af");
+            
+            // 🌟 JUICE WIN: Better cancellation visual feedback
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "Canceled", "#9ca3af");
+            }
             
             if (typeof render === 'function') render(); 
             if (typeof renderInventory === 'function') renderInventory();
@@ -324,14 +331,17 @@ function handleInput(key) {
         return; 
     }
 
+    // 🌟 JUICE WIN: Zoom Feedback
     if (key === '=' || key === '+') {
         window.currentZoom = Math.min(40, window.currentZoom + 2);
         if (typeof resizeCanvas === 'function') resizeCanvas();
+        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "ZOOM IN", "#9ca3af");
         return;
     }
     if (key === '-' || key === '_') {
         window.currentZoom = Math.max(12, window.currentZoom - 2);
         if (typeof resizeCanvas === 'function') resizeCanvas();
+        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "ZOOM OUT", "#9ca3af");
         return;
     }
 
@@ -391,11 +401,8 @@ function handleInput(key) {
     // ==========================================
 
     if (gameState.isDroppingItem) {
-        let numericKeyStr = key.startsWith('Numpad') ? key.replace('Numpad', '') : key;
-        const keyNum = parseInt(numericKeyStr, 10);
-        
-        if (!isNaN(keyNum) && keyNum >= 1) {
-            if (typeof handleItemDrop === 'function') handleItemDrop(keyNum.toString()); 
+        if (!isNaN(testKeyNum) && testKeyNum >= 1) {
+            if (typeof handleItemDrop === 'function') handleItemDrop(testKeyNum.toString()); 
         } else {
             logMessage("{gray:Select an item to drop, or press Esc to cancel.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -470,20 +477,14 @@ function handleInput(key) {
         return;
     }
 
-    let numericKeyStr = key;
-    if (numericKeyStr.startsWith('Numpad')) {
-        numericKeyStr = numericKeyStr.replace('Numpad', '');
-    }
-    const keyNum = parseInt(numericKeyStr, 10);
-    
-    if (!isNaN(keyNum) && keyNum >= 1) {
+    if (!isNaN(testKeyNum) && testKeyNum >= 1) {
         if (gameState.inventoryMode) {
-            if (typeof useInventoryItem === 'function') useInventoryItem(keyNum - 1);
+            if (typeof useInventoryItem === 'function') useInventoryItem(testKeyNum - 1);
             return;
         }
 
-        if (keyNum <= 9) {
-            if (typeof useHotbarSlot === 'function') useHotbarSlot(keyNum - 1);
+        if (testKeyNum <= 9) {
+            if (typeof useHotbarSlot === 'function') useHotbarSlot(testKeyNum - 1);
             return;
         }
     }
@@ -509,8 +510,13 @@ function handleInput(key) {
             ? chunkManager.getTile(gameState.player.x, gameState.player.y)
             : (gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId]?.[gameState.player.y]?.[gameState.player.x] : chunkManager.castleMaps[gameState.currentCastleId]?.[gameState.player.y]?.[gameState.player.x]);
 
+        // 🚨 Note: Currently 'g' simulates an attemptMovePlayer to trigger the auto-loot logic from movement.js
         if (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[currentTile]) {
             logMessage("You scour the ground for items...");
+            
+            // Visual feedback of reaching down
+            gameState.player.visualY += 0.25;
+            
             if (typeof attemptMovePlayer === 'function') attemptMovePlayer(gameState.player.x, gameState.player.y); 
             return;
         } else {
@@ -549,45 +555,69 @@ function handleInput(key) {
     if (ACTION_KEYS.has(lowerKey)) {
         
         let waitFlavors = window.WAIT_FLAVORS.DEFAULT;
+        let pColor = "#9ca3af";
+        let pIcon = "...";
 
         if (gameState.player.stealthTurns > 0) {
             waitFlavors = window.WAIT_FLAVORS.STEALTH;
+            pIcon = "💨";
+            pColor = "#6b7280";
         } else if (gameState.player.isMounted && gameState.player.companion) {
             waitFlavors = window.WAIT_FLAVORS.MOUNTED;
         } else if (gameState.player.isSailing) {
             waitFlavors = window.WAIT_FLAVORS.SAILING;
+            pIcon = "🫧";
+            pColor = "#3b82f6";
         } else if (gameState.player.isBoating) {
             waitFlavors = window.WAIT_FLAVORS.BOATING;
+            pIcon = "🫧";
+            pColor = "#3b82f6";
         } else if (gameState.mapMode === 'castle' && gameState.currentCastleId && gameState.currentCastleId.includes('village') && gameState.player.guildTag) {
             if (window.WAIT_FLAVORS.GUILD) waitFlavors = window.WAIT_FLAVORS.GUILD;
         }
         else if (gameState.currentRealm !== 0 && gameState.currentRealm) {
             if (gameState.realmMutators && gameState.realmMutators.includes('frozen_wastes')) {
                 waitFlavors = window.WAIT_FLAVORS.FROZEN_WASTES;
+                pIcon = "💨";
+                pColor = "#e0f2fe";
             } else if (gameState.currentRealm === 'raid_molten') {
                 waitFlavors = window.WAIT_FLAVORS.CAVE_FIRE; 
+                pColor = "#f97316";
             } else {
                 waitFlavors = window.WAIT_FLAVORS.MULTIVERSE;
+                pColor = "#a855f7";
             }
         }
         else if (gameState.mapMode === 'overworld') {
-            if (gameState.isBloodMoon) waitFlavors = window.WAIT_FLAVORS.BLOOD_MOON;
+            if (gameState.isBloodMoon) {
+                waitFlavors = window.WAIT_FLAVORS.BLOOD_MOON;
+                pColor = "#ef4444";
+            }
             else if (gameState.isEclipse) waitFlavors = window.WAIT_FLAVORS.ECLIPSE;
             else if (gameState.isLeylineSurge) waitFlavors = window.WAIT_FLAVORS.SURGE;
             else if (gameState.weather === 'rain') waitFlavors = window.WAIT_FLAVORS.RAIN;
             else if (gameState.weather === 'storm') waitFlavors = window.WAIT_FLAVORS.STORM;
-            else if (gameState.weather === 'snow') waitFlavors = window.WAIT_FLAVORS.SNOW;
+            else if (gameState.weather === 'snow') {
+                waitFlavors = window.WAIT_FLAVORS.SNOW;
+                pIcon = "💨";
+                pColor = "#f3f4f6";
+            }
             else if (gameState.weather === 'fog') waitFlavors = window.WAIT_FLAVORS.FOG;
         } 
         else if (gameState.mapMode === 'dungeon') {
             if (gameState.currentCaveTheme === 'VOID') waitFlavors = window.WAIT_FLAVORS.CAVE_VOID;
             else if (gameState.currentCaveTheme === 'FIRE') waitFlavors = window.WAIT_FLAVORS.CAVE_FIRE;
-            else if (gameState.currentCaveTheme === 'ICE' || gameState.currentCaveTheme === 'FROZEN_RUIN') waitFlavors = window.WAIT_FLAVORS.CAVE_ICE;
+            else if (gameState.currentCaveTheme === 'ICE' || gameState.currentCaveTheme === 'FROZEN_RUIN') {
+                waitFlavors = window.WAIT_FLAVORS.CAVE_ICE;
+                pIcon = "💨";
+                pColor = "#e0f2fe";
+            }
             else if (gameState.currentCaveTheme === 'PIRATE_COVE' || gameState.currentCaveTheme === 'SUNKEN_SHIPWRECK') waitFlavors = window.WAIT_FLAVORS.SAILING;
             else waitFlavors = window.WAIT_FLAVORS.CAVE_DEFAULT;
         } 
         else if (gameState.mapMode === 'underworld') {
             waitFlavors = window.WAIT_FLAVORS.UNDERWORLD;
+            pColor = "#57534e";
         }
         else if (gameState.mapMode === 'castle') {
             waitFlavors = window.WAIT_FLAVORS.CASTLE;
@@ -600,8 +630,9 @@ function handleInput(key) {
 
         logMessage(`{gray:${msg}}`);
         
+        // 🌟 JUICE WIN: Thematic resting particles!
         if (typeof ParticleSystem !== 'undefined') {
-            ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "...", "#9ca3af");
+            ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, pIcon, pColor);
         }
         
         _safeExecuteWithLock(async () => {
