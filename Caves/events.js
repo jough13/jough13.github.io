@@ -133,9 +133,9 @@ window.EVENT_DATA = {
                                     logMessage("{gold:You received an Elixir of Life and 50 Gold.}");
                                 } else {
                                     logMessage("{gold:You received 50 Gold, but your pack is too full! The Elixir drops to the ground.}");
-                                    // 🚨 THE FIX: Drop the item via outward spiral to prevent map corruption
+                                    // Drop the item via outward spiral to prevent map corruption
                                     if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
-                                        window.EventManager.safeDropItem(state, state.player.x, state.player.y, potion.tile || '🍷');
+                                        window.EventManager.safeDropItem(state, state.player.x, state.player.y, potion?.tile || '🍷');
                                     }
                                 }
                             }
