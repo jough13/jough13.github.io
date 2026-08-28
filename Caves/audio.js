@@ -56,10 +56,12 @@ const AudioSystem = {
                 
                 // Studio-grade Mastering Chain
                 this._masterGain = this._ctx.createGain();
-                this._masterGain.gain.value = 0.65; // Safe headroom to prevent clipping on massive AoE spells
+                // 🚨 AUDIO HEADROOM FIX: Dropped to 0.5 to completely eliminate digital clipping 
+                // when massive Multi-Hit AoE spells (like Meteor) trigger 10+ sound nodes at exactly the same millisecond!
+                this._masterGain.gain.value = 0.50; 
                 
                 // AUDIO QUALITY WIN: Upgraded Compressor settings
-                // Prevents ear-bleeding distortion when 15 monsters all attack at the exact same millisecond!
+                // Prevents ear-bleeding distortion when monsters all attack at the exact same time
                 this._compressor = this._ctx.createDynamicsCompressor();
                 this._compressor.threshold.value = -24; // Start compressing much earlier
                 this._compressor.knee.value = 30;       // Smooth transition
@@ -105,8 +107,12 @@ const AudioSystem = {
             } catch (e) {}
         }
         
-        // If it STILL isn't running after attempting to resume, abort sound playback for this frame
-        if (ctx && ctx.state !== 'running') return null;
+        // 🚨 CRITICAL BUG FIX: Asynchronous Audio Context Resume
+        // `ctx.resume()` is asynchronous. If we instantly checked `ctx.state !== 'running'` and returned null, 
+        // the very first sound effect that woke up the browser tab would be completely dropped!
+        // The Web Audio API *allows* us to create and schedule nodes on a 'suspended' context; they will simply 
+        // play the exact millisecond the `resume()` promise resolves!
+        if (ctx && ctx.state === 'closed') return null; // Only abort if strictly closed/destroyed
         
         return ctx;
     },
@@ -171,16 +177,16 @@ const AudioSystem = {
             else if (gameState.currentCaveTheme === 'CRYSTAL' || gameState.currentCaveTheme === 'FROZEN_RUIN') {
                 baseAcoustics = { durationMult: 2.0, filterMult: 1.2, echoDelay: 0.2, echoFeedback: 0.7, dampening: 8000 };
             }
-            // 3. Sand Tombs (Dry, dusty, heavily muffled)
-            else if (gameState.currentCaveTheme === 'SAND_TOMB') {
+            // 3. Sand Tombs & Deserts (Dry, dusty, heavily muffled)
+            else if (gameState.currentCaveTheme === 'SAND_TOMB' || (gameState.mapMode === 'overworld' && gameState.weather === 'clear' && chunkManager && chunkManager.getTile(gameState.player.x, gameState.player.y) === 'D')) {
                 baseAcoustics = { durationMult: 0.6, filterMult: 0.5, echoDelay: 0.02, echoFeedback: 0.1, dampening: 800 };
             }
             // 4. Sunken Temples & Grottos (Underwater muffling)
-            else if (gameState.currentCaveTheme === 'SUNKEN' || gameState.currentCaveTheme === 'GROTTO') {
+            else if (gameState.currentCaveTheme === 'SUNKEN' || gameState.currentCaveTheme === 'GROTTO' || gameState.currentCaveTheme === 'SUNKEN_SHIPWRECK') {
                 baseAcoustics = { durationMult: 0.8, filterMult: 0.25, echoDelay: 0.1, echoFeedback: 0.2, dampening: 600 };
             }
-            // 5. Dwarven Mines (Tight metallic slapback)
-            else if (gameState.currentCaveTheme === 'DWARVEN_MINE') {
+            // 5. Dwarven Mines & Factories (Tight metallic slapback)
+            else if (gameState.currentCaveTheme === 'DWARVEN_MINE' || gameState.currentCaveTheme === 'CLOCKWORK_FACTORY') {
                 baseAcoustics = { durationMult: 0.9, filterMult: 1.1, echoDelay: 0.05, echoFeedback: 0.5, dampening: 6000 };
             }
             // 6. Arena / Colosseum (Wide stadium echo)
@@ -199,8 +205,8 @@ const AudioSystem = {
             else if (gameState.mapMode === 'dungeon') {
                 baseAcoustics = { durationMult: 1.2, filterMult: 0.6, echoDelay: 0.15, echoFeedback: 0.4, dampening: 1500 }; 
             } 
-            // 10. Castles & Ruins (Stone halls, tight reverb)
-            else if (gameState.mapMode === 'castle') {
+            // 10. Castles & Pirate Coves (Stone/Wood halls, tight reverb)
+            else if (gameState.mapMode === 'castle' || gameState.currentCaveTheme === 'PIRATE_COVE') {
                 baseAcoustics = { durationMult: 1.1, filterMult: 0.85, echoDelay: 0.08, echoFeedback: 0.3, dampening: 3000 }; 
             }
             
@@ -638,8 +644,11 @@ const AudioSystem = {
     playFishBite: function(x) {
         if (!this.settings.ui) return;
         if (!this._throttle('fishBite', 200)) return; 
-        this.playTone(1200, 'sine', 0.05, 0.15, false, 800, x);
-        setTimeout(() => this.playNoise(0.05, 0.05, 2000, x), 20);
+        
+        // Bubbly, popping sound
+        this.playTone(800, 'sine', 0.05, 0.15, false, 400, x);
+        setTimeout(() => this.playNoise(0.05, 0.05, 1000, x), 20);
+        setTimeout(() => this.playTone(1200, 'sine', 0.05, 0.1, false, 600, x), 40);
     },
     
     playAttack: function(type = 'normal', x) { 
@@ -654,6 +663,7 @@ const AudioSystem = {
         } else if (type === 'light') {
             this.playTone(600, 'sine', 0.08, 0.08, true, 200, x);
         } else if (type === 'sweep') {
+            // Enhanced whoosh: Richer sweep with noise layer
             this.playTone(200, 'sine', 0.2, 0.12, true, 100, x);
             this.playNoise(0.15, 0.05, 800, x); 
         } else if (type === 'pierce') {
@@ -691,8 +701,10 @@ const AudioSystem = {
                     else if (tags.includes("ethereal") || tags.includes("void")) material = 'ethereal';
                     else if (tags.includes("bug") || tags.includes("aquatic") || tags.includes("fungus")) material = 'squish';
                     else if (tags.includes("wood") || tags.includes("plant")) material = 'wood';
-                } else if (['🌳', '🌳e', '+', '🚪', '🏚', '🏚️', '📦', '⛵', 'c'].includes(tileAtX)) {
+                } else if (['🌳', '🌳e', '+', '🚪', '🏚', '🏚️', '📦', '⛵', 'c', '🛤️'].includes(tileAtX)) {
                     material = 'wood'; // Obstacles and doors
+                } else if (['💎n', '⚙️', '🤖', '🏭', '🛒', '🪨g'].includes(tileAtX)) {
+                    material = 'metal'; // New expansion items
                 }
             }
         }
@@ -805,8 +817,9 @@ const AudioSystem = {
 
     playLevelUp: function() {
         if (!this._throttle('levelup', 1000)) return; 
-        // JUICE WIN: Epic Arpeggio lead-in
+        // JUICE WIN: Epic Arpeggio lead-in with shimmer
         this.playMelody([261.63, 329.63, 392.00], 'sine', 0.1, 0.1, true);
+        this.playNoise(0.2, 0.4, 4000, null, true); // High-end shimmer
         setTimeout(() => {
             this.playChord([261.63, 329.63, 392.00, 523.25], 'sine', 1.0, 0.2, 1.5, false, null, true);
         }, 300);
@@ -819,7 +832,8 @@ const AudioSystem = {
 
     playLootRare: function() {
         if (!this._throttle('lootrare', 500)) return; 
-        this.playMelody([523.25, 659.25, 783.99, 1046.50], 'sine', 0.08, 0.08, true);
+        // Brighter, more resonant chord
+        this.playMelody([523.25, 659.25, 783.99, 1046.50], 'triangle', 0.08, 0.08, true);
     },
 
     playSecret: function() {
