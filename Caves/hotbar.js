@@ -8,7 +8,7 @@ const hotbarContainerEl = document.getElementById('hotbarContainer');
 
 // PERFORMANCE WIN: O(1) Cache for Item Name Lookups on the Hotbar
 // Prevents O(N) scans of ITEM_DATA every time the hotbar renders!
-window._hotbarItemKeyCache = window._hotbarItemKeyCache || {};
+window._hotbarItemKeyCache = window._hotbarItemKeyCache || Object.create(null);
 
 // 🚨 BUG FIX & ROBUSTNESS WIN: Hardware Mutex Lock
 // Prevents double-casting from faulty mice or sensitive touch screens that send 
