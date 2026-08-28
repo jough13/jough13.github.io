@@ -4,6 +4,15 @@
 // AKASHIC ENGINE: EXPANSION INJECTOR
 // ==========================================
 
+// Safely initialize disabled expansions from local storage (QoL & Persistence Win)
+let _savedDisabledExpansions = [];
+try {
+    const saved = localStorage.getItem('akashic_disabled_mods');
+    if (saved) _savedDisabledExpansions = JSON.parse(saved);
+} catch (e) {
+    console.warn("%c[AKASHIC ENGINE] Could not read disabled mods from local storage.", "color: #facc15;");
+}
+
 window.ExpansionManager = {
     // Track full metadata, not just strings!
     expansions: new Map(),
@@ -15,9 +24,28 @@ window.ExpansionManager = {
     // Expansions waiting for their dependencies to load sit here safely.
     _pendingQueue: [],
 
-    // 🌟 FEATURE WIN: Live Mod Toggling
-    // Allows us to mute an expansion's active hooks on the fly (for a future Mod Manager UI)
-    disabledExpansions: new Set(),
+    // 🌟 FEATURE WIN: Live Mod Toggling (Now with LocalStorage Persistence!)
+    // Allows us to mute an expansion's active hooks on the fly and remember it next session.
+    disabledExpansions: new Set(_savedDisabledExpansions),
+
+    // 🛡️ SECURITY WIN: Internal Regex Escaper
+    // Prevents malformed mod data (like keywords with parentheses or stars) from throwing fatal RegExp syntax errors!
+    _escapeRegExp: function(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    },
+
+    // 🚀 ROBUSTNESS WIN: Dedicated internal cloner
+    // Guarantees shop items injected by expansions never bleed memory references back into the global dictionary
+    _internalItemClone: function(item) {
+        if (typeof window.fastClone === 'function') return window.fastClone(item);
+        
+        // Failsafe clone that preserves functions (which JSON.stringify destroys)
+        const clone = Object.assign({}, item);
+        if (item.statBonuses) clone.statBonuses = Object.assign({}, item.statBonuses);
+        if (item.tags) clone.tags = [...item.tags];
+        if (typeof item.effect === 'function') clone.effect = item.effect;
+        return clone;
+    },
 
     // API Helper: Allows expansions to alter behavior if they know another specific expansion is running
     has: function(expansionId) {
@@ -46,6 +74,12 @@ window.ExpansionManager = {
             this.disabledExpansions.add(expansionId);
             console.log(`%c[AKASHIC ENGINE] Timeline Suppressed: Expansion '${expansionId}' hooks disabled.`, "color: #fb923c; font-style: italic;");
         }
+        
+        // Persist the choice!
+        try {
+            localStorage.setItem('akashic_disabled_mods', JSON.stringify(Array.from(this.disabledExpansions)));
+        } catch (e) {}
+        
         return turnOn;
     },
 
@@ -188,7 +222,7 @@ window.ExpansionManager = {
                     try {
                         window._COMPILED_LORE_REGEXES.push({
                             keyword: keyword, // Store keyword to sort by length
-                            rx: new RegExp(`\\b(${keyword}s?)\\b`, 'gi'),
+                            rx: new RegExp(`\\b(${this._escapeRegExp(keyword)}s?)\\b`, 'gi'), // 🚨 SECURITY WIN: Escaped!
                             color: color
                         });
                     } catch (regexErr) {
@@ -204,13 +238,16 @@ window.ExpansionManager = {
         // --- 1.5. CSS & STYLE INJECTION ---
         if (exp.css) {
             const styleId = `akashic-style-${exp.id}`;
-            if (!document.getElementById(styleId)) {
-                const styleEl = document.createElement('style');
+            let styleEl = document.getElementById(styleId);
+            
+            if (!styleEl) {
+                styleEl = document.createElement('style');
                 styleEl.id = styleId;
-                styleEl.textContent = exp.css;
                 document.head.appendChild(styleEl);
                 console.log(`%c[AKASHIC ENGINE] Injected custom leyline aesthetics for '${exp.id}'.`, "color: #a855f7; font-style: italic;");
             }
+            // 🚨 ROBUSTNESS WIN: Always assign textContent so hot-reloading an expansion actually updates the CSS!
+            styleEl.textContent = exp.css;
         }
 
         // --- 2. INJECT DICTIONARIES (O(1) Merge) ---
@@ -233,14 +270,11 @@ window.ExpansionManager = {
             craftingRecipes: 'CRAFTING_RECIPES',
             cookingRecipes: 'COOKING_RECIPES',
             alchemyRecipes: 'ALCHEMY_RECIPES',
-            // Forward-compat mapping for future expansion concepts
             factions: 'FACTION_DATA',
             weatherTypes: 'WEATHER_DATA' 
         };
 
         // 🌟 EXPANDABILITY WIN: Custom Global Registries!
-        // Expansions can now define `customDictionaries` to dynamically spawn new global
-        // state tables without hardcoding them into the engine core.
         if (data.customDictionaries) {
             for (const [localKey, globalKey] of Object.entries(data.customDictionaries)) {
                 if (typeof window[globalKey] === 'undefined') window[globalKey] = {};
@@ -355,19 +389,8 @@ window.ExpansionManager = {
                     if (existingItem) {
                         existingItem.stock = (existingItem.stock || 0) + (newItem.stock || 0);
                     } else {
-                        // 🚨 BUG FIX & ROBUSTNESS: Safe Shallow/Deep Clone Fallback
-                        // If a modder puts a custom function inside a shop item, JSON stringify deletes it.
-                        // If `fastClone` isn't ready yet, we perform a safe manual top-level clone.
-                        let itemClone;
-                        if (typeof window.fastClone === 'function') {
-                            itemClone = window.fastClone(newItem);
-                        } else {
-                            itemClone = Object.assign({}, newItem);
-                            // Ensure nested arrays/objects aren't passed by reference
-                            if (newItem.statBonuses) itemClone.statBonuses = Object.assign({}, newItem.statBonuses);
-                            if (newItem.tags) itemClone.tags = [...newItem.tags];
-                        }
-                        
+                        // 🚨 BUG FIX & ROBUSTNESS: Utilize the secure internal cloner
+                        const itemClone = this._internalItemClone(newItem);
                         window[targetGlobal].push(itemClone);
                         dictCount++;
                     }
