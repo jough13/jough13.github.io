@@ -87,18 +87,20 @@ let activeShopInventory = [];
 const wokenEnemyTiles = new Set(); 
 
 // Shared String Caches
-window._statCapCache = {
+// 🚨 PERFORMANCE WIN: Object.freeze() tells the V8 engine this object will NEVER change,
+// allowing it to inline lookups and skip mutation checks, executing significantly faster!
+window._statCapCache = Object.freeze({
     health: 'maxHealth',
     mana: 'maxMana',
     stamina: 'maxStamina',
     psyche: 'maxPsyche',
     hunger: 'maxHunger',
     thirst: 'maxThirst'
-};
+});
 
 // O(1) Cache for Stat Bar UI pulses
 // 🚨 PERFORMANCE WIN: Pre-mapped UI animation classes!
-window._statColorCache = {
+window._statColorCache = Object.freeze({
     health: 'stat-pulse-green',
     hunger: 'stat-pulse-green',
     mana: 'stat-pulse-blue',
@@ -115,6 +117,24 @@ window._statColorCache = {
     willpower: 'stat-pulse-purple',
     endurance: 'stat-pulse-yellow',
     intuition: 'stat-pulse-green'
+});
+
+// 🚨 SECURITY WIN: Whitelist of valid vitals prevents Prototype Pollution attacks!
+const ALLOWED_VITALS = Object.freeze(new Set(['health', 'mana', 'stamina', 'psyche', 'hunger', 'thirst']));
+
+// 🚨 PERFORMANCE WIN: Lazy DOM Cache for Vitals
+// Prevents the engine from querying the DOM every single time poison ticks or the player takes damage!
+const _vitalDOMCache = {
+    displays: {},
+    wrapper: null,
+    getDisplay: function(vital) {
+        if (!this.displays[vital]) this.displays[vital] = document.getElementById(vital + 'Display');
+        return this.displays[vital];
+    },
+    getWrapper: function() {
+        if (!this.wrapper) this.wrapper = document.getElementById('gameCanvasWrapper');
+        return this.wrapper;
+    }
 };
 
 // ============================================================================
@@ -333,6 +353,7 @@ const gameState = {
         lastBotanistDay: 0,
         generation: 0,
         customSpells: {},
+        inSpire: false,
         spireBackupInv: null,
         spireBackupEquip: null,
         activeHunt: null,
@@ -378,6 +399,8 @@ const gameState = {
             oresMined: 0,         
             leylinesUsed: 0,
             damageTaken: 0,
+            highestDamageTaken: 0,
+            shieldDamageAbsorbed: 0, // 🌟 NEW: Track shielded mitigation
             environmentalDamageTaken: 0, 
             fallDamageTaken: 0,          
             damageDealt: 0,
@@ -462,16 +485,17 @@ window.clampAllVitals = function() {
     const p = gameState.player;
     if (!p) return;
     
-    // 🚨 BUG FIX WIN: Clamp Health to 0 minimum instead of 1.
-    // If a player was dead (HP 0), this function would accidentally resurrect them as a 1 HP zombie!
-    p.health = Math.max(0, Math.min(p.maxHealth || 10, p.health));
-    p.mana = Math.max(0, Math.min(p.maxMana || 10, p.mana));
-    p.stamina = Math.max(0, Math.min(p.maxStamina || 10, p.stamina));
-    p.psyche = Math.max(0, Math.min(p.maxPsyche || 10, p.psyche));
+    // 🚨 BUG FIX & ROBUSTNESS WIN: Strict NaN fallback.
+    // If a modder or glitched item injects `NaN` into health, this enforces
+    // a numeric bound, preventing UI breakage or immortal zombie states!
+    p.health = Math.max(0, Math.min(Number(p.maxHealth) || 10, Number(p.health) || 0));
+    p.mana = Math.max(0, Math.min(Number(p.maxMana) || 10, Number(p.mana) || 0));
+    p.stamina = Math.max(0, Math.min(Number(p.maxStamina) || 10, Number(p.stamina) || 0));
+    p.psyche = Math.max(0, Math.min(Number(p.maxPsyche) || 10, Number(p.psyche) || 0));
     
     // Added absolute ceilings for survival stats so they don't over-fill UI bars!
-    p.hunger = Math.max(0, Math.min(p.maxHunger || 100, p.hunger));
-    p.thirst = Math.max(0, Math.min(p.maxThirst || 100, p.thirst));
+    p.hunger = Math.max(0, Math.min(Number(p.maxHunger) || 100, Number(p.hunger) || 0));
+    p.thirst = Math.max(0, Math.min(Number(p.maxThirst) || 100, Number(p.thirst) || 0));
 };
 
 window.modifyVital = function(vital, rawAmount) {
@@ -479,6 +503,12 @@ window.modifyVital = function(vital, rawAmount) {
     
     // Prevent TypeError if called before engine is fully loaded
     if (!p) return 0;
+    
+    // 🚨 SECURITY WIN: Prototype Pollution Guard
+    if (!ALLOWED_VITALS.has(vital)) {
+        console.warn(`[AKASHIC ENGINE] Blocked unauthorized vital modification attempt on: ${vital}`);
+        return 0;
+    }
     
     // The NaN Firewall & Floating Point Fix
     let amount = Math.round(Number(rawAmount));
@@ -522,6 +552,9 @@ window.modifyVital = function(vital, rawAmount) {
             p.shieldValue -= dmgAbsorbed;
             amount += dmgAbsorbed; // Reduce the negative health hit by the absorbed amount
             
+            // 🌟 METRICS WIN: Track shield efficiency
+            if (p.metrics) p.metrics.shieldDamageAbsorbed = (p.metrics.shieldDamageAbsorbed || 0) + dmgAbsorbed;
+            
             if (typeof logMessage !== 'undefined' && dmgAbsorbed > 0) {
                 // Only log it here if we aren't in combat, otherwise combat.js handles the logging natively
                 if (typeof isProcessingMove === 'undefined' || !isProcessingMove) {
@@ -562,11 +595,14 @@ window.modifyVital = function(vital, rawAmount) {
         p.lastHitDamage = Math.abs(amount);
         
         // Track total lifetime damage taken
-        if (p.metrics) p.metrics.damageTaken += Math.abs(amount);
-        
-        // Track environmental damage separately if it wasn't triggered by an enemy
-        if (p.metrics && (typeof isProcessingMove === 'undefined' || !isProcessingMove)) {
-            p.metrics.environmentalDamageTaken += Math.abs(amount);
+        if (p.metrics) {
+            p.metrics.damageTaken += Math.abs(amount);
+            p.metrics.highestDamageTaken = Math.max(p.metrics.highestDamageTaken || 0, Math.abs(amount));
+            
+            // Track environmental damage separately if it wasn't triggered by an enemy
+            if (typeof isProcessingMove === 'undefined' || !isProcessingMove) {
+                p.metrics.environmentalDamageTaken += Math.abs(amount);
+            }
         }
     }
     
@@ -592,8 +628,30 @@ window.modifyVital = function(vital, rawAmount) {
     }
 
     // ==========================================
-    // VITAL EVENTS
+    // VITAL EVENTS & JUICE
     // ==========================================
+
+    // 🌟 JUICE WIN: Dynamic "Full Restore" feedback
+    if (actualChange > 0 && newVal === maxVal && oldVal < maxVal) {
+        if (typeof logMessage !== 'undefined') {
+            if (vital === 'health') logMessage("{green:You are restored to full health.}");
+            else if (vital === 'mana') logMessage("{blue:Your mana reserves are fully replenished.}");
+            else if (vital === 'stamina') logMessage("{yellow:You catch your breath. Stamina fully restored.}");
+        }
+    }
+
+    // 🌟 JUICE WIN: Native Critical Health State Management
+    // Instantly handles the UI wrapper class without waiting for the `renderStats` loop!
+    if (vital === 'health') {
+        const wrapper = _vitalDOMCache.getWrapper();
+        if (wrapper) {
+            if (newVal > 0 && newVal <= (maxVal * 0.25) && p.poisonTurns <= 0) {
+                wrapper.classList.add('critical-health');
+            } else if (newVal > (maxVal * 0.25)) {
+                wrapper.classList.remove('critical-health');
+            }
+        }
+    }
 
     if (actualChange < 0) {
         // Prevent division by zero mathematically if maxVal is somehow 0
@@ -666,22 +724,35 @@ window.modifyVital = function(vital, rawAmount) {
         }
     }
 
+    // 🚨 PERFORMANCE WIN: Lazy DOM Cache integration!
     // Handle UI Flashes automatically (High-speed O(1) routing)
-    if (actualChange !== 0 && typeof statDisplays !== 'undefined' && statDisplays[vital]) {
-        if (actualChange > 0) {
-            const pulseClass = window._statColorCache[vital];
-            if (pulseClass && typeof triggerStatAnimation === 'function') {
-                triggerStatAnimation(statDisplays[vital], pulseClass);
+    if (actualChange !== 0) {
+        const displayEl = _vitalDOMCache.getDisplay(vital);
+        if (displayEl) {
+            if (actualChange > 0) {
+                const pulseClass = window._statColorCache[vital];
+                if (pulseClass && typeof triggerStatAnimation === 'function') {
+                    triggerStatAnimation(displayEl, pulseClass);
+                }
+            } else {
+                if (typeof triggerStatFlash === 'function') triggerStatFlash(displayEl, false);
             }
-        } else {
-            if (typeof triggerStatFlash === 'function') triggerStatFlash(statDisplays[vital], false);
         }
     }
 
-    // 🚨 EXPANDABILITY WIN: Fire global lifecycle hook
+    // 🚨 EXPANDABILITY WIN: Fire global lifecycle hooks!
     // Any expansion can now listen for when the player's health drops or mana regens!
     if (typeof window.ExpansionManager !== 'undefined') {
         window.ExpansionManager.triggerHook('onVitalChanged', { vital, amount, actualChange, player: p });
+        
+        // Expose a native exhaustion/depletion hook for easier logic gating
+        if (newVal === 0 && oldVal > 0) {
+            window.ExpansionManager.triggerHook('onVitalDepleted', { vital, player: p });
+        }
+        // Expose a native maxed hook
+        if (newVal === maxVal && oldVal < maxVal) {
+            window.ExpansionManager.triggerHook('onVitalMaxed', { vital, player: p });
+        }
     }
 
     // The Death Lock Check
@@ -712,7 +783,7 @@ window.modifyVital = function(vital, rawAmount) {
             }
             
             if (typeof handlePlayerDeath === 'function') {
-                // 🚨 BUG FIX & ROBUSTNESS WIN: Try/Finally inside the timeout
+                // Try/Finally inside the timeout
                 // Guarantees the death locks are released even if a plugin injected a broken item into the death loot loop!
                 setTimeout(() => {
                     try {
