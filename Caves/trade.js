@@ -424,14 +424,26 @@ function handleSellAllItems() {
         // Array.splice() is an O(N) operation that shifts all subsequent elements. Doing it in a loop
         // makes it O(N^2), causing massive lag spikes if selling 50 items. This approach is O(N)!
         const remainingInventory = [];
+        
+        // Dynamically protect items needed for active quests!
+        const activeQuestItems = new Set();
+        if (player.quests && typeof window.QUEST_DATA !== 'undefined') {
+            for (const qId in player.quests) {
+                const q = player.quests[qId];
+                const qData = window.QUEST_DATA[qId];
+                if (q && q.status === 'active' && qData && (qData.type === 'fetch' || qData.type === 'collect')) {
+                    activeQuestItems.add(qData.itemNeeded);
+                }
+            }
+        }
 
         for (let i = 0; i < player.inventory.length; i++) {
             const item = player.inventory[i];
             
             if (!item) continue; // GHOST GUARD
 
-            // Explicitly protect equipped gear and Quest items
-            if (item.isEquipped || item.type === 'quest') {
+            // Explicitly protect equipped gear, Quest items, and ACTIVE bounty materials!
+            if (item.isEquipped || item.type === 'quest' || activeQuestItems.has(item.name)) {
                 remainingInventory.push(item);
                 continue;
             }
