@@ -179,7 +179,13 @@ window.selectSlot = async function (slotId) {
     try {
         const doc = await playerRef.get();
         const characterSelectModal = document.getElementById('characterSelectModal');
-        if (characterSelectModal) characterSelectModal.classList.add('hidden');
+        
+        // 🌟 JUICE WIN: Fade out the character select modal instead of hard snapping
+        if (characterSelectModal) {
+            characterSelectModal.style.transition = 'opacity 0.3s ease-out';
+            characterSelectModal.style.opacity = '0';
+            setTimeout(() => characterSelectModal.classList.add('hidden'), 300);
+        }
 
         // Robust check: doc exists AND actually has data (not an empty placeholder)
         if (doc.exists && doc.data().level) {
@@ -191,7 +197,7 @@ window.selectSlot = async function (slotId) {
             // 🐛 BUG FIX: Deep clone the default state so nested arrays (like inventory/equipment) 
             // don't carry over memory references from previously deleted characters in the same session!
             if (typeof gameState !== 'undefined') {
-                gameState.player = typeof fastClone === 'function' ? fastClone(defaultState) : JSON.parse(JSON.stringify(defaultState));
+                gameState.player = typeof window.fastClone === 'function' ? window.fastClone(defaultState) : JSON.parse(JSON.stringify(defaultState));
             }
             
             initCreationUI(); 
@@ -200,7 +206,10 @@ window.selectSlot = async function (slotId) {
         console.error("Failed to load character slot:", e);
         if (loadingIndicator) loadingIndicator.classList.add('hidden');
         const characterSelectModal = document.getElementById('characterSelectModal');
-        if (characterSelectModal) characterSelectModal.classList.remove('hidden');
+        if (characterSelectModal) {
+            characterSelectModal.style.opacity = '1';
+            characterSelectModal.classList.remove('hidden');
+        }
         alert("Network error loading character. Please try again.");
     } finally {
         // Unlock after a short delay to ensure modal hides safely and prevents ghost clicks
@@ -368,6 +377,7 @@ function updateCreationSummary() {
     if (!nameInput) return;
 
     // 🚨 BUG FIX & SECURITY WIN: Force strict slice before assigning to state to prevent DB injection
+    // Also correctly accounts for names that are purely whitespace by stripping them away.
     let rawName = nameInput.value.replace(/[^a-zA-Z0-9 \-']/g, '').replace(/\s+/g, ' ').trimStart().slice(0, 16);
     
     // QoL WIN: Auto Title-Case the name (e.g. "gandalf the grey" -> "Gandalf The Grey")
@@ -386,9 +396,6 @@ function updateCreationSummary() {
 
     const raceName = raceData ? raceData.name : "???";
     const className = bgData ? bgData.name : "???";
-    
-    const raceDesc = raceData ? raceData.description : "";
-    const classDesc = bgData ? bgData.description : "";
     
     // JUICE WIN: Dynamic Avatar Preview
     const raceIcon = raceData ? raceData.icon : "👤";
@@ -459,11 +466,16 @@ function updateCreationSummary() {
         // Expansion Classes
         if (creationState.background === 'defector') origins.push("fled a dark cult and carries their secrets.", "trusts no one who wears a cowl.");
         if (creationState.background === 'artisan') origins.push("built a life out of scrap and ingenuity.", "knows the structural weakness of every beast.");
+        if (creationState.background === 'monk') origins.push("seeks inner peace in a world of chaos.", "fights with the strength of a hundred men.");
+        if (creationState.background === 'peddler') origins.push("is looking for the ultimate deal.", "knows the price of everything and the value of nothing.");
         
+        // Expansion Races
         if (creationState.race === 'elf') origins.push("remembers the world before the sky cracked.");
         if (creationState.race === 'dwarf') origins.push("was buried alive, and dug their way out.");
         if (creationState.race === 'goliath') origins.push("descended from the frozen peaks to test their strength.");
         if (creationState.race === 'voidkissed') origins.push("hears the Leviathan singing in their dreams.");
+        if (creationState.race === 'dhampir') origins.push("struggles against the endless thirst.", "walks the line between the living and the dead.");
+        if (creationState.race === 'sylph') origins.push("dances on the winds of a broken world.", "listens to the whispers of the storm.");
         
         const originSeed = stringToSeed(creationState.name + creationState.race + creationState.background);
         const selectedOrigin = origins[Math.abs(originSeed) % origins.length];
@@ -554,20 +566,22 @@ window.generateRandomName = function() {
         "grip", "fist", "gaze", "step", "mancer", "walker", "born"
     ];
     
-    // Fun RPG Titles (20% chance to append)
+    // Fun RPG Titles (25% chance to append)
     const titles = [
         " the Brave", " the Swift", " of the Void", " the Wise", " the Exile", 
         " Ironheart", " Shadow-walker", " the Lost", " the Cursed", " the Bold",
         " the Unbroken", " the Star-Touched", " the Pale", " Giantsbane", " the Silent",
         " the Shattered", " the Undying", " Seeker of the Deep", " the Ashen", " of the Fallen Star",
         " Blood-drinker", " the Mad", " the Unforgiven", " the Returned",
+        " the Ascendant", " the Runeweaver", " the Outlaw", " the Vanguard", 
+        " the Core Delver", " the Pirate", " the Siren-Slayer",
         // LORE WIN: Thematic Multiverse/Akashic Titles
         " the Ley-Walker", " of the Akashic Records", " the Void-Dancer", " the Unbound", " the Chronomancer"
     ];
     
     let p = prefixes[Math.floor(Math.random() * prefixes.length)];
     let s = suffixes[Math.floor(Math.random() * suffixes.length)];
-    let t = (Math.random() < 0.20) ? titles[Math.floor(Math.random() * titles.length)] : "";
+    let t = (Math.random() < 0.25) ? titles[Math.floor(Math.random() * titles.length)] : "";
     
     // 🚨 BUG FIX: Name bounding logic
     // We strictly slice the name at 16 characters so long titles like "the Chronomancer"
@@ -774,13 +788,17 @@ async function finalizeCharacterCreation() {
     player.character = raceData.icon || '@';
 
     // 2. Apply Class Stats
-    for (const stat in bgData.stats) {
-        player[stat] = (player[stat] || 1) + bgData.stats[stat];
+    if (bgData.stats) {
+        for (const stat in bgData.stats) {
+            player[stat] = (player[stat] || 1) + bgData.stats[stat];
+        }
     }
     
     // 3. Apply Race Stats
-    for (const stat in raceData.stats) {
-        player[stat] = (player[stat] || 1) + raceData.stats[stat];
+    if (raceData.stats) {
+        for (const stat in raceData.stats) {
+            player[stat] = (player[stat] || 1) + raceData.stats[stat];
+        }
     }
 
     // 4. Calculate Derived Stats
@@ -885,6 +903,9 @@ window.renderSlots = async function() {
         // 🚨 FIX: Make sure the slot container has a relative positioning to trap the z-index layers
         // Also removed the !p-6 override so it fits the frame neatly
         slotDiv.className = "ui-input-asset flex-col justify-between transition-transform cursor-pointer hover:scale-[1.02] min-h-[320px] w-full relative group";
+        
+        // 🌟 JUICE WIN: Play an atmospheric sound when hovering over a slot
+        slotDiv.setAttribute('onmouseenter', "if(typeof AudioSystem !== 'undefined') AudioSystem.playHover()");
 
         if (doc.exists) {
             const data = doc.data();
@@ -895,8 +916,10 @@ window.renderSlots = async function() {
             // --- OCCUPIED SLOT UI ---
             // 🚨 FIX: Strip CSS overrides. The background of 'ui-input-asset' is ALWAYS dark stone.
             // This means we must force light text here unconditionally!
+            
+            // 🚨 BUG FIX: Use event.stopPropagation() on the buttons to prevent them from triggering the slotDiv's onclick!
             slotDiv.innerHTML = `
-                <div class="text-center w-full pt-2 relative z-10">
+                <div class="text-center w-full pt-2 relative z-10" onclick="selectSlot('${slotId}')">
                     <h3 class="text-3xl font-bold mb-2 text-white drop-shadow-md transition-colors group-hover:text-yellow-400" style="font-family: 'Uncial Antiqua', cursive; text-shadow: 2px 2px 0px rgba(0,0,0,0.8);">${data.name || 'Unnamed'}</h3>
                     <div class="text-4xl my-3 text-[#4ade80] drop-shadow-md" style="text-shadow: 0 0 10px rgba(74, 222, 128, 0.4);">${data.isBoating ? 'c' : (data.character || '@')}</div>
                     <p class="font-bold text-lg uppercase tracking-widest text-yellow-400 drop-shadow-md">${bg.name}</p>
@@ -905,9 +928,9 @@ window.renderSlots = async function() {
                 </div>
                 
                 <div class="flex gap-2 w-full mt-4 items-center h-12 relative z-10">
-                    <button onclick="selectSlot('${slotId}')" class="ui-btn-asset flex-grow h-full !text-2xl !p-0 !mt-0">PLAY</button>
+                    <button onclick="event.stopPropagation(); selectSlot('${slotId}')" class="ui-btn-asset flex-grow h-full !text-2xl !p-0 !mt-0" aria-label="Play Character">PLAY</button>
                     
-                    <button onclick="deleteSlot('${slotId}')" class="relative top-[3px] right-[9px] w-12 h-8 flex-none bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-xl flex items-center justify-center transition-transform active:scale-95" style="border: 2px solid #000; box-shadow: inset -2px -2px 0px rgba(0,0,0,0.4), inset 2px 2px 0px rgba(255,255,255,0.3); text-shadow: 2px 2px 0px #000;" title="Delete">X</button>
+                    <button onclick="event.stopPropagation(); deleteSlot('${slotId}')" class="relative top-[3px] right-[9px] w-12 h-8 flex-none bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-xl flex items-center justify-center transition-transform active:scale-95" style="border: 2px solid #000; box-shadow: inset -2px -2px 0px rgba(0,0,0,0.4), inset 2px 2px 0px rgba(255,255,255,0.3); text-shadow: 2px 2px 0px #000;" title="Delete Character">X</button>
                 </div>
             `;
         } else {
@@ -928,7 +951,7 @@ window.renderSlots = async function() {
                 </div>
                 
                 <div class="w-full mt-4 h-12 relative z-10">
-                    <button onclick="event.stopPropagation(); selectSlot('${slotId}')" class="ui-btn-asset w-full h-full !text-2xl !p-0 !mt-0 !text-gray-200">CREATE</button>
+                    <button onclick="event.stopPropagation(); selectSlot('${slotId}')" class="ui-btn-asset w-full h-full !text-2xl !p-0 !mt-0 !text-gray-200" aria-label="Create Character">CREATE</button>
                 </div>
             `;
         }
