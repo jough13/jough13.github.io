@@ -2,7 +2,8 @@
 
 // O(1) Cache for Item Name Lookups during Rehydration
 // Prevents the engine from scanning the massive ITEM_DATA dictionary thousands of times when loading a save.
-const _itemTemplateCache = {};
+const _itemTemplateCache = Object.create(null); // 🚨 SECURITY WIN: No prototype chain!
+
 function resolveTemplateIdByName(name) {
     if (_itemTemplateCache[name]) return _itemTemplateCache[name];
     if (typeof window.ITEM_DATA === 'undefined') return null;
@@ -94,10 +95,12 @@ window.rehydrateItemArray = function(arr) {
             parsedItem.range = parsedItem.range || templateItem.range || null;
             parsedItem.isTwoHanded = (parsedItem.isTwoHanded !== undefined) ? parsedItem.isTwoHanded : (templateItem.isTwoHanded || false);
             
-            // 🚨 BUG FIX: String-Spread Corruption Fix
-            // Ensure tags are strictly cast as arrays before being destructured
+            // 🚨 BUG FIX & ROBUSTNESS WIN: Array Rehydration Safety
+            // If `item.tags` was somehow flattened into a comma-separated string by a legacy export,
+            // parsing it back out safely prevents the engine from treating `"fire"` as `['f', 'i', 'r', 'e']`!
             if (parsedItem.tags) {
-                parsedItem.tags = Array.isArray(parsedItem.tags) ? [...parsedItem.tags] : [parsedItem.tags];
+                if (typeof parsedItem.tags === 'string') parsedItem.tags = parsedItem.tags.split(',');
+                else parsedItem.tags = Array.isArray(parsedItem.tags) ? [...parsedItem.tags] : [parsedItem.tags];
             } else if (templateItem.tags) {
                 parsedItem.tags = Array.isArray(templateItem.tags) ? [...templateItem.tags] : [templateItem.tags];
             } else {
@@ -550,7 +553,11 @@ function handleItemDrop(key) {
             if (itemToDrop.quantity <= 0) player.inventory.splice(itemIndex, 1);
             
             gameState.isDroppingItem = false;
-            if (typeof playerRef !== 'undefined') playerRef.update({ inventory: getSanitizedInventory() });
+            if (typeof triggerDebouncedSave === 'function') {
+                triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory });
+            } else if (typeof playerRef !== 'undefined') {
+                playerRef.update({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory });
+            }
             if (typeof renderInventory === 'function') renderInventory();
             return;
             
@@ -563,7 +570,11 @@ function handleItemDrop(key) {
             if (itemToDrop.quantity <= 0) player.inventory.splice(itemIndex, 1);
             
             gameState.isDroppingItem = false;
-            if (typeof playerRef !== 'undefined') playerRef.update({ inventory: getSanitizedInventory() });
+            if (typeof triggerDebouncedSave === 'function') {
+                triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory });
+            } else if (typeof playerRef !== 'undefined') {
+                playerRef.update({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory });
+            }
             if (typeof renderInventory === 'function') renderInventory();
             return;
         }
@@ -594,7 +605,11 @@ function handleItemDrop(key) {
                 if (itemToDrop.quantity <= 0) player.inventory.splice(itemIndex, 1);
                 
                 gameState.isDroppingItem = false;
-                if (typeof playerRef !== 'undefined') playerRef.update({ inventory: getSanitizedInventory() });
+                if (typeof triggerDebouncedSave === 'function') {
+                    triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory });
+                } else if (typeof playerRef !== 'undefined') {
+                    playerRef.update({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory });
+                }
                 if (typeof renderInventory === 'function') renderInventory();
                 return;
             } else {
@@ -609,55 +624,61 @@ function handleItemDrop(key) {
 
         // 🚨 BUG FIX WIN: Outward Spiraling Drop System
         // Ensures dropped items scatter safely on the ground instead of overwriting each other
-        let placed = false;
-        let validFloor = '.';
-        if (gameState.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[gameState.currentCaveTheme]) {
-            validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
-        }
+        // This hooks seamlessly into EventManager if available for consistency!
+        if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
+            window.EventManager.safeDropItem(gameState, player.x, player.y, itemToDrop.tile || '🎒');
+        } else {
+            // Absolute native fallback
+            let placed = false;
+            let validFloor = '.';
+            if (gameState.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[gameState.currentCaveTheme]) {
+                validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
+            }
 
-        if (typeof chunkManager !== 'undefined') {
-            for (let r = 0; r <= 3 && !placed; r++) {
-                for (let dy = -r; dy <= r && !placed; dy++) {
-                    for (let dx = -r; dx <= r && !placed; dx++) {
-                        const tx = player.x + dx;
-                        const ty = player.y + dy;
-                        
-                        let tileAt;
-                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
-                        else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
-                        else tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
+            if (typeof chunkManager !== 'undefined') {
+                for (let r = 0; r <= 3 && !placed; r++) {
+                    for (let dy = -r; dy <= r && !placed; dy++) {
+                        for (let dx = -r; dx <= r && !placed; dx++) {
+                            const tx = player.x + dx;
+                            const ty = player.y + dy;
+                            
+                            let tileAt;
+                            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
+                            else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
+                            else tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
 
-                        if (tileAt === validFloor || tileAt === '.') {
-                            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                                chunkManager.setWorldTile(tx, ty, itemToDrop.tile, 2); 
-                            } else if (gameState.mapMode === 'dungeon') {
-                                chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = itemToDrop.tile;
-                            } else if (gameState.mapMode === 'castle') {
-                                chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = itemToDrop.tile;
+                            if (tileAt === validFloor || tileAt === '.') {
+                                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                                    chunkManager.setWorldTile(tx, ty, itemToDrop.tile || '🎒', 2); 
+                                } else if (gameState.mapMode === 'dungeon') {
+                                    chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = itemToDrop.tile || '🎒';
+                                } else if (gameState.mapMode === 'castle') {
+                                    chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = itemToDrop.tile || '🎒';
+                                }
+                                
+                                // Clear the looted memory for this specific coordinate so it can be picked up
+                                let dropTileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
+                                    ? `${tx},${-ty}`
+                                    : `${gameState.currentCaveId || gameState.currentCastleId}:${tx},${-ty}`;
+                                gameState.lootedTiles.delete(dropTileId);
+                                
+                                placed = true;
                             }
-                            
-                            // Clear the looted memory for this specific coordinate so it can be picked up
-                            let dropTileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
-                                ? `${tx},${-ty}`
-                                : `${gameState.currentCaveId || gameState.currentCastleId}:${tx},${-ty}`;
-                            gameState.lootedTiles.delete(dropTileId);
-                            
-                            placed = true;
                         }
                     }
                 }
-            }
-            
-            // Final failsafe if completely surrounded by walls
-            if (!placed) {
-                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(player.x, player.y, itemToDrop.tile, 2);
-                else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = itemToDrop.tile;
-                else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = itemToDrop.tile;
                 
-                let dropTileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
-                    ? `${player.x},${-player.y}`
-                    : `${gameState.currentCaveId || gameState.currentCastleId}:${player.x},${-player.y}`;
-                gameState.lootedTiles.delete(dropTileId);
+                // Final failsafe if completely surrounded by walls
+                if (!placed) {
+                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(player.x, player.y, itemToDrop.tile || '🎒', 2);
+                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = itemToDrop.tile || '🎒';
+                    else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = itemToDrop.tile || '🎒';
+                    
+                    let dropTileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
+                        ? `${player.x},${-player.y}`
+                        : `${gameState.currentCaveId || gameState.currentCastleId}:${player.x},${-player.y}`;
+                    gameState.lootedTiles.delete(dropTileId);
+                }
             }
         }
 
@@ -667,7 +688,12 @@ function handleItemDrop(key) {
 
         gameState.isDroppingItem = false;
         
-        if (typeof playerRef !== 'undefined') {
+        if (typeof triggerDebouncedSave === 'function') {
+            triggerDebouncedSave({ 
+                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory,
+                lootedTiles: Object.fromEntries(gameState.lootedTiles)
+            });
+        } else if (typeof playerRef !== 'undefined') {
             playerRef.update({ 
                 inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory,
                 lootedTiles: Object.fromEntries(gameState.lootedTiles)
@@ -692,6 +718,10 @@ function handleItemDrop(key) {
 // PERFORMANCE & DRY WIN: Unified Equipment Helper
 function _internalUnequip(item, player) {
     if (!item) return;
+    
+    // Cleanly remove the _tradeUid flag so Bazaar memory hooks don't leak onto equipped gear
+    if (item._tradeUid) delete item._tradeUid;
+    
     applyStatBonuses(item, -1);
     item.isEquipped = false;
     logMessage(`{gray:You unequip the ${item.name}.}`);
@@ -1041,7 +1071,9 @@ function useInventoryItem(itemIndex) {
 
         // --- BUFF POTIONS ---
         } else if (itemToUse.type === 'buff_potion') {
-            const template = typeof ITEM_DATA !== 'undefined' ? ITEM_DATA[Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === itemToUse.name)] : null;
+            // 🚨 PERFORMANCE WIN: Grab template dynamically via cache so we don't trigger O(N) loops!
+            const tKey = itemToUse.templateId || getCraftItemKey(itemToUse.name);
+            const template = typeof ITEM_DATA !== 'undefined' ? ITEM_DATA[tKey] : null;
 
             if (template && player.strengthBonusTurns > 0) {
                 logMessage("Effect already active.");
