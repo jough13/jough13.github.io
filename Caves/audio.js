@@ -1,948 +1,570 @@
-// --- START OF FILE audio.js ---
+// --- START OF FILE expansion-seasons.js ---
 
-// ==========================================
-// ADVANCED PROCEDURAL AUDIO SYSTEM
-// ==========================================
-
-// Safe initialization of settings to handle corrupted or outdated local storage
-let _savedAudioSettings = null;
-try {
-    _savedAudioSettings = JSON.parse(localStorage.getItem('audioSettings'));
-} catch(e) {}
-
-const _getAudioSetting = (key, defaultVal) => {
-    if (_savedAudioSettings && _savedAudioSettings[key] !== undefined) {
-        return _savedAudioSettings[key];
-    }
-    return defaultVal;
-};
-
-const AudioSystem = {
-    _ctx: null, 
-    _masterGain: null,
-    _compressor: null,
-    noiseBuffer: null, 
+window.ExpansionManager.register({
+    id: "seasons_of_the_realm",
+    name: "Seasons of the Realm (Dynamic Live-Ops)",
+    version: "1.5", // Upgraded version!
     
-    // PERFORMANCE WIN: O(1) Map for high-speed audio throttling & GC
-    _lastPlayed: new Map(),
-
-    // Settings State
-    settings: {
-        master: _getAudioSetting('master', true),
-        steps: _getAudioSetting('steps', true),
-        combat: _getAudioSetting('combat', true),
-        magic: _getAudioSetting('magic', true),
-        ui: _getAudioSetting('ui', true)
-    },
-
-    saveSettings: () => {
-        localStorage.setItem('audioSettings', JSON.stringify(AudioSystem.settings));
-    },
-
-    // --- MOBILE BROWSER COMPATIBILITY FIX ---
-    // iOS and Android Chrome strictly block AudioContext from starting unless 
-    // triggered directly by a user gesture. This wrapper guarantees it unlocks.
-    initAudioContext: function() {
-        if (!this._ctx) {
-            // BUG FIX & COMPATIBILITY WIN: Fallback for older Safari versions
-            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContextClass) {
-                console.warn("Web Audio API not supported in this browser.");
-                return null;
-            }
-
-            try {
-                this._ctx = new AudioContextClass();
-                
-                // Studio-grade Mastering Chain
-                this._masterGain = this._ctx.createGain();
-                // 🚨 AUDIO HEADROOM FIX: Dropped to 0.5 to completely eliminate digital clipping 
-                // when massive Multi-Hit AoE spells (like Meteor) trigger 10+ sound nodes at exactly the same millisecond!
-                this._masterGain.gain.value = 0.50; 
-                
-                // AUDIO QUALITY WIN: Upgraded Compressor settings
-                // Prevents ear-bleeding distortion when monsters all attack at the exact same time
-                this._compressor = this._ctx.createDynamicsCompressor();
-                this._compressor.threshold.value = -24; // Start compressing much earlier
-                this._compressor.knee.value = 30;       // Smooth transition
-                this._compressor.ratio.value = 12;      // Hard limiting
-                this._compressor.attack.value = 0.003;  // React instantly
-                this._compressor.release.value = 0.25;  // Let go naturally
-
-                this._masterGain.connect(this._compressor);
-                this._compressor.connect(this._ctx.destination);
-                
-                // PERFORMANCE WIN: Generate the heavy pink noise buffer ONCE here instead of every step!
-                this.initNoise();
-            } catch (e) {
-                console.error("Failed to initialize AudioContext:", e);
-                return null;
-            }
-        }
-        return this._ctx;
-    },
-
-    getCtx: function() {
-        // Bypass expensive initialization calls if it's already running
-        if (this._ctx && this._ctx.state === 'running') return this._ctx;
-
-        const ctx = this.initAudioContext();
-        
-        // Browser Tab Suspension Guards
-        // If a user switches tabs, browsers force-suspend the AudioContext.
-        // We MUST attempt to resume it gracefully. If it fails (e.g. strict autoplay policy),
-        // we catch the error so the entire game engine doesn't crash!
-        if (ctx && ctx.state === 'suspended') {
-            
-            // --- AudioContext State Leak Guard ---
-            // Browsers throw strict autoplay policy warnings if we attempt to resume()
-            // while the tab is hidden (e.g. from an automated DoT tick or network event).
-            if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
-                return null; // Abort silently
-            }
-
-            try {
-                // Returns a promise, catch rejection silently
-                ctx.resume().catch(() => {});
-            } catch (e) {}
-        }
-        
-        // 🚨 CRITICAL BUG FIX: Asynchronous Audio Context Resume
-        // `ctx.resume()` is asynchronous. If we instantly checked `ctx.state !== 'running'` and returned null, 
-        // the very first sound effect that woke up the browser tab would be completely dropped!
-        // The Web Audio API *allows* us to create and schedule nodes on a 'suspended' context; they will simply 
-        // play the exact millisecond the `resume()` promise resolves!
-        if (ctx && ctx.state === 'closed') return null; // Only abort if strictly closed/destroyed
-        
-        return ctx;
-    },
-
-    // Pink Noise Generator
-    // White noise is harsh. Pink noise sounds like natural wind, water, and deep impacts!
-    initNoise: function() {
-        const ctx = this._ctx;
-        if (!ctx || this.noiseBuffer) return;
-        
-        const bufferSize = ctx.sampleRate * 2.0; // 2 seconds of noise buffer
-        this.noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-        const data = this.noiseBuffer.getChannelData(0);
-        
-        // Paul Kellet's refined Pink Noise algorithm
-        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
-        for (let i = 0; i < bufferSize; i++) {
-            let white = Math.random() * 2 - 1;
-            b0 = 0.99886 * b0 + white * 0.0555179;
-            b1 = 0.99332 * b1 + white * 0.0750759;
-            b2 = 0.96900 * b2 + white * 0.1538520;
-            b3 = 0.86650 * b3 + white * 0.3104856;
-            b4 = 0.55000 * b4 + white * 0.5329522;
-            b5 = -0.7616 * b5 - white * 0.0168980;
-            data[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
-            data[i] *= 0.11; // Normalize to roughly -1 to 1 to prevent clipping
-            b6 = white * 0.115926;
-        }
-    },
-
-    // Internal Throttler (Highly optimized for V8 via Maps)
-    _throttle: function(id, msCooldown) {
-        const now = Date.now();
-        // PERFORMANCE WIN: Smarter O(1) garbage collection for the throttle Map.
-        // Bumped threshold to 100 to prevent constant map iteration during intense combat.
-        if (this._lastPlayed.size > 100) {
-            // Using the map's native iterator is significantly faster than Object.keys
-            for (const [key, time] of this._lastPlayed) { 
-                if (now - time > 5000) this._lastPlayed.delete(key);
-            }
-        }
-        
-        const lastTime = this._lastPlayed.get(id);
-        if (lastTime && now - lastTime < msCooldown) return false;
-        
-        this._lastPlayed.set(id, now);
-        return true;
-    },
-
-    // --- IMMERSION: DYNAMIC ACOUSTICS & DISTANCE ATTENUATION ---
-    _getAcoustics: function() {
-        let baseAcoustics = { durationMult: 1.0, filterMult: 1.0, echoDelay: 0, echoFeedback: 0, dampening: 20000 };
-        
-        if (typeof gameState !== 'undefined') {
-            // LORE WIN: Deeply immersive acoustic profiles based on the environment!
-            
-            // 1. The Void & Abyss (Eerie, endless echoes)
-            if (gameState.currentRealm !== 0 || gameState.currentCaveTheme === 'VOID' || gameState.currentCaveTheme === 'ABYSS') {
-                baseAcoustics = { durationMult: 1.6, filterMult: 0.35, echoDelay: 0.35, echoFeedback: 0.65, dampening: 1000 };
-            }
-            // 2. Crystal Caves & Frozen Ruins (High resonance, bright ringing)
-            else if (gameState.currentCaveTheme === 'CRYSTAL' || gameState.currentCaveTheme === 'FROZEN_RUIN') {
-                baseAcoustics = { durationMult: 2.0, filterMult: 1.2, echoDelay: 0.2, echoFeedback: 0.7, dampening: 8000 };
-            }
-            // 3. Sand Tombs & Deserts (Dry, dusty, heavily muffled)
-            else if (gameState.currentCaveTheme === 'SAND_TOMB' || (gameState.mapMode === 'overworld' && gameState.weather === 'clear' && chunkManager && chunkManager.getTile(gameState.player.x, gameState.player.y) === 'D')) {
-                baseAcoustics = { durationMult: 0.6, filterMult: 0.5, echoDelay: 0.02, echoFeedback: 0.1, dampening: 800 };
-            }
-            // 4. Sunken Temples & Grottos (Underwater muffling)
-            else if (gameState.currentCaveTheme === 'SUNKEN' || gameState.currentCaveTheme === 'GROTTO' || gameState.currentCaveTheme === 'SUNKEN_SHIPWRECK') {
-                baseAcoustics = { durationMult: 0.8, filterMult: 0.25, echoDelay: 0.1, echoFeedback: 0.2, dampening: 600 };
-            }
-            // 5. Dwarven Mines & Factories (Tight metallic slapback)
-            else if (gameState.currentCaveTheme === 'DWARVEN_MINE' || gameState.currentCaveTheme === 'CLOCKWORK_FACTORY') {
-                baseAcoustics = { durationMult: 0.9, filterMult: 1.1, echoDelay: 0.05, echoFeedback: 0.5, dampening: 6000 };
-            }
-            // 6. Arena / Colosseum (Wide stadium echo)
-            else if (gameState.currentCaveTheme === 'ARENA') {
-                baseAcoustics = { durationMult: 1.2, filterMult: 0.9, echoDelay: 0.25, echoFeedback: 0.4, dampening: 4000 };
-            }
-            // 7. Sky Realm (Wind swept, quick decay)
-            else if (gameState.mapMode === 'skyrealm') {
-                baseAcoustics = { durationMult: 0.8, filterMult: 1.5, echoDelay: 0.4, echoFeedback: 0.3, dampening: 4000 };
-            }
-            // 8. Underworld (Crushing deep muffle, miles of earth above)
-            else if (gameState.mapMode === 'underworld') {
-                baseAcoustics = { durationMult: 1.5, filterMult: 0.4, echoDelay: 0.3, echoFeedback: 0.5, dampening: 800 }; 
-            }
-            // 9. Deep Caves (Muffled highs, heavy slapback)
-            else if (gameState.mapMode === 'dungeon') {
-                baseAcoustics = { durationMult: 1.2, filterMult: 0.6, echoDelay: 0.15, echoFeedback: 0.4, dampening: 1500 }; 
-            } 
-            // 10. Castles & Pirate Coves (Stone/Wood halls, tight reverb)
-            else if (gameState.mapMode === 'castle' || gameState.currentCaveTheme === 'PIRATE_COVE') {
-                baseAcoustics = { durationMult: 1.1, filterMult: 0.85, echoDelay: 0.08, echoFeedback: 0.3, dampening: 3000 }; 
-            }
-            
-            // --- LORE & ATMOSPHERE WIN: Vitals-Based Acoustic Filtering! ---
-            if (gameState.player) {
-                // If health is critically low, simulate blood rushing to ears by heavily muffling all high frequencies
-                if (gameState.player.health <= gameState.player.maxHealth * 0.25) {
-                    baseAcoustics.filterMult *= 0.4;
-                    baseAcoustics.dampening = Math.min(baseAcoustics.dampening, 800); 
+    data: {
+        // --- 1. SEASONAL ITEMS ---
+        items: {
+            '❄️c': { 
+                name: 'Winter Core', type: 'trade', tile: '❄️', _rarity: 'rare',
+                description: "A perpetually freezing crystal. Drops from Winter beasts.", value: 150 
+            },
+            '🌸s': { 
+                name: 'Spring Blossom', type: 'consumable', tile: '🌸', _rarity: 'rare',
+                description: "Smells of new life. {green:Fully Restores Health & Cures Poison.}", 
+                effect: (state) => {
+                    if (typeof window.modifyVital === 'function') window.modifyVital('health', state.player.maxHealth);
+                    else state.player.health = state.player.maxHealth;
+                    
+                    state.player.poisonTurns = 0;
+                    logMessage("{green:The Spring Blossom revitalizes your body completely!}");
+                    
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal();
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#4ade80', 20);
+                    return true;
                 }
-                
-                // If suffering from Void Madness, echoes become disjointed and highly resonant
-                if (gameState.player.madnessTurns > 0) {
-                    baseAcoustics.echoDelay = Math.max(0.2, baseAcoustics.echoDelay + 0.1);
-                    baseAcoustics.echoFeedback = Math.min(0.85, baseAcoustics.echoFeedback + 0.3);
+            },
+            '☀️e': { 
+                name: 'Summer Ember', type: 'trade', tile: '☀️', _rarity: 'rare',
+                description: "A chunk of raw heat. Drops from Summer beasts.", value: 150 
+            },
+            '🍁a': { 
+                name: 'Autumn Harvest', type: 'consumable', tile: '🍁', _rarity: 'rare',
+                description: "A perfect bountiful crop. {yellow:Fully Restores Hunger & Stamina.}", 
+                effect: (state) => {
+                    if (typeof window.modifyVital === 'function') {
+                        window.modifyVital('hunger', state.player.maxHunger);
+                        window.modifyVital('stamina', state.player.maxStamina);
+                    } else {
+                        state.player.hunger = state.player.maxHunger;
+                        state.player.stamina = state.player.maxStamina;
+                    }
+                    
+                    logMessage("{yellow:The Autumn Harvest fills your belly and restores your energy!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playConsume();
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#facc15', 20);
+                    return true;
                 }
+            },
+            // NEW SEASONAL WEAPONS & ARTIFACTS
+            '⚔️sun': {
+                name: 'Sun-Forged Blade', type: 'weapon', tags: ['blade', 'fire'], tile: '⚔️',
+                damage: 8, slot: 'weapon', statBonuses: { strength: 2 }, inflicts: 'burn', inflictChance: 0.3,
+                description: "{red:+8 Dmg}, {green:+2 Str}. Radiates the intense heat of the Summer sun.", _rarity: 'epic'
+            },
+            '🪓gla': {
+                name: 'Glacial Axe', type: 'weapon', tags: ['axe', 'frost'], tile: '🪓',
+                damage: 9, isTwoHanded: true, slot: 'weapon', statBonuses: { constitution: 2 }, inflicts: 'frostbite', inflictChance: 0.3,
+                description: "{red:+9 Dmg}, {green:+2 Con}. A heavy blade of never-melting ice. (Two-Handed)", _rarity: 'epic'
+            },
+            '🥾sp': {
+                name: 'Springstep Boots', type: 'armor', tile: '👢', defense: 2, slot: 'armor',
+                statBonuses: { dexterity: 4, endurance: 2 }, _rarity: 'epic',
+                description: "{blue:+2 Def}, {green:+4 Dex, +2 End}. Incredibly light. {green:Passive: Grants immunity to Root and vines.}"
+            },
+            '🧥au': {
+                name: 'Autumnal Cloak', type: 'armor', tile: '🧥', defense: 3, slot: 'armor',
+                statBonuses: { endurance: 5, constitution: 2 }, _rarity: 'epic',
+                description: "{blue:+3 Def}, {green:+5 End, +2 Con}. Woven from falling leaves. {gold:Passive: Rapidly restores health when resting.}"
+            },
+            '💍s': {
+                name: 'Amulet of Seasons', type: 'accessory', tile: '💍', defense: 2, slot: 'accessory',
+                statBonuses: { luck: 5 }, _rarity: 'legendary', excludeFromLoot: true,
+                description: "{blue:+2 Def}, {gold:+5 Luck}. Its gemstone changes color with the turning of the world, granting powerful passive immunities matching the current season."
             }
-        }
-        
-        return baseAcoustics; 
-    },
+        },
 
-    _getSpatialData: function(x) {
-        // 🚨 ROBUSTNESS WIN: Protect against NaN propagation if an entity was just deleted or passed undefined.
-        // A NaN Pan value instantly crashes the Web Audio StereoPannerNode!
-        if (typeof x !== 'number' || !Number.isFinite(x) || typeof gameState === 'undefined' || !gameState.player || typeof gameState.player.x !== 'number') {
-            return { pan: 0, distanceVol: 1.0, distanceFilter: 1.0 };
-        }
-        
-        const dx = x - gameState.player.x;
-        const absDx = Math.abs(dx);
-        
-        return {
-            pan: Math.max(-1, Math.min(1, dx / 10)), 
-            distanceVol: Math.max(0.05, 1.0 - (absDx * 0.06)), 
-            distanceFilter: Math.max(0.1, 1.0 - (absDx * 0.05)) 
-        };
-    },
-
-    // Dampened Delay Network (True Reverb)
-    _routeToMaster: function(ctx, sourceNode, acoustics, spatial, isUI = false) {
-        
-        // --- UX WIN: UI Acoustic Bypass ---
-        // UI sounds (hovering, clicking buttons) shouldn't echo through a cave!
-        if (isUI) {
-            sourceNode.connect(this._masterGain);
-            return null; // Return null so the GC cleanup knows there are no panners
-        }
-
-        let panner = null;
-        
-        // COMPATIBILITY WIN: Graceful 3-Tier spatial fallback to support modern browsers,
-        // older iOS Safari, and failing contexts equally without dropping audio.
-        if (ctx.createStereoPanner) {
-            panner = ctx.createStereoPanner();
-            panner.pan.value = spatial.pan;
-            sourceNode.connect(panner);
-        } else if (ctx.createPanner) {
-            panner = ctx.createPanner();
-            panner.panningModel = 'equalpower';
-            // Clamp pan to [-1, 1] strictly for the legacy node
-            const safePan = Math.max(-1, Math.min(1, spatial.pan));
-            panner.setPosition(safePan, 0, 1 - Math.abs(safePan));
-            sourceNode.connect(panner);
-        } else {
-            panner = ctx.createGain(); 
-            sourceNode.connect(panner);
-        }
-
-        if (acoustics.echoDelay > 0) {
-            const delay = ctx.createDelay();
-            delay.delayTime.value = acoustics.echoDelay;
-            const feedback = ctx.createGain();
-            feedback.gain.value = acoustics.echoFeedback;
-            
-            // Lowpass filter inside the loop absorbs high frequencies as the sound bounces!
-            const dampFilter = ctx.createBiquadFilter();
-            dampFilter.type = 'lowpass';
-            
-            // 🚨 NYQUIST FIX: Prevent InvalidAccessError crash
-            // If you attempt to set a filter frequency higher than half the sample rate, Web Audio crashes.
-            const maxFreq = (ctx.sampleRate / 2) - 1;
-            dampFilter.frequency.value = Math.min(maxFreq, Math.max(10, acoustics.dampening));
-
-            panner.connect(delay);
-            delay.connect(dampFilter);
-            dampFilter.connect(feedback);
-            feedback.connect(delay);
-            dampFilter.connect(this._masterGain);
-            
-            // Expose the nodes for explicit garbage collection
-            panner._delayNode = delay;
-            panner._feedbackNode = feedback;
-            panner._dampFilter = dampFilter;
-        } else {
-            panner.connect(this._masterGain);
-        }
-        
-        return panner;
-    },
-
-    // PERFORMANCE & MEMORY LEAK WIN: Strict memory cleanup for Web Audio API nodes.
-    _cleanupRoute: function(pannerNode) {
-        if (!pannerNode) return;
-        // Wrapped in try-catches because sometimes the browser's GC beats us to it
-        try { 
-            if (pannerNode._delayNode) { pannerNode._delayNode.disconnect(); pannerNode._delayNode = null; } 
-            if (pannerNode._feedbackNode) { pannerNode._feedbackNode.disconnect(); pannerNode._feedbackNode = null; }
-            if (pannerNode._dampFilter) { pannerNode._dampFilter.disconnect(); pannerNode._dampFilter = null; }
-            pannerNode.disconnect(); 
-        } catch (e) {}
-    },
-
-    // BUG FIX & STABILITY: Safely validate oscillator types so typos don't crash the context
-    _getSafeOscType: function(type) {
-        const valid = ['sine', 'square', 'sawtooth', 'triangle'];
-        return valid.includes(type) ? type : 'sine';
-    },
-    
-    // 🚨 AUDIO QUALITY WIN: Calculate the true tail length so reverb isn't awkwardly clipped!
-    _getTailTime: function(acoustics) {
-        if (!acoustics || acoustics.echoDelay <= 0) return 0.5;
-        // Feedback multiplier dictates how long the echo rings out.
-        // e.g. Feedback 0.7 means it takes roughly 10 delays to drop below audible volume.
-        return Math.max(0.5, (acoustics.echoDelay * 10) * acoustics.echoFeedback);
-    },
-
-    // --- CORE GENERATORS ---
-
-    playNoise: function(duration, vol = 0.1, filterFreq = 1000, x = null, isUI = false) {
-        if (!this.settings.master) return;
-        const ctx = this.getCtx();
-        if (!ctx) return;
-        
-        if (!this.noiseBuffer) this.initNoise();
-
-        // UI Sounds completely ignore caves/echoes
-        const acoustics = isUI ? { durationMult: 1.0, filterMult: 1.0, echoDelay: 0, echoFeedback: 0, dampening: 20000 } : this._getAcoustics();
-        const spatial = isUI ? { pan: 0, distanceVol: 1.0, distanceFilter: 1.0 } : this._getSpatialData(x);
-        
-        const actualDuration = duration * acoustics.durationMult;
-        // BUG FIX: Prevent log(0) errors in exponentialRampToValueAtTime by enforcing a tiny minimum
-        const actualVol = Math.max(0.001, vol * spatial.distanceVol);
-
-        let src = ctx.createBufferSource();
-        src.buffer = this.noiseBuffer; 
-        
-        src.playbackRate.value = 0.6 + Math.random() * 0.8;
-
-        let filter = ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        
-        // 🚨 NYQUIST FIX: Guarantee frequency NEVER exceeds sampleRate / 2
-        const maxFreq = (ctx.sampleRate / 2) - 1;
-        const targetFreq = (filterFreq + (Math.random() - 0.5) * 200) * acoustics.filterMult * spatial.distanceFilter;
-        filter.frequency.value = Math.min(maxFreq, Math.max(10, targetFreq));
-
-        let gain = ctx.createGain();
-        const now = ctx.currentTime + 0.01; // AUDIO QUALITY WIN: Lookahead prevents envelope popping!
-
-        // AUDIO QUALITY WIN: Dynamic Envelope Generation
-        gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(actualVol, now + 0.02); 
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + actualDuration); 
-
-        src.connect(filter);
-        filter.connect(gain);
-        
-        const panner = this._routeToMaster(ctx, gain, acoustics, spatial, isUI);
-
-        src.start(now);
-        src.stop(now + actualDuration + 0.1); 
-        
-        // 🚨 MEMORY LEAK FIX & GC HINTS
-        // Explicitly sever the connections and set the variable references to null so the V8
-        // garbage collector can instantly reclaim the massive audio buffers instead of waiting!
-        const tail = this._getTailTime(acoustics);
-        let cleaned = false; // Idempotency flag
-        
-        const cleanup = () => {
-            if (cleaned) return;
-            cleaned = true;
-            try { 
-                if (src) { src.disconnect(); src = null; }
-                if (filter) { filter.disconnect(); filter = null; }
-                if (gain) { gain.disconnect(); gain = null; }
-            } catch(e) {}
-            this._cleanupRoute(panner);
-        };
-        
-        src.onended = cleanup;
-        // The +2 second buffer ensures it never races the natural onended event!
-        setTimeout(cleanup, (actualDuration + tail + 2) * 1000);
-    },
-
-    playTone: function(freq, type, duration, vol = 0.1, pitchShift = true, slideTo = null, x = null, isUI = false) {
-        if (!this.settings.master) return;
-        const ctx = this.getCtx();
-        if (!ctx) return;
-        
-        const acoustics = isUI ? { durationMult: 1.0, filterMult: 1.0, echoDelay: 0, echoFeedback: 0, dampening: 20000 } : this._getAcoustics();
-        const spatial = isUI ? { pan: 0, distanceVol: 1.0, distanceFilter: 1.0 } : this._getSpatialData(x);
-        
-        const actualDuration = duration * acoustics.durationMult;
-        const actualVol = Math.max(0.001, vol * spatial.distanceVol);
-
-        let osc = ctx.createOscillator();
-        let gain = ctx.createGain();
-        osc.type = this._getSafeOscType(type);
-        
-        let finalFreq = freq;
-        if (pitchShift) finalFreq = freq * (0.92 + Math.random() * 0.16); 
-        if (finalFreq > 400) finalFreq *= (acoustics.filterMult * spatial.distanceFilter);
-
-        const now = ctx.currentTime + 0.01; 
-        
-        // 🚨 NYQUIST FIX: Clamp limits
-        const maxFreq = (ctx.sampleRate / 2) - 1;
-        const startFreq = Math.min(maxFreq, Math.max(1, finalFreq));
-
-        osc.frequency.setValueAtTime(startFreq, now);
-        if (slideTo) {
-            const endFreq = Math.min(maxFreq, Math.max(10, slideTo * spatial.distanceFilter));
-            osc.frequency.exponentialRampToValueAtTime(endFreq, now + actualDuration);
-        }
-
-        gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(actualVol, now + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + actualDuration);
-
-        osc.connect(gain);
-        const panner = this._routeToMaster(ctx, gain, acoustics, spatial, isUI);
-
-        osc.start(now);
-        osc.stop(now + actualDuration + 0.1);
-        
-        // 🚨 MEMORY LEAK FIX & GC HINTS
-        const tail = this._getTailTime(acoustics);
-        let cleaned = false;
-        
-        const cleanup = () => {
-            if (cleaned) return;
-            cleaned = true;
-            try { 
-                if (osc) { osc.disconnect(); osc = null; }
-                if (gain) { gain.disconnect(); gain = null; }
-            } catch(e) {}
-            this._cleanupRoute(panner);
-        };
-        
-        osc.onended = cleanup;
-        setTimeout(cleanup, (actualDuration + tail + 2) * 1000);
-    },
-
-    playChord: function(notes, type = 'sine', duration = 0.5, vol = 0.1, detune = 0, slideDown = false, x = null, isUI = false) {
-        if (!this.settings.master) return;
-        const ctx = this.getCtx();
-        if (!ctx) return;
-        
-        const acoustics = isUI ? { durationMult: 1.0, filterMult: 1.0, echoDelay: 0, echoFeedback: 0, dampening: 20000 } : this._getAcoustics();
-        const spatial = isUI ? { pan: 0, distanceVol: 1.0, distanceFilter: 1.0 } : this._getSpatialData(x);
-        
-        const actualDuration = duration * acoustics.durationMult;
-        const noteVol = Math.max(0.001, vol / notes.length);
-        const now = ctx.currentTime + 0.01;
-        const maxFreq = (ctx.sampleRate / 2) - 1; // NYQUIST FIX
-
-        notes.forEach((freq, index) => {
-            let osc = ctx.createOscillator();
-            let gain = ctx.createGain();
-            
-            osc.type = this._getSafeOscType(type);
-            
-            const startFreq = Math.min(maxFreq, Math.max(1, (freq * acoustics.filterMult) + (index * detune)));
-            osc.frequency.setValueAtTime(startFreq, now);
-            
-            if (slideDown) {
-                const endFreq = Math.min(maxFreq, Math.max(10, startFreq * 0.5));
-                osc.frequency.exponentialRampToValueAtTime(endFreq, now + actualDuration);
+        // --- 2. SEASONAL BOSSES / ENEMIES ---
+        enemies: {
+            '⛄': {
+                name: 'Frost Colossus', tags: ['elemental', 'frost', 'giant'], mountable: false,
+                maxHealth: 80, attack: 12, defense: 4, xp: 200,
+                color: '#7dd3fc', loot: '❄️c', isElite: true,
+                inflicts: 'frostbite', inflictChance: 0.4,
+                flavor: "A towering mass of ice and packed snow. It brings the blizzard with it."
+            },
+            '🌞': {
+                name: 'Solar Flare', tags: ['elemental', 'fire', 'flying'], mountable: false,
+                maxHealth: 60, attack: 15, defense: 1, xp: 200,
+                color: '#facc15', loot: '☀️e', isElite: true,
+                inflicts: 'burn', inflictChance: 0.5,
+                flavor: "A blinding sphere of superheated plasma."
+            },
+            '🌸w': {
+                name: 'Verdant Warden', tags: ['elemental', 'wood', 'magic'], mountable: false,
+                maxHealth: 70, attack: 8, defense: 3, xp: 180,
+                color: '#4ade80', loot: '🌸s', isElite: true,
+                inflicts: 'root', inflictChance: 0.4,
+                flavor: "A towering protector woven from blooming spring flora."
+            },
+            '🎃s': {
+                name: 'Harvester Spirit', tags: ['undead', 'ethereal'], type: 'spirit', mountable: false,
+                maxHealth: 50, attack: 14, defense: 0, xp: 180,
+                color: '#f97316', loot: '🍁a', isElite: true,
+                flavor: "A restless ghost that haunts the dying autumn fields."
             }
+        },
+        
+        // --- 3. SEASONAL SHOPS ---
+        shops: {
+            trader: [
+                { name: 'Spring Blossom', price: 500, stock: 1 },
+                { name: 'Autumn Harvest', price: 500, stock: 1 }
+            ],
+            black_market: [
+                { name: 'Springstep Boots', price: 1200, stock: 1 },
+                { name: 'Autumnal Cloak', price: 1200, stock: 1 }
+            ],
+            ascendant: [
+                { name: 'Amulet of Seasons', price: 5000, stock: 1 }
+            ]
+        },
 
-            gain.gain.setValueAtTime(0.0001, now);
-            gain.gain.exponentialRampToValueAtTime(noteVol, now + 0.05); 
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + actualDuration);
-
-            osc.connect(gain);
-            const panner = this._routeToMaster(ctx, gain, acoustics, spatial, isUI);
-            
-            osc.start(now);
-            osc.stop(now + actualDuration + 0.1);
-            
-            // 🚨 MEMORY LEAK FIX & GC HINTS
-            const tail = this._getTailTime(acoustics);
-            let cleaned = false;
-            
-            const cleanup = () => { 
-                if (cleaned) return;
-                cleaned = true;
-                try { 
-                    if (osc) { osc.disconnect(); osc = null; }
-                    if (gain) { gain.disconnect(); gain = null; }
-                } catch(e) {}
-                this._cleanupRoute(panner);
-            };
-            
-            osc.onended = cleanup;
-            setTimeout(cleanup, (actualDuration + tail + 2) * 1000);
-        });
+        // --- 4. SEASONAL RECIPES ---
+        craftingRecipes: {
+            "Sun-Forged Blade": { materials: { "Summer Ember": 1, "Iron Sword": 1, "Arcane Dust": 5 }, xp: 150, level: 5 },
+            "Glacial Axe": { materials: { "Winter Core": 1, "Greataxe": 1, "Arcane Dust": 5 }, xp: 150, level: 5 }
+        }
     },
 
-    playMelody: function(notes, type = 'sine', speed = 0.15, vol = 0.1, isUI = false) {
-        if (!this.settings.master || !this.settings.ui) return;
-        const ctx = this.getCtx();
-        if (!ctx) return;
+    init: function() {
+        const logger = window.ExpansionManager.getLogger("Seasons");
         
-        const now = ctx.currentTime + 0.01;
-        const acoustics = isUI ? { durationMult: 1.0, filterMult: 1.0, echoDelay: 0, echoFeedback: 0, dampening: 20000 } : this._getAcoustics();
-        const maxFreq = (ctx.sampleRate / 2) - 1; // NYQUIST FIX
-        
-        let osc = ctx.createOscillator();
-        let gain = ctx.createGain();
-        osc.type = this._getSafeOscType(type);
-        
-        let totalDuration = notes.length * speed * acoustics.durationMult;
-        const actualVol = Math.max(0.001, vol);
-        
-        notes.forEach((freq, index) => {
-            const noteTime = now + (index * speed);
-            if (freq > 0) {
-                const adjFreq = Math.min(maxFreq, Math.max(1, freq * (freq > 500 ? acoustics.filterMult : 1.0)));
-                osc.frequency.setValueAtTime(adjFreq, noteTime);
-                
-                gain.gain.setValueAtTime(0.0001, noteTime);
-                gain.gain.exponentialRampToValueAtTime(actualVol, noteTime + 0.02);
-                
-                // 🚨 BUG FIX WIN: Safe Release Ramping
-                // Ensure the release envelope is strictly scheduled AFTER the attack envelope, 
-                // preventing overlapping Web Audio API timeline exceptions!
-                const releaseTime = Math.max(noteTime + 0.03, noteTime + (speed * acoustics.durationMult) - 0.01);
-                gain.gain.exponentialRampToValueAtTime(0.0001, releaseTime);
+        // ==========================================
+        // 1. THE SEASONAL CLOCK ENGINE
+        // ==========================================
+
+        window.OVERRIDE_SEASON = null; // Use /season [name] in chat to override for testing!
+
+        window.getCurrentSeason = function() {
+            if (window.OVERRIDE_SEASON) return window.OVERRIDE_SEASON;
+            
+            const month = new Date().getMonth(); // 0 = Jan, 11 = Dec
+            
+            // Northern Hemisphere Seasons (Standard RPG Trope)
+            if (month === 11 || month === 0 || month === 1) return 'Winter'; // Dec, Jan, Feb
+            if (month >= 2 && month <= 4) return 'Spring'; // Mar, Apr, May
+            if (month >= 5 && month <= 7) return 'Summer'; // Jun, Jul, Aug
+            return 'Autumn'; // Sep, Oct, Nov
+        };
+
+        // ==========================================
+        // 2. SAFE UI INJECTION (Time Panel & Chat)
+        // ==========================================
+
+        const applySafePatch = (target, method, factory) => {
+            if (typeof window.ExpansionManager.patchFunction === 'function') {
+                window.ExpansionManager.patchFunction(target, method, factory);
             } else {
-                gain.gain.setValueAtTime(0.0001, noteTime);
+                // Fallback for older engine versions
+                const orig = target[method];
+                target[method] = factory(orig ? orig.bind(target) : null);
             }
+        };
+
+        applySafePatch(window, 'renderTime', (origRenderTime) => {
+            return function() {
+                if (origRenderTime) origRenderTime.apply(this, arguments);
+                
+                const timeDisplay = document.getElementById('timeDisplay');
+                if (timeDisplay) {
+                    const season = window.getCurrentSeason();
+                    let seasonColor = '#9ca3af';
+                    let icon = '🍂';
+                    
+                    if (season === 'Winter') { seasonColor = '#7dd3fc'; icon = '❄️'; }
+                    else if (season === 'Spring') { seasonColor = '#4ade80'; icon = '🌸'; }
+                    else if (season === 'Summer') { seasonColor = '#facc15'; icon = '☀️'; }
+                    else if (season === 'Autumn') { seasonColor = '#f97316'; icon = '🍁'; }
+
+                    // 🚨 UI WIN: Appends cleanly
+                    timeDisplay.innerHTML += ` <span style="color: ${seasonColor}; font-weight: bold;" class="drop-shadow-sm ml-2 border-l border-gray-600 pl-2" title="${season} Season">${icon} ${season}</span>`;
+                }
+            };
+        });
+
+        applySafePatch(window, 'handleChatCommand', (originalHandleChat) => {
+            return function(message) {
+                const raw = message.substring(1); 
+                const parts = raw.split(' ');
+                const command = parts[0].toLowerCase();
+                
+                if (command === 'season') {
+                    // Admin Guard
+                    const ADMIN_EMAILS = ["your.email@gmail.com", "admin@cavesandcastles.com"];
+                    if (!auth.currentUser || !ADMIN_EMAILS.includes(auth.currentUser.email)) {
+                        logMessage("{red:Unauthorized. The Time Weavers ignore you.}");
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                        return; // 🚨 BUG FIX: Return early to prevent fallthrough
+                    }
+
+                    const requested = parts[1] ? parts[1].toLowerCase() : null;
+                    if (requested === 'winter') window.OVERRIDE_SEASON = 'Winter';
+                    else if (requested === 'spring') window.OVERRIDE_SEASON = 'Spring';
+                    else if (requested === 'summer') window.OVERRIDE_SEASON = 'Summer';
+                    else if (requested === 'autumn') window.OVERRIDE_SEASON = 'Autumn';
+                    else if (requested === 'clear') window.OVERRIDE_SEASON = null;
+                    else {
+                        logMessage("{gray:Usage: /season [winter|spring|summer|autumn|clear]}");
+                        return; // 🚨 BUG FIX: Return early
+                    }
+                    
+                    logMessage(`{purple:The Time Weavers violently shift the timeline. It is now ${window.getCurrentSeason()}.}`);
+                    
+                    // Massive Temporal Shift Effects
+                    if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playTimelineShift === 'function') {
+                        AudioSystem.playTimelineShift();
+                    }
+                    if (typeof gameState !== 'undefined') {
+                        gameState.screenShake = 30;
+                        gameState.screenFlash = { color: '#a855f7', alpha: 0.6, decay: 0.02 };
+                    }
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#a855f7', 40);
+                    }
+
+                    // Force complete map purge so chunks regenerate with the new season
+                    if (typeof chunkManager !== 'undefined') {
+                        chunkManager.loadedChunks = {};
+                        chunkManager.worldState = {};
+                        gameState.mapDirty = true;
+                        if (typeof render === 'function') render();
+                    }
+                    if (typeof renderTime === 'function') renderTime();
+                    
+                    return; // 🚨 BUG FIX: Ensure we do NOT pass this command to the original handler!
+                }
+                
+                if (originalHandleChat) originalHandleChat.apply(this, arguments);
+            };
+        });
+
+        // ==========================================
+        // 3. TERRAIN MUTATIONS (V8 Optimized)
+        // ==========================================
+
+        if (typeof chunkManager !== 'undefined') {
+            applySafePatch(chunkManager, 'generateChunk', (origGenerateChunk) => {
+                return function(chunkX, chunkY) {
+                    if (origGenerateChunk) origGenerateChunk.call(this, chunkX, chunkY);
+                    
+                    // Only mutate the Prime Realm
+                    if (typeof gameState !== 'undefined' && gameState.currentRealm !== 0 && gameState.currentRealm) return;
+
+                    const chunkId = `${chunkX},${chunkY}`;
+                    const chunkData = this.loadedChunks[chunkId];
+                    const season = window.getCurrentSeason();
+                    
+                    // Deterministic PRNG
+                    const random = typeof Alea !== 'undefined' ? Alea(typeof stringToSeed !== 'undefined' ? stringToSeed(`season_${season}_${chunkId}`) : 1) : Math.random;
+                    
+                    // 🚀 PERFORMANCE WIN: Evaluate Season once outside the 256-tile loop!
+                    if (season === 'Winter') {
+                        for (let y = 0; y < 16; y++) {
+                            for (let x = 0; x < 16; x++) {
+                                const tile = chunkData[y][x];
+                                if (tile === '≈') chunkData[y][x] = '🧊'; 
+                                else if (tile === '.' && random() < 0.3) chunkData[y][x] = '❄️';
+                                else if (tile === 'F' && random() < 0.3) chunkData[y][x] = '🌲'; // Aesthetic Tundra Pine
+                            }
+                        }
+                    } 
+                    else if (season === 'Spring') {
+                        for (let y = 0; y < 16; y++) {
+                            for (let x = 0; x < 16; x++) {
+                                const tile = chunkData[y][x];
+                                if (tile === '.' && random() < 0.05) chunkData[y][x] = '🌺';
+                            }
+                        }
+                    } 
+                    else if (season === 'Summer') {
+                        for (let y = 0; y < 16; y++) {
+                            for (let x = 0; x < 16; x++) {
+                                const tile = chunkData[y][x];
+                                if (tile === '≈' && random() < 0.3) chunkData[y][x] = 'd';
+                                if (tile === '.' && random() < 0.05) chunkData[y][x] = 'D'; 
+                            }
+                        }
+                    } 
+                    else if (season === 'Autumn') {
+                        for (let y = 0; y < 16; y++) {
+                            for (let x = 0; x < 16; x++) {
+                                const tile = chunkData[y][x];
+                                if (tile === 'F' && random() < 0.2) chunkData[y][x] = 'd'; 
+                                if ((tile === '.' || tile === 'F') && random() < 0.03) chunkData[y][x] = '🍄';
+                            }
+                        }
+                    }
+                };
+            });
+        }
+
+        // ==========================================
+        // 4. WEATHER SKEWING
+        // ==========================================
+
+        applySafePatch(window, 'updateWeather', (origUpdateWeather) => {
+            return function() {
+                // Call the original weather machine to generate the forecast first
+                if (origUpdateWeather) origUpdateWeather.apply(this, arguments);
+                
+                const season = window.getCurrentSeason();
+                
+                // Override the local forecast before the state machine executes it
+                if (gameState.mapMode === 'overworld' && gameState.player.weatherState === 'calm') {
+                    if (season === 'Winter') {
+                        // Rain becomes Snow. Clear has a 20% chance to become Snow.
+                        if (gameState.currentForecast === 'rain') gameState.currentForecast = 'snow';
+                        else if (gameState.currentForecast === 'clear' && Math.random() < 0.20) gameState.currentForecast = 'snow';
+                    } 
+                    else if (season === 'Spring') {
+                        // Snow becomes Rain. Clear has a 30% chance to become Rain.
+                        if (gameState.currentForecast === 'snow') gameState.currentForecast = 'rain';
+                        else if (gameState.currentForecast === 'clear' && Math.random() < 0.30) gameState.currentForecast = 'rain';
+                    }
+                    else if (season === 'Summer') {
+                        // Summer is almost always clear. Snow is impossible.
+                        if (gameState.currentForecast === 'snow') gameState.currentForecast = 'clear';
+                        else if (gameState.currentForecast !== 'clear' && Math.random() < 0.60) gameState.currentForecast = 'clear';
+                    }
+                    else if (season === 'Autumn') {
+                        // High winds and storms
+                        if (gameState.currentForecast === 'clear' && Math.random() < 0.25) gameState.currentForecast = 'storm';
+                    }
+                }
+            };
+        });
+
+        // ==========================================
+        // 5. SEASONAL SURVIVAL MECHANICS
+        // ==========================================
+
+        applySafePatch(window, 'endPlayerTurn', (origEndPlayerTurn) => {
+            return function(updates = {}) {
+                
+                const p = gameState.player;
+                const season = window.getCurrentSeason();
+
+                // 🌟 LORE WIN: Amulet of Seasons & Seasonal Gear Passives
+                const armor = p.equipment && p.equipment.armor;
+                const amulet = p.equipment && p.equipment.accessory;
+                
+                // 🚨 BUG FIX & ROBUSTNESS: Strict template checking prevents name-prefix bugs
+                const hasSeasonsAmulet = amulet && (amulet.name === 'Amulet of Seasons' || amulet.templateId === '💍s');
+                const hasSpringBoots = armor && (armor.name.includes('Springstep') || armor.templateId === '🥾sp');
+                const hasAutumnCloak = armor && (armor.name.includes('Autumnal') || armor.templateId === '🧥au');
+
+                if (hasSeasonsAmulet) {
+                    if (season === 'Winter') {
+                        if (p.frostbiteTurns > 0) {
+                            p.frostbiteTurns = 0;
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, "RESISTED", "#7dd3fc");
+                        }
+                    } else if (season === 'Summer') {
+                        p.fireResistTurns = Math.max(p.fireResistTurns || 0, 2);
+                    } else if (season === 'Spring') {
+                        if (p.poisonTurns > 0) {
+                            p.poisonTurns = 0;
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, "PURGED", "#4ade80");
+                        }
+                    } else if (season === 'Autumn') {
+                        // Constant, slow passive regeneration of food and water!
+                        if (gameState.playerTurnCount % 5 === 0) {
+                            p.hunger = Math.min(p.maxHunger, p.hunger + 1);
+                            p.thirst = Math.min(p.maxThirst, p.thirst + 1);
+                        }
+                    }
+                }
+
+                // Springstep Boots Root Immunity
+                if (hasSpringBoots && p.rootTurns > 0) {
+                    p.rootTurns = 0;
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, "FREE", "#4ade80");
+                }
+
+                // Only tick these massive overworld effects once every 15 turns to prevent log spam
+                if (gameState.playerTurnCount % 15 === 0 && gameState.mapMode === 'overworld') {
+                    
+                    if (season === 'Summer') {
+                        // Intense Heat: Extra thirst drain
+                        if (typeof window.modifyVital === 'function') window.modifyVital('thirst', -1);
+                        else p.thirst = Math.max(0, p.thirst - 1);
+                        
+                        if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('thirstDisplay'), false);
+                    } 
+                    else if (season === 'Winter') {
+                        // Biting Cold: Drains stamina unless you have fire resistance or a torch!
+                        const hasTorch = p.inventory.some(i => i && (i.name === 'Torch' || i.name === 'Ever-Burning Candle'));
+                        if (p.fireResistTurns <= 0 && !hasTorch) {
+                            if (typeof window.modifyVital === 'function') window.modifyVital('stamina', -1);
+                            else p.stamina = Math.max(0, p.stamina - 1);
+                            
+                            if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('staminaDisplay'), false);
+                        }
+                    } 
+                    else if (season === 'Spring') {
+                        // Rebirth: Passive health regeneration
+                        if (p.health < p.maxHealth && p.hunger > 0 && p.thirst > 0) {
+                            if (typeof window.modifyVital === 'function') window.modifyVital('health', 1);
+                            else p.health = Math.min(p.maxHealth, p.health + 1);
+                            
+                            if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), true);
+                        }
+                    } 
+                    else if (season === 'Autumn') {
+                        // The Great Harvest: Passive hunger regeneration
+                        if (p.hunger < p.maxHunger) {
+                            if (typeof window.modifyVital === 'function') window.modifyVital('hunger', 1);
+                            else p.hunger = Math.min(p.maxHunger, p.hunger + 1);
+                            
+                            if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('hungerDisplay'), true);
+                        }
+                    }
+                }
+                
+                // 🌟 LORE WIN: Ambient Particle System (Leaves & Petals)
+                if (gameState.mapMode === 'overworld' && typeof ParticleSystem !== 'undefined' && Math.random() < 0.1) {
+                    const currentTile = chunkManager && chunkManager.getTile(p.x, p.y);
+                    if (currentTile === 'F' || currentTile === '.') {
+                        const px = p.x + (Math.random() * 16 - 8);
+                        const py = p.y + (Math.random() * 16 - 8);
+                        
+                        if (season === 'Autumn') {
+                            ParticleSystem.spawn(px, py, '#f97316', 'smoke', '', 2); // Orange leaf
+                            const leaf = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length - 1];
+                            if (leaf) { leaf.vy = 0.02; leaf.vx = 0.05; leaf.gravity = 0; leaf.lifeFade = 0.01; }
+                        } else if (season === 'Spring') {
+                            ParticleSystem.spawn(px, py, '#f472b6', 'sparkle', '', 2); // Pink petal
+                            const petal = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length - 1];
+                            if (petal) { petal.vy = 0.01; petal.vx = 0.03; petal.gravity = 0; petal.lifeFade = 0.01; }
+                        }
+                    }
+                }
+                
+                // Use .apply to safely pass all original arguments forward!
+                if (origEndPlayerTurn) origEndPlayerTurn.apply(this, arguments);
+            };
+        });
+
+        // ==========================================
+        // 6. ENEMY MIGRATIONS
+        // ==========================================
+
+        if (typeof chunkManager !== 'undefined') {
+            applySafePatch(chunkManager, 'getEnemySpawn', (origGetEnemySpawn) => {
+                return function(biome, distSq, random) {
+                    const season = window.getCurrentSeason();
+                    
+                    // 15% chance to intercept the spawn table and inject a seasonal enemy!
+                    if (Math.random() < 0.15) {
+                        if (season === 'Winter' && (biome === '.' || biome === 'F')) return '⛄'; 
+                        if (season === 'Spring' && biome === 'F') return '🌸w'; // Verdant Warden
+                        if (season === 'Summer' && (biome === 'D' || biome === 'd')) return '🌞'; 
+                        if (season === 'Autumn' && (biome === 'F' || biome === 'd')) return '🎃s'; // Harvester Spirit
+                    }
+                    
+                    if (origGetEnemySpawn) return origGetEnemySpawn.apply(this, arguments);
+                    return null;
+                };
+            });
+        }
+
+        // ==========================================
+        // 7. HOMESTEAD HARVEST BONUSES
+        // ==========================================
+
+        applySafePatch(window, 'harvestPlot', (origHarvestPlot) => {
+            return function(plotIndex) {
+                const p = gameState.player;
+                
+                // 1. Capture the plot state BEFORE the original function runs and potentially wipes it
+                const plotBefore = p.gardenPlots ? p.gardenPlots[plotIndex] : null;
+                
+                let seedData = null;
+                let isFullyGrown = false;
+                
+                if (plotBefore) {
+                    const turnsPassed = gameState.playerTurnCount - plotBefore.plantedAt;
+                    seedData = typeof window.FARMING_DATA !== 'undefined' ? window.FARMING_DATA.seeds[plotBefore.seedName] : null;
+                    
+                    if (seedData && (turnsPassed / seedData.turnsToGrow) * 100 >= 100) {
+                        isFullyGrown = true;
+                    }
+                }
+                
+                // 2. Call original logic to handle standard harvesting, XP, and inventory capacity checks
+                if (origHarvestPlot) origHarvestPlot.apply(this, arguments);
+                
+                const plotAfter = p.gardenPlots ? p.gardenPlots[plotIndex] : null;
+                
+                // Infinite Harvest Prevention
+                // We only grant the bonus if the original function actually SUCCEEDED and cleared the plot!
+                if (plotBefore && plotAfter === null && isFullyGrown && seedData) {
+                    const season = window.getCurrentSeason();
+                    
+                    // In Autumn, crops yield an extra clone of themselves!
+                    if (season === 'Autumn') {
+                        let templateId = null;
+                        if (typeof getFarmItemKey === 'function') {
+                            templateId = getFarmItemKey(seedData.yields);
+                        } else if (typeof window.ITEM_DATA !== 'undefined') {
+                            templateId = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === seedData.yields);
+                        }
+                        
+                        const template = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA[templateId] : null;
+                        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(p) : 9;
+                        
+                        // Safe Stack Checks
+                        const existingStack = p.inventory.find(i => i && i.name === seedData.yields && !i.isEquipped);
+                        const isStackable = typeof window.isStackableItem === 'function' ? window.isStackableItem(template ? template.type : 'ingredient') : true;
+
+                        if (existingStack && isStackable) {
+                            existingStack.quantity += 1;
+                            logMessage(`{orange:Autumn Harvest Bonus! (+1 ${seedData.yields})}`);
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, "BONUS", "#f97316");
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+
+                            if (typeof triggerDebouncedSave === 'function') {
+                                triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : p.inventory });
+                            }
+                        } 
+                        else if (templateId && template && p.inventory.length < invCap) {
+                            let bonusItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
+                            bonusItem.templateId = templateId;
+                            bonusItem.quantity = 1;
+                            bonusItem.isEquipped = false;
+                            
+                            // Essential rebinds
+                            bonusItem.effect = template.effect || null;
+                            bonusItem.onHit = template.onHit || null;
+                            
+                            p.inventory.push(bonusItem);
+                            
+                            logMessage(`{orange:Autumn Harvest Bonus! (+1 ${seedData.yields})}`);
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, "BONUS", "#f97316");
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+
+                            if (typeof triggerDebouncedSave === 'function') {
+                                triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : p.inventory });
+                            }
+                        } 
+                        else {
+                            // 🚨 BUG FIX & QoL WIN: Drop on floor instead of permanent deletion!
+                            logMessage(`{red:Autumn Bonus lost... Your inventory is completely full! The crop falls to the ground.}`);
+                            if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
+                                window.EventManager.safeDropItem(gameState, p.x, p.y, template ? template.tile : '🌿');
+                            }
+                        }
+                    }
+                }
+            };
         });
         
-        osc.connect(gain);
-        
-        // Pass a dummy spatial object since melodies are generally center-panned UI/Music
-        const panner = this._routeToMaster(ctx, gain, acoustics, { pan: 0, distanceVol: 1.0, distanceFilter: 1.0 }, isUI);
-        
-        osc.start(now);
-        osc.stop(now + totalDuration + 0.1);
-        
-        // 🚨 MEMORY LEAK FIX & GC HINTS
-        const tail = this._getTailTime(acoustics);
-        let cleaned = false;
-        
-        const cleanup = () => { 
-            if (cleaned) return;
-            cleaned = true;
-            try { 
-                if (osc) { osc.disconnect(); osc = null; }
-                if (gain) { gain.disconnect(); gain = null; }
-            } catch(e) {}
-            this._cleanupRoute(panner);
-        };
-        
-        osc.onended = cleanup;
-        setTimeout(cleanup, (totalDuration + tail + 2) * 1000);
-    },
-
-    // --- SPECIFIC SOUND EFFECTS ---
-
-    playStep: function(x) { 
-        if (!this.settings.steps) return;
-        if (!this._throttle('step', 80)) return; 
-        
-        let weight = 1.0;
-        let surface = 'stone'; // Default
-        
-        // --- JUICE WIN: Terrain-Aware Footsteps! ---
-        if (typeof gameState !== 'undefined' && gameState.player && typeof chunkManager !== 'undefined') {
-            
-            // Check Mounts First
-            if (gameState.player.isMounted && gameState.player.companion) {
-                const mountTile = gameState.player.companion.tile;
-                if (['Ø', '🦖', '🧌', '🐲'].includes(mountTile)) weight = 2.5; // Massive boom
-                else if (['🐻', '🐗'].includes(mountTile)) weight = 1.5;
-            }
-            
-            // Determine Surface Type Safely
-            let currentTile = '.';
-            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
-            } else if (gameState.mapMode === 'dungeon') {
-                currentTile = chunkManager.caveMaps[gameState.currentCaveId]?.[gameState.player.y]?.[gameState.player.x] || '.';
-            } else if (gameState.mapMode === 'castle') {
-                currentTile = chunkManager.castleMaps[gameState.currentCastleId]?.[gameState.player.y]?.[gameState.player.x] || '.';
-            }
-            
-            if (['F', '.', '🌿', '🍄', '🌳'].includes(currentTile)) surface = 'grass';
-            else if (['❄️', '🧊', '🌲'].includes(currentTile)) surface = 'snow';
-            else if (['=', '▤', '🏚'].includes(currentTile) || gameState.player.isSailing || gameState.player.isBoating) surface = 'wood';
-            else if (['D', 'd', '∴'].includes(currentTile)) surface = 'sand';
-        }
-        
-        // Modulate the sounds based on the surface material!
-        if (surface === 'grass') {
-            this.playNoise(0.08 * weight, 0.02 * weight, 400 / weight, x); 
-            this.playTone(60 / weight, 'sine', 0.05 * weight, 0.03 * weight, true, 40 / weight, x);
-        } else if (surface === 'snow') {
-            this.playNoise(0.12 * weight, 0.05 * weight, 3000 / weight, x); // Crisp crunch
-            this.playTone(100 / weight, 'triangle', 0.04 * weight, 0.02 * weight, true, 50 / weight, x);
-        } else if (surface === 'wood') {
-            this.playTone(150 / weight, 'square', 0.05 * weight, 0.03 * weight, true, 50 / weight, x); // Hollow thud
-            this.playNoise(0.05 * weight, 0.03 * weight, 800 / weight, x); 
-        } else if (surface === 'sand') {
-            this.playNoise(0.15 * weight, 0.03 * weight, 600 / weight, x); // Shuffling
-        } else {
-            // Stone / Default
-            this.playNoise(0.08 * weight, 0.04 * weight, 500 / weight, x); 
-            this.playTone(80 / weight, 'sine', 0.05 * weight, 0.05 * weight, true, 40 / weight, x);
-        }
-    },
-    
-    // NEW: Shovel digging sound
-    playDig: function(x) {
-        if (!this.settings.steps) return; // Fallback to step settings for environmental actions
-        if (!this._throttle('dig', 150)) return; 
-        this.playNoise(0.15, 0.1, 400, x);
-        this.playTone(80, 'triangle', 0.1, 0.1, true, 40, x);
-    },
-
-    // NEW: Fishing bite sound
-    playFishBite: function(x) {
-        if (!this.settings.ui) return;
-        if (!this._throttle('fishBite', 200)) return; 
-        
-        // Bubbly, popping sound
-        this.playTone(800, 'sine', 0.05, 0.15, false, 400, x);
-        setTimeout(() => this.playNoise(0.05, 0.05, 1000, x), 20);
-        setTimeout(() => this.playTone(1200, 'sine', 0.05, 0.1, false, 600, x), 40);
-    },
-    
-    playAttack: function(type = 'normal', x) { 
-        if (!this.settings.combat) return;
-        if (!this._throttle('attack', 50)) return; 
-        
-        if (type === 'heavy') {
-            // Layered physical impact: Crunch + Deep Sub Drop
-            this.playNoise(0.1, 0.1, 1200, x);
-            this.playTone(150, 'triangle', 0.15, 0.12, true, 20, x); 
-            this.playTone(60, 'sine', 0.2, 0.2, false, 20, x); 
-        } else if (type === 'light') {
-            this.playTone(600, 'sine', 0.08, 0.08, true, 200, x);
-        } else if (type === 'sweep') {
-            // Enhanced whoosh: Richer sweep with noise layer
-            this.playTone(200, 'sine', 0.2, 0.12, true, 100, x);
-            this.playNoise(0.15, 0.05, 800, x); 
-        } else if (type === 'pierce') {
-            this.playTone(800, 'sawtooth', 0.05, 0.1, true, 100, x);
-        } else {
-            this.playTone(300 + (Math.random() * 100), 'sine', 0.1, 0.1, false, 50 + (Math.random() * 20), x);
-        }
-    },
-
-    playBow: function(x) {
-        if (!this.settings.combat) return;
-        if (!this._throttle('bow', 150)) return; 
-        // Layered Twang + Whoosh
-        this.playTone(400, 'sawtooth', 0.1, 0.1, true, 200, x);
-        setTimeout(() => this.playNoise(0.15, 0.04, 2000, x), 10);
-    },
-    
-    playHit: function(x) { 
-        if (!this.settings.combat) return;
-        if (!this._throttle('hit', 80)) return;
-        
-        let material = 'flesh'; 
-        if (typeof chunkManager !== 'undefined' && typeof gameState !== 'undefined') {
-            let tileAtX = null;
-            if (gameState.mapMode === 'overworld') tileAtX = chunkManager.getTile(x, gameState.player.y);
-            else if (gameState.mapMode === 'dungeon') tileAtX = chunkManager.caveMaps[gameState.currentCaveId]?.[gameState.player.y]?.[x];
-            else if (gameState.mapMode === 'castle') tileAtX = chunkManager.castleMaps[gameState.currentCastleId]?.[gameState.player.y]?.[x];
-            
-            // CONTENT WIN: Expanded Material Acoustic Tags
-            if (tileAtX) {
-                if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tileAtX]) {
-                    const tags = ENEMY_DATA[tileAtX].tags || []; 
-                    if (tags.includes("bone")) material = 'bone';
-                    else if (tags.includes("metal") || tags.includes("stone") || tags.includes("construct")) material = 'metal';
-                    else if (tags.includes("ethereal") || tags.includes("void")) material = 'ethereal';
-                    else if (tags.includes("bug") || tags.includes("aquatic") || tags.includes("fungus")) material = 'squish';
-                    else if (tags.includes("wood") || tags.includes("plant")) material = 'wood';
-                } else if (['🌳', '🌳e', '+', '🚪', '🏚', '🏚️', '📦', '⛵', 'c', '🛤️'].includes(tileAtX)) {
-                    material = 'wood'; // Obstacles and doors
-                } else if (['💎n', '⚙️', '🤖', '🏭', '🛒', '🪨g'].includes(tileAtX)) {
-                    material = 'metal'; // New expansion items
-                }
-            }
-        }
-
-        if (material === 'bone') {
-            this.playTone(400, 'square', 0.05, 0.1, true, null, x); 
-            this.playNoise(0.05, 0.15, 3000, x); 
-        } else if (material === 'metal') {
-            // High ping layered over a crunch
-            this.playTone(1200, 'sine', 0.4, 0.1, false, 200, x); 
-            this.playTone(800, 'triangle', 0.2, 0.15, true, 200, x); 
-            this.playNoise(0.1, 0.1, 2000, x);
-        } else if (material === 'ethereal') {
-            this.playTone(200, 'sine', 0.4, 0.15, false, 50, x); 
-            this.playNoise(0.3, 0.08, 400, x); 
-        } else if (material === 'squish') {
-            // Wet, low-pass filtered drop
-            this.playTone(150, 'sine', 0.1, 0.15, false, 50, x);
-            this.playNoise(0.1, 0.1, 400, x); // Heavily muffled noise
-        } else if (material === 'wood') {
-            // Hollow, resonant thud and splinter
-            this.playTone(200, 'square', 0.1, 0.1, true, 50, x);
-            this.playNoise(0.05, 0.1, 1500, x);
-        } else {
-            this.playTone(80, 'square', 0.15, 0.1, true, null, x); 
-            this.playNoise(0.1, 0.1, 1500, x);
-        }
-    },
-
-    playCrit: function(x) {
-        if (!this.settings.combat) return;
-        if (!this._throttle('crit', 200)) return; 
-        this.playTone(1200, 'sine', 0.3, 0.15, false, 800, x);
-        this.playTone(80, 'square', 0.2, 0.1, true, null, x); 
-        this.playNoise(0.2, 0.15, 2000, x); 
-    },
-    
-    playMagic: function(x) { 
-        if (!this.settings.magic) return;
-        if (!this._throttle('magic', 100)) return;
-        // Rich Major 7th chord for magic casting instead of random tones
-        this.playChord([440, 554.37, 659.25, 830.61], 'sine', 0.3, 0.08, 2.0, true, x);
-    },
-
-    playHeal: function(x) {
-        if (!this.settings.magic) return;
-        if (!this._throttle('heal', 150)) return; 
-        // Warm, swelling chord
-        this.playChord([261.63, 329.63, 392.00], 'sine', 0.6, 0.1, 1.0, false, x);
-    },
-    
-    // --- UI SOUNDS (Bypass Reverb) ---
-    playCoin: function() { 
-        if (!this.settings.ui) return;
-        if (!this._throttle('coin', 50)) return;
-        this.playMelody([987.77, 1318.51], 'sine', 0.05, 0.06, true); 
-    },
-    
-    // JUICE WIN: Improved UI Error feedback
-    playError: function() {
-        if (this.settings.ui) {
-            if (!this._throttle('error', 100)) return;
-            // Dull, staccato thud instead of a harsh screech
-            this.playTone(100, 'triangle', 0.1, 0.05, false, 50, null, true);
-            this.playNoise(0.05, 0.02, 300, null, true);
-        }
-    },
-
-    playClick: function() {
-        if (this.settings.ui) {
-            if (!this._throttle('click', 50)) return;
-            this.playNoise(0.02, 0.05, 3000, null, true);
-        }
-    },
-
-    playHover: function() {
-        if (this.settings.ui) {
-            if (!this._throttle('hover', 50)) return;
-            this.playTone(800, 'sine', 0.02, 0.02, false, null, null, true);
-        }
-    },
-    
-    // --- LORE EXPANSION SOUNDS ---
-
-    playConsume: function() {
-        if (!this.settings.ui) return;
-        if (!this._throttle('consume', 150)) return; 
-        // Glug/Crunch sound for eating/drinking
-        this.playNoise(0.1, 0.05, 800, null, true);
-        setTimeout(() => { this.playTone(300, 'triangle', 0.05, 0.05, true, 200, null, true); }, 50);
-    },
-
-    playEnchant: function() {
-        if (!this.settings.magic) return;
-        if (!this._throttle('enchant', 500)) return; 
-        // Rising, magical arpeggio
-        this.playMelody([440, 554.37, 659.25, 880], 'sine', 0.1, 0.15, true);
-        this.playNoise(0.5, 0.05, 2000, null, true); // Shimmering background dust
-    },
-
-    playDisenchant: function() {
-        if (!this.settings.magic) return;
-        if (!this._throttle('disenchant', 300)) return; 
-        // Shattering glass + discordant descending chord
-        this.playNoise(0.2, 0.15, 4000, null, true); // Crack!
-        this.playChord([880, 659.25, 622.25, 440], 'sawtooth', 0.4, 0.1, 5.0, true, null, true);
-    },
-    
-    // --- EPIC/FANFARE SOUNDS ---
-
-    playLevelUp: function() {
-        if (!this._throttle('levelup', 1000)) return; 
-        // JUICE WIN: Epic Arpeggio lead-in with shimmer
-        this.playMelody([261.63, 329.63, 392.00], 'sine', 0.1, 0.1, true);
-        this.playNoise(0.2, 0.4, 4000, null, true); // High-end shimmer
-        setTimeout(() => {
-            this.playChord([261.63, 329.63, 392.00, 523.25], 'sine', 1.0, 0.2, 1.5, false, null, true);
-        }, 300);
-    },
-
-    playQuestComplete: function() {
-        if (!this._throttle('questcomplete', 1000)) return; 
-        this.playMelody([392.00, 392.00, 392.00, 523.25, 0, 523.25], 'triangle', 0.12, 0.1, true);
-    },
-
-    playLootRare: function() {
-        if (!this._throttle('lootrare', 500)) return; 
-        // Brighter, more resonant chord
-        this.playMelody([523.25, 659.25, 783.99, 1046.50], 'triangle', 0.08, 0.08, true);
-    },
-
-    playSecret: function() {
-        if (!this._throttle('secret', 1000)) return; 
-        this.playMelody([329.63, 392.00, 493.88], 'triangle', 0.2, 0.08, true);
-    },
-
-    playWarning: function() {
-        if (!this._throttle('warning', 1000)) return; 
-        this.playMelody([400, 0, 400], 'square', 0.1, 0.1, true);
-    },
-
-    playDeath: function() {
-        // JUICE WIN: Upgraded heart-stopping audio for death
-        this.playNoise(2.0, 0.3, 100, null, true); // Low heavy thud
-        this.playMelody([300, 280, 260, 200, 150, 100, 50], 'sawtooth', 0.5, 0.2, true); // Slower, deeper decay
-    },
-
-    playDiscovery: function() {
-        if (!this._throttle('discovery', 2000)) return; 
-        this.playChord([261.63, 329.63, 392.00, 523.25], 'sine', 2.0, 0.15, 2.0, false, null, true);
-    },
-
-    playBossSpawn: function() {
-        if (!this._throttle('bossspawn', 3000)) return; 
-        // JUICE WIN: Terrifying descending tritone rumble for Boss Spawns
-        this.playChord([45, 64, 80], 'sawtooth', 4.0, 0.3, 5.0, true); // Affected by reverb
-        this.playNoise(3.0, 0.4, 300); 
-    },
-
-    playCraftSuccess: function() {
-        if (!this._throttle('craftsuccess', 200)) return; 
-        this.playMelody([400, 600, 800], 'triangle', 0.1, 0.1, true);
-    },
-
-    playTimelineShift: function() {
-        this.playChord([100, 150, 200], 'sawtooth', 2.0, 0.2, 5.0, true, null, true); 
-        setTimeout(() => this.playChord([400, 600, 800], 'sine', 1.5, 0.15, 2.0, false, null, true), 500); 
-        this.playNoise(2.0, 0.2, 2000, null, true); 
-    },
-
-    playVoidEnter: function() {
-        if (!this._throttle('voidenter', 2000)) return; 
-        this.playChord([40, 45, 50], 'square', 3.0, 0.2, 1.0, true);
-        this.playNoise(2.0, 0.3, 400); 
-    }
-};
-
-// ==========================================
-// BROWSER AUDIO HARDWARE UNLOCKER
-// ==========================================
-// Forces the audio context to initialize the very first time the player interacts anywhere.
-// iOS Safari specifically requires sound to be played during this event!
-
-function forceUnlockAudio() {
-    // Use getCtx() instead of initAudioContext() so we can catch 
-    // AND resume an already-existing but suspended context!
-    const ctx = AudioSystem.getCtx(); 
-    if (ctx) {
-        // Safari Suspend Fix
-        // Safari strictly requires `resume()` to be explicitly called inside the user gesture
-        // if the context was created in a suspended state prior to interaction!
-        if (ctx.state === 'suspended') {
-            ctx.resume().catch(()=>{});
-        }
-        
-        if (ctx.state === 'running') {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            gain.gain.value = 0.0001; 
-            
-            osc.connect(gain);
-            gain.connect(ctx.destination); 
-            
-            osc.start(ctx.currentTime);
-            osc.stop(ctx.currentTime + 0.01);
-            
-            document.removeEventListener('click', forceUnlockAudio);
-            document.removeEventListener('touchstart', forceUnlockAudio);
-            document.removeEventListener('touchend', forceUnlockAudio);
-            document.removeEventListener('pointerdown', forceUnlockAudio);
-            document.removeEventListener('keydown', forceUnlockAudio);
-            document.removeEventListener('mouseup', forceUnlockAudio);
-        }
-    }
-}
-
-// 1. Initial Binding on Boot
-document.addEventListener('click', forceUnlockAudio, { once: true });
-document.addEventListener('touchstart', forceUnlockAudio, { once: true });
-document.addEventListener('touchend', forceUnlockAudio, { once: true });
-document.addEventListener('pointerdown', forceUnlockAudio, { once: true });
-document.addEventListener('keydown', forceUnlockAudio, { once: true });
-document.addEventListener('mouseup', forceUnlockAudio, { once: true });
-
-// 2. Re-Arm on Tab Switch
-// If the user backgrounds the app on iOS, the OS suspends the audio context. 
-// We MUST re-arm the user-gesture unlocker when they come back!
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-        if (AudioSystem._ctx && AudioSystem._ctx.state === 'suspended') {
-            document.addEventListener('click', forceUnlockAudio, { once: true });
-            document.addEventListener('touchstart', forceUnlockAudio, { once: true });
-            document.addEventListener('touchend', forceUnlockAudio, { once: true });
-            document.addEventListener('pointerdown', forceUnlockAudio, { once: true });
-            document.addEventListener('keydown', forceUnlockAudio, { once: true });
-            document.addEventListener('mouseup', forceUnlockAudio, { once: true });
-        }
+        logger.log("Seasonal Hooks applied securely.");
     }
 });
 
-// --- END OF FILE audio.js ---
+// --- END OF FILE expansion-seasons.js ---
