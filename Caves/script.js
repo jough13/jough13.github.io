@@ -3052,7 +3052,13 @@ async function enterGame(playerData) {
             // Cull down to 50 messages safely
             let removedCount = 0;
             while (chatMessages.children.length > 50) {
-                chatMessages.removeChild(chatMessages.lastChild);
+                const staleNode = chatMessages.lastChild;
+                
+                // Explicitly strip inner HTML to sever any nested DOM references 
+                // before dropping the node, ensuring the Garbage Collector can instantly free the memory!
+                staleNode.innerHTML = ''; 
+                
+                chatMessages.removeChild(staleNode);
                 removedCount++;
             }
             
