@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_menagerie",
     name: "The Menagerie (Advanced Companions)",
-    version: "1.6", // Upgraded version!
+    version: "1.7", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS (PET GEAR) ---
@@ -20,9 +20,17 @@ window.ExpansionManager.register({
                 name: 'Obsidian Barding', type: 'pet_armor', defense: 8, tile: '🛡️', 
                 description: "Equip to your Companion. {blue:+8 Pet Defense.} Heavy and nearly impenetrable.", _rarity: 'epic' 
             },
+            '🧥b': { 
+                name: 'Zephyr Barding', type: 'pet_armor', defense: 4, tile: '🧥', 
+                description: "Equip to your Companion. {blue:+4 Pet Defense.} Incredibly lightweight, allowing the beast to dodge.", _rarity: 'rare' 
+            },
             '⛓️c': { 
                 name: 'Spiked Collar', type: 'pet_weapon', attack: 3, tile: '⛓️', 
                 description: "Equip to your Companion. {red:+3 Pet Attack.}", _rarity: 'rare' 
+            },
+            '⚡c': { 
+                name: 'Storm-Woven Collar', type: 'pet_weapon', attack: 5, tile: '⚡', 
+                description: "Equip to your Companion. {red:+5 Pet Attack.} It crackles with residual ozone.", _rarity: 'epic' 
             },
             '🗡️pd': { 
                 name: 'Drake-Fang Collar', type: 'pet_weapon', attack: 6, tile: '🗡️', 
@@ -42,10 +50,10 @@ window.ExpansionManager.register({
                     // Initialize XP if missing (backward compatibility)
                     if (!pet.level) { pet.level = 1; pet.xp = 0; pet.xpToNext = 50; }
                     
-                    // 🚨 BUG FIX WIN: Strict Number Coercion
+                    // Strict Number Coercion
                     const safeMaxHp = Number(pet.maxHp) || 10;
                     
-                    // 🚨 UX WIN: Prevent wasting the treat if the pet is perfectly fine!
+                    // Prevent wasting the treat if the pet is perfectly fine!
                     if (pet.level >= 20 && pet.hp >= safeMaxHp) {
                         logMessage(`{gray:Your ${pet.name} is already at maximum strength and health.}`);
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -65,8 +73,40 @@ window.ExpansionManager.register({
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playConsume();
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(pet.x, pet.y, "♥", "#22c55e");
                     
-                    // Trigger level up check (handled in the UI loop below)
-                    window._forcePetLevelCheck = true; 
+                    if (typeof window.renderPetUI === 'function') window.renderPetUI();
+                    return true; // Consume item
+                }
+            },
+            '🍖g': { 
+                name: 'Gourmet Beast Treat', type: 'consumable', tile: '🍖', _rarity: 'rare',
+                description: "A perfectly cooked, magically infused meal. Fully heals your companion and grants +150 Pet XP.",
+                effect: (state) => {
+                    const pet = state.player.companion;
+                    if (!pet) {
+                        logMessage("{gray:You don't have a companion to feed this to.}");
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                        return false;
+                    }
+                    
+                    if (!pet.level) { pet.level = 1; pet.xp = 0; pet.xpToNext = 50; }
+                    const safeMaxHp = Number(pet.maxHp) || 10;
+                    
+                    if (pet.level >= 20 && pet.hp >= safeMaxHp) {
+                        logMessage(`{gray:Your ${pet.name} is already at maximum strength and health.}`);
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                        return false;
+                    }
+                    
+                    pet.hp = safeMaxHp;
+                    if (pet.level < 20) {
+                        pet.xp = (Number(pet.xp) || 0) + 150;
+                        logMessage(`{gold:Your ${pet.name} devours the gourmet meal! (Fully Healed, +150 XP)}`);
+                    } else {
+                        logMessage(`{gold:Your ${pet.name} devours the gourmet meal! (Fully Healed)}`);
+                    }
+
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playConsume();
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(pet.x, pet.y, '#facc15', 15);
                     
                     if (typeof window.renderPetUI === 'function') window.renderPetUI();
                     return true; // Consume item
@@ -74,7 +114,7 @@ window.ExpansionManager.register({
             },
             '📜mk': {
                 name: 'Keeper\'s Guide', type: 'journal', title: 'Menagerie Keeper\'s Guide', tile: '📜',
-                content: "A beast's loyalty is earned in blood, but maintained with care. Feed them Treats to accelerate their growth. A beast can grow up to Level 20, at which point it rivals the monsters of the deep Void. Do not neglect their armor; even a bear can fall to a rusted arrow."
+                content: "A beast's loyalty is earned in blood, but maintained with care. Feed them Treats to accelerate their growth. A beast can grow up to Level 20, at which point it rivals the monsters of the deep Void. Do not neglect their armor; even a bear can fall to a rusted arrow. Certain exotic beasts possess innate combat abilities that trigger naturally in the wild."
             }
         },
 
@@ -86,15 +126,21 @@ window.ExpansionManager.register({
                 { name: 'Spiked Collar', price: 350, stock: 1 }
             ],
             trader: [
-                { name: 'Beast Treat', price: 40, stock: 5 },
+                { name: 'Gourmet Beast Treat', price: 150, stock: 3 },
                 { name: 'Keeper\'s Guide', price: 100, stock: 1 }
+            ],
+            black_market: [
+                { name: 'Zephyr Barding', price: 600, stock: 1 },
+                { name: 'Storm-Woven Collar', price: 800, stock: 1 }
             ]
         },
 
         craftingRecipes: {
             "Leather Barding": { materials: { "Wolf Pelt": 4, "Stick": 2 }, xp: 20, level: 2 },
             "Spiked Collar": { materials: { "Iron Ore": 3, "Leather Tunic": 1 }, xp: 30, level: 3 },
+            "Zephyr Barding": { materials: { "Leather Barding": 1, "Spider Silk": 4 }, xp: 40, level: 3 },
             "Iron Barding": { materials: { "Iron Ore": 6, "Leather Barding": 1 }, xp: 50, level: 4 },
+            "Storm-Woven Collar": { materials: { "Spiked Collar": 1, "Elemental Core": 1 }, xp: 80, level: 4 },
             "Obsidian Barding": { materials: { "Iron Barding": 1, "Obsidian Shard": 3, "Void Dust": 2 }, xp: 120, level: 5 },
             "Drake-Fang Collar": { materials: { "Spiked Collar": 1, "Dragon Scale": 1, "Arcane Dust": 5 }, xp: 150, level: 5 }
         }
@@ -129,7 +175,7 @@ window.ExpansionManager.register({
                 pet.level++;
                 pet.xpToNext = Math.floor(pet.xpToNext * 1.5);
                 
-                // 🚨 BUG FIX WIN: Strict Number Coercion to prevent string-concat stat explosion
+                // Strict Number Coercion to prevent string-concat stat explosion
                 pet.maxHp = (Number(pet.maxHp) || 10) + 5;
                 pet.hp = pet.maxHp;
                 pet.attack = (Number(pet.attack) || 1) + 1;
@@ -140,7 +186,7 @@ window.ExpansionManager.register({
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
             }
 
-            // 🚨 UI WIN: Handled Max Level Cap beautifully
+            // Handled Max Level Cap beautifully
             const isMax = pet.level >= 20;
             const xpPct = isMax ? 100 : Math.min(100, (Number(pet.xp) / Number(pet.xpToNext)) * 100);
             
@@ -214,10 +260,7 @@ window.ExpansionManager.register({
                 const slot = item.type === 'pet_armor' ? 'armor' : 'weapon';
                 const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
                 
-                // 🚨 BUG FIX & EXPLOIT GUARD: Safe Swap Logic
-                // We MUST mathematically ensure there is space in the inventory for the unequipped item
-                // to prevent it from being permanently lost into the void. We do NOT drop pet gear on the ground
-                // because map tiles cannot store magical affixes/stats!
+                // EXPLOIT GUARD: Safe Swap Logic
                 if (pet[slot]) {
                     let unequipped = pet[slot];
                     
@@ -228,7 +271,7 @@ window.ExpansionManager.register({
                     if (gameState.player.inventory.length - freesSlot < invCap) {
                         unequipped.isEquipped = false; // Ensure clean state
                         
-                        // 🚨 ROBUSTNESS WIN: Rehydrate the item to ensure it didn't lose functional logic while equipped
+                        // Rehydrate the item to ensure it didn't lose functional logic while equipped
                         if (typeof window.rehydrateItemArray === 'function') {
                             unequipped = window.rehydrateItemArray([unequipped])[0];
                         }
@@ -242,8 +285,7 @@ window.ExpansionManager.register({
                     }
                 }
                 
-                // 🚨 BUG FIX: Equip new item safely (deep clone to sever reference bleed)
-                // and explicitly force the quantity to 1 so the pet doesn't wear a stack of 5 collars!
+                // Equip new item safely (deep clone to sever reference bleed)
                 pet[slot] = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(item) : JSON.parse(JSON.stringify(item));
                 pet[slot].quantity = 1;
                 pet[slot].isEquipped = false;
@@ -259,8 +301,6 @@ window.ExpansionManager.register({
                 window.renderPetUI();
                 if (typeof renderInventory === 'function') renderInventory();
                 
-                // 🚨 BUG FIX: Force Save on Equip!
-                // Without this, pressing 1-9 to equip pet gear wouldn't trigger a DB save!
                 if (typeof triggerDebouncedSave === 'function') {
                     triggerDebouncedSave({ 
                         companion: pet, 
@@ -274,13 +314,13 @@ window.ExpansionManager.register({
             origUseInventoryItem(index);
         };
 
-        // 🚨 PERFORMANCE WIN: Event Listener Leak Prevention!
-        // We use a global variable to ensure hot-reloading the game doesn't stack multiple right-click listeners.
+        // PERFORMANCE WIN: Event Listener Leak Prevention!
         if (!window._petRightClickBound) {
             let _isUnequippingPet = false;
             
             document.addEventListener('contextmenu', (e) => {
                 const partyContainer = document.getElementById('partyContainer');
+                // Target strictly the party container to prevent overriding global right-click
                 if (partyContainer && partyContainer.contains(e.target)) {
                     e.preventDefault();
                     
@@ -294,13 +334,11 @@ window.ExpansionManager.register({
                         let unequippedSomething = false;
                         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
                         
-                        // 🚨 BUG FIX: Safe Bounds Check & Rehydration
                         const handleUnequip = (slot) => {
                             let item = pet[slot];
                             if (gameState.player.inventory.length < invCap) {
-                                item.isEquipped = false; // Reset just in case
+                                item.isEquipped = false; 
                                 
-                                // Rehydrate to restore functions stripped by Firebase payload mapping
                                 if (typeof window.rehydrateItemArray === 'function') {
                                     item = window.rehydrateItemArray([item])[0];
                                 }
@@ -342,9 +380,6 @@ window.ExpansionManager.register({
         // FEATURE 4: PET COMBAT SKILLS & DEBUFF ENGINE
         // ==========================================
         
-        // 🚨 ARCHITECTURE WIN: Secure Debuff Injector
-        // Mathematically guarantees that a Pet inflicting Poison or Stun on an Overworld enemy
-        // correctly syncs to the Firebase Realtime Database for all other clients to see!
         const applyPetDebuff = async (targetX, targetY, debuffKey, duration) => {
             if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
                 const e = gameState.instancedEnemies.find(en => en && en.x === targetX && en.y === targetY && en.health > 0);
@@ -354,7 +389,7 @@ window.ExpansionManager.register({
                 if (typeof rtdb !== 'undefined' && typeof EnemyNetworkManager !== 'undefined') {
                     try {
                         await rtdb.ref(EnemyNetworkManager.getPath(targetX, targetY, eId)).transaction(curr => {
-                            if (!curr || curr.health <= 0) return undefined; // Abort cleanly
+                            if (!curr || curr.health <= 0) return undefined; 
                             curr[debuffKey] = Math.max(curr[debuffKey] || 0, duration);
                             return curr;
                         });
@@ -375,14 +410,12 @@ window.ExpansionManager.register({
                 const pArmor = pet.armor ? (Number(pet.armor.defense) || 0) : 0;
                 const pWpn = pet.weapon ? (Number(pet.weapon.attack) || 0) : 0;
                 
-                const realAtk = Number(pet.attack) || 1;
-                const realDef = Number(pet.defense) || 0;
-                
-                // 🚨 BUG FIX & EXPLOIT GUARD: Try...Finally block guarantees the pet is restored
-                // to base stats even if the combat sequence throws a network exception!
+                // 🚨 CRITICAL BUG FIX: Level-Up Stat Wipe Guard
+                // By calculating the exact delta and subtracting it in the finally block, 
+                // we prevent the pet from losing permanent base stat gains if it levels up mid-turn!
                 try {
-                    pet.attack = realAtk + pWpn;
-                    pet.defense = realDef + pArmor;
+                    pet.attack = (Number(pet.attack) || 1) + pWpn;
+                    pet.defense = (Number(pet.defense) || 0) + pArmor;
 
                     // 2. Check for unique active skills!
                     let skillUsed = false;
@@ -390,7 +423,6 @@ window.ExpansionManager.register({
                     // 25% chance for pets to use their special ability instead of standard melee
                     if (Math.random() < 0.25) {
                         
-                        // Helper to find an enemy adjacent to the pet
                         let target = null;
                         const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0], [1, 1], [-1, -1], [1, -1], [-1, 1]];
                         
@@ -403,10 +435,9 @@ window.ExpansionManager.register({
                             } else {
                                 const enemyId = `overworld:${tx},${-ty}`;
                                 const t = gameState.sharedEnemies[enemyId];
-                                // 🚨 ROBUSTNESS WIN: Ignore dead "ghost" enemies in the overworld cache!
                                 if (t && t.health > 0) target = t;
                             }
-                            if (target) break; // Found one!
+                            if (target) break; 
                         }
 
                         if (target) {
@@ -423,22 +454,27 @@ window.ExpansionManager.register({
                                 skillUsed = true;
                             } 
                             // --- BOAR: Gore (Bleed/Poison) ---
-                            // 🚨 BUG FIX: Added 'await' to all applySpellDamage calls and securely routed debuffs
                             else if (pet.tile === '🐗') {
                                 logMessage(`{orange:Your ${pet.name} violently gores the ${target.name}!}`);
                                 if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('pierce');
                                 
-                                await applyPetDebuff(target.x, target.y, 'poisonTurns', 3);
+                                await applyPetDebuff(target.x, target.y, 'poisonTurns', 4);
                                 if (typeof applySpellDamage === 'function') await applySpellDamage(target.x, target.y, pet.attack, 'crush');
                                 
                                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(target.x, target.y, "BLEEDING", "#f97316");
                                 skillUsed = true;
                             }
-                            // --- SPIDER: Web (Root Enemy) ---
-                            else if (pet.tile === '@' || pet.tile === '🕷️') {
-                                logMessage(`{green:Your ${pet.name} shoots a sticky web at the ${target.name}!}`);
-                                await applyPetDebuff(target.x, target.y, 'rootTurns', 3);
-                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(target.x, target.y, "ROOTED", "#4ade80");
+                            // --- SPIDER/SCORPION: Web/Sting (Root/Poison) ---
+                            else if (pet.tile === '@' || pet.tile === '🕷️' || pet.tile === '🦂') {
+                                if (pet.tile === '🦂') {
+                                    logMessage(`{green:Your ${pet.name} strikes the ${target.name} with its stinger!}`);
+                                    await applyPetDebuff(target.x, target.y, 'poisonTurns', 5);
+                                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(target.x, target.y, "VENOM", "#22c55e");
+                                } else {
+                                    logMessage(`{green:Your ${pet.name} shoots a sticky web at the ${target.name}!}`);
+                                    await applyPetDebuff(target.x, target.y, 'rootTurns', 3);
+                                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(target.x, target.y, "ROOTED", "#4ade80");
+                                }
                                 skillUsed = true;
                             } 
                             // --- REX: Terrifying Roar (Stun) ---
@@ -472,6 +508,24 @@ window.ExpansionManager.register({
                                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(target.x, target.y, "STUNNED", "#facc15");
                                 skillUsed = true;
                             }
+                            // --- AVIAN: Swoop (Bleed/Damage) ---
+                            else if (pet.tile === '🦇' || pet.tile === '🦅') {
+                                logMessage(`{cyan:Your ${pet.name} swoops down and rakes the ${target.name}!}`);
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('sweep');
+                                
+                                await applyPetDebuff(target.x, target.y, 'poisonTurns', 2); // Minor bleed
+                                if (typeof applySpellDamage === 'function') await applySpellDamage(target.x, target.y, Math.floor(pet.attack * 1.5), 'quickstep');
+                                skillUsed = true;
+                            }
+                            // --- TOAD: Tongue Lash (Root) ---
+                            else if (pet.tile === '🐸') {
+                                logMessage(`{green:Your ${pet.name} lashes out with its tongue!}`);
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('light');
+                                
+                                await applyPetDebuff(target.x, target.y, 'rootTurns', 2);
+                                if (typeof applySpellDamage === 'function') await applySpellDamage(target.x, target.y, pet.attack, 'magicBolt');
+                                skillUsed = true;
+                            }
                         }
                     }
 
@@ -481,9 +535,9 @@ window.ExpansionManager.register({
                     }
 
                 } finally {
-                    // 4. Restore original unbuffed stats flawlessly
-                    pet.attack = realAtk;
-                    pet.defense = realDef;
+                    // 4. Restore unbuffed stats flawlessly by subtracting exact deltas
+                    pet.attack = Math.max(1, (Number(pet.attack) || 1) - pWpn);
+                    pet.defense = Math.max(0, (Number(pet.defense) || 0) - pArmor);
                 }
                 
             } else if (origRunCompanionTurn) {
