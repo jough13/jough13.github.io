@@ -2584,7 +2584,25 @@ function handlePlayerDeath() {
     // Reset Arena progress so they aren't permanently locked out of the Colosseum if they return
     player.arenaWave = 0;
 
-     // Strip vehicles so the player doesn't respawn "sailing" on dry land
+    // --- OVERWORLD BOAT GHOSTING ---
+    // Drop the vehicle safely at the death coordinates before stripping the status!
+    if (player.isBoating || player.isSailing) {
+        const boatTile = player.isSailing ? '⛵' : 'c';
+        
+        if (typeof chunkManager !== 'undefined') {
+            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                // Drop permanently (No TTL) so the player can return to the shore to retrieve it
+                chunkManager.setWorldTile(deathX, deathY, boatTile);
+            } else if (gameState.mapMode === 'dungeon' && chunkManager.caveMaps[gameState.currentCaveId]) {
+                chunkManager.caveMaps[gameState.currentCaveId][deathY][deathX] = boatTile;
+            } else if (gameState.mapMode === 'castle' && chunkManager.castleMaps[gameState.currentCastleId]) {
+                chunkManager.castleMaps[gameState.currentCastleId][deathY][deathX] = boatTile;
+            }
+            gameState.mapDirty = true;
+        }
+    }
+
+    // Strip vehicles so the player doesn't respawn "sailing" on dry land
     player.isBoating = false;
     player.isSailing = false;
 
