@@ -407,7 +407,9 @@ window.ExpansionManager.register({
                     chatMessages.prepend(messageDiv);
                     
                     while (chatMessages.children.length > 50) {
-                        chatMessages.removeChild(chatMessages.lastChild);
+                        const staleNode = chatMessages.lastChild;
+                        staleNode.innerHTML = '';
+                        chatMessages.removeChild(staleNode);
                     }
                 }
             });
