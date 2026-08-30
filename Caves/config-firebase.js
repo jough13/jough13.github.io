@@ -30,37 +30,66 @@ const firebaseConfig = {
 if (typeof firebase === 'undefined') {
     console.error("%c[AKASHIC ENGINE] FATAL: Firebase SDK not found. Connection to the Leylines blocked. Falling back to local emulation.", "color: #ef4444; font-weight: bold;");
     
+    // --- 🌟 LORE WIN: Offline Storage Fallback ---
+    // If we are offline, attempt to save the "Firestore" payload into localStorage so the 
+    // player doesn't lose their character when they refresh the page!
+    const _offlineSave = (path, data) => {
+        try { localStorage.setItem(`akashic_offline_${path}`, JSON.stringify(data)); } catch(e){}
+    };
+    const _offlineLoad = (path) => {
+        try { return JSON.parse(localStorage.getItem(`akashic_offline_${path}`)); } catch(e){ return null; }
+    };
+
     // --- FIRESTORE MOCK ---
-    const dummyFirestoreRef = {
-        collection: function() { return dummyFirestoreCollection; },
-        get: async () => ({ exists: false, data: () => ({}), ref: dummyFirestoreRef }),
-        set: async () => {},
-        update: async () => {},
-        delete: async () => {},
-        // PREVENTS CRASH ON TIME SYNC
-        onSnapshot: (cb) => { cb({ exists: false, data: () => ({}) }); return () => {}; }
-    };
+    const dummyFirestoreRef = (path) => ({
+        collection: function(subPath) { return dummyFirestoreCollection(`${path}/${subPath}`); },
+        get: async () => {
+            const data = _offlineLoad(path);
+            return { exists: !!data, data: () => data || {}, ref: dummyFirestoreRef(path) };
+        },
+        set: async (data, opts) => {
+            if (opts && opts.merge) {
+                const old = _offlineLoad(path) || {};
+                _offlineSave(path, { ...old, ...data });
+            } else {
+                _offlineSave(path, data);
+            }
+        },
+        update: async (data) => {
+            const old = _offlineLoad(path) || {};
+            _offlineSave(path, { ...old, ...data });
+        },
+        delete: async () => { localStorage.removeItem(`akashic_offline_${path}`); },
+        onSnapshot: (cb) => { 
+            cb({ exists: !!_offlineLoad(path), data: () => _offlineLoad(path) || {} }); 
+            return () => {}; 
+        }
+    });
 
-    // PREVENTS CRASH ON BATCH SAVES
     const dummyBatch = {
-        set: function(docRef, data, options) { return this; },
-        update: function(docRef, data) { return this; },
-        delete: function(docRef) { return this; },
-        commit: async () => {}
+        _ops: [],
+        set: function(docRef, data, options) { this._ops.push(() => docRef.set(data, options)); return this; },
+        update: function(docRef, data) { this._ops.push(() => docRef.update(data)); return this; },
+        delete: function(docRef) { this._ops.push(() => docRef.delete()); return this; },
+        commit: async function() { for (let op of this._ops) { await op(); } this._ops = []; }
     };
 
-    const dummyFirestoreCollection = {
-        doc: function() { return dummyFirestoreRef; },
+    const dummyFirestoreCollection = (path) => ({
+        doc: function(docId = 'dummy_id') { return dummyFirestoreRef(`${path}/${docId}`); },
         get: async () => ({ empty: true, docs: [], forEach: () => {} }),
-        add: async () => ({ id: 'dummy_id' }),
-        batch: () => dummyBatch // Inject the dummy batcher here!
-    };
+        add: async (data) => {
+            const id = 'dummy_' + Date.now();
+            _offlineSave(`${path}/${id}`, data);
+            return { id: id };
+        },
+        batch: () => dummyBatch
+    });
 
     // --- REALTIME DATABASE (RTDB) MOCK ---
     const dummyRTDBRef = {
         on: () => {},
         off: () => {},
-        once: async () => ({ val: () => null, exists: () => false }), // Solves Leaderboard crash
+        once: async () => ({ val: () => null, exists: () => false }), 
         update: () => Promise.resolve(),
         set: () => Promise.resolve(),
         remove: () => Promise.resolve(),
@@ -69,21 +98,15 @@ if (typeof firebase === 'undefined') {
         },
         transaction: async (cb) => {
             try {
-                // Allows the native game code to process the transaction locally
                 const res = cb(null);
-                
-                // 🚨 BUG FIX WIN: Accurate Transaction Mocking
-                // If a transaction callback returns undefined, it implies an abort in standard RTDB.
                 if (res === undefined) {
                     return { committed: false, snapshot: { val: () => null } };
                 }
-                
                 return { committed: true, snapshot: { val: () => res } };
             } catch(e) {
                 return { committed: false, snapshot: { val: () => null } };
             }
         },
-        // Chaining methods required by the Chat & AI systems
         orderByChild: function() { return this; },
         limitToLast: function() { return this; },
         onDisconnect: function() { return this; }
@@ -96,17 +119,17 @@ if (typeof firebase === 'undefined') {
         apps: [], 
         initializeApp: () => ({}), 
         app: () => ({}), 
-        firestore: Object.assign(() => dummyFirestoreCollection, {
+        firestore: Object.assign(() => dummyFirestoreCollection('root'), {
             FieldValue: { 
                 serverTimestamp: () => Date.now(), 
                 delete: () => null, 
-                arrayUnion: () => [],
-                arrayRemove: () => [], // 🚨 ROBUSTNESS WIN: Prevents crash if an expansion drops items from arrays
-                increment: (n) => n    // 🚨 ROBUSTNESS WIN: Added increment mock for future expansions
+                // 🚨 BUG FIX: Ensure dummy arrays handle spread operators properly!
+                arrayUnion: (...args) => args,
+                arrayRemove: (...args) => args, 
+                increment: (n) => n    
             }
         }),
         auth: () => ({ 
-            // 🚨 CRITICAL FIX: Simulate auth resolution so the bootloader doesn't soft-lock!
             onAuthStateChanged: (cb) => { setTimeout(() => cb(mockUser), 150); },
             signInAnonymously: async () => ({ user: mockUser }), 
             signInWithEmailAndPassword: async () => ({ user: mockUser }), 
@@ -130,7 +153,7 @@ if (typeof firebase === 'undefined') {
     window.addEventListener('DOMContentLoaded', () => {
         const fallbackBanner = document.createElement('div');
         fallbackBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-4 z-[999999] bg-red-950 text-red-200 border-b-4 border-red-600 shadow-[0_0_30px_rgba(220,38,38,1)] font-mono tracking-widest uppercase select-none';
-        fallbackBanner.innerHTML = "⚠️ CRITICAL LEYLINE FAILURE ⚠️<br><span class='text-[10px] font-normal text-red-300'>The Akashic Engine cannot connect. Please disable your Ad-Blocker or check connection. Local play enabled.</span>";
+        fallbackBanner.innerHTML = "⚠️ CRITICAL LEYLINE FAILURE ⚠️<br><span class='text-[10px] font-normal text-red-300'>The Akashic Engine cannot connect. Local simulation engaged. Progress saved to browser.</span>";
         document.body.appendChild(fallbackBanner);
     });
 }
@@ -597,8 +620,6 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
         if (firebase.database && obj instanceof Object && Object.keys(obj).includes('.sv')) return obj; 
         
         // Context Boundary Failsafe
-        // If Firebase modules load across different contexts, instanceof can fail. 
-        // Firebase FieldValues contain a unique internal '_methodName' property we can track!
         if (obj && obj._methodName) return obj;
     }
 
@@ -624,49 +645,50 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
         if (obj.size === 0) return null;
         const newObj = {};
         for (const [key, val] of obj) {
-            // 🚨 ROBUSTNESS WIN: Coerce Map keys to strings to prevent Firebase rejection!
+            // 🚨 BUG FIX: Coerce Map keys to strings to prevent Firestore rejection!
             newObj[String(key)] = sanitizeForFirebase(val, seen, depth + 1);
         }
         return newObj;
     }
     
-    // If it's a complex class instance rather than a plain Object/Array, pass it through safely
-    // Includes fallback for Int8Array, Uint8Array, etc.
+    // Support TypedArrays
     if (ArrayBuffer.isView(obj)) {
-         return Array.from(obj); // Safe conversion of TypedArrays for Firebase
+         return Array.from(obj); 
     }
-
-    // 🚨 BUG FIX & ROBUSTNESS WIN: 
-    // Previously, `if (obj.constructor !== Object && !Array.isArray(obj)) return obj;`
-    // allowed custom class instances to bypass serialization, causing the Firebase SDK to crash!
-    // By allowing it to fall through to the `Object.keys()` loop below, we automatically strip 
-    // its prototype and serialize it perfectly into a POJO (Plain Old JavaScript Object)!
 
     // 8. Handle Arrays
     if (Array.isArray(obj)) {
         // O(1) Fast-Path for empty arrays
-        if (obj.length === 0) return null; 
+        if (obj.length === 0) return []; 
+        
+        // 🚨 BUG FIX & ROBUSTNESS WIN: Filter out `undefined` natively!
+        // Prevents Firestore array batch crashes!
+        const cleanArr = obj.filter(item => item !== undefined);
+        if (cleanArr.length === 0) return [];
 
-        const newArr = new Array(obj.length);
-        for (let i = 0; i < obj.length; i++) {
-            newArr[i] = sanitizeForFirebase(obj[i], seen, depth + 1);
+        const newArr = new Array(cleanArr.length);
+        for (let i = 0; i < cleanArr.length; i++) {
+            newArr[i] = sanitizeForFirebase(cleanArr[i], seen, depth + 1);
         }
         return newArr;
     }
 
-    // 9. Handle Plain Objects (and Custom Classes!)
+    // 9. Handle Plain Objects
     const newObj = {};
     const keys = Object.keys(obj);
     for (let i = 0; i < keys.length; i++) {
         const key = keys[i];
+        
+        // 🚨 SECURITY WIN: Object Prototype Pollution Guard!
+        if (!Object.prototype.hasOwnProperty.call(obj, key)) continue;
         
         // Ephemeral State Stripping (Whitelist `_rarity` and `_negatedDex`)
         if (key.startsWith('_') && key !== '_rarity' && key !== '_negatedDex') continue;
         
         const val = obj[key];
         
-        // Skip functions immediately
-        if (typeof val === 'function') continue;
+        // Skip functions and explicitly undefined values immediately
+        if (typeof val === 'function' || val === undefined) continue;
         
         newObj[key] = sanitizeForFirebase(val, seen, depth + 1);
     }
