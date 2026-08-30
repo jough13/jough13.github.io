@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_bloodline",
     name: "The Bloodline (Prestige System)",
-    version: "1.4", // Upgraded version!
+    version: "1.5", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -151,7 +151,7 @@ window.ExpansionManager.register({
                         <li>✨ Enter Generation <span id="nextGenNum" class="font-bold text-yellow-400"></span></li>
                         <li>✨ Permanent +25% XP Multiplier</li>
                         <li>✨ Permanent +10 Base Health, Mana, Stamina, Psyche</li>
-                        <li>✨ Passive Ascendant Regeneration (HP/Mana/Stam)</li>
+                        <li>✨ Passive Ascendant Regeneration (Scales with Generation)</li>
                         <li>✨ Awaken with the <strong class="text-fuchsia-400">Bloodline Pendant</strong></li>
                         <li>✨ The Radiant Aura (Multiplayer Cosmetic)</li>
                         <li class="text-red-400 font-bold mt-2 pt-2 border-t border-green-900">⚠️ WARNING: Your Level, Stats, Inventory, and Equipment will be wiped! (Stash & Gold are safe)</li>
@@ -260,7 +260,7 @@ window.ExpansionManager.register({
         document.getElementById('prestigeAscendBtn').addEventListener('click', async () => {
             const player = gameState.player;
             
-            const confirmAscension = confirm("WARNING: This will wipe your Level, Stats, Inventory, and Equipment. Your Bank, Gold, Homestead, and Lore will remain. Are you absolutely sure you want to Ascend?");
+            const confirmAscension = window.confirm("WARNING: This will wipe your Level, Stats, Inventory, and Equipment. Your Bank, Gold, Homestead, and Lore will remain. Are you absolutely sure you want to Ascend?");
             if (!confirmAscension) return;
 
             document.getElementById('prestigeModal').classList.add('hidden');
@@ -291,8 +291,22 @@ window.ExpansionManager.register({
             gameState.screenShake = 50;
             gameState.screenFlash = { color: '#facc15', alpha: 1.0, decay: 0.015 };
 
-            // 1. Increment Generation
+            // 1. Increment Generation & Handle Titles
             player.generation = (player.generation || 0) + 1;
+            
+            if (!player.titles) player.titles = [];
+            if (player.generation === 2 && !player.titles.includes("The Reborn")) {
+                player.titles.push("The Reborn");
+                logMessage("{cyan:You have unlocked the title <The Reborn>!}");
+            }
+            if (player.generation === 5 && !player.titles.includes("The Eternal")) {
+                player.titles.push("The Eternal");
+                logMessage("{purple:You have unlocked the title <The Eternal>!}");
+            }
+            if (player.generation === 10 && !player.titles.includes("The Demi-God")) {
+                player.titles.push("The Demi-God");
+                logMessage("{gold:You have unlocked the mythic title <The Demi-God>!}");
+            }
 
             // 2. Wipe Stats (And explicitly clear the hotbar to prevent Ghost Spells!)
             player.level = 1;
@@ -414,9 +428,7 @@ window.ExpansionManager.register({
                     timestamp: firebase.database.ServerValue.TIMESTAMP
                 });
             }
-
-            // 7. Save and Render
-            if (typeof syncPlayerState === 'function') syncPlayerState();
+            
             if (typeof updateRegionDisplay === 'function') updateRegionDisplay();
             if (typeof renderStats === 'function') renderStats();
             if (typeof renderEquipment === 'function') renderEquipment();
@@ -428,16 +440,32 @@ window.ExpansionManager.register({
             if (typeof render === 'function') render();
             
             if (typeof playerRef !== 'undefined') {
-                // Manually map the exact state to Firebase to guarantee everything resets cleanly
+                // 🚨 BUG FIX & ROBUSTNESS: Ensure setting the payload fully deletes absent keys like spire backups
                 const resetPayload = typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(player) : player;
                 resetPayload.mapMode = 'overworld';
                 resetPayload.currentRealm = 0;
                 resetPayload.realmMutators = [];
                 
+                // FieldValue delete fallback explicitly wipes Firestore memory
+                let deleteField = null;
+                try {
+                    if (typeof window.getFirestoreDelete === 'function') {
+                        deleteField = window.getFirestoreDelete();
+                    } else if (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue) {
+                        deleteField = firebase.firestore.FieldValue.delete();
+                    }
+                } catch(e) {}
+                
+                if (deleteField) {
+                    resetPayload.spireBackupInv = deleteField;
+                    resetPayload.spireBackupEquip = deleteField;
+                }
+                
                 // Explicitly pack the inventory and bank arrays to prevent massive JSON blowout!
                 resetPayload.inventory = typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory;
                 resetPayload.bank = typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank;
                 
+                // Because we don't pass {merge: true}, `set` will completely overwrite the document, effectively deleting missing fields.
                 await playerRef.set(resetPayload);
             }
 
@@ -452,70 +480,77 @@ window.ExpansionManager.register({
         // 3. OVERWORLD INJECTIONS
         // ==========================================
 
+        const applySafePatch = (target, method, factory) => {
+            if (typeof window.ExpansionManager.patchFunction === 'function') {
+                window.ExpansionManager.patchFunction(target, method, factory);
+            } else {
+                const orig = target[method];
+                target[method] = factory(orig ? orig.bind(target) : null);
+            }
+        };
+
         // A. Place the Throne in the Safe Haven Village
-        if (typeof chunkManager !== 'undefined' && chunkManager.generateCastle) {
-            const origGenerateCastle = chunkManager.generateCastle;
-            chunkManager.generateCastle = function(castleId, layoutType) {
-                const map = origGenerateCastle.call(this, castleId, layoutType);
-                if (castleId.includes('village')) {
-                    if (map[4] && map[4][13] !== undefined) map[4][13] = '👑b'; 
-                }
-                return map;
-            };
+        if (typeof chunkManager !== 'undefined') {
+            applySafePatch(chunkManager, 'generateCastle', (origGenerateCastle) => {
+                return function(castleId, layoutType) {
+                    const map = origGenerateCastle ? origGenerateCastle.call(this, castleId, layoutType) : [];
+                    if (castleId.includes('village')) {
+                        if (map[4] && map[4][13] !== undefined) map[4][13] = '👑b'; 
+                    }
+                    return map;
+                };
+            });
         }
 
         // B. Apply XP Multiplier
-        if (typeof window.grantXp === 'function') {
-            const origGrantXp = window.grantXp;
-            window.grantXp = function(amount) {
-                const gen = gameState.player.generation || 0;
+        applySafePatch(window, 'grantXp', (origGrantXp) => {
+            return function(amount) {
+                const gen = (typeof gameState !== 'undefined' && gameState.player && gameState.player.generation) ? gameState.player.generation : 0;
                 let finalAmount = amount;
                 if (gen > 0) {
                     finalAmount = Math.floor(amount * (1 + (gen * 0.25)));
                 }
-                origGrantXp(finalAmount);
+                if (origGrantXp) origGrantXp(finalAmount);
             };
-        }
+        });
 
         // C. END-TURN HOOK (Multiplayer Aura & Passive Regeneration)
-        if (typeof window.endPlayerTurn === 'function') {
-            const origEndPlayerTurn = window.endPlayerTurn;
-            window.endPlayerTurn = function() {
-                
-                const gen = gameState.player.generation || 0;
-                if (gen > 0) {
+        applySafePatch(window, 'endPlayerTurn', (origEndPlayerTurn) => {
+            return function(updates = {}) {
+                if (typeof gameState !== 'undefined' && gameState.player) {
+                    const player = gameState.player;
+                    const gen = player.generation || 0;
                     
-                    // 🌟 Radiant Aura
-                    // Ascendant players actually emit a soft golden light from their tile!
-                    if (gameState.activeFilter !== 'gold') {
-                        // Apply a faint golden glow under the player tile using the new filter system!
-                        if (typeof ParticleSystem !== 'undefined' && Math.random() < 0.10) {
-                            ParticleSystem.spawn(gameState.player.x, gameState.player.y, '#facc15', 'sparkle', '', 3);
+                    if (gen > 0) {
+                        // 🌟 Radiant Aura
+                        if (gameState.activeFilter !== 'gold') {
+                            if (typeof ParticleSystem !== 'undefined' && Math.random() < 0.10) {
+                                // Aura evolves at Gen 5
+                                const auraColor = gen >= 5 ? '#a855f7' : '#facc15'; 
+                                ParticleSystem.spawn(player.x, player.y, auraColor, 'sparkle', '', 3);
+                            }
                         }
-                    }
 
-                    // 🚨 Ascendant Regeneration
-                    // Passively heal 1 HP/Mana/Stam every 10 turns
-                    if (gameState.playerTurnCount % 10 === 0) {
-                        let regenerated = false;
-                        if (gameState.player.health < gameState.player.maxHealth) {
-                            if (typeof window.modifyVital === 'function') window.modifyVital('health', 1);
-                            else gameState.player.health++;
-                            regenerated = true;
-                        }
-                        if (gameState.player.mana < gameState.player.maxMana) {
-                            if (typeof window.modifyVital === 'function') window.modifyVital('mana', 1);
-                            else gameState.player.mana++;
-                            regenerated = true;
-                        }
-                        if (gameState.player.stamina < gameState.player.maxStamina) {
-                            if (typeof window.modifyVital === 'function') window.modifyVital('stamina', 1);
-                            else gameState.player.stamina++;
-                            regenerated = true;
-                        }
-                        
-                        if (regenerated && typeof logMessage !== 'undefined') {
-                            // Let the UI bars pulse (handled inside modifyVital automatically!)
+                        // 🚨 Ascendant Regeneration (Scaling with Gen!)
+                        if (gameState.playerTurnCount % 10 === 0) {
+                            let regenerated = false;
+                            const healAmt = 1 + Math.floor(gen / 5); // Heals an extra point every 5 generations!
+                            
+                            if (player.health < player.maxHealth) {
+                                if (typeof window.modifyVital === 'function') window.modifyVital('health', healAmt);
+                                else player.health = Math.min(player.maxHealth, player.health + healAmt);
+                                regenerated = true;
+                            }
+                            if (player.mana < player.maxMana) {
+                                if (typeof window.modifyVital === 'function') window.modifyVital('mana', healAmt);
+                                else player.mana = Math.min(player.maxMana, player.mana + healAmt);
+                                regenerated = true;
+                            }
+                            if (player.stamina < player.maxStamina) {
+                                if (typeof window.modifyVital === 'function') window.modifyVital('stamina', healAmt);
+                                else player.stamina = Math.min(player.maxStamina, player.stamina + healAmt);
+                                regenerated = true;
+                            }
                         }
                     }
                 }
@@ -523,18 +558,20 @@ window.ExpansionManager.register({
                 // Safely apply arguments so updates object is not lost
                 if (origEndPlayerTurn) origEndPlayerTurn.apply(this, arguments);
             };
-        }
+        });
 
         // D. CHAT & /WHO INJECTION
-        if (typeof window.syncPlayerState === 'function') {
-            const origSync = window.syncPlayerState;
-            window.syncPlayerState = function() {
-                origSync();
-                if (typeof onlinePlayerRef !== 'undefined' && onlinePlayerRef) {
-                    onlinePlayerRef.update({ generation: gameState.player.generation || 0, activeTitle: gameState.player.activeTitle || null }).catch(()=>{});
+        applySafePatch(window, 'syncPlayerState', (origSync) => {
+            return function() {
+                if (origSync) origSync();
+                if (typeof onlinePlayerRef !== 'undefined' && onlinePlayerRef && typeof gameState !== 'undefined' && gameState.player) {
+                    onlinePlayerRef.update({ 
+                        generation: gameState.player.generation || 0, 
+                        activeTitle: gameState.player.activeTitle || null 
+                    }).catch(()=>{});
                 }
             };
-        }
+        });
     }
 });
 
