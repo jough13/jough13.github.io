@@ -24,10 +24,12 @@ const BLOCKED_SCROLL_KEYS = new Set([
     'Home', 'End', 'PageUp', 'PageDown', 'Tab', 'Enter', '/'
 ]);
 
+// 🚨 RESPONSIVENESS WIN: Added 'Shift' and 'v' to bypass the movement queue
+// Guarantees stealth toggles happen instantly without waiting for footsteps to finish!
 const INSTANT_KEYS = new Set([
     'Escape', 'i', 'm', 'b', 'k', 'c', 'p', 'h', 'd', 'g', 'q', 'j', 'z', 'l', '/', 't',
     'I', 'M', 'B', 'K', 'C', 'P', 'H', 'D', 'G', 'Q', 'J', 'Z', 'L', 'T',
-    '+', '=', '-', '_'
+    '+', '=', '-', '_', 'Shift', 'v', 'V'
 ]);
 
 const ACTION_KEYS = new Set([
@@ -46,8 +48,8 @@ const HOTKEY_MAPPINGS = {
     'h': { modal: 'helpModal',        openFunc: null,                  closeFunc: null } 
 };
 
-// 🚨 BUG FIX WIN: The Modal Softlock Fix
-// Dynamically checks z-index and DOM order to ensure the Escape key ALWAYS closes the topmost modal!
+// 🚨 PERFORMANCE WIN: Layout Thrashing Fix
+// Completely bypasses `getComputedStyle()` which forces the browser to halt JS and recalculate page layout!
 const _modalCache = {
     collection: null,
     getActive: () => {
@@ -60,13 +62,14 @@ const _modalCache = {
             const modal = _modalCache.collection[i];
             
             if (!modal.classList.contains('hidden')) {
-                // Parse the z-index safely (browsers sometimes return 'auto' which becomes NaN)
-                const zIndexStr = window.getComputedStyle(modal).zIndex;
-                const z = zIndexStr === 'auto' ? 0 : (parseInt(zIndexStr, 10) || 0);
+                // Parse the z-index safely via inline styles or dataset (O(1) memory lookup)
+                let z = 0;
+                if (modal.style.zIndex) {
+                    z = parseInt(modal.style.zIndex, 10) || 0;
+                } else if (modal.dataset.baseZ) {
+                    z = parseInt(modal.dataset.baseZ, 10) || 0;
+                }
                 
-                // Use >= instead of > 
-                // If two modals have the exact same z-index, the browser renders the one 
-                // that appears LATER in the HTML file on top. >= ensures the later DOM element wins!
                 if (z >= highestZ) {
                     highestZ = z;
                     topModal = modal;
@@ -129,6 +132,43 @@ window.WAIT_FLAVORS = {
         "You tighten the bindings on your tools.",
         "You inspect a mechanism in your pack, adjusting a loose gear.",
         "Your mind works through the blueprints of your next creation."
+    ],
+    // --- EXPANSION CLASS FLAVORS ---
+    DEFECTOR: [
+        "You nervously check over your shoulder for Cult assassins.",
+        "You trace a forbidden rune in the dirt with your boot, then quickly erase it.",
+        "The whispers of the Void briefly echo in your mind before you push them away."
+    ],
+    MONK: [
+        "You center your breathing, finding perfect stillness.",
+        "You stretch your limbs in a practiced, fluid motion.",
+        "You close your eyes and feel the energy of the world flowing around you."
+    ],
+    PEDDLER: [
+        "You pat your coin purse to ensure it's still heavy.",
+        "You mentally calculate the potential profit of your current surroundings.",
+        "You pause to check your wares for damage."
+    ],
+    RUNESMITH: [
+        "You inspect the magical etchings on your gear for fading.",
+        "You trace the shape of an ancient dwarven ward in the air.",
+        "The heavy scent of ozone and hot metal lingers around you as you rest."
+    ],
+    // --- RACE FLAVORS ---
+    DHAMPIR: [
+        "You suppress a sudden, intense pang of hunger.",
+        "You bare your fangs in the darkness.",
+        "The shadows cling to you like an old friend."
+    ],
+    SYLPH: [
+        "You float an inch off the ground to rest your legs.",
+        "The wind dances playfully around your fingertips.",
+        "You listen intently to the currents of the air."
+    ],
+    VOIDKISSED: [
+        "A sudden chill drops the temperature around you by ten degrees.",
+        "Your eyes reflect a galaxy that doesn't exist in this sky.",
+        "You stare off into the distance, listening to something no one else can hear."
     ],
     // --- ENVIRONMENTAL FLAVORS ---
     MOUNTED: [
@@ -280,6 +320,14 @@ function handleInput(key) {
     if (typeof isBackupOperationRunning !== 'undefined' && isBackupOperationRunning) {
         return; 
     }
+    
+    // 🚨 BUG FIX WIN: Zombie-Walk Prevention!
+    // If the player dies or is fully incapacitated while keystrokes are still in the queue, 
+    // instantly flush the queue and abort so they don't walk around as a corpse!
+    if (typeof gameState !== 'undefined' && gameState.player && gameState.player.health <= 0) {
+        window.inputQueue.length = 0;
+        return;
+    }
 
     if (typeof window.ExpansionManager !== 'undefined') {
         const hookRes = window.ExpansionManager.triggerHook('onBeforeInput', { key: key, handled: false });
@@ -297,8 +345,6 @@ function handleInput(key) {
     
     const gc = document.getElementById('gameContainer');
     if (!gc || gc.classList.contains('hidden')) return;
-
-    if (gameState.player.health <= 0) return;
 
     const lowerKey = key.toLowerCase();
 
@@ -570,7 +616,8 @@ function handleInput(key) {
         }
     }
 
-    if (lowerKey === 'r') {
+    // Note: The Spacebar (' ') also technically hits this block as a wait/rest action via ACTION_KEYS
+    if (lowerKey === 'r' || lowerKey === ' ') {
         _safeExecuteWithLock(async () => {
             // JUICE WIN: Audio feedback for waiting/resting
             if (typeof AudioSystem !== 'undefined') {
@@ -609,6 +656,11 @@ function handleInput(key) {
             const bgKey = bg.toUpperCase();
             if (window.WAIT_FLAVORS[bgKey]) {
                 waitFlavors = waitFlavors.concat(window.WAIT_FLAVORS[bgKey]);
+            }
+            // Add race specific flavors too
+            const raceKey = (gameState.player.race || "").toUpperCase();
+            if (window.WAIT_FLAVORS[raceKey]) {
+                waitFlavors = waitFlavors.concat(window.WAIT_FLAVORS[raceKey]);
             }
         }
         
