@@ -17,25 +17,41 @@ window.withTimeout = function(promise, ms = 3000) {
 // Essential for limiting API calls, window resizing, or rapid UI button mashing
 window.debounce = function(func, wait) {
     let timeout;
-    return function(...args) {
+    const debounced = function(...args) {
         // 🚨 BUG FIX WIN: Context capturing
         // Guarantees `this` points to the correct DOM element or object, not the Window!
         const context = this; 
         clearTimeout(timeout);
         timeout = setTimeout(() => func.apply(context, args), wait);
     };
+    // 🚨 MEMORY LEAK FIX: Allow manual cancellation of the timer if the parent UI is destroyed
+    debounced.cancel = () => clearTimeout(timeout);
+    return debounced;
 };
 
 window.throttle = function(func, limit) {
     let inThrottle;
-    return function(...args) {
-        const context = this; // 🚨 BUG FIX WIN
+    let lastFunc;
+    let lastRan;
+    const throttled = function(...args) {
+        const context = this; 
         if (!inThrottle) {
             func.apply(context, args);
+            lastRan = Date.now();
             inThrottle = true;
-            setTimeout(() => inThrottle = false, limit);
+        } else {
+            clearTimeout(lastFunc);
+            lastFunc = setTimeout(function() {
+                if ((Date.now() - lastRan) >= limit) {
+                    func.apply(context, args);
+                    lastRan = Date.now();
+                }
+            }, limit - (Date.now() - lastRan));
         }
     };
+    // 🚨 MEMORY LEAK FIX
+    throttled.cancel = () => clearTimeout(lastFunc);
+    return throttled;
 };
 
 // ==========================================
@@ -158,9 +174,13 @@ window.MathUtils = {
     
     // Standard RPG Dice Roller (e.g., rollDice(6, 2) rolls 2d6)
     rollDice: (sides, count = 1) => {
+        // 🚨 BUG FIX WIN: Force minimum bounds of 1 to prevent NaN injection!
+        const safeSides = Math.max(1, parseInt(sides) || 1);
+        const safeCount = Math.max(1, parseInt(count) || 1);
+        
         let total = 0;
-        for (let i = 0; i < count; i++) {
-            total += Math.floor(Math.random() * sides) + 1;
+        for (let i = 0; i < safeCount; i++) {
+            total += Math.floor(Math.random() * safeSides) + 1;
         }
         return total;
     },
@@ -201,7 +221,11 @@ window.MathUtils = {
         const minutes = Math.floor((safeMs / (1000 * 60)) % 60);
         const hours = Math.floor((safeMs / (1000 * 60 * 60)) % 24);
         
+        // 🚨 ADDITION: Support for mapping TTLs (Time-To-Live) that span multiple days!
+        const days = Math.floor(safeMs / (1000 * 60 * 60 * 24));
+        
         let str = "";
+        if (days > 0) str += `${days}d `;
         if (hours > 0) str += `${hours}h `;
         if (minutes > 0) str += `${minutes}m `;
         if (seconds > 0 || str === "") str += `${seconds}s`;
@@ -620,41 +644,39 @@ window.getLoreTimeOfDay = function(hour) {
     return "The Star-lit Night";
 };
 
-// Deeply Expanded Dictionary for Auto-Tagging
+// 🚨 LORE EXPANSION: Deeply Expanded Dictionary for Auto-Tagging
 window.LORE_KEYWORDS = {
-    // Factions & Entities
+    // Core Factions & Entities
     'Void': 'void', 'Void Rift': 'void', 'Shadowed Hand': 'purple',
     'Old King': 'gold', 'First King': 'gold', 'Alaric': 'gold',
     'Leviathan': 'blue', 'Kraken': 'red', 'Drake': 'orange',
     'Ogre': 'orange', 'Dire Wolf': 'gray', 'Draugr': 'cyan', 
     'Void Demon': 'void', 'Efreet': 'orange', 'Vampire Lord': 'red',
     
-    // --- NEW CLASSES & RACES ---
+    // --- EXPANSION RACES & CLASSES ---
     'Fae Queen': 'fuchsia', 'Clockwork Prime': 'yellow',
     'Clockwork Guardian': 'yellow', 'Fallen Titan': 'orange',
     'Goliath': 'gray', 'Fae-Blood': 'fuchsia', 'Void-Kissed': 'purple',
     'Cleric': 'yellow', 'Hunter': 'green', 'Inquisitor': 'red', 
     'Oracle': 'cyan', 'Beastmaster': 'green', 'Sniper': 'gray',
+    'Dhampir': 'red', 'Sylph': 'cyan', 'Brawler': 'orange',
     
-    // Magic & Leylines
+    // --- LORE & EXPANSION MAGIC ---
     'Leylines': 'blue', 'Waystone': 'blue', 'Akashic': 'blue',
     'Fae': 'green', 'Fairy': 'green', 'Elder Tree': 'green',
     'Arcane Dust': 'purple', 'Enchanting Altar': 'purple',
     'Memory Shard': 'purple', 'Paradox Anomaly': 'gold',
     'Star-Metal': 'cyan', 'Mithril': 'cyan', 'Obsidian': 'gray',
+    'Purify': 'cyan', 'Purified': 'cyan', 'Radiant Spring': 'cyan', 
+    'Cloudseed': 'green', 'Akashic Records': 'blue', 'Bloodline Pendant': 'red',
     
-    // --- NEW MECHANICS ---
-    'Purify': 'cyan', 'Purified': 'cyan',
-    'Radiant Spring': 'cyan', 'Cloudseed': 'green',
-    
-    // Mechanics & Tools
+    // --- LORE & EXPANSION MECHANICS ---
     'Dimensional Vault': 'blue', 'Stash Box': 'yellow', 'Fishing Rod': 'cyan',
     'Pickaxe': 'gray', 'Machete': 'gray', 'Heavy Crossbow': 'red',
-    
-    // Landmarks & Events
-    'Grand Fortress': 'red', 'Blood Moon': 'red',
-    'Colosseum': 'red', 'Master Blacksmith': 'yellow',
-    'Cartographer': 'blue', 'Safe Haven': 'green',
+    'Grand Fortress': 'red', 'Blood Moon': 'red', 'Colosseum': 'red', 
+    'Master Blacksmith': 'yellow', 'Cartographer': 'blue', 'Safe Haven': 'green',
+    'Infinite Spire': 'fuchsia', 'Molten Lord': 'orange', 'Void Terror': 'void',
+    'Ascendant': 'gold', 'Vanguard': 'blue', 'Syndicate': 'red', 'Grand Heist': 'gray',
     
     // Special Materials & Valuables
     'Black Pearl': 'purple', 'Dragon Scale': 'red', 'Elemental Core': 'orange',
