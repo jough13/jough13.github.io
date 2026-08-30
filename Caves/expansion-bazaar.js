@@ -466,8 +466,12 @@ window.ExpansionManager.register({
                 // Clean off the temporary UIDs before saving
                 gameState.player.inventory = finalInventory.map(i => { delete i._tradeUid; return i; });
 
-                if (typeof triggerDebouncedSave === 'function') {
-                    triggerDebouncedSave({ coins: gameState.player.coins, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory });
+                if (typeof flushPendingSave === 'function') {
+                    flushPendingSave({ 
+                        _forceManualSave: true, 
+                        coins: gameState.player.coins, 
+                        inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory 
+                    });
                 }
 
                 if (this.isInitiator) {
