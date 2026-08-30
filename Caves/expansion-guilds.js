@@ -238,11 +238,17 @@ window.ExpansionManager.register({
                     // Safe Clone - JSON ensures we strip any cyclic references/functions before hitting Firebase
                     const itemClone = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(item) : JSON.parse(JSON.stringify(item));
                     
-                    // Remove from inventory BEFORE awaiting Firebase to prevent race conditions
+                    // 1. Remove from inventory locally
                     gameState.player.inventory.splice(actualIndex, 1);
-                    this.renderUI(); // Force local update
+                    this.renderUI(); 
                     
-                    // Push to the Guild Vault (Wrapped in a strict timeout to prevent permanent hangs on network drop!)
+                    // 2. FORCE FIRESTORE SAVE IMMEDIATELY (Delete First Protocol)
+                    // If the tab closes right now, they lose the item, but duplication is impossible.
+                    if (typeof flushPendingSave === 'function') {
+                        flushPendingSave({ _forceManualSave: true, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory });
+                    }
+                    
+                    // 3. Push to the Guild Vault (RTDB)
                     if (typeof rtdb !== 'undefined') {
                         const newItemRef = this.vaultRef.push();
                         if (typeof window.withTimeout === 'function') {
@@ -252,13 +258,13 @@ window.ExpansionManager.register({
                         }
                     }
 
-                    if (typeof triggerDebouncedSave === 'function') {
-                        triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory });
-                    }
                 } catch (e) {
                     console.error("Vault Deposit Error/Timeout:", e);
-                    // Rollback safely
+                    // 4. ROLLBACK ON FAILURE
                     gameState.player.inventory.push(item);
+                    if (typeof flushPendingSave === 'function') {
+                        flushPendingSave({ _forceManualSave: true, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory });
+                    }
                     logMessage("{red:Network error. The item was returned to your bag.}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                     this.renderUI();
@@ -320,11 +326,13 @@ window.ExpansionManager.register({
                         } else {
                             gameState.player.inventory.push(claimedItem);
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+                            
+                            // 🚨 FORCE INSTANT SAVE ON SUCCESSFUL WITHDRAWAL
+                            if (typeof flushPendingSave === 'function') {
+                                flushPendingSave({ _forceManualSave: true, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory });
+                            }
                         }
 
-                        if (typeof triggerDebouncedSave === 'function') {
-                            triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory });
-                        }
                     } else {
                         logMessage("{gray:Someone else grabbed that item first!}");
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
