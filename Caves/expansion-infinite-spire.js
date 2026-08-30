@@ -500,23 +500,23 @@ window.ExpansionManager.register({
                     // 2. Safely Restore Original Inventory & Gear
                     gameState.inSpire = false;
                     
-                    // Recursive Array Hydration
-                    // This ensures all the magical onHit/effect functions that were preserved by fastClone
-                    // or stripped by Firebase stringification are safely restored!
-                    
                     // Strict Array type-checking prevents ghost wiping!
                     const rawInv = Array.isArray(gameState.player.spireBackupInv) ? gameState.player.spireBackupInv : [];
+                    
+                    // 1. Restore Inventory first (this rehydrates all items, including equipped ones)
                     gameState.player.inventory = typeof window.rehydrateItemArray === 'function' ? window.rehydrateItemArray(rawInv) : rawInv;
                     
-                    const rawEq = gameState.player.spireBackupEquip || {};
-                    gameState.player.equipment = {
-                        weapon: typeof window.rehydrateItemArray === 'function' && rawEq.weapon ? window.rehydrateItemArray([rawEq.weapon])[0] : rawEq.weapon,
-                        armor: typeof window.rehydrateItemArray === 'function' && rawEq.armor ? window.rehydrateItemArray([rawEq.armor])[0] : rawEq.armor,
-                        offhand: typeof window.rehydrateItemArray === 'function' && rawEq.offhand ? window.rehydrateItemArray([rawEq.offhand])[0] : rawEq.offhand,
-                        accessory: typeof window.rehydrateItemArray === 'function' && rawEq.accessory ? window.rehydrateItemArray([rawEq.accessory])[0] : rawEq.accessory,
-                        ammo: typeof window.rehydrateItemArray === 'function' && rawEq.ammo ? window.rehydrateItemArray([rawEq.ammo])[0] : rawEq.ammo
-                    };
+                    // 2. Re-link Equipment Pointers from the newly restored inventory
+                    // This prevents memory reference leaks where equipment objects detach from the inventory array!
+                    gameState.player.equipment = { weapon: null, armor: null, offhand: null, accessory: null, ammo: null };
+                    ['weapon', 'armor', 'offhand', 'accessory', 'ammo'].forEach(slot => {
+                        const invItem = gameState.player.inventory.find(i => i && i.slot === slot && i.isEquipped);
+                        if (invItem) {
+                            gameState.player.equipment[slot] = invItem;
+                        }
+                    });
                     
+                    // Clean up the backups
                     delete gameState.player.spireBackupInv;
                     delete gameState.player.spireBackupEquip;
 
