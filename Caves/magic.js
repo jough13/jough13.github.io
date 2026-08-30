@@ -175,8 +175,8 @@ async function castSpell(spellId) {
                     player.burnTurns = 0;
 
                     // Only cast if you actually NEED healing or curing!
-                    if (healedFor === 0 && !ailmentsCured) {
-                        logMessage("{gray:The Light shines brightly, but you are already perfectly whole.}");
+                    if (healedFor === 0 && !ailmentsCured && (!player.companion || player.companion.hp >= player.companion.maxHp)) {
+                        logMessage("{gray:The Light shines brightly, but you and your allies are already perfectly whole.}");
                         spellCastSuccessfully = false;
                         break;
                     }
@@ -186,6 +186,13 @@ async function castSpell(spellId) {
                     if (typeof ParticleSystem !== 'undefined') {
                         ParticleSystem.createExplosion(player.x, player.y, '#facc15', 30); // Massive golden explosion
                         ParticleSystem.createLevelUp(player.x, player.y); 
+                    }
+                    
+                    // 🌟 QoL & SYNERGY WIN: Companion Full Heal
+                    if (player.companion) {
+                        player.companion.hp = player.companion.maxHp;
+                        logMessage(`{gold:Your ${player.companion.name} is fully restored by the light!}`);
+                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.companion.x, player.companion.y, "♥", "#facc15");
                     }
 
                     // Holy Nova
@@ -249,15 +256,31 @@ async function castSpell(spellId) {
                     const effectiveWits = (Number(player.wits) || 1) + (Number(player.witsBonus) || 0);
                     const healAmount = (Number(spellData.baseHeal) || 5) + (effectiveWits * spellLevel);
                     const healedFor = typeof window.modifyVital === 'function' ? window.modifyVital('health', healAmount) : 0;
+                    
+                    let compHealedFor = 0;
+                    if (player.companion) {
+                        const oldCompHp = player.companion.hp;
+                        player.companion.hp = Math.min(player.companion.maxHp, player.companion.hp + healAmount);
+                        compHealedFor = player.companion.hp - oldCompHp;
+                    }
 
-                    if (healedFor > 0) {
-                        logMessage(`You cast Lesser Heal and recover {green:${healedFor} health}.`);
-                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `+${healedFor}`, '#22c55e'); 
+                    if (healedFor > 0 || compHealedFor > 0) {
+                        if (healedFor > 0) {
+                            logMessage(`You cast Lesser Heal and recover {green:${healedFor} health}.`);
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `+${healedFor}`, '#22c55e'); 
+                        }
+                        
+                        // 🌟 QoL & SYNERGY WIN: Companion Heals
+                        if (compHealedFor > 0) {
+                            logMessage(`{green:Your ${player.companion.name} is also healed! (+${compHealedFor} HP)}`);
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.companion.x, player.companion.y, `+${compHealedFor}`, '#22c55e'); 
+                        }
+                        
                         updates.health = player.health;
                         spellCastSuccessfully = true;
                     } else {
-                        logMessage("{gray:You cast Lesser Heal, but you're already at full health.}");
-                        spellCastSuccessfully = false;
+                        logMessage("{gray:You cast Lesser Heal, but everyone is already at full health.}");
+                        spellCastSuccessfully = false; // Refund
                     }
                     break;
                 }
@@ -396,6 +419,7 @@ async function castSpell(spellId) {
 
                 if (typeof triggerAbilityCooldown === 'function') triggerAbilityCooldown(spellId);
 
+                // 🚨 CRITICAL BUG FIX: Force Await on Turn Resolution
                 if (typeof endPlayerTurn === 'function') await endPlayerTurn();
                 if (typeof renderStats === 'function') renderStats();
             } else {
@@ -440,13 +464,17 @@ async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = f
 
     // Determine the tile and enemy data
     let tile = '.';
+    let enemyInfo = null; // Storing this early to use for synergistic flavor text!
+    
     if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         const enemyId = `overworld:${targetX},${-targetY}`;
         const liveEnemy = gameState.sharedEnemies ? gameState.sharedEnemies[enemyId] : null;
         tile = liveEnemy ? liveEnemy.tile : (typeof chunkManager !== 'undefined' ? chunkManager.getTile(targetX, targetY) : '.');
+        enemyInfo = liveEnemy || (typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tile] : null);
     } else {
         const map = (gameState.mapMode === 'dungeon' && typeof chunkManager !== 'undefined') ? chunkManager.caveMaps[gameState.currentCaveId] : (typeof chunkManager !== 'undefined' ? chunkManager.castleMaps[gameState.currentCastleId] : null);
         tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
+        enemyInfo = gameState.instancedEnemies ? gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY && e.health > 0) : null;
     }
     
     const enemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tile] : null;
@@ -466,8 +494,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = f
             
             // LORE WIN: Stunning clockworks
             if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-                const e = gameState.instancedEnemies ? gameState.instancedEnemies.find(en => en && en.x === targetX && en.y === targetY && en.health > 0) : null;
-                if (e) e.stunTurns = 2;
+                if (enemyInfo) enemyInfo.stunTurns = 2;
             }
         }
     } 
@@ -490,7 +517,16 @@ async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = f
              if (Math.random() < 0.3) logMessage("{gray:The water boils and hisses, releasing a cloud of steam.}");
         }
 
-        // LORE WIN: Thermal Shock!
+        // 🌟 LORE & COMBAT WIN: Toxic Combustion Synergy
+        if (enemyInfo && enemyInfo.poisonTurns > 0) {
+            finalDamage = Math.floor(finalDamage * 1.5);
+            const safeName = typeof escapeHtml === 'function' ? escapeHtml(enemyInfo.name || "enemy") : (enemyInfo.name || "enemy");
+            logMessage(`{orange:The fire ignites the toxic fumes surrounding the ${safeName}! (Critical Damage)}`);
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#facc15', 8);
+            enemyInfo.poisonTurns = 0; // Burns away the poison effect
+        }
+
+        // Thermal Shock!
         if (tags.includes('frost')) {
             finalDamage = Math.floor(finalDamage * 1.5);
             logMessage(`{orange:The fiery blast shatters the frozen enemy! (Critical Damage)}`);
@@ -575,8 +611,8 @@ async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = f
         
         const enemyRef = rtdb.ref(EnemyNetworkManager.getPath(targetX, targetY, enemyId));
 
+        // Use the resolved enemyInfo from the top of the function
         const liveEnemy = gameState.sharedEnemies ? gameState.sharedEnemies[enemyId] : null;
-        const enemyInfo = liveEnemy || (typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyData, targetX, targetY) : enemyData);
   
         // --- 🚨 PERFORMANCE WIN: BATCHING LOGIC FOR AOE SPELLS ---
         if (isBatched) {
@@ -682,8 +718,8 @@ async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = f
 
     } else {
         // Handle Instanced Combat
-        // 🚨 GHOST GUARD: Make sure we only hit living enemies
-        let enemy = gameState.instancedEnemies ? gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY && e.health > 0) : null;
+        // Use the resolved enemyInfo from the top of the function
+        let enemy = enemyInfo;
         if (enemy) {
             damageDealt = Math.max(1, finalDamage);
             enemy.health -= damageDealt;
@@ -708,6 +744,10 @@ async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = f
             const actualHeal = typeof window.modifyVital === 'function' ? window.modifyVital('health', healedAmount) : 0;
             if (actualHeal > 0) {
                 logMessage(`You drain {green:${actualHeal} health} from the target.`);
+                // 🌟 UI WIN: Add visually satisfying green floating text to the player for heals!
+                if (typeof ParticleSystem !== 'undefined') {
+                    ParticleSystem.createFloatingText(player.x, player.y, `+${actualHeal}`, '#22c55e');
+                }
                 if (typeof playerRef !== 'undefined' && playerRef) playerRef.update({ health: player.health });
             }
         }
@@ -737,7 +777,6 @@ async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = f
     return damageDealt > 0; 
 }
 
-
 /**
  * Executes an aimed spell (Magic Bolt, Fireball, Siphon Life)
  * after the player chooses a direction.
@@ -750,7 +789,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
     const spellLevel = Number(player.spellbook[spellId]) || 1;
 
     // --- LOCK THE ENGINE ---
-    if (isProcessingMove) return;
+    if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
 
     try {
         isProcessingMove = true;
@@ -779,7 +818,8 @@ async function executeAimedSpell(spellId, dirX, dirY) {
         }
 
         // Deduct cost immediately to prevent "Free Radar" exploit
-        player[spellData.costType] -= cost;
+        if (typeof window.modifyVital === 'function') window.modifyVital(spellData.costType, -cost);
+        else player[spellData.costType] -= cost;
 
         if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
 
@@ -999,7 +1039,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                         }
                         
                         // Guard against player death midway through AoE resolution!
-                        if (player.health <= 0) break; // Escapes the X loop
+                        if (player.health <= 0 || gameState.isDead) break; 
                         
                         // Pass 'true' to trigger batch mode!
                         const res = await applySpellDamage(x, y, meteorDmg, spellId, true);
@@ -1010,7 +1050,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     }
                     
                     // Escape the outer Y loop as well if the player died!
-                    if (player.health <= 0) break;
+                    if (player.health <= 0 || gameState.isDead) break;
                 }
                 
                 // Send exactly ONE network request for the entire blast radius!
@@ -1038,8 +1078,10 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 if (tileType === '(' || tileType === '⚰️') {
                     if (gameState.player.companion) {
                         logMessage("{gray:You already have a companion! Dismiss them first.}");
-                        // BUG FIX: Ensure the spell doesn't drain mana if it fails here!
-                        hitSomething = false;
+                        // 🚨 BUG FIX: Ensure the spell doesn't drain mana if it fails here!
+                        if (typeof window.modifyVital === 'function') window.modifyVital(spellData.costType, cost);
+                        else player[spellData.costType] += cost;
+                        hitSomething = true; // Prevents the fizzle message
                     } else {
                         logMessage("{purple:You chant the words of unlife... The bones assemble and rise to serve you!}");
 
@@ -1074,8 +1116,10 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     }
                 } else {
                     logMessage("{gray:You need a pile of bones '(' or a grave '⚰️' to raise the dead.}");
-                    // BUG FIX: Prevent mana drain if aiming at empty ground!
-                    hitSomething = false; 
+                    // 🚨 BUG FIX: Refund mana if aimed at empty ground!
+                    if (typeof window.modifyVital === 'function') window.modifyVital(spellData.costType, cost);
+                    else player[spellData.costType] += cost;
+                    hitSomething = true; // Prevents the "miss" message
                 }
                 break;
             }
@@ -1177,30 +1221,37 @@ async function executeAimedSpell(spellId, dirX, dirY) {
             if (typeof ParticleSystem !== 'undefined') {
                 ParticleSystem.createFloatingText(finalTargetX, finalTargetY, "Fizzle...", "#9ca3af");
             }
-        }
-
-        // --- 3. Finalize Turn ---
-        if (typeof playerRef !== 'undefined' && playerRef) {
-            playerRef.update({
-                [spellData.costType]: player[spellData.costType] // Update mana or psyche
-            });
+            // 🚨 BUG FIX & ECONOMY WIN: If you throw a fireball at an empty wall, you get your mana back!
+            if (typeof window.modifyVital === 'function') window.modifyVital(spellData.costType, cost);
+            else player[spellData.costType] += cost;
+            
+            // Re-render UI to show refunded mana instantly
+            if (typeof renderStats === 'function') renderStats();
         }
 
         // Prevent rendering alive UI if the spell killed you (e.g. Meteor or Dark Pact backfire)
         if (player.health <= 0 || gameState.isDead) return;
 
-        // Only pulse the UI bar if resources were actually spent
+        // Only pulse the UI bar if resources were actually spent (and not refunded)
         if (hitSomething || spellData.target === 'self') {
+            if (typeof playerRef !== 'undefined' && playerRef) {
+                playerRef.update({
+                    [spellData.costType]: player[spellData.costType] // Update mana or psyche
+                });
+            }
+
             if (spellData.costType === 'mana' && typeof statDisplays !== 'undefined') {
                 if (typeof triggerStatAnimation === 'function') triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
             } else if (spellData.costType === 'psyche' && typeof statDisplays !== 'undefined') {
                 if (typeof triggerStatAnimation === 'function') triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
             }
+            
+            if (typeof triggerAbilityCooldown === 'function') triggerAbilityCooldown(spellId);
+            
+            // 🚨 CRITICAL BUG FIX: Await End Turn!
+            if (typeof endPlayerTurn === 'function') await endPlayerTurn();
         }
 
-        if (typeof triggerAbilityCooldown === 'function') triggerAbilityCooldown(spellId);
-
-        if (typeof endPlayerTurn === 'function') endPlayerTurn();
         if (typeof render === 'function') render();
 
     } finally {
