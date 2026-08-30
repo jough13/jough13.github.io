@@ -96,7 +96,13 @@ function renderHotbar() {
 
         if (abilityId) {
             const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA[abilityId] : null;
-            const spellData = typeof SPELL_DATA !== 'undefined' ? SPELL_DATA[abilityId] : null;
+            
+            // 🚨 EXPANSION WIN: Custom Spell Rehydration
+            // If the Rune-Weaving expansion created a custom spell, ensure it renders even if the global dict isn't populated yet!
+            let spellData = typeof SPELL_DATA !== 'undefined' ? SPELL_DATA[abilityId] : null;
+            if (!spellData && player.customSpells && player.customSpells[abilityId]) {
+                spellData = player.customSpells[abilityId];
+            }
             
             // 🚨 ROBUSTNESS WIN: Corrupted Slot Failsafe
             // If the player uninstalled an expansion or performed a prestige reset that wiped their spellbook,
@@ -170,6 +176,8 @@ function renderHotbar() {
                         else if (sName.includes("Dark") || sName.includes("Siphon") || sName.includes("Smoke")) colorClass = "text-red-500";
                         else if (sName.includes("Lightning") || sName.includes("Thunder")) colorClass = "text-yellow-300";
                         else colorClass = "text-blue-300";
+                        
+                        if (spellData.isCustom) colorClass = "text-fuchsia-400"; // Expansion win: Rune spells are pink
                     } else if (skillData) {
                         colorClass = "text-yellow-500"; 
                     }
@@ -348,6 +356,8 @@ function useHotbarSlot(index) {
             
             if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) {
                 cdMsg = `{blue:The arcane energies are still gathering! (${cooldowns[abilityId]} turns left)}`;
+            } else if (player.customSpells && player.customSpells[abilityId]) {
+                cdMsg = `{fuchsia:Your woven magic is still recharging! (${cooldowns[abilityId]} turns left)}`;
             } else if (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) {
                 cdMsg = `{yellow:You need a moment to recover your breath! (${cooldowns[abilityId]} turns left)}`;
             }
@@ -360,22 +370,29 @@ function useHotbarSlot(index) {
         }
 
         const isSkill = typeof SKILL_DATA !== 'undefined' && !!SKILL_DATA[abilityId];
-        const isSpell = typeof SPELL_DATA !== 'undefined' && !!SPELL_DATA[abilityId];
+        const isSpell = (typeof SPELL_DATA !== 'undefined' && !!SPELL_DATA[abilityId]) || (player.customSpells && !!player.customSpells[abilityId]);
 
-        // --- 🚨 TACTILE UX WIN: OOM Pre-Shake Check ---
-        // Instantly shakes the hotbar slot *before* routing to the logic if we know we can't afford it,
-        // or if the item is physically missing from our bag!
+        // --- 🚨 TACTILE UX WIN: OOM Pre-Shake Check & Audio ---
+        // Instantly shakes the hotbar slot *before* routing to the logic if we know we can't afford it!
         let preCheckFailed = false;
+        let failAudioType = 'error';
         
         if (isSkill) {
             const cost = Number(SKILL_DATA[abilityId].cost) || 0;
-            if ((Number(player[SKILL_DATA[abilityId].costType]) || 0) < cost) preCheckFailed = true;
+            if ((Number(player[SKILL_DATA[abilityId].costType]) || 0) < cost) {
+                preCheckFailed = true;
+                failAudioType = 'stamina'; // Special exhausted noise
+            }
         } else if (isSpell) {
-            let cost = Number(SPELL_DATA[abilityId].cost) || 0;
-            if (SPELL_DATA[abilityId].costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
+            const sData = (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) ? SPELL_DATA[abilityId] : player.customSpells[abilityId];
+            let cost = Number(sData.cost) || 0;
+            if (sData.costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
                 cost = Math.floor(cost * 0.8);
             }
-            if ((Number(player[SPELL_DATA[abilityId].costType]) || 0) < cost) preCheckFailed = true;
+            if ((Number(player[sData.costType]) || 0) < cost) {
+                preCheckFailed = true;
+                failAudioType = 'mana'; // Arcane fizzle noise
+            }
         } else {
             // Item Pre-Check: Do we actually have it?
             const targetName = (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[abilityId]) ? ITEM_DATA[abilityId].name : abilityId;
@@ -385,12 +402,23 @@ function useHotbarSlot(index) {
 
         if (preCheckFailed) {
             triggerSlotShake();
+            
+            if (typeof AudioSystem !== 'undefined') {
+                if (failAudioType === 'stamina') {
+                    AudioSystem.playNoise(0.15, 0.05, 400); // Exhausted huff
+                } else if (failAudioType === 'mana') {
+                    AudioSystem.playTone(800, 'sawtooth', 0.1, 0.05, true, 200); // Arcane fizzle
+                    AudioSystem.playNoise(0.05, 0.05, 2000); 
+                } else {
+                    AudioSystem.playError();
+                }
+            }
+
             // If it's a spell/skill, let it fall through so the core engine prints the specific "Not enough Mana" error text.
             // If it's an item, we intercept it here to prevent the engine from silently failing.
             if (!isSkill && !isSpell) {
                 const safeTargetName = typeof escapeHtml === 'function' ? escapeHtml(abilityId) : abilityId;
                 logMessage(`{gray:Your fingers trace an empty pouch. You are out of ${safeTargetName}s!}`);
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 return;
             }
         }
@@ -449,6 +477,11 @@ function assignToHotbar(abilityId) {
         bindType = 'spell';
         isValid = true;
     }
+    else if (player.customSpells && player.customSpells[abilityId]) {
+        readableName = player.customSpells[abilityId].name;
+        bindType = 'spell';
+        isValid = true;
+    }
     else if (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[abilityId]) {
         readableName = ITEM_DATA[abilityId].name;
         isValid = true;
@@ -473,6 +506,14 @@ function assignToHotbar(abilityId) {
     if (existingIndex !== -1) {
         logMessage(`{gray:${safeReadableName} is already bound to Slot ${existingIndex + 1}.}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        
+        // Jiggle the specific slot it's bound to
+        const slotEl = document.getElementById(`hotbarSlot-${existingIndex}`);
+        if (slotEl) {
+            slotEl.classList.remove('shake');
+            void slotEl.offsetWidth;
+            slotEl.classList.add('shake');
+        }
         return;
     }
 
@@ -485,7 +526,7 @@ function assignToHotbar(abilityId) {
         logMessage(`{red:Quick-Slots full! Right-click a slot to unbind it first.}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         
-        // Jiggle the hotbar so they look at it
+        // Jiggle the entire hotbar so they look at it
         if (hotbarContainerEl) {
             hotbarContainerEl.classList.remove('shake');
             void hotbarContainerEl.offsetWidth;
@@ -607,6 +648,7 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
                 let readableName = abilityId;
                 if (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) readableName = SKILL_DATA[abilityId].name;
                 else if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) readableName = SPELL_DATA[abilityId].name;
+                else if (player.customSpells && player.customSpells[abilityId]) readableName = player.customSpells[abilityId].name;
                 else if (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[abilityId]) readableName = ITEM_DATA[abilityId].name;
                 else {
                     const invItem = player.inventory.find(i => i && (i.templateId === abilityId || i.name === abilityId)); // 🚨 GHOST GUARD
@@ -643,6 +685,7 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
 window.triggerAbilityCooldown = function(abilityId) {
     let data = (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) || 
                (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) ||
+               (gameState.player.customSpells && gameState.player.customSpells[abilityId]) ||
                (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[abilityId]); // Future-proofing
 
     if (data && data.cooldown) {
