@@ -1786,8 +1786,6 @@ async function endPlayerTurn(turnUpdates = {}) {
         renderStats();
     }
 
-    if (typeof window.runCompanionTurn === 'function') window.runCompanionTurn();
-
     // Await the pet's turn so the game state holds until Firebase resolves the damage!
     if (typeof window.runCompanionTurn === 'function') {
         await window.runCompanionTurn(); 
