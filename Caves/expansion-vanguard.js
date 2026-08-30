@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_vanguard_raids",
     name: "The Vanguard (Multiplayer Raids)",
-    version: "1.6", // Upgraded version!
+    version: "1.7", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -88,6 +88,14 @@ window.ExpansionManager.register({
                 isRanged: false, caster: true, castRange: 8, spellDamage: 30, inflicts: 'burn', inflictChance: 1.0,
                 color: '#dc2626', loot: '📦r', isBoss: true, isElite: true,
                 flavor: "A towering behemoth of magma and black iron. The heat is unbearable."
+            },
+            // 🌟 EXPANSION WIN: Raid-Specific Adds!
+            '🔥r': {
+                name: 'Lava Spawn', tags: ['elemental', 'fire'], mountable: false,
+                maxHealth: 150, attack: 15, defense: 2, xp: 200,
+                color: '#f97316', loot: '🔥c',
+                inflicts: 'burn', inflictChance: 0.5,
+                flavor: "A mindless glob of superheated magma born from the Lord's footsteps."
             }
         },
 
@@ -232,16 +240,15 @@ window.ExpansionManager.register({
                         const newBoss = { ...bossScaled, tile: '👹r', x: bossX, y: bossY, spawnTime: instanceTime, raidInstanceId: instanceTime };
                         spawnPayload[EnemyNetworkManager.getPath(bossX, bossY, bossId)] = newBoss;
                         
-                        // Spawn Adds! (Fire Elementals at the 4 pillars)
+                        // Spawn Adds! (Lava Spawns at the 4 pillars)
                         const adds = [[3,3], [13,3], [3,13], [13,13]];
-                        const fData = typeof window.fastClone === 'function' ? window.fastClone(window.ENEMY_DATA['f']) : JSON.parse(JSON.stringify(window.ENEMY_DATA['f']));
+                        const fData = typeof window.fastClone === 'function' ? window.fastClone(window.ENEMY_DATA['🔥r']) : JSON.parse(JSON.stringify(window.ENEMY_DATA['🔥r']));
                         
                         if (fData) {
                             adds.forEach((pos) => {
                                 const aId = `overworld:${pos[0]},${-pos[1]}`;
-                                // 🚨 BUG FIX: Apply scaling to Elementals so they hit hard enough for endgame!
                                 const addScaled = typeof getScaledEnemy === 'function' ? getScaledEnemy(fData, pos[0], pos[1]) : fData;
-                                const newAdd = { ...addScaled, tile: 'f', x: pos[0], y: pos[1], spawnTime: instanceTime };
+                                const newAdd = { ...addScaled, tile: '🔥r', x: pos[0], y: pos[1], spawnTime: instanceTime };
                                 
                                 spawnPayload[EnemyNetworkManager.getPath(pos[0], pos[1], aId)] = newAdd;
                                 
@@ -269,8 +276,6 @@ window.ExpansionManager.register({
                 type: 'anomaly', name: 'Vanguard Cache',
                 flavor: "A massive, glowing chest dropped by the Raid Boss!",
                 onInteract: (state, x, y) => {
-                    // 🚨 EXPLOIT FIX WIN: Dynamic Chunk Resolution
-                    // Chests now correctly read from their actual coordinate chunk!
                     const CHUNK_SIZE = typeof chunkManager !== 'undefined' ? chunkManager.CHUNK_SIZE : 16;
                     const chunkX = Math.floor(x / CHUNK_SIZE);
                     const chunkY = Math.floor(y / CHUNK_SIZE);
@@ -295,26 +300,28 @@ window.ExpansionManager.register({
                     }
 
                     logMessage("{gold:You pry open the Vanguard Cache...}");
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 500); // Rummage sound
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 500); 
                     
                     // Base Gold
                     const goldAmount = 500 + Math.floor(Math.random() * 500);
                     state.player.coins += goldAmount;
                     
-                    // Tell anti-cheat this gold is valid!
                     if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(goldAmount);
 
                     logMessage(`{gold:You found ${goldAmount} Gold!}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
 
-                    // 🚨 CONTENT WIN: Added Title Scroll to loot table
+                    // Loot Generation
                     const lootTable = ['🛡️v', '⚔️v', '💍v', '🍷v', '📜vr', '📜tv', '💎b', '💎b', '💎'];
                     const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                     
-                    // Helper to scatter items securely on the ground if inventory is full
-                    const dropSafely = (tileToDrop) => {
-                        let placed = false;
-                        if (typeof chunkManager !== 'undefined') {
+                    // 🚨 BUG FIX & ROBUSTNESS: Unified Safe Drop Logic
+                    const dropSafely = (itemTile) => {
+                        if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
+                            window.EventManager.safeDropItem(state, x, y, itemTile);
+                        } else if (typeof chunkManager !== 'undefined') {
+                            // Manual fallback
+                            let placed = false;
                             for (let r = 0; r <= 2 && !placed; r++) {
                                 for (let dy = -r; dy <= r && !placed; dy++) {
                                     for (let dx = -r; dx <= r && !placed; dx++) {
@@ -323,13 +330,13 @@ window.ExpansionManager.register({
                                         const tileAt = chunkManager.getTile(tx, ty);
                                         // Raids are essentially overworlds with 'd' floors or '🌋'
                                         if (['.', 'F', 'd', 'D', '🌋'].includes(tileAt)) {
-                                            chunkManager.setWorldTile(tx, ty, tileToDrop, 24);
+                                            chunkManager.setWorldTile(tx, ty, itemTile, 24);
                                             placed = true;
                                         }
                                     }
                                 }
                             }
-                            if (!placed) chunkManager.setWorldTile(x, y, tileToDrop, 24);
+                            if (!placed) chunkManager.setWorldTile(x, y, itemTile, 24);
                             state.mapDirty = true;
                         }
                     };
@@ -353,7 +360,6 @@ window.ExpansionManager.register({
                                 logMessage(`You found: {purple:${template.name}}`);
                                 if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
                             } else {
-                                // 🚨 BUG FIX WIN: Safely drop raid loot on the floor so it's not lost to the void!
                                 logMessage(`{red:You found a ${template.name}, but your pack is full! It drops onto the ash.}`);
                                 dropSafely(newItem.tile || '🎒');
                             }
@@ -390,7 +396,6 @@ window.ExpansionManager.register({
     },
 
     // --- 5. ENGINE HOOKS ---
-    // 🚨 ARCHITECTURE WIN: Native Hook Registration
     hooks: {
         onTurnEnd: function(context) {
             const state = typeof gameState !== 'undefined' ? gameState : context.gameState;
@@ -411,11 +416,17 @@ window.ExpansionManager.register({
                     ambientDmg += Math.floor(turnsInside / 50); // Damage increases by 1 every 50 turns
                 }
                 
-                const hasArmor = state.player.equipment.armor && state.player.equipment.armor.name.includes('Dragonscale');
-                const hasRing = state.player.equipment.accessory && state.player.equipment.accessory.name.includes('Molten Core');
+                // 🚨 ROBUSTNESS WIN: Use Template ID for passive immunities instead of string matching
+                const armor = state.player.equipment.armor;
+                const ring = state.player.equipment.accessory;
+                
+                const armorTemplateId = armor ? (armor.templateId || (typeof window.ITEM_DATA !== 'undefined' ? Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === armor.name) : null)) : null;
+                const ringTemplateId = ring ? (ring.templateId || (typeof window.ITEM_DATA !== 'undefined' ? Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === ring.name) : null)) : null;
+                
+                const hasArmor = armorTemplateId === '🛡️db' || (armor && armor.name.includes('Drakebane'));
+                const hasRing = ringTemplateId === '💍v' || (ring && ring.name.includes('Molten Core'));
                 const hasPotion = state.player.fireResistTurns > 0;
                 
-                // 🚨 BUG FIX: Added Molten Core Ring to immunities!
                 if (!hasArmor && !hasRing && !hasPotion && !state.godMode) {
                     logMessage(`{orange:The searing heat of the Molten Core scorches your lungs! (-${ambientDmg} HP)}`);
                     
@@ -423,6 +434,12 @@ window.ExpansionManager.register({
                     if (typeof window.modifyVital === 'function') window.modifyVital('health', -ambientDmg);
                     
                     state.screenShake = 5;
+                    
+                    // 🌟 JUICE WIN: Intenser warning as heat builds
+                    if (ambientDmg > 5) {
+                        state.screenFlash = { color: '#f97316', alpha: 0.3, decay: 0.05 };
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(1.0, 0.1, 400); // Low rumble
+                    }
                     if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('healthDisplay'), false);
                 }
             }
@@ -431,75 +448,83 @@ window.ExpansionManager.register({
     },
 
     init: function() {
+        const logger = window.ExpansionManager.getLogger("Vanguard");
+
+        const applySafePatch = (target, method, factory) => {
+            if (typeof window.ExpansionManager.patchFunction === 'function') {
+                window.ExpansionManager.patchFunction(target, method, factory);
+            } else {
+                const orig = target[method];
+                target[method] = factory(orig ? orig.bind(target) : null);
+            }
+        };
 
         // 1. INJECT RAID MAP GENERATOR
-        if (typeof chunkManager !== 'undefined' && chunkManager.generateChunk) {
-            const origGenerateChunk = chunkManager.generateChunk;
-            
-            chunkManager.generateChunk = function(chunkX, chunkY) {
-                // If we are in the specific raid realm, override normal generation!
-                if (typeof gameState !== 'undefined' && gameState.currentRealm === 'raid_molten') {
-                    
-                    const chunkId = `${chunkX},${chunkY}`;
-                    let chunkData = Array.from({ length: this.CHUNK_SIZE }, () => Array(this.CHUNK_SIZE).fill('🌋')); // Fill with Lava
-                    
-                    // If we are generating the center chunk (0,0), build the arena
-                    if (chunkX === 0 && chunkY === 0) {
-                        for (let y = 0; y < this.CHUNK_SIZE; y++) {
-                            for (let x = 0; x < this.CHUNK_SIZE; x++) {
-                                // Create a 13x13 square platform in the middle
-                                if (x >= 2 && x <= 14 && y >= 2 && y <= 14) {
-                                    chunkData[y][x] = 'd'; // Ashen ground
-                                }
-                                
-                                // Decorative Pillars (Spawn points for the Adds!)
-                                if ((x===3 && y===3) || (x===13 && y===3) || 
-                                    (x===3 && y===13) || (x===13 && y===13)) {
-                                    chunkData[y][x] = '🧱';
+        if (typeof chunkManager !== 'undefined') {
+            applySafePatch(chunkManager, 'generateChunk', (origGenerateChunk) => {
+                return function(chunkX, chunkY) {
+                    // If we are in the specific raid realm, override normal generation!
+                    if (typeof gameState !== 'undefined' && gameState.currentRealm === 'raid_molten') {
+                        
+                        const chunkId = `${chunkX},${chunkY}`;
+                        let chunkData = Array.from({ length: this.CHUNK_SIZE }, () => Array(this.CHUNK_SIZE).fill('🌋')); // Fill with Lava
+                        
+                        // If we are generating the center chunk (0,0), build the arena
+                        if (chunkX === 0 && chunkY === 0) {
+                            for (let y = 0; y < this.CHUNK_SIZE; y++) {
+                                for (let x = 0; x < this.CHUNK_SIZE; x++) {
+                                    // Create a 13x13 square platform in the middle
+                                    if (x >= 2 && x <= 14 && y >= 2 && y <= 14) {
+                                        chunkData[y][x] = 'd'; // Ashen ground
+                                    }
+                                    
+                                    // Decorative Pillars (Spawn points for the Adds!)
+                                    if ((x===3 && y===3) || (x===13 && y===3) || 
+                                        (x===3 && y===13) || (x===13 && y===13)) {
+                                        chunkData[y][x] = '🧱';
+                                    }
                                 }
                             }
+                            
+                            // Place Interactive Objects
+                            chunkData[4][8] = '🩸r'; // Altar at Top-Center
+                            chunkData[15][8] = '🚪r'; // Exit at Bottom
+                            
+                            // A safe bridge leading from the arena to the exit
+                            chunkData[14][8] = 'd';
                         }
                         
-                        // Place Interactive Objects
-                        chunkData[4][8] = '🩸r'; // Altar at Top-Center
-                        chunkData[15][8] = '🚪r'; // Exit at Bottom
-                        
-                        // A safe bridge leading from the arena to the exit
-                        chunkData[14][8] = 'd';
+                        this.loadedChunks[chunkId] = chunkData;
+                        return; // Prevent normal generation from running
                     }
-                    
-                    this.loadedChunks[chunkId] = chunkData;
-                    return; // Prevent normal generation from running
-                }
 
-                // Normal Overworld Hook (Spawn the Portal)
-                origGenerateChunk.call(this, chunkX, chunkY);
-                
-                if (gameState.currentRealm === 0 || !gameState.currentRealm) {
-                    const chunkId = `${chunkX},${chunkY}`;
-                    const chunkData = this.loadedChunks[chunkId];
+                    // Normal Overworld Hook (Spawn the Portal)
+                    if (origGenerateChunk) origGenerateChunk.call(this, chunkX, chunkY);
                     
-                    const random = (typeof Alea !== 'undefined' && typeof stringToSeed !== 'undefined') 
-                        ? Alea(stringToSeed(`vanguard_spawn_${chunkId}`)) 
-                        : Math.random;
-                    
-                    // Spawn portals deep in Deadlands
-                    if (random() < 0.05) { 
-                        const rx = Math.floor(random() * 14) + 1;
-                        const ry = Math.floor(random() * 14) + 1;
-                        if (chunkData[ry][rx] === 'd' && (chunkX*chunkX + chunkY*chunkY) > 2500) {
-                            chunkData[ry][rx] = '🌀r'; 
+                    if (gameState.currentRealm === 0 || !gameState.currentRealm) {
+                        const chunkId = `${chunkX},${chunkY}`;
+                        const chunkData = this.loadedChunks[chunkId];
+                        
+                        const random = (typeof Alea !== 'undefined' && typeof stringToSeed !== 'undefined') 
+                            ? Alea(stringToSeed(`vanguard_spawn_${chunkId}`)) 
+                            : Math.random;
+                        
+                        // Spawn portals deep in Deadlands
+                        if (random() < 0.05) { 
+                            const rx = Math.floor(random() * 14) + 1;
+                            const ry = Math.floor(random() * 14) + 1;
+                            if (chunkData[ry][rx] === 'd' && (chunkX*chunkX + chunkY*chunkY) > 2500) {
+                                chunkData[ry][rx] = '🌀r'; 
+                            }
                         }
                     }
-                }
-            };
+                };
+            });
         }
 
         // 2. INJECT MASSIVE LOOT EXPLOSION ON BOSS DEATH
-        if (typeof window.generateEnemyLoot === 'function') {
-            const origGenLoot = window.generateEnemyLoot;
-            
-            window.generateEnemyLoot = function(player, enemy) {
+        applySafePatch(window, 'generateEnemyLoot', (origGenLoot) => {
+            return function(player, enemy) {
                 if (enemy.name === 'The Molten Lord' || enemy.tile === '👹r') {
                     // Announce to server
                     if (typeof rtdb !== 'undefined') {
@@ -526,7 +551,6 @@ window.ExpansionManager.register({
                                 if (['d', '.', '🌋'].includes(tileAt)) {
                                     const instanceData = { t: '📦r', raidInstanceId: enemy.raidInstanceId || Date.now(), expires: Date.now() + (2 * 60 * 60 * 1000) };
                                     
-                                    // 🚨 BUG FIX: Ensure correct dynamic chunk math replaces hardcoded '16'
                                     const chunkX = Math.floor(targetX / CHUNK_SIZE);
                                     const chunkY = Math.floor(targetY / CHUNK_SIZE);
                                     const localX = (((targetX % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE);
@@ -562,14 +586,14 @@ window.ExpansionManager.register({
                         }
                     }, 200);
 
-                    // We return null here because we manually handled pushing the chest to Firebase above!
-                    return null; 
+                    return null; // Suppress normal loot drop
                 }
                 
                 // Fallback to normal loot logic
-                return origGenLoot(player, enemy);
+                if (origGenLoot) return origGenLoot.apply(this, arguments);
+                return '$';
             };
-        }
+        });
 
         // 3. ADD COLORS TO MINIMAP
         if (typeof window.TILE_COLOR_MAP !== 'undefined') {
@@ -577,7 +601,10 @@ window.ExpansionManager.register({
             window.TILE_COLOR_MAP['🚪r'] = [59, 130, 246, 255]; // Blue Exit
             window.TILE_COLOR_MAP['🩸r'] = [153, 27, 27, 255]; // Blood Altar
             window.TILE_COLOR_MAP['📦r'] = [250, 204, 21, 255]; // Gold Cache
+            window.TILE_COLOR_MAP['🔥r'] = [249, 115, 22, 255]; // Orange Lava Spawn
         }
+        
+        logger.log("Vanguard Raid active.");
     }
 });
 
