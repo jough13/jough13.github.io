@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "monster_hunter",
     name: "The Monster Hunter (Tracking & Trophies)",
-    version: "1.4", // Upgraded version!
+    version: "1.5", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -44,7 +44,7 @@ window.ExpansionManager.register({
                 statBonuses: { dexterity: 6, luck: 4 },
                 description: "{blue:+7 Def}, {green:+6 Dex}, {gold:+4 Luck}. \n{green:Passive: Grants complete immunity to Poison.}", _rarity: 'legendary'
             },
-            // --- EXPANSION WIN: Bone Harpoon ---
+            // --- EXPANSION WIN: New Tactical Items ---
             '🗡️bh': {
                 name: 'Bone Harpoon', type: 'consumable', tile: '🗡️', _rarity: 'rare',
                 description: "A heavy, barbed throwing spear. Throw to deal massive physical damage and inflict {green:Poison} (Deep Bleed).",
@@ -53,6 +53,36 @@ window.ExpansionManager.register({
                     state.isAiming = true;
                     state.abilityToAim = 'throwPotion_Bone Harpoon'; // Hooks into the Alchemy throwing engine cleanly!
                     return false;
+                }
+            },
+            '🧪ws': {
+                name: "Witcher's Salve", type: 'buff_potion', tile: '🧪', yieldsBottle: true, _rarity: 'rare',
+                description: "A pungent, alchemically enhanced paste. {blue:Grants immunity to Stun and Root effects for 20 turns.}",
+                effect: (state) => {
+                    if (state.player.statusImmunities && state.player.statusImmunities.includes('stun')) {
+                        if (typeof logMessage === 'function') logMessage("{gray:The salve is already active.}");
+                        return false;
+                    }
+                    
+                    if (!state.player.statusImmunities) state.player.statusImmunities = [];
+                    state.player.statusImmunities.push('stun', 'root');
+                    
+                    // The duration is managed dynamically by the engine hook below
+                    state.player._salveTurns = 20;
+                    
+                    if (typeof logMessage === 'function') logMessage("{blue:You rub the pungent salve over your skin. You feel unstoppable!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playConsume();
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#38bdf8', 15);
+                    
+                    // Bottle Return Logic
+                    const emptyStack = state.player.inventory.find(i => i && i.name === 'Empty Bottle' && !i.isEquipped);
+                    const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
+                    if (emptyStack) {
+                        emptyStack.quantity++;
+                    } else if (state.player.inventory.length < invCap) {
+                        state.player.inventory.push({ templateId: '🫙', name: 'Empty Bottle', type: 'consumable', quantity: 1, tile: '🫙' });
+                    }
+                    return true;
                 }
             }
         },
@@ -131,11 +161,13 @@ window.ExpansionManager.register({
             trader: [
                 { name: 'Hunter\'s Knife', price: 250, stock: 1 },
                 { name: 'Hunter\'s Log', price: 50, stock: 1 }
+            ],
+            black_market: [
+                { name: "Witcher's Salve", price: 600, stock: 3 }
             ]
         },
 
         // --- 5. RECIPES ---
-        // 🌟 EXPANDABILITY WIN: Native dictionary injection!
         craftingRecipes: {
             "Drakebane Mail": { materials: { "Apex Drake Scale": 1, "Steel Armor": 1, "Elemental Core": 3 }, xp: 250, level: 5 },
             "Voidstalker Cowl": { materials: { "Apex Void Core": 1, "Silk Cowl": 1, "Void Dust": 5 }, xp: 250, level: 5 },
@@ -144,26 +176,32 @@ window.ExpansionManager.register({
             "Bone Harpoon": { materials: { "Fossilized Bone": 1, "Iron Ore": 1 }, xp: 50, level: 3, yield: 2 }
         },
         
-        // Define throwing physics for the new Harpoon
         alchemyRecipes: {
-            "Bone Harpoon": { materials: {}, xp: 0, level: 1, yield: 1, hidden: true }
+            "Bone Harpoon": { materials: {}, xp: 0, level: 1, yield: 1, hidden: true },
+            "Witcher's Salve": { materials: { "Medicinal Herb": 3, "Bone Shard": 1, "Empty Bottle": 1 }, xp: 45, level: 3, yield: 1 }
         }
     },
 
     // --- 6. ENGINE HOOKS ---
     init: function() {
+        const logger = window.ExpansionManager.getLogger("Hunter");
         
         // 🚨 OVERRIDE: Register Bone Harpoon in the Potion Engine to allow throwing
-        // Tricking the alchemy engine into throwing a spear that deals Poison (Bleed) damage!
         if (typeof window.ITEM_DATA !== 'undefined' && window.ITEM_DATA['🗡️bh']) {
             window.ITEM_DATA['🗡️bh'].pColor = '#ef4444'; // Red blood spray
             window.ITEM_DATA['🗡️bh'].pSize = 10;
             
-            // Re-route the effect definition so the engine can look it up correctly!
-            if (typeof ITEM_DATA !== 'undefined' && !ITEM_DATA['Bone Harpoon']) {
-                ITEM_DATA['Bone Harpoon'] = window.ITEM_DATA['🗡️bh'];
-            }
+            if (!window.ITEM_DATA['Bone Harpoon']) window.ITEM_DATA['Bone Harpoon'] = window.ITEM_DATA['🗡️bh'];
         }
+
+        const applySafePatch = (target, method, factory) => {
+            if (typeof window.ExpansionManager.patchFunction === 'function') {
+                window.ExpansionManager.patchFunction(target, method, factory);
+            } else {
+                const orig = target[method];
+                target[method] = factory(orig ? orig.bind(target) : null);
+            }
+        };
 
         // ==========================================
         // 1. TRACKING & CARVING LOGIC
@@ -186,8 +224,7 @@ window.ExpansionManager.register({
                 p.activeHunt.stage++;
             }
 
-            // Audio & Visuals
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 800); // Rustling sound
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 800); 
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#facc15', 10);
             state.screenShake = 5;
 
@@ -258,9 +295,10 @@ window.ExpansionManager.register({
                 state.activeTreasure = { x: nextX, y: nextY };
                 
                 logMessage(`{red:You found the lair of the Apex ${p.activeHunt.monster}! It is marked on your map.}`);
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playBossSpawn(); // Huge roar!
+                state.screenShake = 20;
                 
-                p.activeHunt = { stage: 0 }; // Reset hunt state
+                p.activeHunt = { stage: 0 }; 
             } else {
                 // Spawn next track
                 chunkManager.setWorldTile(nextX, nextY, '🐾');
@@ -281,15 +319,12 @@ window.ExpansionManager.register({
             state.mapDirty = true;
             if (typeof render === 'function') render();
             
-            // Defensively debounce save
             if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ activeHunt: p.activeHunt });
         };
 
         window.carveMonster = function(state, x, y, trophyName, carcassTile) {
             
             // 🚨 BUG FIX & EXPLOIT GUARD: Mutex Lock
-            // Prevents a player from clicking the carcass twice before the network deletes it, 
-            // rewarding them with two legendary items!
             if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
             
             try {
@@ -305,10 +340,10 @@ window.ExpansionManager.register({
 
                 logMessage(`{orange:You meticulously carve the monster, extracting the ${trophyName}!}`);
                 if (typeof AudioSystem !== 'undefined') {
-                    AudioSystem.playAttack('sweep'); // Slicing sound
-                    setTimeout(() => AudioSystem.playNoise(0.2, 0.1, 400), 100); // Squish
+                    AudioSystem.playAttack('sweep'); 
+                    setTimeout(() => AudioSystem.playNoise(0.2, 0.1, 400), 100); 
                 }
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#ef4444', 25); // Huge blood spray
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#ef4444', 25); 
                 
                 p.stamina = Math.max(0, p.stamina - 5);
                 if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('staminaDisplay'), false);
@@ -327,7 +362,7 @@ window.ExpansionManager.register({
                         for (let r = 0; r <= 2 && !placed; r++) {
                             for (let dy = -r; dy <= r && !placed; dy++) {
                                 for (let dx = -r; dx <= r && !placed; dx++) {
-                                    const tx = x + dx; // Spawns spiraling OUTWARDS from the carcass
+                                    const tx = x + dx; 
                                     const ty = y + dy;
                                     let tileAt;
                                     if (state.mapMode === 'overworld' || state.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
@@ -368,7 +403,6 @@ window.ExpansionManager.register({
                         newItem.isEquipped = false;
                         p.inventory.push(newItem);
                     } else {
-                        // Drop on the ground via safe spiral!
                         safelyDropItem(itemTile);
                         logMessage(`{red:Inventory full! The ${itemName} drops to the ground.}`);
                     }
@@ -399,139 +433,158 @@ window.ExpansionManager.register({
         // ==========================================
         // 2. OVERWORLD TRACK SPAWNING
         // ==========================================
-        if (typeof chunkManager !== 'undefined' && chunkManager.generateChunk) {
-            const origGenerateChunk = chunkManager.generateChunk;
-            chunkManager.generateChunk = function(chunkX, chunkY) {
-                origGenerateChunk.call(this, chunkX, chunkY);
-                
-                // Only spawn new tracks in Realm 0
-                if (typeof gameState !== 'undefined' && gameState.currentRealm !== 0 && gameState.currentRealm) return;
+        
+        if (typeof chunkManager !== 'undefined') {
+            applySafePatch(chunkManager, 'generateChunk', (origGenerateChunk) => {
+                return function(chunkX, chunkY) {
+                    if (origGenerateChunk) origGenerateChunk.call(this, chunkX, chunkY);
+                    
+                    // Only spawn new tracks in Realm 0
+                    if (typeof gameState !== 'undefined' && gameState.currentRealm !== 0 && gameState.currentRealm) return;
 
-                const chunkId = `${chunkX},${chunkY}`;
-                const chunkData = this.loadedChunks[chunkId];
-                const random = typeof Alea !== 'undefined' ? Alea(typeof stringToSeed !== 'undefined' ? stringToSeed(`hunter_spawn_${chunkId}`) : 1) : Math.random;
-                
-                // 5% chance per chunk to contain the start of a monster trail
-                if (random() < 0.05) { 
-                    const rx = Math.floor(random() * 14) + 1;
-                    const ry = Math.floor(random() * 14) + 1;
-                    if (chunkData[ry][rx] === '.' || chunkData[ry][rx] === 'F') {
-                        chunkData[ry][rx] = '🐾'; 
-                    }
-                }
-            };
-        }
-
-        // ==========================================
-        // 3. LAIR DUNGEON GENERATION
-        // ==========================================
-        // Monkey-patch generateCave to create the Boss Rooms!
-        if (typeof chunkManager !== 'undefined' && chunkManager.generateCave) {
-            const origGenerateCave = chunkManager.generateCave;
-            chunkManager.generateCave = function(caveId) {
-                if (caveId.startsWith('hunter_')) {
-                    if (this.caveMaps[caveId]) return this.caveMaps[caveId];
+                    const chunkId = `${chunkX},${chunkY}`;
+                    const chunkData = this.loadedChunks[chunkId];
+                    const random = typeof Alea !== 'undefined' ? Alea(typeof stringToSeed !== 'undefined' ? stringToSeed(`hunter_spawn_${chunkId}`) : 1) : Math.random;
                     
-                    let themeKey = 'ROCK';
-                    let bossTile = '🦍a';
-                    
-                    if (caveId.includes('drake')) { themeKey = 'FIRE'; bossTile = '🐉a'; }
-                    else if (caveId.includes('void')) { themeKey = 'VOID'; bossTile = '👁️a'; }
-                    else if (caveId.includes('behemoth')) { themeKey = 'OVERGROWN'; bossTile = '🦍a'; }
-                    else if (caveId.includes('broodmother')) { themeKey = 'FUNGAL'; bossTile = '🕷️a'; }
-                    
-                    this.caveThemes[caveId] = themeKey;
-                    const theme = window.CAVE_THEMES[themeKey] || { wall: '▓', floor: '.' };
-                    
-                    // Create a 13x13 Boss Arena
-                    const mapHeight = 13;
-                    const mapWidth = 13;
-                    const map = Array.from({ length: mapHeight }, () => Array(mapWidth).fill(theme.wall));
-                    
-                    this.caveEnemies[caveId] = [];
-                    
-                    // Hollow it out
-                    for(let ry = 2; ry < mapHeight - 2; ry++){
-                        for(let rx = 2; rx < mapWidth - 2; rx++){
-                            map[ry][rx] = theme.floor;
+                    // 5% chance per chunk to contain the start of a monster trail
+                    if (random() < 0.05) { 
+                        const rx = Math.floor(random() * 14) + 1;
+                        const ry = Math.floor(random() * 14) + 1;
+                        if (chunkData[ry][rx] === '.' || chunkData[ry][rx] === 'F') {
+                            chunkData[ry][rx] = '🐾'; 
                         }
                     }
-                    
-                    // Add Entrance
-                    map[mapHeight-2][Math.floor(mapWidth/2)] = '>';
-                    
-                    // 🚨 BUG FIX WIN: Ensure there is an EXIT `<` so players aren't trapped!
-                    map[mapHeight-3][Math.floor(mapWidth/2)] = '<';
-                    
-                    // Safe Entity Instantiator Fallback
-                    const createEntity = typeof this._createInstancedEnemy === 'function' 
-                        ? this._createInstancedEnemy.bind(this) 
-                        : (id, x, y, tile, scaled, template) => ({ id, x, y, tile, name: scaled.name, health: scaled.maxHealth, maxHealth: scaled.maxHealth, attack: scaled.attack, defense: scaled.defense || 0, xp: scaled.xp, loot: template.loot });
+                };
+            });
 
-                    // Spawn the Boss
-                    const bx = Math.floor(mapWidth/2);
-                    const by = 3;
-                    map[by][bx] = bossTile;
-                    
-                    const bData = window.ENEMY_DATA ? window.ENEMY_DATA[bossTile] : null;
-                    if (bData) {
-                        // Safe clone to sever memory references to global template!
-                        const bossScaled = typeof window.fastClone === 'function' ? window.fastClone(bData) : JSON.parse(JSON.stringify(bData));
-                        this.caveEnemies[caveId].push(createEntity(`${caveId}:boss`, bx, by, bossTile, bossScaled, bData));
-                    }
-                    
-                    this.caveMaps[caveId] = map;
-                    return map;
-                }
-                return origGenerateCave.call(this, caveId);
-            };
-        }
-
-        // ==========================================
-        // 4. PASSIVE ARMOR EFFECTS (ENGINE HOOK)
-        // ==========================================
-
-        // Hook into the endPlayerTurn function to continuously apply the powerful passives of Hunter Gear!
-        if (typeof window.endPlayerTurn === 'function') {
-            const origEndPlayerTurn = window.endPlayerTurn;
-            window.endPlayerTurn = function(updates = {}) {
-                
-                if (typeof gameState !== 'undefined' && gameState.player && gameState.player.equipment) {
-                    const armor = gameState.player.equipment.armor;
-                    if (armor) {
-                        // 🚨 BUG FIX & ROBUSTNESS WIN: Use Template ID for safe passive checks!
-                        // This ensures that "Masterwork Drakebane Mail" still grants Fire Immunity!
-                        const armorTemplateId = armor.templateId || (typeof window.ITEM_DATA !== 'undefined' ? Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === armor.name) : null);
+            // ==========================================
+            // 3. LAIR DUNGEON GENERATION
+            // ==========================================
+            
+            applySafePatch(chunkManager, 'generateCave', (origGenerateCave) => {
+                return function(caveId) {
+                    if (caveId.startsWith('hunter_')) {
+                        if (this.caveMaps[caveId]) return this.caveMaps[caveId];
                         
-                        if (armorTemplateId === '🛡️db' || armor.name.includes('Drakebane')) {
-                            // Permanent Fire Immunity
-                            gameState.player.fireResistTurns = Math.max(gameState.player.fireResistTurns || 0, 2);
-                        }
-                        else if (armorTemplateId === '🧥vs' || armor.name.includes('Voidstalker')) {
-                            // Permanent Madness Immunity
-                            if (gameState.player.madnessTurns > 0) {
-                                gameState.player.madnessTurns = 0;
-                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "RESISTED", "#a855f7");
+                        let themeKey = 'ROCK';
+                        let bossTile = '🦍a';
+                        
+                        if (caveId.includes('drake')) { themeKey = 'FIRE'; bossTile = '🐉a'; }
+                        else if (caveId.includes('void')) { themeKey = 'VOID'; bossTile = '👁️a'; }
+                        else if (caveId.includes('behemoth')) { themeKey = 'OVERGROWN'; bossTile = '🦍a'; }
+                        else if (caveId.includes('broodmother')) { themeKey = 'FUNGAL'; bossTile = '🕷️a'; }
+                        
+                        this.caveThemes[caveId] = themeKey;
+                        const theme = window.CAVE_THEMES[themeKey] || { wall: '▓', floor: '.' };
+                        
+                        // Create a 13x13 Boss Arena
+                        const mapHeight = 13;
+                        const mapWidth = 13;
+                        const map = Array.from({ length: mapHeight }, () => Array(mapWidth).fill(theme.wall));
+                        
+                        this.caveEnemies[caveId] = [];
+                        
+                        // Hollow it out
+                        for(let ry = 2; ry < mapHeight - 2; ry++){
+                            for(let rx = 2; rx < mapWidth - 2; rx++){
+                                map[ry][rx] = theme.floor;
                             }
                         }
-                        else if (armorTemplateId === '🛡️bp' || armor.name.includes('Behemoth Plate')) {
-                            // Permanent Thorns
-                            gameState.player.thornsValue = Math.max(gameState.player.thornsValue || 0, 5);
-                            gameState.player.thornsTurns = Math.max(gameState.player.thornsTurns || 0, 2);
+                        
+                        // Add Entrance
+                        map[mapHeight-2][Math.floor(mapWidth/2)] = '>';
+                        
+                        // 🚨 BUG FIX WIN: Ensure there is an EXIT `<` so players aren't trapped!
+                        // Force placed near the top wall behind the boss
+                        map[2][Math.floor(mapWidth/2)] = '<';
+                        
+                        // Safe Entity Instantiator Fallback
+                        const createEntity = typeof this._createInstancedEnemy === 'function' 
+                            ? this._createInstancedEnemy.bind(this) 
+                            : (id, x, y, tile, scaled, template) => ({ id, x, y, tile, name: scaled.name, health: scaled.maxHealth, maxHealth: scaled.maxHealth, attack: scaled.attack, defense: scaled.defense || 0, xp: scaled.xp, loot: template.loot });
+
+                        // Spawn the Boss
+                        const bx = Math.floor(mapWidth/2);
+                        const by = 4;
+                        map[by][bx] = bossTile;
+                        
+                        const bData = window.ENEMY_DATA ? window.ENEMY_DATA[bossTile] : null;
+                        if (bData) {
+                            // Safe clone to sever memory references to global template!
+                            const bossScaled = typeof window.fastClone === 'function' ? window.fastClone(bData) : JSON.parse(JSON.stringify(bData));
+                            this.caveEnemies[caveId].push(createEntity(`${caveId}:boss`, bx, by, bossTile, bossScaled, bData));
                         }
-                        else if (armorTemplateId === '🧥b' || armor.name.includes('Broodmother')) {
-                            // Permanent Poison Immunity
-                            if (gameState.player.poisonTurns > 0) {
-                                gameState.player.poisonTurns = 0;
-                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "RESISTED", "#22c55e");
+                        
+                        this.caveMaps[caveId] = map;
+                        return map;
+                    }
+                    if (origGenerateCave) return origGenerateCave.call(this, caveId);
+                };
+            });
+        }
+
+        // ==========================================
+        // 4. PASSIVE ARMOR & POTION EFFECTS (ENGINE HOOK)
+        // ==========================================
+
+        if (typeof window.endPlayerTurn === 'function') {
+            applySafePatch(window, 'endPlayerTurn', (origEndPlayerTurn) => {
+                return function(updates = {}) {
+                    
+                    if (typeof gameState !== 'undefined' && gameState.player) {
+                        const p = gameState.player;
+                        
+                        // --- Witcher's Salve Timer ---
+                        if (p._salveTurns > 0) {
+                            p._salveTurns--;
+                            if (p._salveTurns === 0) {
+                                // Safely remove 'stun' and 'root' from the immunities list
+                                if (p.statusImmunities) {
+                                    p.statusImmunities = p.statusImmunities.filter(i => i !== 'stun' && i !== 'root');
+                                }
+                                logMessage("{gray:The Witcher's Salve wears off. You feel vulnerable again.}");
+                            }
+                        }
+
+                        // --- Armor Passives ---
+                        if (p.equipment) {
+                            const armor = p.equipment.armor;
+                            if (armor) {
+                                // 🚨 BUG FIX & ROBUSTNESS WIN: Use Template ID for safe passive checks!
+                                // This ensures that "Masterwork Drakebane Mail" still grants Fire Immunity!
+                                const armorTemplateId = armor.templateId || (typeof window.ITEM_DATA !== 'undefined' ? Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === armor.name) : null);
+                                
+                                if (armorTemplateId === '🛡️db' || armor.name.includes('Drakebane')) {
+                                    // Permanent Fire Immunity
+                                    p.fireResistTurns = Math.max(p.fireResistTurns || 0, 2);
+                                }
+                                else if (armorTemplateId === '🧥vs' || armor.name.includes('Voidstalker')) {
+                                    // Permanent Madness Immunity
+                                    if (p.madnessTurns > 0) {
+                                        p.madnessTurns = 0;
+                                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, "RESISTED", "#a855f7");
+                                    }
+                                }
+                                else if (armorTemplateId === '🛡️bp' || armor.name.includes('Behemoth Plate')) {
+                                    // Permanent Thorns
+                                    p.thornsValue = Math.max(p.thornsValue || 0, 5);
+                                    p.thornsTurns = Math.max(p.thornsTurns || 0, 2);
+                                }
+                                else if (armorTemplateId === '🧥b' || armor.name.includes('Broodmother')) {
+                                    // Permanent Poison Immunity
+                                    if (p.poisonTurns > 0) {
+                                        p.poisonTurns = 0;
+                                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, "RESISTED", "#22c55e");
+                                    }
+                                }
                             }
                         }
                     }
-                }
-                
-                // Pass all arguments forward safely
-                if (origEndPlayerTurn) origEndPlayerTurn.apply(this, arguments);
-            };
+                    
+                    // Pass all arguments forward safely
+                    if (origEndPlayerTurn) origEndPlayerTurn.apply(this, arguments);
+                };
+            });
         }
 
         // Add Tracks and Carcasses to minimap colors
@@ -546,6 +599,8 @@ window.ExpansionManager.register({
             window.TILE_COLOR_MAP['🦍L'] = [120, 53, 15, 255]; // Brown Lair
             window.TILE_COLOR_MAP['🕸️L'] = [22, 163, 74, 255]; // Green Lair
         }
+        
+        logger.log("Hunter tracking hooks securely activated.");
     }
 });
 
