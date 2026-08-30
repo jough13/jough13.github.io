@@ -358,10 +358,13 @@ const gameState = {
         spireBackupEquip: null,
         activeHunt: null,
 
-        // System Locks
+        // System Locks & Overlays
         _isDying: false,
         _fatalMutators: null,
         _raidEntryTurn: null,
+        _fakeLight: false,       // V8 Shape fix: Core Delver light overlay
+        _rootMultiplier: 1,      // V8 Shape fix: Exploration Root Ring passive
+        _salveTurns: 0,          // V8 Shape fix: Monster Hunter potion duration
 
         unlockedWaypoints: [], 
         discoveredPOIs: [],    
@@ -577,27 +580,29 @@ window.modifyVital = function(vital, rawAmount) {
         }
     }
     
-    // True I-Frames & AoE Hit Overlap Fix
-    // If multiple attacks hit the player in the exact same 100ms window (e.g. an explosion + an arrow),
-    // we take the LARGEST of the hits, and explicitly refund the smaller hit so they don't stack unfairly!
+    // 🚨 MATHEMATICAL I-FRAMES (The "Double-Dip" Fix)
+    // If an exploding barrel and an arrow hit the player at the exact same millisecond, 
+    // the engine takes the LARGEST of the hits, and explicitly refunds the smaller hit to prevent 
+    // unfair double-dipping. 
+    // By modifying `amount` directly, we prevent floating point visual bugs in the UI!
+    let originalHitAmount = Math.abs(amount);
     if (vital === 'health' && amount < 0) {
         const now = Date.now();
         if (now - (p.lastHitTime || 0) < 100) {
-            if (Math.abs(amount) <= (p.lastHitDamage || 0)) {
-                return 0; // Reject the new, smaller hit completely
+            if (originalHitAmount <= (p.lastHitDamage || 0)) {
+                return 0; // Reject the new, smaller/equal hit completely
             } else {
-                // The new hit is BIGGER than the one we took 10ms ago! 
-                // Refund the previous small hit before taking the new big one to prevent double-dipping.
-                p.health += (p.lastHitDamage || 0);
+                // Reduce the new massive damage by the amount we ALREADY took
+                amount += (p.lastHitDamage || 0);
             }
         }
         p.lastHitTime = now;
-        p.lastHitDamage = Math.abs(amount);
+        p.lastHitDamage = originalHitAmount; // Store the TOTAL damage of this new largest hit
         
         // Track total lifetime damage taken
         if (p.metrics) {
             p.metrics.damageTaken += Math.abs(amount);
-            p.metrics.highestDamageTaken = Math.max(p.metrics.highestDamageTaken || 0, Math.abs(amount));
+            p.metrics.highestDamageTaken = Math.max(p.metrics.highestDamageTaken || 0, originalHitAmount);
             
             // Track environmental damage separately if it wasn't triggered by an enemy
             if (typeof isProcessingMove === 'undefined' || !isProcessingMove) {
@@ -710,10 +715,17 @@ window.modifyVital = function(vital, rawAmount) {
             // Complete Exhaustion
             if (newVal === 0 && oldVal > 0) {
                 if (typeof logMessage !== 'undefined') logMessage("{yellow:You are completely exhausted!}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.1, 0.05, 400); // Exhausted huff
                 gameState.screenFlash = { color: '#facc15', alpha: 0.3, decay: 0.05 };
             }
         }
         else if (vital === 'hunger' || vital === 'thirst') {
+            // Hunger/Thirst Complete Depletion Audio Warning
+            if (newVal === 0 && oldVal > 0) {
+                if (vital === 'hunger' && typeof AudioSystem !== 'undefined') {
+                    AudioSystem.playNoise(0.5, 0.1, 200); // Stomach growl
+                }
+            }
             // Starvation/Dehydration Warning (Drop below 15%)
             if (newVal <= (maxVal * 0.15) && oldVal > (maxVal * 0.15)) {
                 if (typeof logMessage !== 'undefined') {
