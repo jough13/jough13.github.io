@@ -39,17 +39,18 @@ window.ExpansionManager = {
     },
 
     // 🚀 ROBUSTNESS WIN: Dedicated internal cloner
-    // Guarantees shop items injected by expansions never bleed memory references back into the global dictionary
+    // Guarantees shop items injected by expansions never bleed memory references back into the global dictionary.
+    // 🚨 UPGRADED: Fallback now deep-clones to protect nested arrays, then surgically restores stripped functions!
     _internalItemClone: function(item) {
         if (typeof window.fastClone === 'function') return window.fastClone(item);
         
-        // Failsafe clone that preserves functions (which JSON.stringify destroys)
-        const clone = Object.assign({}, item);
-        if (item.statBonuses) clone.statBonuses = Object.assign({}, item.statBonuses);
-        if (item.tags) clone.tags = [...item.tags];
-        // 🚨 BUG FIX: Ensure onHit is also cloned if fastClone isn't available!
+        // Failsafe deep clone that severs all prototype and reference links
+        const clone = JSON.parse(JSON.stringify(item));
+        
+        // Re-bind functions natively since JSON.stringify destroys them
         if (typeof item.effect === 'function') clone.effect = item.effect;
         if (typeof item.onHit === 'function') clone.onHit = item.onHit; 
+        
         return clone;
     },
 
@@ -336,12 +337,21 @@ window.ExpansionManager = {
                         console.warn(`%c[AKASHIC ENGINE] Overwrite Notice: '${exp.id}' is modifying existing ${localKey} entry: '${key}'.`, "color: #fb923c;");
                     }
                     
-                    // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Shallow Clone
-                    // We apply a top-level clone so that if the engine later mutates `ITEM_DATA[key].health`, 
-                    // it does not corrupt the source `data.items[key]` inside the expansion object memory!
+                    // 🚨 BUG FIX & STABILITY WIN: Deep Dictionary Clone!
+                    // We must deep-clone the dictionary templates before assigning them to the global registry!
+                    // Otherwise, expansions modifying `ITEM_DATA.health` later will accidentally bleed 
+                    // mutations back into the original `data` payload memory.
                     let safeVal = val;
                     if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
-                        safeVal = Object.assign({}, val);
+                        if (typeof window.fastClone === 'function') {
+                            safeVal = window.fastClone(val);
+                        } else {
+                            // Manual safe clone if fastClone isn't available
+                            safeVal = JSON.parse(JSON.stringify(val));
+                            for (const fnKey in val) {
+                                if (typeof val[fnKey] === 'function') safeVal[fnKey] = val[fnKey];
+                            }
+                        }
                     }
                     
                     window[globalKey][key] = safeVal;
@@ -407,8 +417,16 @@ window.ExpansionManager = {
         if (data.atmosphereText) {
             if (typeof window.ATMOSPHERE_TEXT === 'undefined') window.ATMOSPHERE_TEXT = {};
             for (const [category, texts] of Object.entries(data.atmosphereText)) {
-                if (!window.ATMOSPHERE_TEXT[category]) window.ATMOSPHERE_TEXT[category] = [];
-                window.ATMOSPHERE_TEXT[category].push(...texts);
+                
+                // 🚨 FUTURE-PROOFING WIN: Same freeze/unfreeze logic applied here!
+                if (!window.ATMOSPHERE_TEXT[category]) {
+                    window.ATMOSPHERE_TEXT[category] = Object.freeze([]);
+                }
+                
+                const unfrozenAtmosphere = [...window.ATMOSPHERE_TEXT[category]];
+                unfrozenAtmosphere.push(...texts);
+                
+                window.ATMOSPHERE_TEXT[category] = Object.freeze(unfrozenAtmosphere);
             }
         }
 
@@ -436,6 +454,10 @@ window.ExpansionManager = {
                     const existingItem = window[targetGlobal].find(i => i && i.name === newItem.name);
                     if (existingItem) {
                         existingItem.stock = (existingItem.stock || 0) + (newItem.stock || 0);
+                        // 🌟 QoL WIN: If an expansion updates the same item at a cheaper price, respect the cheaper price!
+                        if (newItem.price && newItem.price < existingItem.price) {
+                            existingItem.price = newItem.price;
+                        }
                     } else {
                         // 🚨 BUG FIX & ROBUSTNESS: Utilize the secure internal cloner
                         const itemClone = this._internalItemClone(newItem);
@@ -502,6 +524,11 @@ window.ExpansionManager = {
             version: exp.version || '1.0',
             timestamp: Date.now()
         });
+        
+        // 🌟 LORE WIN: Announce hot-loading if the player is already logged into the game!
+        if (typeof window.logMessage === 'function' && typeof gameState !== 'undefined' && gameState.player) {
+            window.logMessage(`{purple:The leylines hum. A new reality has been woven: ${exp.name}.}`);
+        }
 
         // Trigger Global Event for Native Engine Systems
         this.triggerHook('onExpansionLoaded', { id: exp.id, name: exp.name, version: exp.version });
