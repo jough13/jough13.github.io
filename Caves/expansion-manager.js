@@ -385,16 +385,21 @@ window.ExpansionManager = {
         for (const [localKey, globalKey] of Object.entries(globalArrays)) {
             if (data[localKey] && Array.isArray(data[localKey])) {
                 if (typeof window[globalKey] === 'undefined' || !Array.isArray(window[globalKey])) {
-                    window[globalKey] = [];
+                    window[globalKey] = Object.freeze([]);
                 }
                 
-                const targetArray = window[globalKey];
+                // 1. Unfreeze by spreading the existing global data into a new mutable array
+                const unfrozenArray = [...window[globalKey]];
                 const newItems = data[localKey];
                 
+                // 2. Safely push the new expansion items into the mutable array
                 for (let i = 0; i < newItems.length; i++) {
-                    targetArray.push(newItems[i]);
+                    unfrozenArray.push(newItems[i]);
                     arrCount++;
                 }
+                
+                // 3. Re-freeze the updated array and attach it to the window to preserve V8 performance
+                window[globalKey] = Object.freeze(unfrozenArray);
             }
         }
 
