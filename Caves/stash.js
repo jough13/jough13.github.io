@@ -123,7 +123,6 @@ window.handleStashTransfer = function (action, index, amountStr = 'all', expecte
                 amountToMove = Math.max(1, Math.min(isNaN(parsedAmt) ? 1 : parsedAmt, item.quantity));
             }
 
-
             if (!existingBankItem && player.bank.length >= window.MAX_STASH_SLOTS) {
                 logMessage(`{red:The fabric of the vault groans under the weight of your possessions! (Max ${window.MAX_STASH_SLOTS} slots)}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -211,8 +210,10 @@ window.handleStashTransfer = function (action, index, amountStr = 'all', expecte
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, item.tile || '🎒', '#60a5fa');
         }
 
-        if (typeof triggerDebouncedSave === 'function') {
-            triggerDebouncedSave({ 
+        // 🚨 ANTI-DUPE: Force an immediate physical write to Firestore bypassing the queue
+        if (typeof flushPendingSave === 'function') {
+            flushPendingSave({ 
+                _forceManualSave: true, 
                 inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
                 bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank 
             });
@@ -295,8 +296,10 @@ window.depositAllMaterials = function() {
             
             window.sortStash(false); 
             
-            if (typeof triggerDebouncedSave === 'function') {
-                triggerDebouncedSave({ 
+            // 🚨 ANTI-DUPE: Force an immediate physical write to Firestore
+            if (typeof flushPendingSave === 'function') {
+                flushPendingSave({ 
+                    _forceManualSave: true,
                     inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
                     bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank 
                 });
@@ -407,8 +410,10 @@ window.withdrawAllMaterials = function() {
             window.sortStash(false);
             if (typeof window.sortInventory === 'function') window.sortInventory();
             
-            if (typeof triggerDebouncedSave === 'function') {
-                triggerDebouncedSave({ 
+            // 🚨 ANTI-DUPE: Force an immediate physical write to Firestore
+            if (typeof flushPendingSave === 'function') {
+                flushPendingSave({ 
+                    _forceManualSave: true,
                     inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
                     bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank 
                 });
@@ -484,8 +489,10 @@ window.quickStackToStash = function() {
             
             window.sortStash(false);
             
-            if (typeof triggerDebouncedSave === 'function') {
-                triggerDebouncedSave({ 
+            // 🚨 ANTI-DUPE: Force an immediate physical write to Firestore
+            if (typeof flushPendingSave === 'function') {
+                flushPendingSave({ 
+                    _forceManualSave: true,
                     inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
                     bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank 
                 });
@@ -545,9 +552,12 @@ window.sortStash = function(playSound = true) {
             AudioSystem.playStep();
         }
 
-        // 🚨 FIREBASE OPTIMIZATION: Push to the debouncer
-        if (typeof triggerDebouncedSave === 'function') {
-            triggerDebouncedSave({ bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank });
+        // 🚨 ANTI-DUPE: Force an immediate physical write to Firestore
+        if (typeof flushPendingSave === 'function') {
+            flushPendingSave({ 
+                _forceManualSave: true,
+                bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank 
+            });
         }
 
         renderStash();
