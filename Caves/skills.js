@@ -749,8 +749,10 @@ async function executeRangedAttack(dirX, dirY) {
                     
                     // If the damage halves to 0 (e.g. 1 * 0.5), the bolt loses all momentum and drops!
                     if (totalDamage < 1) {
+                        logMessage(`{gray:The heavy bolt loses its momentum and falls.}`);
                         break; 
                     }
+                    
                     logMessage(`{orange:The heavy bolt pierces right through!}`);
                     // We DO NOT break here, allowing the loop to continue to the next tile!
                 } else {
