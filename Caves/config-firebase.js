@@ -123,7 +123,7 @@ if (typeof firebase === 'undefined') {
             FieldValue: { 
                 serverTimestamp: () => Date.now(), 
                 delete: () => null, 
-                // 🚨 BUG FIX: Ensure dummy arrays handle spread operators properly!
+                // 🚨 BUG FIX & ROBUSTNESS WIN: Complete polyfill for Array and Math operations!
                 arrayUnion: (...args) => args,
                 arrayRemove: (...args) => args, 
                 increment: (n) => n    
@@ -376,6 +376,9 @@ function handleConnectionEstablished() {
 }
 
 function handleConnectionLost() {
+    // 🚨 BUG FIX: Guard against duplicate triggers
+    if (!hasInitiallyConnected || !wasConnected) return;
+
     // UX WIN: Spotty WiFi Debouncer
     // Give the connection 2 full seconds to stabilize before screaming at the player
     if (_offlineDebounceTimer) clearTimeout(_offlineDebounceTimer);
@@ -383,28 +386,26 @@ function handleConnectionLost() {
     _offlineDebounceTimer = setTimeout(() => {
         console.warn("%c🔴 Leyline Connection Severed. [Offline / Reconnecting...]", "color: #ef4444; font-weight: bold; font-family: monospace;");
         
-        // Only show "Connection Lost" if we were actually connected in the first place
-        if (hasInitiallyConnected && wasConnected) {
-            showNetworkBanner(
-                "⚠️ Leyline Connection Severed<br><span class='text-[9px] font-normal'>Re-attuning to the Akashic Records... Please wait. (Click to dismiss)</span>",
-                "bg-red-950 bg-opacity-95 text-red-200 border-b-2 border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.8)] animate-pulse grayscale contrast-125",
-                8000 // Holds on screen longer to let them know it's trying to reconnect
-            );
-            
-            if (typeof logMessage === 'function') logMessage("{red:The leylines have ruptured! Trying to re-attune...}");
-            
-            // 🚨 ROBUSTNESS WIN: Audio Resume Hook
-            if (typeof AudioSystem !== 'undefined') {
-                if (AudioSystem._ctx && AudioSystem._ctx.state === 'suspended') {
-                    try { AudioSystem._ctx.resume().catch(()=>{}); } catch(e){}
-                }
-                AudioSystem.playNoise(1.5, 0.4, 200); // Deep, long rumble
-                AudioSystem.playTone(100, 'sawtooth', 1.0, 0.2, false, 50); // Descending bass tone
+        showNetworkBanner(
+            "⚠️ Leyline Connection Severed<br><span class='text-[9px] font-normal'>Re-attuning to the Akashic Records... Please wait. (Click to dismiss)</span>",
+            "bg-red-950 bg-opacity-95 text-red-200 border-b-2 border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.8)] animate-pulse grayscale contrast-125",
+            8000 // Holds on screen longer to let them know it's trying to reconnect
+        );
+        
+        if (typeof logMessage === 'function') logMessage("{red:The leylines have ruptured! Trying to re-attune...}");
+        
+        // 🚨 ROBUSTNESS WIN: Audio Resume Hook
+        if (typeof AudioSystem !== 'undefined') {
+            if (AudioSystem._ctx && AudioSystem._ctx.state === 'suspended') {
+                try { AudioSystem._ctx.resume().catch(()=>{}); } catch(e){}
             }
-            if (typeof gameState !== 'undefined' && gameState.player) {
-                gameState.screenShake = 15;
-            }
+            AudioSystem.playNoise(1.5, 0.4, 200); // Deep, long rumble
+            AudioSystem.playTone(100, 'sawtooth', 1.0, 0.2, false, 50); // Descending bass tone
         }
+        if (typeof gameState !== 'undefined' && gameState.player) {
+            gameState.screenShake = 15;
+        }
+
         wasConnected = false;
 
         // 🚨 EXPANSION HOOK
@@ -439,12 +440,13 @@ window.addEventListener('offline', () => {
 window.addEventListener('online', () => {
     console.log("%c[AKASHIC ENGINE] Native network restored. Forcing Leyline WebSocket sync...", "color: #facc15; font-family: monospace;");
     
-    // Force Firebase to aggressively attempt reconnection immediately
+    // 🚨 STABILITY WIN: Force Firebase to aggressively attempt reconnection immediately!
+    // Often when a mobile device switches from Cell to Wi-Fi, Firebase doesn't realize it 
+    // for up to 30 seconds. This forces the SDK to instantly snap back to the live database!
     if (typeof rtdb !== 'undefined' && rtdb.goOnline) {
         rtdb.goOnline();
     }
     
-    // 🚨 ROBUSTNESS WIN: Force Firestore to wake up alongside RTDB
     if (typeof db !== 'undefined' && db.enableNetwork) {
         db.enableNetwork().catch(() => {});
     }
