@@ -3,10 +3,23 @@
 window.ExpansionManager.register({
     id: "pioneer_town",
     name: "The Pioneer (Town Builder)",
-    version: "1.5", // Upgraded version!
+    version: "1.6", // Upgraded version!
     
     data: {
-        // --- 1. NEW MAP TILES & NPCs ---
+        // --- 1. NEW ITEMS ---
+        items: {
+            '📖b': {
+                name: "Builder's Almanac", type: 'tool', tile: '📖',
+                description: "A thick tome filled with architectural schematics. {blue:Passive: Grants +5 Crafting XP every time you craft anything.}",
+                _rarity: 'rare',
+                effect: (state) => {
+                    logMessage("{gray:Keep this in your inventory to gain passive Crafting XP bonuses.}");
+                    return false;
+                }
+            }
+        },
+
+        // --- 2. NEW MAP TILES & NPCs ---
         tiles: {
             '🚷': { 
                 type: 'landmark', name: 'Caged Prisoner', 
@@ -51,7 +64,7 @@ window.ExpansionManager.register({
             }
         },
 
-        // --- 2. THE EVENT LOGIC ---
+        // --- 3. THE EVENT LOGIC ---
         // 🌟 EXPANDABILITY WIN: Defined natively inside the expansion data payload!
         events: {
             'CAGED_PRISONER': {
@@ -87,28 +100,40 @@ window.ExpansionManager.register({
                                         logMessage(`{green:You rescued the ${rescued}! They thank you and head to your Safe Haven camp.}`);
                                         if (typeof AudioSystem !== 'undefined') AudioSystem.playQuestComplete();
                                     } else {
-                                        logMessage(`{green:You freed the traveler! They press a gem into your hand in thanks before fleeing.}`);
+                                        logMessage(`{green:You freed the traveler! They press a treasure into your hand in thanks before fleeing.}`);
                                         state.player.coins += 100;
+                                        if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(100);
                                         
                                         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                                         
-                                        const gems = ['💎r', '💎s', '💎d'];
-                                        const gId = gems[Math.floor(Math.random() * gems.length)];
-                                        const gName = gId === '💎r' ? 'Raw Ruby' : (gId === '💎s' ? 'Raw Sapphire' : 'Raw Diamond');
+                                        // 🌟 LORE WIN: 10% chance they give you the Builder's Almanac!
+                                        let rewardId = '💎r';
+                                        let rewardName = 'Raw Ruby';
+                                        let rewardTile = '💎';
+                                        
+                                        if (Math.random() < 0.10) {
+                                            rewardId = '📖b';
+                                            rewardName = "Builder's Almanac";
+                                            rewardTile = '📖';
+                                        } else {
+                                            const gems = ['💎r', '💎s', '💎d'];
+                                            rewardId = gems[Math.floor(Math.random() * gems.length)];
+                                            rewardName = rewardId === '💎r' ? 'Raw Ruby' : (rewardId === '💎s' ? 'Raw Sapphire' : 'Raw Diamond');
+                                        }
                                         
                                         // 🚨 BUG FIX & ROBUSTNESS WIN: Safe clone to prevent memory leaks from the global dictionary
-                                        const template = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA[gId] : null;
-                                        const newItem = template && typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : { templateId: gId, name: gName, type: 'trade', quantity: 1, tile: '💎', isEquipped: false };
+                                        const template = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA[rewardId] : null;
+                                        const newItem = template && typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : { templateId: rewardId, name: rewardName, type: 'trade', quantity: 1, tile: rewardTile, isEquipped: false };
                                         
                                         if (state.player.inventory.length < invCap) {
                                             state.player.inventory.push(newItem);
-                                            logMessage(`{purple:You received a ${gName} and 100 Gold!}`);
+                                            logMessage(`{purple:You received a ${rewardName} and 100 Gold!}`);
                                             if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
                                         } else {
                                             // 🚨 BUG FIX: Safe drop fallback so the gem isn't deleted into the void!
-                                            logMessage(`{red:You received 100 Gold, but your pack is full! The ${gName} drops at your feet.}`);
+                                            logMessage(`{red:You received 100 Gold, but your pack is full! The ${rewardName} drops at your feet.}`);
                                             if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
-                                                window.EventManager.safeDropItem(state, ctx.x, ctx.y, '💎');
+                                                window.EventManager.safeDropItem(state, ctx.x, ctx.y, rewardTile);
                                             }
                                         }
                                     }
@@ -123,6 +148,11 @@ window.ExpansionManager.register({
                                     // Force immediate visual refresh so the cage actually disappears!
                                     state.mapDirty = true;
                                     if (typeof render === 'function') render();
+                                    
+                                    // Protect the progress securely!
+                                    if (typeof triggerDebouncedSave === 'function') {
+                                        triggerDebouncedSave({ rescuedNpcs: state.player.rescuedNpcs, coins: state.player.coins, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory });
+                                    }
                                 }
                             },
                             { text: "Leave them to their fate." }
@@ -133,8 +163,18 @@ window.ExpansionManager.register({
         }
     },
 
-    // --- 3. ENGINE HOOKS ---
+    // --- 4. ENGINE HOOKS ---
     init: function() {
+        const logger = window.ExpansionManager.getLogger("Pioneer");
+
+        const applySafePatch = (target, method, factory) => {
+            if (typeof window.ExpansionManager.patchFunction === 'function') {
+                window.ExpansionManager.patchFunction(target, method, factory);
+            } else {
+                const orig = target[method];
+                target[method] = factory(orig ? orig.bind(target) : null);
+            }
+        };
         
         // ==========================================
         // 1. INJECT INTO WORLD GENERATION
@@ -142,95 +182,98 @@ window.ExpansionManager.register({
         // Sprinkle Caged Prisoners across the world and in dungeons
         
         if (typeof chunkManager !== 'undefined') {
-            const origGenerateChunk = chunkManager.generateChunk;
-            chunkManager.generateChunk = function(chunkX, chunkY) {
-                origGenerateChunk.call(this, chunkX, chunkY);
-                const chunkId = `${chunkX},${chunkY}`;
-                const chunkData = this.loadedChunks[chunkId];
-                
-                // 🚨 ROBUSTNESS WIN: Safe PRNG fallback
-                const random = (typeof Alea !== 'undefined' && typeof stringToSeed !== 'undefined') 
-                    ? Alea(stringToSeed(`pioneer_spawn_${chunkId}`)) 
-                    : Math.random;
-                
-                // 10% chance to spawn a cage in a chunk
-                if (random() < 0.10) { 
-                    const rx = Math.floor(random() * 14) + 1;
-                    const ry = Math.floor(random() * 14) + 1;
-                    // Spawn primarily near forests or deadlands
-                    if (chunkData[ry][rx] === 'F' || chunkData[ry][rx] === 'd') {
-                        chunkData[ry][rx] = '🚷'; 
-                    }
-                }
-            };
-            
-            const origGenerateCave = chunkManager.generateCave;
-            chunkManager.generateCave = function(caveId) {
-                const map = origGenerateCave.call(this, caveId);
-                
-                // 🚨 ROBUSTNESS WIN: Safe PRNG fallback
-                const random = (typeof Alea !== 'undefined' && typeof stringToSeed !== 'undefined') 
-                    ? Alea(stringToSeed(`pioneer_cave_${caveId}`)) 
-                    : Math.random;
-                
-                // 25% chance to spawn a cage in a dungeon
-                if (random() < 0.25 && !caveId.includes('arena') && !caveId.includes('spire')) {
-                    let placed = false;
-                    for(let i=0; i<50 && !placed; i++) {
-                        const ry = Math.floor(random() * (map.length - 2)) + 1;
-                        const rx = Math.floor(random() * (map[0].length - 2)) + 1;
-                        // Only place on open floor away from the stairs
-                        if ((map[ry][rx] === '.' || map[ry][rx] === 'F') && map[ry][rx] !== '>' && map[ry][rx] !== '<') {
-                            map[ry][rx] = '🚷';
-                            placed = true;
+            applySafePatch(chunkManager, 'generateChunk', (origGenerateChunk) => {
+                return function(chunkX, chunkY) {
+                    if (origGenerateChunk) origGenerateChunk.call(this, chunkX, chunkY);
+                    const chunkId = `${chunkX},${chunkY}`;
+                    const chunkData = this.loadedChunks[chunkId];
+                    
+                    // 🚨 ROBUSTNESS WIN: Safe PRNG fallback
+                    const random = (typeof Alea !== 'undefined' && typeof stringToSeed !== 'undefined') 
+                        ? Alea(stringToSeed(`pioneer_spawn_${chunkId}`)) 
+                        : Math.random;
+                    
+                    // 10% chance to spawn a cage in a chunk
+                    if (random() < 0.10) { 
+                        const rx = Math.floor(random() * 14) + 1;
+                        const ry = Math.floor(random() * 14) + 1;
+                        // Spawn primarily near forests or deadlands
+                        if (chunkData[ry][rx] === 'F' || chunkData[ry][rx] === 'd') {
+                            chunkData[ry][rx] = '🚷'; 
                         }
                     }
-                }
-                return map;
-            };
+                };
+            });
+            
+            applySafePatch(chunkManager, 'generateCave', (origGenerateCave) => {
+                return function(caveId) {
+                    const map = origGenerateCave ? origGenerateCave.call(this, caveId) : [];
+                    
+                    // 🚨 ROBUSTNESS WIN: Safe PRNG fallback
+                    const random = (typeof Alea !== 'undefined' && typeof stringToSeed !== 'undefined') 
+                        ? Alea(stringToSeed(`pioneer_cave_${caveId}`)) 
+                        : Math.random;
+                    
+                    // 25% chance to spawn a cage in a dungeon
+                    if (random() < 0.25 && !caveId.includes('arena') && !caveId.includes('spire') && !caveId.includes('micro_')) {
+                        let placed = false;
+                        for(let i=0; i<50 && !placed; i++) {
+                            const ry = Math.floor(random() * (map.length - 2)) + 1;
+                            const rx = Math.floor(random() * (map[0].length - 2)) + 1;
+                            // Only place on open floor away from the stairs
+                            if ((map[ry][rx] === '.' || map[ry][rx] === 'F') && map[ry][rx] !== '>' && map[ry][rx] !== '<') {
+                                map[ry][rx] = '🚷';
+                                placed = true;
+                            }
+                        }
+                    }
+                    return map;
+                };
+            });
 
             // ==========================================
             // 2. OVERHAUL CAMPSITE GENERATION
             // ==========================================
             // Safely inject the Town Bell, Houses, and NPCs without breaking existing structures
             
-            const origGenerateCampsite = chunkManager.generateCampsite;
-            chunkManager.generateCampsite = function() {
-                const map = origGenerateCampsite.call(this);
-                
-                // Safety guard to ensure the engine has booted fully
-                if (typeof gameState === 'undefined' || !gameState.player) return map;
-                
-                const p = gameState.player;
-                const rescued = p.rescuedNpcs || [];
-                const houses = p.builtHouses || [];
+            applySafePatch(chunkManager, 'generateCampsite', (origGenerateCampsite) => {
+                return function() {
+                    const map = origGenerateCampsite ? origGenerateCampsite.call(this) : [];
+                    
+                    // Safety guard to ensure the engine has booted fully
+                    if (typeof gameState === 'undefined' || !gameState.player) return map;
+                    
+                    const p = gameState.player;
+                    const rescued = p.rescuedNpcs || [];
+                    const houses = p.builtHouses || [];
 
-                // 🚨 BUG FIX & ROBUSTNESS: Strict Array Bound Check
-                // Prevents a hard crash if another expansion shrunk the base player camp size!
-                if (rescued.length > 0 && map[1] && map[1][6] !== undefined) {
-                    map[1][6] = '🛎️';
-                }
+                    // 🚨 BUG FIX & ROBUSTNESS: Strict Array Bound Check
+                    // Prevents a hard crash if another expansion shrunk the base player camp size!
+                    if (rescued.length > 0 && map[1] && map[1][6] !== undefined) {
+                        map[1][6] = '🛎️';
+                    }
 
-                // Place Blacksmith (Top Right)
-                if (houses.includes('Blacksmith') && map[2] && map[3] && map[2][10] !== undefined) {
-                    map[2][10] = '🏠';
-                    map[3][10] = '⚒️t';
-                }
-                
-                // Place Botanist (Bottom Right)
-                if (houses.includes('Botanist') && map[5] && map[6] && map[5][10] !== undefined) {
-                    map[5][10] = '🏠';
-                    map[6][10] = '👩‍🌾';
-                }
-                
-                // Place Bard (Bottom Left)
-                if (houses.includes('Bard') && map[6] && map[7] && map[6][2] !== undefined) {
-                    map[6][2] = '🏠';
-                    map[7][2] = '🎸';
-                }
+                    // Place Blacksmith (Top Right)
+                    if (houses.includes('Blacksmith') && map[2] && map[3] && map[2][10] !== undefined) {
+                        map[2][10] = '🏠';
+                        map[3][10] = '⚒️t';
+                    }
+                    
+                    // Place Botanist (Bottom Right)
+                    if (houses.includes('Botanist') && map[5] && map[6] && map[5][10] !== undefined) {
+                        map[5][10] = '🏠';
+                        map[6][10] = '👩‍🌾';
+                    }
+                    
+                    // Place Bard (Bottom Left)
+                    if (houses.includes('Bard') && map[6] && map[7] && map[6][2] !== undefined) {
+                        map[6][2] = '🏠';
+                        map[7][2] = '🎸';
+                    }
 
-                return map;
-            };
+                    return map;
+                };
+            });
         }
 
         // ==========================================
@@ -566,6 +609,36 @@ window.ExpansionManager.register({
             window.TILE_COLOR_MAP['👩‍🌾'] = [34, 197, 94, 255];   // Botanist Green
             window.TILE_COLOR_MAP['🎸'] = [168, 85, 247, 255];  // Bard Purple
         }
+        
+        // --- 4. ENGINE HOOK: ALMANAC PASSIVE CRAFTING XP ---
+        applySafePatch(window.ExpansionManager, 'triggerHook', (origTriggerHook) => {
+            return function(hookName, context) {
+                if (hookName === 'onCraftSuccess') {
+                    if (typeof gameState !== 'undefined' && gameState.player && gameState.player.inventory) {
+                        const hasAlmanac = gameState.player.inventory.some(i => i && i.name === "Builder's Almanac");
+                        if (hasAlmanac) {
+                            gameState.player.craftingXp = (gameState.player.craftingXp || 0) + 5;
+                            if (typeof logMessage === 'function') logMessage(`{blue:The Builder's Almanac grants you insights. (+5 Crafting XP)}`);
+                            
+                            // Safe level up loop!
+                            while (gameState.player.craftingXp >= (gameState.player.craftingXpToNext || 50)) {
+                                gameState.player.craftingXp -= (gameState.player.craftingXpToNext || 50);
+                                gameState.player.craftingLevel = (gameState.player.craftingLevel || 1) + 1;
+                                gameState.player.craftingXpToNext = Math.floor((gameState.player.craftingXpToNext || 50) * 1.5);
+                                
+                                if (typeof logMessage === 'function') logMessage(`{green:CRAFTING LEVEL UP! You are now Artisan Level ${gameState.player.craftingLevel}.}`);
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(gameState.player.x, gameState.player.y);
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                            }
+                        }
+                    }
+                }
+                if (origTriggerHook) return origTriggerHook.call(this, hookName, context);
+                return context;
+            };
+        });
+        
+        logger.log("Pioneer hooks applied safely.");
     }
 });
 
