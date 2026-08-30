@@ -78,6 +78,7 @@ const _modalCache = {
     isAnyOpen: () => !!_modalCache.getActive()
 };
 
+// 🌟 LORE WIN: Massively expanded atmospheric descriptions
 window.WAIT_FLAVORS = {
     DEFAULT: [
         "You pause to catch your breath.",
@@ -88,6 +89,48 @@ window.WAIT_FLAVORS = {
         "You stare into the middle distance.",
         "You adjust the straps of your gear."
     ],
+    // --- CLASS FLAVORS ---
+    WARRIOR: [
+        "You roll your shoulders, loosening the weight of your armor.",
+        "You test the edge of your weapon with your thumb.",
+        "You firmly plant your feet, ready for anything."
+    ],
+    ROGUE: [
+        "You spin a dagger deftly over your knuckles.",
+        "You check the shadows, ensuring you aren't being watched.",
+        "You remain perfectly, unnervingly still."
+    ],
+    MAGE: [
+        "You recite a complex arcane theorem under your breath.",
+        "Sparks dance harmlessly between your fingers.",
+        "You feel the thrum of the nearest leyline vibrating in your chest."
+    ],
+    NECROMANCER: [
+        "You listen intently to the whispers of the buried dead.",
+        "The air around you grows unnaturally cold as you focus.",
+        "You brush a layer of grave dust from your cloak."
+    ],
+    CLERIC: [
+        "You bow your head in a brief, silent prayer.",
+        "You grip your holy symbol, finding comfort in the Light.",
+        "A faint, warm aura surrounds you as you center your spirit."
+    ],
+    HUNTER: [
+        "You check the tension of your bowstring.",
+        "You scan the horizon for tracks and broken branches.",
+        "You test the wind direction."
+    ],
+    WRETCH: [
+        "You shiver in the cold.",
+        "You glance around nervously.",
+        "You wonder how you are still alive."
+    ],
+    ARTISAN: [
+        "You tighten the bindings on your tools.",
+        "You inspect a mechanism in your pack, adjusting a loose gear.",
+        "Your mind works through the blueprints of your next creation."
+    ],
+    // --- ENVIRONMENTAL FLAVORS ---
     MOUNTED: [
         "You pat the neck of your %MOUNT%.",
         "Your %MOUNT% huffs restlessly.",
@@ -231,7 +274,7 @@ const _safeExecuteWithLock = async (actionFunc) => {
 };
 
 function handleInput(key) {
-    // 🚨 Clean, O(1) lock check. The old manual watchdog check here is removed!
+    // 🚨 Clean, O(1) lock check. 
     if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
     
     if (typeof isBackupOperationRunning !== 'undefined' && isBackupOperationRunning) {
@@ -259,10 +302,12 @@ function handleInput(key) {
 
     const lowerKey = key.toLowerCase();
 
-    // 🚨 ROBUSTNESS WIN: Clean numeric parsing without string concatenation issues
+    // 🚨 BUG FIX & ROBUSTNESS WIN: Strict Numeric Parsing
+    // Using purely Regex ensures that keys like "5a" or "F5" do not accidentally map 
+    // to hotbar slot 5 because of JavaScript's loose `parseInt` evaluation!
     let numericTestStr = key.startsWith('Numpad') ? key.replace('Numpad', '') : key;
-    const testKeyNum = parseInt(numericTestStr, 10);
-    const isNumberKey = !isNaN(testKeyNum) && testKeyNum >= 1 && testKeyNum <= 9;
+    const isNumberKey = /^[1-9]$/.test(numericTestStr);
+    const testKeyNum = isNumberKey ? parseInt(numericTestStr, 10) : NaN;
     
     const isGameplayKey = window.MOVEMENT_MAP[key] || ACTION_KEYS.has(lowerKey) || isNumberKey;
     
@@ -401,7 +446,7 @@ function handleInput(key) {
     // ==========================================
 
     if (gameState.isDroppingItem) {
-        if (!isNaN(testKeyNum) && testKeyNum >= 1) {
+        if (isNumberKey) {
             if (typeof handleItemDrop === 'function') handleItemDrop(testKeyNum.toString()); 
         } else {
             logMessage("{gray:Select an item to drop, or press Esc to cancel.}");
@@ -477,16 +522,14 @@ function handleInput(key) {
         return;
     }
 
-    if (!isNaN(testKeyNum) && testKeyNum >= 1) {
+    if (isNumberKey) {
         if (gameState.inventoryMode) {
             if (typeof useInventoryItem === 'function') useInventoryItem(testKeyNum - 1);
             return;
         }
 
-        if (testKeyNum <= 9) {
-            if (typeof useHotbarSlot === 'function') useHotbarSlot(testKeyNum - 1);
-            return;
-        }
+        if (typeof useHotbarSlot === 'function') useHotbarSlot(testKeyNum - 1);
+        return;
     }
 
     if (lowerKey === 'q') {
@@ -529,6 +572,10 @@ function handleInput(key) {
 
     if (lowerKey === 'r') {
         _safeExecuteWithLock(async () => {
+            // JUICE WIN: Audio feedback for waiting/resting
+            if (typeof AudioSystem !== 'undefined') {
+                AudioSystem.playNoise(0.08, 0.05, 400); // Soft breath/rustle
+            }
             if (typeof restPlayer === 'function') await restPlayer();
             window.lastActionTime = Date.now(); 
         });
@@ -554,7 +601,17 @@ function handleInput(key) {
 
     if (ACTION_KEYS.has(lowerKey)) {
         
-        let waitFlavors = window.WAIT_FLAVORS.DEFAULT;
+        // 🌟 LORE WIN: Merge class-specific flavors with environment!
+        let waitFlavors = [...window.WAIT_FLAVORS.DEFAULT];
+        const bg = gameState.player.background;
+        
+        if (bg) {
+            const bgKey = bg.toUpperCase();
+            if (window.WAIT_FLAVORS[bgKey]) {
+                waitFlavors = waitFlavors.concat(window.WAIT_FLAVORS[bgKey]);
+            }
+        }
+        
         let pColor = "#9ca3af";
         let pIcon = "...";
 
@@ -630,7 +687,10 @@ function handleInput(key) {
 
         logMessage(`{gray:${msg}}`);
         
-        // 🌟 JUICE WIN: Thematic resting particles!
+        // 🌟 JUICE WIN: Thematic resting particles and audio!
+        if (typeof AudioSystem !== 'undefined') {
+            AudioSystem.playNoise(0.08, 0.05, 400); 
+        }
         if (typeof ParticleSystem !== 'undefined') {
             ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, pIcon, pColor);
         }
@@ -644,15 +704,20 @@ function handleInput(key) {
 }
 
 document.addEventListener('keydown', (event) => {
+    // Ignore key combinations
     if (event.ctrlKey || event.altKey || event.metaKey) return;
 
+    // Ignore typing in input fields
     if (document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
 
     if (!event.key) return; 
+    
+    // 🚨 BUG FIX: Exclude Function keys so they don't break the queue!
+    if (event.key.startsWith('F') && !isNaN(parseInt(event.key.slice(1)))) return;
 
     if (BLOCKED_SCROLL_KEYS.has(event.key)) {
         if (typeof _modalCache !== 'undefined' && _modalCache.isAnyOpen()) {
-            // Do not prevent default!
+            // Do not prevent default inside scrollable modals!
         } else {
             event.preventDefault();
         }
@@ -663,6 +728,7 @@ document.addEventListener('keydown', (event) => {
         inputStr = 'Numpad' + event.key;
     }
 
+    // Prevents holding 'I' or 'M' to spam open/close modals
     if (event.repeat && INSTANT_KEYS.has(inputStr)) {
         return;
     }
@@ -674,6 +740,7 @@ document.addEventListener('keydown', (event) => {
     if (_modalCache.isAnyOpen() || INSTANT_KEYS.has(inputStr) || isMenuKey || (typeof gameState !== 'undefined' && (gameState.isDroppingItem || gameState.inventoryMode))) {
         handleInput(inputStr); 
     } else {
+        // Allows holding WASD to queue up moves smoothly up to 3 frames ahead!
         if (window.inputQueue.length < 3) {
             window.inputQueue.push(inputStr);
         }
