@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_bloodline",
     name: "The Bloodline (Prestige System)",
-    version: "1.5", // Upgraded version!
+    version: "1.6", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -80,11 +80,16 @@ window.ExpansionManager.register({
                     
                     // Drop the Spire tile at the destination to ensure it's there
                     if (typeof chunkManager !== 'undefined') {
-                        chunkManager.setWorldTile(tx, ty, '🗼');
+                        chunkManager.setWorldTile(tx, ty, '🗼', 24); // 24h TTL just to be safe
                     }
                     
                     state.player.x = tx;
                     state.player.y = -ty; // Safe negative mapping
+                    
+                    // 🚨 CRITICAL BUG FIX WIN: Force chunk generation and Firebase sync!
+                    // Without this, players teleported into a completely black void because 
+                    // chunkManager hadn't fetched the new region!
+                    if (typeof finalizeMapTransition === 'function') finalizeMapTransition();
                     
                     state.mapDirty = true;
                     if (typeof updateRegionDisplay === 'function') updateRegionDisplay();
@@ -108,7 +113,6 @@ window.ExpansionManager.register({
         },
 
         // --- 3. ASCENDANT SHOP ---
-        // 🌟 EXPANDABILITY WIN: Native dictionary injection!
         shops: {
             ascendant: [
                 { name: 'Title: The Undying', price: 10000, stock: 1 },
@@ -128,51 +132,55 @@ window.ExpansionManager.register({
         // ==========================================
         // 1. INJECT THE PRESTIGE UI MODAL
         // ==========================================
-        const prestigeModalHTML = `
-        <div id="prestigeModal" class="modal-overlay hidden" role="dialog" aria-modal="true" style="z-index: 600;">
-            <div class="modal-content themed-container p-8 rounded-2xl shadow-2xl border-4 border-yellow-400 max-w-lg w-full text-center bg-[var(--bg-container)] relative overflow-hidden">
-                <!-- Divine glow background -->
-                <div class="absolute inset-0 bg-yellow-900 opacity-20 pointer-events-none" style="background-image: radial-gradient(circle, #facc15 0%, transparent 70%);"></div>
-                
-                <h2 class="text-5xl font-bold mb-2 text-yellow-400 drop-shadow-md relative z-10" style="font-family: 'Uncial Antiqua', cursive;">The Bloodline</h2>
-                <p class="text-gray-300 italic mb-6 relative z-10 font-serif">"Flesh decays, but the soul endures."</p>
-                
-                <div id="prestigeRequirements" class="bg-black bg-opacity-60 p-4 rounded-xl border border-yellow-800 mb-6 relative z-10 shadow-inner text-left">
-                    <h3 class="text-yellow-500 font-bold mb-2 border-b border-yellow-900 pb-1">Requirements to Ascend:</h3>
-                    <ul class="text-sm space-y-2">
-                        <li id="reqLevel" class="text-gray-400">❌ Reach Level 50</li>
-                        <li id="reqSpire" class="text-gray-400">❌ Conquer the Spire (Hold 1 Spire Token)</li>
-                    </ul>
-                </div>
+        
+        // 🚨 PERFORMANCE & MEMORY LEAK WIN: Prevent duplicate DOM injection on hot-reloads
+        if (!document.getElementById('prestigeModal')) {
+            const prestigeModalHTML = `
+            <div id="prestigeModal" class="modal-overlay hidden" role="dialog" aria-modal="true" style="z-index: 600;">
+                <div class="modal-content themed-container p-8 rounded-2xl shadow-2xl border-4 border-yellow-400 max-w-lg w-full text-center bg-[var(--bg-container)] relative overflow-hidden">
+                    <!-- Divine glow background -->
+                    <div class="absolute inset-0 bg-yellow-900 opacity-20 pointer-events-none" style="background-image: radial-gradient(circle, #facc15 0%, transparent 70%);"></div>
+                    
+                    <h2 class="text-5xl font-bold mb-2 text-yellow-400 drop-shadow-md relative z-10" style="font-family: 'Uncial Antiqua', cursive;">The Bloodline</h2>
+                    <p class="text-gray-300 italic mb-6 relative z-10 font-serif">"Flesh decays, but the soul endures."</p>
+                    
+                    <div id="prestigeRequirements" class="bg-black bg-opacity-60 p-4 rounded-xl border border-yellow-800 mb-6 relative z-10 shadow-inner text-left">
+                        <h3 class="text-yellow-500 font-bold mb-2 border-b border-yellow-900 pb-1">Requirements to Ascend:</h3>
+                        <ul class="text-sm space-y-2">
+                            <li id="reqLevel" class="text-gray-400">❌ Reach Level 50</li>
+                            <li id="reqSpire" class="text-gray-400">❌ Conquer the Spire (Hold 1 Spire Token)</li>
+                        </ul>
+                    </div>
 
-                <div id="prestigeRewards" class="hidden bg-black bg-opacity-60 p-4 rounded-xl border border-green-800 mb-6 relative z-10 shadow-inner text-left">
-                    <h3 class="text-green-400 font-bold mb-2 border-b border-green-900 pb-1">Ascension Rewards:</h3>
-                    <ul class="text-sm space-y-1 text-green-200">
-                        <li>✨ Enter Generation <span id="nextGenNum" class="font-bold text-yellow-400"></span></li>
-                        <li>✨ Permanent +25% XP Multiplier</li>
-                        <li>✨ Permanent +10 Base Health, Mana, Stamina, Psyche</li>
-                        <li>✨ Passive Ascendant Regeneration (Scales with Generation)</li>
-                        <li>✨ Awaken with the <strong class="text-fuchsia-400">Bloodline Pendant</strong></li>
-                        <li>✨ The Radiant Aura (Multiplayer Cosmetic)</li>
-                        <li class="text-red-400 font-bold mt-2 pt-2 border-t border-green-900">⚠️ WARNING: Your Level, Stats, Inventory, and Equipment will be wiped! (Stash & Gold are safe)</li>
-                    </ul>
-                </div>
-                
-                <div class="flex flex-col gap-3 relative z-10">
-                    <button id="prestigeAscendBtn" class="hidden bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition-transform active:scale-95 border-b-4 border-yellow-800 active:border-b-0 active:mt-1 uppercase tracking-widest text-lg">
-                        Surrender Mortal Flesh
-                    </button>
-                    <button id="prestigeShopBtn" class="bg-fuchsia-700 hover:bg-fuchsia-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-transform active:scale-95 border-b-4 border-fuchsia-900 active:border-b-0 active:mt-1">
-                        Browse Ascendant Wares
-                    </button>
-                    <button id="prestigeCancelBtn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">
-                        Step Away
-                    </button>
+                    <div id="prestigeRewards" class="hidden bg-black bg-opacity-60 p-4 rounded-xl border border-green-800 mb-6 relative z-10 shadow-inner text-left">
+                        <h3 class="text-green-400 font-bold mb-2 border-b border-green-900 pb-1">Ascension Rewards:</h3>
+                        <ul class="text-sm space-y-1 text-green-200">
+                            <li>✨ Enter Generation <span id="nextGenNum" class="font-bold text-yellow-400"></span></li>
+                            <li>✨ Permanent +25% XP Multiplier</li>
+                            <li>✨ Permanent +10 Base Health, Mana, Stamina, Psyche</li>
+                            <li>✨ Passive Ascendant Regeneration (Scales with Generation)</li>
+                            <li>✨ Awaken with the <strong class="text-fuchsia-400">Bloodline Pendant</strong></li>
+                            <li>✨ The Radiant Aura (Multiplayer Cosmetic)</li>
+                            <li class="text-red-400 font-bold mt-2 pt-2 border-t border-green-900">⚠️ WARNING: Your Level, Stats, Inventory, and Equipment will be wiped! (Stash & Gold are safe)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="flex flex-col gap-3 relative z-10">
+                        <button id="prestigeAscendBtn" class="hidden bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition-transform active:scale-95 border-b-4 border-yellow-800 active:border-b-0 active:mt-1 uppercase tracking-widest text-lg">
+                            Surrender Mortal Flesh
+                        </button>
+                        <button id="prestigeShopBtn" class="bg-fuchsia-700 hover:bg-fuchsia-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-transform active:scale-95 border-b-4 border-fuchsia-900 active:border-b-0 active:mt-1">
+                            Browse Ascendant Wares
+                        </button>
+                        <button id="prestigeCancelBtn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">
+                            Step Away
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
-        `;
-        document.body.insertAdjacentHTML('beforeend', prestigeModalHTML);
+            `;
+            document.body.insertAdjacentHTML('beforeend', prestigeModalHTML);
+        }
 
         // ==========================================
         // 2. UI LOGIC & REBIRTH EXECUTION
@@ -229,19 +237,29 @@ window.ExpansionManager.register({
         };
 
         // DOM Listeners
-        document.getElementById('prestigeCancelBtn').addEventListener('click', () => {
+        const bindButtonSafely = (id, handler) => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                // Remove old listeners on hot-reload by cloning the button
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                newBtn.addEventListener('click', handler);
+            }
+        };
+
+        bindButtonSafely('prestigeCancelBtn', () => {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             document.getElementById('prestigeModal').classList.add('hidden');
         });
 
-        document.getElementById('prestigeShopBtn').addEventListener('click', () => {
+        bindButtonSafely('prestigeShopBtn', () => {
             document.getElementById('prestigeModal').classList.add('hidden');
             
-            // 🌟 EXPANDABILITY WIN: Native Injection
             if (!gameState.shopStates) gameState.shopStates = {};
             const shopId = 'shop_ascendant';
             
             if (!gameState.shopStates[shopId]) {
+                // 🚨 ROBUSTNESS: Safe fallback if ASCENDANT_INVENTORY wasn't populated yet
                 const shopTemplate = typeof window.ASCENDANT_INVENTORY !== 'undefined' ? window.ASCENDANT_INVENTORY : [];
                 gameState.shopStates[shopId] = JSON.parse(JSON.stringify(shopTemplate)); 
             }
@@ -252,12 +270,13 @@ window.ExpansionManager.register({
             if (shopTitle) shopTitle.innerHTML = `Ascendant Wares <span class="block text-xs font-normal text-yellow-400 mt-1 italic tracking-normal font-serif">"Spoils for the eternal."</span>`;
             
             if (typeof renderShop === 'function') renderShop();
-            document.getElementById('shopModal').classList.remove('hidden');
+            const shopModal = document.getElementById('shopModal');
+            if (shopModal) shopModal.classList.remove('hidden');
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
         });
 
         // 🚨 THE REBIRTH EXECUTION 🚨
-        document.getElementById('prestigeAscendBtn').addEventListener('click', async () => {
+        bindButtonSafely('prestigeAscendBtn', async () => {
             const player = gameState.player;
             
             const confirmAscension = window.confirm("WARNING: This will wipe your Level, Stats, Inventory, and Equipment. Your Bank, Gold, Homestead, and Lore will remain. Are you absolutely sure you want to Ascend?");
@@ -269,14 +288,12 @@ window.ExpansionManager.register({
             logMessage("{yellow:The physical world begins to burn away...}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
             
-            // Draw particles inward for 1.5 seconds to build massive tension
             if (typeof ParticleSystem !== 'undefined') {
                 for(let i=0; i<40; i++) {
                     const angle = Math.random() * Math.PI * 2;
                     const dist = 6 + Math.random() * 4;
                     ParticleSystem.spawn(player.x + Math.cos(angle)*dist, player.y + Math.sin(angle)*dist, '#facc15', 'sparkle');
                     const p = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length-1];
-                    // Pull inwards
                     if (p) { p.vx = -Math.cos(angle)*0.15; p.vy = -Math.sin(angle)*0.15; p.lifeFade = 0.015; }
                 }
             }
@@ -319,7 +336,7 @@ window.ExpansionManager.register({
             player.skillbook = {};
             player.bounty = 0;
 
-            player.hotbar = [null, null, null, null, null]; // 🚨 BUG FIX: Clears the ghost slots
+            player.hotbar = [null, null, null, null, null]; 
             player.cooldowns = {};
 
             const coreStats = ['strength', 'wits', 'constitution', 'dexterity', 'charisma', 'luck', 'willpower', 'perception', 'endurance', 'intuition'];
@@ -337,15 +354,12 @@ window.ExpansionManager.register({
             player.className = bgData ? bgData.name : 'Adventurer';
 
             // 4. Wipe Inventory & Equip Bloodline Pendant
-            const genMult = player.generation * 2; // +2 All Stats per generation!
+            const genMult = player.generation * 2; 
             
-            // Purge old generational artifacts from the Stash!
-            // Prevents players from stashing their Gen 1 pendant, ascending, and hoarding/trading them!
             if (player.bank && Array.isArray(player.bank)) {
                 player.bank = player.bank.filter(item => item && item.templateId !== '🩸p' && item.name !== 'Bloodline Pendant');
             }
             
-            // Safe Clone prevents the pendant's stats from leaking globally or failing on load
             const pendant = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['🩸p'] : null;
             let newPendant = null;
             
@@ -362,16 +376,19 @@ window.ExpansionManager.register({
                 newPendant.description = `An heirloom of your past lives. {gold:+${genMult} to All Stats}.`;
             }
 
-            // Create rags natively
             const rags = { templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true };
             
-            // Extract and preserve Spire Tokens before wiping the inventory!
-            // Ensures the player actually has currency to spend in the newly unlocked Ascendant Shop.
-            const savedTokens = player.inventory.find(i => i && i.name === 'Spire Token');
+            // 🚨 BUG FIX & ROBUSTNESS WIN: Safely preserve Spire Tokens without leaking prototype references
+            const tokenStack = player.inventory.find(i => i && i.name === 'Spire Token');
+            let preservedTokens = null;
+            if (tokenStack) {
+                preservedTokens = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(tokenStack) : JSON.parse(JSON.stringify(tokenStack));
+                preservedTokens.isEquipped = false;
+            }
             
             player.inventory = [rags];
             if (newPendant) player.inventory.unshift(newPendant); 
-            if (savedTokens) player.inventory.push(savedTokens); // Restore their cosmic currency
+            if (preservedTokens) player.inventory.push(preservedTokens); 
 
             player.equipment = {
                 weapon: { name: 'Fists', damage: 0, tags: ['blunt'] },
@@ -381,18 +398,15 @@ window.ExpansionManager.register({
                 ammo: null
             };
 
-            // Apply stats for the newly equipped gear!
             if (typeof applyStatBonuses === 'function') {
                 if (player.equipment.weapon) applyStatBonuses(player.equipment.weapon, 1);
                 if (player.equipment.armor) applyStatBonuses(player.equipment.armor, 1);
                 if (player.equipment.accessory) applyStatBonuses(player.equipment.accessory, 1);
             }
 
-            // The Spire Ghost Fix & Map Protection
             delete player.spireBackupInv;
             delete player.spireBackupEquip;
             
-            // Force the player to spawn at the Village (0,0) in the Prime Realm!
             gameState.mapMode = 'overworld';
             gameState.currentCaveId = null;
             gameState.currentCastleId = null;
@@ -402,7 +416,6 @@ window.ExpansionManager.register({
             player.y = 0;
 
             // 5. Apply Generation Base Vitals Boost
-            // Use additive assignment so we don't wipe out Golden Apples/Elixirs!
             player.bonusMaxHealth = (Number(player.bonusMaxHealth) || 0) + 10;
             player.bonusMaxMana = (Number(player.bonusMaxMana) || 0) + 10;
             player.bonusMaxStamina = (Number(player.bonusMaxStamina) || 0) + 10;
@@ -410,8 +423,7 @@ window.ExpansionManager.register({
 
             if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
             
-            // Safe clamp prevents UI overfill bugs
-            if (typeof clampAllVitals === 'function') clampAllVitals();
+            if (typeof clampAllVitals === 'function') window.clampAllVitals();
             else {
                 player.health = player.maxHealth;
                 player.mana = player.maxMana;
@@ -419,7 +431,7 @@ window.ExpansionManager.register({
                 player.psyche = player.maxPsyche;
             }
 
-            // 6. Announce to Server!
+            // 6. Announce to Server
             if (typeof rtdb !== 'undefined') {
                 rtdb.ref('chat').push().set({
                     senderId: 'SERVER',
@@ -433,20 +445,17 @@ window.ExpansionManager.register({
             if (typeof renderStats === 'function') renderStats();
             if (typeof renderEquipment === 'function') renderEquipment();
             if (typeof renderInventory === 'function') renderInventory();
-            if (typeof renderHotbar === 'function') renderHotbar(); // 🚨 NEW: Force hotbar clear
+            if (typeof renderHotbar === 'function') renderHotbar(); 
             
-            // Force re-render of the map at 0,0
             gameState.mapDirty = true;
             if (typeof render === 'function') render();
             
             if (typeof playerRef !== 'undefined') {
-                // 🚨 BUG FIX & ROBUSTNESS: Ensure setting the payload fully deletes absent keys like spire backups
                 const resetPayload = typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(player) : player;
                 resetPayload.mapMode = 'overworld';
                 resetPayload.currentRealm = 0;
                 resetPayload.realmMutators = [];
                 
-                // FieldValue delete fallback explicitly wipes Firestore memory
                 let deleteField = null;
                 try {
                     if (typeof window.getFirestoreDelete === 'function') {
@@ -461,11 +470,9 @@ window.ExpansionManager.register({
                     resetPayload.spireBackupEquip = deleteField;
                 }
                 
-                // Explicitly pack the inventory and bank arrays to prevent massive JSON blowout!
                 resetPayload.inventory = typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory;
                 resetPayload.bank = typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank;
                 
-                // Because we don't pass {merge: true}, `set` will completely overwrite the document, effectively deleting missing fields.
                 await playerRef.set(resetPayload);
             }
 
@@ -519,22 +526,33 @@ window.ExpansionManager.register({
             return function(updates = {}) {
                 if (typeof gameState !== 'undefined' && gameState.player) {
                     const player = gameState.player;
+                    
+                    // 🚨 CRITICAL BUG FIX: Anti-Zombification Guard
+                    // Prevent passive Ascendant heals from triggering if the player is technically dead
+                    // or in the middle of dying, which would override the Game Over screen!
+                    if (player.health <= 0 || gameState.isDead) {
+                        if (origEndPlayerTurn) origEndPlayerTurn.apply(this, arguments);
+                        return;
+                    }
+                    
                     const gen = player.generation || 0;
                     
                     if (gen > 0) {
-                        // 🌟 Radiant Aura
+                        // 🌟 Radiant Aura (Scales based on Generation!)
                         if (gameState.activeFilter !== 'gold') {
                             if (typeof ParticleSystem !== 'undefined' && Math.random() < 0.10) {
-                                // Aura evolves at Gen 5
-                                const auraColor = gen >= 5 ? '#a855f7' : '#facc15'; 
+                                let auraColor = '#e2e8f0'; // Gen 1: Silver
+                                if (gen >= 10) auraColor = '#facc15'; // Gen 10: Gold
+                                else if (gen >= 5) auraColor = '#a855f7'; // Gen 5: Purple
+                                
                                 ParticleSystem.spawn(player.x, player.y, auraColor, 'sparkle', '', 3);
                             }
                         }
 
-                        // 🚨 Ascendant Regeneration (Scaling with Gen!)
+                        // 🚨 Ascendant Regeneration (Scales with Gen!)
                         if (gameState.playerTurnCount % 10 === 0) {
                             let regenerated = false;
-                            const healAmt = 1 + Math.floor(gen / 5); // Heals an extra point every 5 generations!
+                            const healAmt = 1 + Math.floor(gen / 5); 
                             
                             if (player.health < player.maxHealth) {
                                 if (typeof window.modifyVital === 'function') window.modifyVital('health', healAmt);
