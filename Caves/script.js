@@ -238,7 +238,8 @@ function flushPendingSave(immediateUpdates = {}) {
         // --- 5. PROCESS MAIN PLAYER DATA ---
         if (Object.keys(dataToSave).length > 0) {
             const stateToVerify = { ...gameState.player, ...dataToSave };
-            if (!validateStateBeforeSave(stateToVerify)) {
+            // Use the new AntiCheat validator!
+            if (!AntiCheat.validate(stateToVerify, auth.currentUser)) {
                 logMessage("{red:Reality destabilizes. Unnatural energies detected.}");
                 setTimeout(() => location.reload(), 2000);
                 return;
@@ -254,9 +255,10 @@ function flushPendingSave(immediateUpdates = {}) {
             }
             
             Promise.all(batches.map(b => b.commit())).then(() => {
-                lastValidatedState = { ...gameState.player }; 
-                window.legitimateGoldDelta = 0; 
-                window.legitimateXpDelta = 0;
+                // Update the AntiCheat baseline securely!
+                AntiCheat.setLastState(gameState.player);
+                AntiCheat.resetDeltas();
+                
                 setTimeout(() => {
                     if (saveIcon) {
                         saveIcon.classList.remove('opacity-100');
@@ -3203,7 +3205,9 @@ async function enterGame(playerData) {
             updateExploration();
             
             // --- SET ANTI-CHEAT BASELINE ---
-            lastValidatedState = JSON.parse(JSON.stringify(gameState.player));
+            if (typeof AntiCheat !== 'undefined') {
+                AntiCheat.setLastState(gameState.player);
+            }
 
             // Drop the loading curtain!
             loadingIndicator.classList.add('hidden');
