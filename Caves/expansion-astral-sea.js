@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "astral_sea",
     name: "The Astral Sea (Sailing Expansion)",
-    version: "1.5", // Upgraded version!
+    version: "1.6", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -146,6 +146,12 @@ window.ExpansionManager.register({
                 name: 'Captain\'s Tricorne', type: 'armor', tile: '🎩', defense: 3, slot: 'armor',
                 statBonuses: { charisma: 5, luck: 5 }, description: "{blue:+3 Def}, {gold:+5 Cha, +5 Luck}. Yar.", _rarity: 'epic'
             },
+            // --- EXPANSION WIN: New Gear ---
+            '🧥k': {
+                name: 'Kraken-Hide Tunic', type: 'armor', tile: '🧥', defense: 5, slot: 'armor',
+                statBonuses: { endurance: 3, dexterity: 2 }, _rarity: 'legendary',
+                description: "{blue:+5 Def}, {green:+3 End, +2 Dex}. Woven from the beast of the depths. \n{blue:Passive: Grants permanent Water Breathing (Gills).}"
+            },
             '🍺r': {
                 name: 'Spiced Rum', type: 'consumable', tile: '🍺', _rarity: 'uncommon',
                 description: "Burns going down. {yellow:+30 Stamina, +20 Psyche}, {red:-2 Wits (50 turns)}",
@@ -160,7 +166,7 @@ window.ExpansionManager.register({
                     
                     // Applies a minor debuff to represent being slightly drunk!
                     state.player.witsBonus = (state.player.witsBonus || 0) - 2;
-                    state.player.witsBonusTurns = 50;
+                    state.player.witsBonusTurns = Math.max(state.player.witsBonusTurns || 0, 50);
                     
                     logMessage("{orange:You chug the rum. You feel fearless, but dizzy. (+30 Stam, +20 Psyche, -2 Wits)}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playConsume();
@@ -280,7 +286,8 @@ window.ExpansionManager.register({
                                         logMessage(`{gold:The hold is unguarded! You plunder ${gold} gold coins!}`);
                                         if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
                                         
-                                        // Safe Outward Spiral Drop
+                                        // 🚨 BUG FIX WIN: Improved Outward Spiral Drop
+                                        // Ensures drops can safely land on adjacent land tiles if the ship is near shore!
                                         const dropSafely = (itemKey) => {
                                             let placed = false;
                                             if (typeof chunkManager !== 'undefined') {
@@ -290,7 +297,7 @@ window.ExpansionManager.register({
                                                             const tx = ctx.x + dx;
                                                             const ty = ctx.y + dy;
                                                             const tileAt = chunkManager.getTile(tx, ty);
-                                                            if (tileAt === '~' || tileAt === '🛟' || tileAt === '🚢g') {
+                                                            if (tileAt === '~' || tileAt === '🛟' || tileAt === '🚢g' || tileAt === '.' || tileAt === 'D' || tileAt === 'F') {
                                                                 chunkManager.setWorldTile(tx, ty, itemKey, 24);
                                                                 placed = true;
                                                             }
@@ -319,6 +326,19 @@ window.ExpansionManager.register({
                                         } else {
                                             logMessage("{red:You found a stash of Spiced Rum, but your pack is full! It drops onto the deck.}");
                                             dropSafely('🍺r'); // Safer than sinking!
+                                        }
+                                        
+                                        // 🌟 LORE WIN: Ghost Ship Documents
+                                        if (Math.random() < 0.3) {
+                                            const journalTemplate = window.ITEM_DATA['📜p2'];
+                                            if (state.player.inventory.length < invCap) {
+                                                const newJ = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(journalTemplate) : JSON.parse(JSON.stringify(journalTemplate));
+                                                newJ.templateId = '📜p2'; newJ.quantity = 1; newJ.isEquipped = false;
+                                                state.player.inventory.push(newJ);
+                                                logMessage("{cyan:You found a Sodden Journal!}");
+                                            } else {
+                                                dropSafely('📜p2');
+                                            }
                                         }
                                     }
                                     
@@ -360,6 +380,9 @@ window.ExpansionManager.register({
             castle: [
                 { name: 'Diving Bell', price: 1500, stock: 1 },
                 { name: 'Cannonball', price: 10, stock: 50 }
+            ],
+            black_market: [
+                { name: 'Kraken-Hide Tunic', price: 3000, stock: 1 }
             ]
         },
 
@@ -378,138 +401,168 @@ window.ExpansionManager.register({
 
     // --- 6. ENGINE HOOKS ---
     init: function() {
+        const logger = window.ExpansionManager.getLogger("Astral Sea");
+
+        const applySafePatch = (target, method, factory) => {
+            if (typeof window.ExpansionManager.patchFunction === 'function') {
+                window.ExpansionManager.patchFunction(target, method, factory);
+            } else {
+                const orig = target[method];
+                target[method] = factory(orig ? orig.bind(target) : null);
+            }
+        };
         
         // 1. INJECT ISLAND GENERATION INTO THE WORLD RENDERER
-        if (typeof chunkManager !== 'undefined' && chunkManager.generateChunk) {
-            const origGenerateChunk = chunkManager.generateChunk;
-            
-            chunkManager.generateChunk = function(chunkX, chunkY) {
-                origGenerateChunk.call(this, chunkX, chunkY);
-                
-                const chunkId = `${chunkX},${chunkY}`;
-                const chunkData = this.loadedChunks[chunkId];
-                
-                // Only process islands in Realm 0
-                if (typeof gameState !== 'undefined' && gameState.currentRealm !== 0 && gameState.currentRealm) return;
+        if (typeof chunkManager !== 'undefined') {
+            applySafePatch(chunkManager, 'generateChunk', (origGenerateChunk) => {
+                return function(chunkX, chunkY) {
+                    if (origGenerateChunk) origGenerateChunk.call(this, chunkX, chunkY);
+                    
+                    const chunkId = `${chunkX},${chunkY}`;
+                    const chunkData = this.loadedChunks[chunkId];
+                    
+                    // Only process islands in Realm 0
+                    if (typeof gameState !== 'undefined' && gameState.currentRealm !== 0 && gameState.currentRealm) return;
 
-                // Loop through the chunk and spawn islands in deep water
-                for(let y = 0; y < 16; y++) {
-                    for(let x = 0; x < 16; x++) {
-                        const worldX = chunkX * 16 + x;
-                        const worldY = chunkY * 16 + y;
-                        const distSq = (worldX * worldX) + (worldY * worldY);
-                        
-                        // Deep Ocean Check (> 1000 tiles from spawn)
-                        if (chunkData[y][x] === '~' && distSq > 1000000) { 
-                            // Custom Perlin Noise threshold for islands
-                            const islandNoise = typeof elevationNoise !== 'undefined' ? elevationNoise.noise(worldX / 15 + 5000, worldY / 15 + 5000) : 0;
+                    // Loop through the chunk and spawn islands in deep water
+                    for(let y = 0; y < 16; y++) {
+                        for(let x = 0; x < 16; x++) {
+                            const worldX = chunkX * 16 + x;
+                            const worldY = chunkY * 16 + y;
+                            const distSq = (worldX * worldX) + (worldY * worldY);
                             
-                            // Deterministic PRNG seeded specifically to this world coordinate
-                            const random = typeof Alea !== 'undefined' ? Alea(typeof stringToSeed !== 'undefined' ? stringToSeed(`ocean_${worldX}_${worldY}`) : 1) : Math.random;
-                            
-                            if (islandNoise > 0.85) {
-                                chunkData[y][x] = 'D'; // Sand beach
+                            // Deep Ocean Check (> 1000 tiles from spawn)
+                            if (chunkData[y][x] === '~' && distSq > 1000000) { 
+                                // Custom Perlin Noise threshold for islands
+                                const islandNoise = typeof elevationNoise !== 'undefined' ? elevationNoise.noise(worldX / 15 + 5000, worldY / 15 + 5000) : 0;
                                 
-                                // Flora & Features (LORE WIN: Dynamic island populations!)
-                                const rVal = random();
-                                if (rVal < 0.05) chunkData[y][x] = '🌴';
-                                else if (rVal < 0.08) chunkData[y][x] = '∴'; // Dig spot!
-                                else if (rVal < 0.10) chunkData[y][x] = '🦀'; // Giant crab!
-                                else if (rVal < 0.11) chunkData[y][x] = '🍺r'; // Washed up rum
+                                // Deterministic PRNG seeded specifically to this world coordinate
+                                const random = typeof Alea !== 'undefined' ? Alea(typeof stringToSeed !== 'undefined' ? stringToSeed(`ocean_${worldX}_${worldY}`) : 1) : Math.random;
+                                
+                                if (islandNoise > 0.85) {
+                                    chunkData[y][x] = 'D'; // Sand beach
+                                    
+                                    // Flora & Features (LORE WIN: Dynamic island populations!)
+                                    const rVal = random();
+                                    if (rVal < 0.05) chunkData[y][x] = '🌴';
+                                    else if (rVal < 0.08) chunkData[y][x] = '∴'; // Dig spot!
+                                    else if (rVal < 0.10) chunkData[y][x] = '🦀'; // Giant crab!
+                                    else if (rVal < 0.11) chunkData[y][x] = '🍺r'; // Washed up rum
 
-                                // Pirate Coves (Rare)
-                                if (islandNoise > 0.92 && random() < 0.05) {
-                                    chunkData[y][x] = '⚓c';
+                                    // Pirate Coves (Rare)
+                                    if (islandNoise > 0.92 && random() < 0.05) {
+                                        chunkData[y][x] = '⚓c';
+                                    }
+                                } 
+                                // Use the deterministic `random()` instead of `Math.random()` to prevent ships flickering!
+                                else if (islandNoise > 0.80 && random() < 0.005) {
+                                    // Blockading Pirate Ships sitting just off the coast!
+                                    chunkData[y][x] = '🏴‍☠️';
                                 }
-                            } 
-                            // Use the deterministic `random()` instead of `Math.random()` to prevent ships flickering!
-                            else if (islandNoise > 0.80 && random() < 0.005) {
-                                // Blockading Pirate Ships sitting just off the coast!
-                                chunkData[y][x] = '🏴‍☠️';
-                            }
-                            
-                            // 🌟 EVENT WIN: Ghost Ships floating in the deep sea
-                            if (random() < 0.002 && distSq > 4000000) {
-                                chunkData[y][x] = '🚢g';
+                                
+                                // 🌟 EVENT WIN: Ghost Ships floating in the deep sea
+                                if (random() < 0.002 && distSq > 4000000) {
+                                    chunkData[y][x] = '🚢g';
+                                }
                             }
                         }
                     }
-                }
-            };
+                };
+            });
+
+            // 2. INJECT DUNGEON THEME OVERRIDES
+            // We monkey-patch the cave generator so our custom Dungeon Entrances map to our new Themes!
+            applySafePatch(chunkManager, 'generateCave', (origGenerateCave) => {
+                return function(caveId) {
+                    // Let the original function build the maze
+                    const map = origGenerateCave ? origGenerateCave.call(this, caveId) : [];
+                    
+                    // If it's a shipwreck or pirate cove, forcefully repaint the walls and floors
+                    // to match the correct aesthetic, bypassing the random theme picker!
+                    if (caveId.startsWith('shipwreck_') || caveId.startsWith('pirate_')) {
+                        const themeKey = caveId.startsWith('shipwreck_') ? 'SUNKEN_SHIPWRECK' : 'PIRATE_COVE';
+                        const oldThemeKey = this.caveThemes[caveId]; // Whatever it randomly picked
+                        this.caveThemes[caveId] = themeKey; // Override
+                        
+                        const newTheme = window.CAVE_THEMES[themeKey];
+                        const oldTheme = window.CAVE_THEMES[oldThemeKey] || { wall: '▓', floor: '.', secretWall: '▒' };
+                        
+                        // Safe Theme Replacement
+                        // Preserves custom decorative tiles and items stamped by the room generator!
+                        for(let y = 0; y < map.length; y++) {
+                            for(let x = 0; x < map[y].length; x++) {
+                                if (map[y][x] === oldTheme.wall) map[y][x] = newTheme.wall;
+                                else if (map[y][x] === oldTheme.floor) map[y][x] = newTheme.floor;
+                                else if (map[y][x] === oldTheme.secretWall) map[y][x] = newTheme.secretWall;
+                            }
+                        }
+
+                        // Safe Entity Instantiator Fallback
+                        const createEntity = typeof this._createInstancedEnemy === 'function' 
+                            ? this._createInstancedEnemy.bind(this) 
+                            : (id, x, y, tile, scaled, template) => ({ id, x, y, tile, name: scaled.name, health: scaled.maxHealth, maxHealth: scaled.maxHealth, attack: scaled.attack, defense: scaled.defense || 0, xp: scaled.xp, loot: template.loot });
+
+                        // 🚨 EXPANSION WIN: Injected Thematic Bosses!
+                        // Both the Pirate Cove and the Sunken Shipwreck get a guaranteed Boss at the center!
+                        const cy = Math.floor(map.length / 2);
+                        const cx = Math.floor(map[0].length / 2);
+                            
+                        // Ensure we don't spawn the boss inside a wall or on the stairs
+                        if (map[cy] && map[cy][cx] !== undefined && (map[cy][cx] === newTheme.floor || map[cy][cx] === oldTheme.floor)) {
+                            
+                            let bossTile = '🏴‍☠️c';
+                            let baseBossData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['🏴‍☠️c'] : null;
+                            
+                            // Override if Shipwreck
+                            if (themeKey === 'SUNKEN_SHIPWRECK') {
+                                bossTile = '🧜‍♀️c';
+                                baseBossData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['🧜‍♀️c'] : null;
+                            }
+
+                            if (baseBossData) {
+                                map[cy][cx] = bossTile;
+                                // Safe Fast Clone
+                                const baseClone = typeof window.fastClone === 'function' ? window.fastClone(baseBossData) : JSON.parse(JSON.stringify(baseBossData));
+                                const scaled = { ...baseClone, maxHealth: baseClone.maxHealth, attack: baseClone.attack, xp: baseClone.xp }; 
+                                
+                                this.caveEnemies[caveId].push(createEntity(`${caveId}:boss`, cx, cy, bossTile, scaled, baseBossData));
+                            }
+                        }
+                    }
+                    return map;
+                };
+            });
         }
 
-        // 2. INJECT DUNGEON THEME OVERRIDES
-        // We monkey-patch the cave generator so our custom Dungeon Entrances map to our new Themes!
-        if (typeof chunkManager !== 'undefined' && chunkManager.generateCave) {
-            const origGenerateCave = chunkManager.generateCave;
-            
-            chunkManager.generateCave = function(caveId) {
-                // Let the original function build the maze
-                const map = origGenerateCave.call(this, caveId);
+        // 3. PASSIVE GEAR ENGINE HOOK
+        // Apply Kraken-Hide Tunic Gills!
+        applySafePatch(window, 'endPlayerTurn', (origEndPlayerTurn) => {
+            return function(updates = {}) {
+                if (typeof gameState !== 'undefined' && gameState.player && gameState.player.equipment) {
+                    const armor = gameState.player.equipment.armor;
+                    if (armor) {
+                        const templateId = armor.templateId || (typeof window.ITEM_DATA !== 'undefined' ? Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === armor.name) : null);
+                        
+                        if (templateId === '🧥k' || armor.name.includes('Kraken')) {
+                            // Permanent Water Breathing!
+                            gameState.player.waterBreathingTurns = Math.max(gameState.player.waterBreathingTurns || 0, 2);
+                        }
+                    }
+                }
                 
-                // If it's a shipwreck or pirate cove, forcefully repaint the walls and floors
-                // to match the correct aesthetic, bypassing the random theme picker!
-                if (caveId.startsWith('shipwreck_') || caveId.startsWith('pirate_')) {
-                    const themeKey = caveId.startsWith('shipwreck_') ? 'SUNKEN_SHIPWRECK' : 'PIRATE_COVE';
-                    const oldThemeKey = this.caveThemes[caveId]; // Whatever it randomly picked
-                    this.caveThemes[caveId] = themeKey; // Override
-                    
-                    const newTheme = window.CAVE_THEMES[themeKey];
-                    const oldTheme = window.CAVE_THEMES[oldThemeKey] || { wall: '▓', floor: '.', secretWall: '▒' };
-                    
-                    // Safe Theme Replacement
-                    // Preserves custom decorative tiles and items stamped by the room generator!
-                    for(let y = 0; y < map.length; y++) {
-                        for(let x = 0; x < map[y].length; x++) {
-                            if (map[y][x] === oldTheme.wall) map[y][x] = newTheme.wall;
-                            else if (map[y][x] === oldTheme.floor) map[y][x] = newTheme.floor;
-                            else if (map[y][x] === oldTheme.secretWall) map[y][x] = newTheme.secretWall;
-                        }
-                    }
-
-                    // Safe Entity Instantiator Fallback
-                    const createEntity = typeof this._createInstancedEnemy === 'function' 
-                        ? this._createInstancedEnemy.bind(this) 
-                        : (id, x, y, tile, scaled, template) => ({ id, x, y, tile, name: scaled.name, health: scaled.maxHealth, maxHealth: scaled.maxHealth, attack: scaled.attack, defense: scaled.defense || 0, xp: scaled.xp, loot: template.loot });
-
-                    // 🚨 EXPANSION WIN: Injected Thematic Bosses!
-                    // Both the Pirate Cove and the Sunken Shipwreck get a guaranteed Boss at the center!
-                    const cy = Math.floor(map.length / 2);
-                    const cx = Math.floor(map[0].length / 2);
-                        
-                    // Ensure we don't spawn the boss inside a wall or on the stairs
-                    if (map[cy][cx] === newTheme.floor || map[cy][cx] === oldTheme.floor) {
-                        
-                        let bossTile = '🏴‍☠️c';
-                        let baseBossData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['🏴‍☠️c'] : null;
-                        
-                        // Override if Shipwreck
-                        if (themeKey === 'SUNKEN_SHIPWRECK') {
-                            bossTile = '🧜‍♀️c';
-                            baseBossData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['🧜‍♀️c'] : null;
-                        }
-
-                        if (baseBossData) {
-                            map[cy][cx] = bossTile;
-                            // Safe Fast Clone
-                            const baseClone = typeof window.fastClone === 'function' ? window.fastClone(baseBossData) : JSON.parse(JSON.stringify(baseBossData));
-                            const scaled = { ...baseClone, maxHealth: baseClone.maxHealth, attack: baseClone.attack, xp: baseClone.xp }; 
-                            
-                            this.caveEnemies[caveId].push(createEntity(`${caveId}:boss`, cx, cy, bossTile, scaled, baseBossData));
-                        }
-                    }
-                }
-                return map;
+                if (origEndPlayerTurn) origEndPlayerTurn.apply(this, arguments);
             };
-        }
+        });
 
-        // 3. INJECT COLORS INTO THE MINIMAP CACHE
+        // 4. INJECT COLORS INTO THE MINIMAP CACHE
         if (typeof window.TILE_COLOR_MAP !== 'undefined') {
             window.TILE_COLOR_MAP['🏴‍☠️'] = [17, 24, 39, 255];  // Black Ship
             window.TILE_COLOR_MAP['⚓c'] = [133, 77, 14, 255]; // Wood/Brown Cove
             window.TILE_COLOR_MAP['🍺r'] = [234, 179, 8, 255]; // Gold/Rum
             window.TILE_COLOR_MAP['🚢g'] = [55, 65, 81, 255];  // Gray Ghost Ship
         }
+        
+        logger.log("Astral Sea generation hooks active.");
     }
 });
 
