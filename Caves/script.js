@@ -680,8 +680,11 @@ window.isServerHost = function() {
             const p = otherPlayers[id];
             if (!p) continue; 
             
-            // Ignore players who have dropped connection/timed out
-            if (p.lastHeartbeat && (serverNow - p.lastHeartbeat > 12000)) continue;
+            // Host Migration AFK Guard
+            // Reduced from 12000ms to 3000ms. If the current Host tabs out, their browser 
+            // will throttle their tick rate. We must migrate the Host duties immediately 
+            // so monsters don't freeze for active players!
+            if (p.lastHeartbeat && (serverNow - p.lastHeartbeat > 3000)) continue;
 
             const theirRealm = p.currentRealm || 0;
             
