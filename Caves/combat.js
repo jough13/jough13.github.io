@@ -2385,9 +2385,6 @@ function handlePlayerDeath() {
     gameState._isExecutingDeath = true; // Prevents race conditions during the drop loop
 
     // Obliterate ALL Pending Saves!
-    // We must physically reach into the global namespace (where script.js defines these) 
-    // and wipe them so a delayed timeout doesn't push a "Health: 15" payload to Firebase 
-    // two minutes after the player has already died and reset!
     if (typeof window.saveTimeout !== 'undefined' && window.saveTimeout) {
         clearTimeout(window.saveTimeout);
         window.saveTimeout = null;
@@ -2397,7 +2394,6 @@ function handlePlayerDeath() {
     }
 
     const player = gameState.player;
-
     player.health = 0; 
     
     // --- Track Total Deaths ---
@@ -2469,19 +2465,19 @@ function handlePlayerDeath() {
 
     // Ensure scattered death loot doesn't overwrite itself!
     const usedDropTiles = new Set();
-    const savedInventory = []; // NEW: Array to hold items we don't drop
+    const savedInventory = []; // Array to hold items we don't drop
+    let overflowCount = 0; // 🚨 Tracks items saved due to lack of floor space!
 
     for (let i = player.inventory.length - 1; i >= 0; i--) {
         const item = player.inventory[i];
         if (!item) continue; // 🚨 GHOST GUARD
         
         // --- PREVENT STACK DELETION ---
-        // Save stackables and quest items so they aren't lost to the 1-quantity map drop limitation!
         const isStackable = window.isStackableItem ? window.isStackableItem(item.type) : ['junk', 'consumable', 'ammo', 'ingredient', 'trade', 'tool', 'seed'].includes(item.type);
         
         if (isStackable || item.type === 'quest') {
             savedInventory.unshift(item); // Push to front to maintain original order
-            continue; // Skip scattering this item to the ground
+            continue; 
         }
 
         let placed = false;
@@ -2493,7 +2489,7 @@ function handlePlayerDeath() {
         let dropIcon = item.tile || item.templateId || '🎒';
         
         if (isModified) {
-            dropIcon = '&'; // Shatters into Arcane Dust because the floor cannot hold magic JSON data
+            dropIcon = '&'; // Shatters into Arcane Dust
         }
         
         // Loop progressively outwards to find an empty tile
@@ -2504,7 +2500,6 @@ function handlePlayerDeath() {
                     const ty = deathY + dy;
                     const tKey = `${tx},${ty}`;
                     
-                    // Skip if we already dropped something here!
                     if (usedDropTiles.has(tKey)) continue;
 
                     let tile;
@@ -2512,9 +2507,7 @@ function handlePlayerDeath() {
                     else if (gameState.mapMode === 'dungeon') tile = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
                     else tile = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
 
-                    // Check both generic plains floor and specific dungeon floor
                     if (tile === validFloor || tile === '.') {
-                        
                         usedDropTiles.add(tKey);
                         
                         if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
@@ -2527,7 +2520,6 @@ function handlePlayerDeath() {
                             
                             if (!pendingUpdates[cId]) pendingUpdates[cId] = {};
                             
-                            // Player Corpse Loot lasts 24 hours. Starter gear only lasts 1 hour to prevent litter!
                             let ttlHours = 24;
                             if (item.name === 'Tattered Rags' || item.name === 'Simple Tunic') {
                                 ttlHours = 1;
@@ -2548,13 +2540,21 @@ function handlePlayerDeath() {
                 }
             }
         }
+
+        // 🚨 BUG FIX WIN: The 1x1 Room / Lava Pool Overflow Failsafe!
+        // If the game cannot find an empty floor tile to scatter the item,
+        // we safely refund the overflow items back into the player's saved inventory!
+        if (!placed) {
+            savedInventory.unshift(item);
+            overflowCount++;
+            continue; 
+        }
     }
 
     if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         for (const [cId, updates] of Object.entries(pendingUpdates)) {
             const safeUpdates = typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(updates) : updates;
             
-            // Allow for Multiverse and Underworld paths!
             let realmPrefix = '';
             if (gameState.currentRealm !== 0 && gameState.currentRealm) {
                 realmPrefix = `realm_${gameState.currentRealm}/`;
@@ -2571,8 +2571,6 @@ function handlePlayerDeath() {
     }
 
     player.coins -= goldLost;
-    
-    // Restore the saved stackables and quest items!
     player.inventory = savedInventory; 
     
     // Give them basic rags so they aren't naked
@@ -2580,18 +2578,13 @@ function handlePlayerDeath() {
     player.inventory.push(rags);
     
     player.equipment = { weapon: { name: 'Fists', damage: 0, tags: ['blunt'] }, armor: rags, offhand: null, accessory: null, ammo: null };
-
-    // Reset Arena progress so they aren't permanently locked out of the Colosseum if they return
     player.arenaWave = 0;
 
     // --- OVERWORLD BOAT GHOSTING ---
-    // Drop the vehicle safely at the death coordinates before stripping the status!
     if (player.isBoating || player.isSailing) {
         const boatTile = player.isSailing ? '⛵' : 'c';
-        
         if (typeof chunkManager !== 'undefined') {
             if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                // Drop permanently (No TTL) so the player can return to the shore to retrieve it
                 chunkManager.setWorldTile(deathX, deathY, boatTile);
             } else if (gameState.mapMode === 'dungeon' && chunkManager.caveMaps[gameState.currentCaveId]) {
                 chunkManager.caveMaps[gameState.currentCaveId][deathY][deathX] = boatTile;
@@ -2602,31 +2595,25 @@ function handlePlayerDeath() {
         }
     }
 
-    // Strip vehicles so the player doesn't respawn "sailing" on dry land
     player.isBoating = false;
     player.isSailing = false;
 
-    // Add a custom map pin so the player can find their corpse!
     if (!player.customPins) player.customPins = [];
-    
-    // Prevent duplicate pins if they die on the exact same spot repeatedly
     const hasPinHere = player.customPins.some(p => p.x === deathX && p.y === deathY);
     if (!hasPinHere) {
         player.customPins.push({ x: deathX, y: deathY });
         logMessage("{gray:A pin has been added to your map where you fell.}");
     }
+    
+    if (overflowCount > 0) {
+        logMessage(`{cyan:Your hands tightened in death. ${overflowCount} items were recovered!}`);
+    }
 
-    // Ensure pre-prestige gear isn't accidentally restored if they die in the Spire!
     delete player.spireBackupInv;
     delete player.spireBackupEquip;
     
-    // FIREBASE DELETION FAILSAFE
-    // Because we use { merge: true } below, simply deleting the property from the local object 
-    // will NOT delete it from Firestore. We must explicitly pass FieldValue.delete()!
     const deleteField = typeof window.getFirestoreDelete === 'function' ? window.getFirestoreDelete() : null;
 
-    // Force the database to pull them out of any alternate dimensions or dungeons immediately
-    // so if they close the browser on the Game Over screen, they don't load into a wall later!
     const deathUpdates = {
         ... (typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(player) : player),
         currentRealm: 0,
@@ -2635,7 +2622,6 @@ function handlePlayerDeath() {
         mapId: null
     };
     
-    // Explicitly command Firestore to purge the Spire Backups
     if (deleteField) {
         deathUpdates.spireBackupInv = deleteField;
         deathUpdates.spireBackupEquip = deleteField;
