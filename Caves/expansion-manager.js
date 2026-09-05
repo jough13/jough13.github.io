@@ -20,6 +20,10 @@ window.ExpansionManager = {
     // Global Event Bus for Lifecycle Hooks
     activeHooks: Object.create(null), // 🚨 SECURITY WIN: Object.create(null) prevents prototype poisoning
 
+    // 🚀 PERFORMANCE WIN: Pre-compiled Hook Cache
+    // Prevents doing O(N) array spreads and Set lookups on every single game tick!
+    _compiledHooks: Object.create(null),
+
     // 🌟 EXPANDABILITY WIN: Inter-Expansion APIs
     // Allows expansions to expose safe public methods for other expansions to interact with
     apis: new Map(),
@@ -40,7 +44,6 @@ window.ExpansionManager = {
 
     // 🚀 ROBUSTNESS WIN: Dedicated internal cloner
     // Guarantees shop items injected by expansions never bleed memory references back into the global dictionary.
-    // 🚨 UPGRADED: Fallback now deep-clones to protect nested arrays, then surgically restores stripped functions!
     _internalItemClone: function(item) {
         if (typeof window.fastClone === 'function') return window.fastClone(item);
         
@@ -52,6 +55,25 @@ window.ExpansionManager = {
         if (typeof item.onHit === 'function') clone.onHit = item.onHit; 
         
         return clone;
+    },
+
+    // Rebuilds the fast-path hook execution array for a specific event
+    _recompileHooks: function(hookName) {
+        if (!this.activeHooks[hookName]) {
+            this._compiledHooks[hookName] = [];
+            return;
+        }
+        // Filter out disabled mods and sort by priority exactly once!
+        this._compiledHooks[hookName] = this.activeHooks[hookName]
+            .filter(h => !this.disabledExpansions.has(h.id))
+            .sort((a, b) => b.priority - a.priority);
+    },
+
+    // Rebuilds all hook arrays (called when toggling an expansion)
+    _recompileAllHooks: function() {
+        for (const hookName in this.activeHooks) {
+            this._recompileHooks(hookName);
+        }
     },
 
     // API Helper: Allows expansions to alter behavior if they know another specific expansion is running
@@ -94,7 +116,14 @@ window.ExpansionManager = {
         }
         
         const originalFunc = targetObj[methodName];
-        targetObj[methodName] = patchFactory(originalFunc.bind(targetObj));
+        
+        // 🚨 ROBUSTNESS WIN: Dynamic context binding!
+        // Instead of hard-binding `.bind(targetObj)`, we use a dynamic wrapper.
+        // This ensures that if the original function relies on dynamic `this` mapping (like EventListeners), it doesn't break!
+        targetObj[methodName] = patchFactory(function() {
+            return originalFunc.apply(this, arguments);
+        });
+        
         return true;
     },
 
@@ -111,7 +140,10 @@ window.ExpansionManager = {
             console.log(`%c[AKASHIC ENGINE] Timeline Suppressed: Expansion '${expansionId}' hooks disabled.`, "color: #fb923c; font-style: italic;");
         }
         
-        // 🚨 BUG FIX WIN: Ensure injected CSS stylesheets are also disabled/enabled!
+        // Rebuild the high-speed hook cache!
+        this._recompileAllHooks();
+        
+        // Ensure injected CSS stylesheets are also disabled/enabled!
         const styleEl = document.getElementById(`akashic-style-${expansionId}`);
         if (styleEl) {
             styleEl.disabled = !turnOn;
@@ -127,18 +159,14 @@ window.ExpansionManager = {
 
     // Centralized Hook Trigger with Veto Power and Context Enrichment
     triggerHook: function(hookName, context = {}) {
-        if (!this.activeHooks[hookName]) return context;
-        
-        // 🚨 BUG FIX: Shallow clone the array to prevent iteration index shifting 
-        // if an expansion adds/removes a hook during execution!
-        const hooksToRun = [...this.activeHooks[hookName]];
+        // 🚀 PERFORMANCE WIN: Fast-path execution using pre-compiled, pre-sorted arrays!
+        // Removes GC-heavy array spreading and Set lookups from the hot-loop.
+        const hooksToRun = this._compiledHooks[hookName];
+        if (!hooksToRun || hooksToRun.length === 0) return context;
         
         for (let i = 0; i < hooksToRun.length; i++) {
             const hook = hooksToRun[i];
             
-            // Skip disabled expansions
-            if (this.disabledExpansions.has(hook.id)) continue;
-
             try {
                 const result = hook.func(context);
                 
@@ -189,9 +217,10 @@ window.ExpansionManager = {
             } else {
                 console.log(`%c[AKASHIC ENGINE] Upgrading Expansion '${exp.id}' from v${existing.version} -> v${exp.version}`, "color: #3b82f6; font-style: italic;");
                 
-                // 🚨 BUG FIX: Purge old hooks to prevent double-firing during live upgrades
+                // Purge old hooks to prevent double-firing during live upgrades
                 for (const hookName in this.activeHooks) {
                     this.activeHooks[hookName] = this.activeHooks[hookName].filter(h => h.id !== exp.id);
+                    this._recompileHooks(hookName);
                 }
             }
         }
@@ -330,14 +359,21 @@ window.ExpansionManager = {
             if (data[localKey] && typeof data[localKey] === 'object') {
                 if (typeof window[globalKey] === 'undefined') window[globalKey] = {};
                 
+                // 🚨 CRITICAL BUG FIX: Dictionary Unfreezing
+                // Global objects like LORE_SETS are Object.freeze()'d by the engine to save memory.
+                // We must detect this, unfreeze them cleanly, apply data, and re-freeze!
+                const targetDict = window[globalKey];
+                const isFrozen = Object.isFrozen(targetDict);
+                let workingDict = isFrozen ? Object.assign({}, targetDict) : targetDict;
+                
                 // 🚀 PERFORMANCE WIN: Object.entries is faster and safer than for...in
                 for (const [key, val] of Object.entries(data[localKey])) {
                     // Collision Warnings
-                    if (window[globalKey][key]) {
+                    if (workingDict[key]) {
                         console.warn(`%c[AKASHIC ENGINE] Overwrite Notice: '${exp.id}' is modifying existing ${localKey} entry: '${key}'.`, "color: #fb923c;");
                     }
                     
-                    // 🚨 BUG FIX & STABILITY WIN: Deep Dictionary Clone!
+                    // 🚨 STABILITY WIN: Deep Dictionary Clone!
                     // We must deep-clone the dictionary templates before assigning them to the global registry!
                     // Otherwise, expansions modifying `ITEM_DATA.health` later will accidentally bleed 
                     // mutations back into the original `data` payload memory.
@@ -354,9 +390,12 @@ window.ExpansionManager = {
                         }
                     }
                     
-                    window[globalKey][key] = safeVal;
+                    workingDict[key] = safeVal;
                     dictCount++;
                 }
+                
+                // Securely commit and re-freeze the dictionary!
+                window[globalKey] = isFrozen ? Object.freeze(workingDict) : workingDict;
                 
                 // Clear the room cache so the new rooms are actually pulled into the generator!
                 if (localKey === 'roomTemplates') window.CACHED_ROOM_TEMPLATES = null; 
@@ -418,7 +457,6 @@ window.ExpansionManager = {
             if (typeof window.ATMOSPHERE_TEXT === 'undefined') window.ATMOSPHERE_TEXT = {};
             for (const [category, texts] of Object.entries(data.atmosphereText)) {
                 
-                // 🚨 FUTURE-PROOFING WIN: Same freeze/unfreeze logic applied here!
                 if (!window.ATMOSPHERE_TEXT[category]) {
                     window.ATMOSPHERE_TEXT[category] = Object.freeze([]);
                 }
@@ -459,7 +497,6 @@ window.ExpansionManager = {
                             existingItem.price = newItem.price;
                         }
                     } else {
-                        // 🚨 BUG FIX & ROBUSTNESS: Utilize the secure internal cloner
                         const itemClone = this._internalItemClone(newItem);
                         window[targetGlobal].push(itemClone);
                         dictCount++;
@@ -491,8 +528,8 @@ window.ExpansionManager = {
                     if (!this.activeHooks[hookName]) this.activeHooks[hookName] = [];
                     this.activeHooks[hookName].push({ id: exp.id, func: hookFunc, priority: hookPriority });
                     
-                    // Sort hooks so highest priority executes first!
-                    this.activeHooks[hookName].sort((a, b) => b.priority - a.priority);
+                    // Notify the compiler that a new hook was added to this event stream!
+                    this._recompileHooks(hookName);
                 }
             }
         }
@@ -566,7 +603,7 @@ window.ExpansionManager = {
                     processedAny = true;
                 }
             }
-        } while (processedAny); // Keep looping if we unblocked something, but flatly, no recursion!
+        } while (processedAny); 
     }
 };
 
