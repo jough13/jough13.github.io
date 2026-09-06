@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "seasons_of_the_realm",
     name: "Seasons of the Realm (Dynamic Live-Ops)",
-    version: "1.4", // Upgraded version!
+    version: "1.5", // Upgraded version!
     
     data: {
         // --- 1. SEASONAL ITEMS ---
@@ -60,6 +60,16 @@ window.ExpansionManager.register({
                 damage: 9, isTwoHanded: true, slot: 'weapon', statBonuses: { constitution: 2 }, inflicts: 'frostbite', inflictChance: 0.3,
                 description: "{red:+9 Dmg}, {green:+2 Con}. A heavy blade of never-melting ice. (Two-Handed)", _rarity: 'epic'
             },
+            '🥾sp': {
+                name: 'Springstep Boots', type: 'armor', tile: '👢', defense: 2, slot: 'armor',
+                statBonuses: { dexterity: 4, endurance: 2 }, _rarity: 'epic',
+                description: "{blue:+2 Def}, {green:+4 Dex, +2 End}. Incredibly light. {green:Passive: Grants immunity to Root and vines.}"
+            },
+            '🧥au': {
+                name: 'Autumnal Cloak', type: 'armor', tile: '🧥', defense: 3, slot: 'armor',
+                statBonuses: { endurance: 5, constitution: 2 }, _rarity: 'epic',
+                description: "{blue:+3 Def}, {green:+5 End, +2 Con}. Woven from falling leaves. {gold:Passive: Rapidly restores health when resting.}"
+            },
             '💍s': {
                 name: 'Amulet of Seasons', type: 'accessory', tile: '💍', defense: 2, slot: 'accessory',
                 statBonuses: { luck: 5 }, _rarity: 'legendary', excludeFromLoot: true,
@@ -104,6 +114,10 @@ window.ExpansionManager.register({
                 { name: 'Spring Blossom', price: 500, stock: 1 },
                 { name: 'Autumn Harvest', price: 500, stock: 1 }
             ],
+            black_market: [
+                { name: 'Springstep Boots', price: 1200, stock: 1 },
+                { name: 'Autumnal Cloak', price: 1200, stock: 1 }
+            ],
             ascendant: [
                 { name: 'Amulet of Seasons', price: 5000, stock: 1 }
             ]
@@ -117,6 +131,7 @@ window.ExpansionManager.register({
     },
 
     init: function() {
+        const logger = window.ExpansionManager.getLogger("Seasons");
         
         // ==========================================
         // 1. THE SEASONAL CLOCK ENGINE
@@ -137,46 +152,56 @@ window.ExpansionManager.register({
         };
 
         // ==========================================
-        // 2. UI INJECTION (Time Panel & Chat Commands)
+        // 2. SAFE UI INJECTION (Time Panel & Chat)
         // ==========================================
 
-        const origRenderTime = window.renderTime;
-        window.renderTime = function() {
-            if (origRenderTime) origRenderTime();
-            
-            const timeDisplay = document.getElementById('timeDisplay');
-            if (timeDisplay) {
-                const season = window.getCurrentSeason();
-                let seasonColor = '#9ca3af';
-                let icon = '🍂';
-                
-                if (season === 'Winter') { seasonColor = '#7dd3fc'; icon = '❄️'; }
-                else if (season === 'Spring') { seasonColor = '#4ade80'; icon = '🌸'; }
-                else if (season === 'Summer') { seasonColor = '#facc15'; icon = '☀️'; }
-                else if (season === 'Autumn') { seasonColor = '#f97316'; icon = '🍁'; }
-
-                // 🚨 UI WIN: Appends cleanly because the base engine explicitly overwrites `timeDisplay.textContent` first!
-                timeDisplay.innerHTML += ` <span style="color: ${seasonColor}; font-weight: bold;" class="drop-shadow-sm ml-2 border-l border-gray-600 pl-2" title="${season} Season">${icon} ${season}</span>`;
+        const applySafePatch = (target, method, factory) => {
+            if (typeof window.ExpansionManager.patchFunction === 'function') {
+                window.ExpansionManager.patchFunction(target, method, factory);
+            } else {
+                // Fallback for older engine versions
+                const orig = target[method];
+                target[method] = factory(orig ? orig.bind(target) : null);
             }
         };
 
-        if (typeof window.handleChatCommand === 'function') {
-            const originalHandleChat = window.handleChatCommand;
-            window.handleChatCommand = function(message) {
+        applySafePatch(window, 'renderTime', (origRenderTime) => {
+            return function() {
+                if (origRenderTime) origRenderTime.apply(this, arguments);
+                
+                const timeDisplay = document.getElementById('timeDisplay');
+                if (timeDisplay) {
+                    const season = window.getCurrentSeason();
+                    let seasonColor = '#9ca3af';
+                    let icon = '🍂';
+                    
+                    if (season === 'Winter') { seasonColor = '#7dd3fc'; icon = '❄️'; }
+                    else if (season === 'Spring') { seasonColor = '#4ade80'; icon = '🌸'; }
+                    else if (season === 'Summer') { seasonColor = '#facc15'; icon = '☀️'; }
+                    else if (season === 'Autumn') { seasonColor = '#f97316'; icon = '🍁'; }
+
+                    // Appends cleanly
+                    timeDisplay.innerHTML += ` <span style="color: ${seasonColor}; font-weight: bold;" class="drop-shadow-sm ml-2 border-l border-gray-600 pl-2" title="${season} Season">${icon} ${season}</span>`;
+                }
+            };
+        });
+
+        applySafePatch(window, 'handleChatCommand', (originalHandleChat) => {
+            return function(message) {
                 const raw = message.substring(1); 
                 const parts = raw.split(' ');
                 const command = parts[0].toLowerCase();
                 
-                if (command === 'season' && parts[1]) {
+                if (command === 'season') {
                     // Admin Guard
                     const ADMIN_EMAILS = ["your.email@gmail.com", "admin@cavesandcastles.com"];
                     if (!auth.currentUser || !ADMIN_EMAILS.includes(auth.currentUser.email)) {
                         logMessage("{red:Unauthorized. The Time Weavers ignore you.}");
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                        return;
+                        return; // 🚨 BUG FIX: Return early to prevent fallthrough
                     }
 
-                    const requested = parts[1].toLowerCase();
+                    const requested = parts[1] ? parts[1].toLowerCase() : null;
                     if (requested === 'winter') window.OVERRIDE_SEASON = 'Winter';
                     else if (requested === 'spring') window.OVERRIDE_SEASON = 'Spring';
                     else if (requested === 'summer') window.OVERRIDE_SEASON = 'Summer';
@@ -184,7 +209,7 @@ window.ExpansionManager.register({
                     else if (requested === 'clear') window.OVERRIDE_SEASON = null;
                     else {
                         logMessage("{gray:Usage: /season [winter|spring|summer|autumn|clear]}");
-                        return;
+                        return; // 🚨 BUG FIX: Return early
                     }
                     
                     logMessage(`{purple:The Time Weavers violently shift the timeline. It is now ${window.getCurrentSeason()}.}`);
@@ -209,82 +234,87 @@ window.ExpansionManager.register({
                         if (typeof render === 'function') render();
                     }
                     if (typeof renderTime === 'function') renderTime();
-                    return;
+                    
+                    return; // 🚨 BUG FIX: Ensure we do NOT pass this command to the original handler!
                 }
-                originalHandleChat(message);
+                
+                if (originalHandleChat) originalHandleChat.apply(this, arguments);
             };
-        }
+        });
 
         // ==========================================
         // 3. TERRAIN MUTATIONS (V8 Optimized)
         // ==========================================
 
-        if (typeof chunkManager !== 'undefined' && chunkManager.generateChunk) {
-            const origGenerateChunk = chunkManager.generateChunk;
-            
-            chunkManager.generateChunk = function(chunkX, chunkY) {
-                origGenerateChunk.call(this, chunkX, chunkY);
-                
-                // Only mutate the Prime Realm
-                if (typeof gameState !== 'undefined' && gameState.currentRealm !== 0 && gameState.currentRealm) return;
+        if (typeof chunkManager !== 'undefined') {
+            applySafePatch(chunkManager, 'generateChunk', (origGenerateChunk) => {
+                return function(chunkX, chunkY) {
+                    if (origGenerateChunk) origGenerateChunk.call(this, chunkX, chunkY);
+                    
+                    // Only mutate the Prime Realm
+                    if (typeof gameState !== 'undefined' && gameState.currentRealm !== 0 && gameState.currentRealm) return;
 
-                const chunkId = `${chunkX},${chunkY}`;
-                const chunkData = this.loadedChunks[chunkId];
-                const season = window.getCurrentSeason();
-                
-                // Deterministic PRNG
-                const random = typeof Alea !== 'undefined' ? Alea(typeof stringToSeed !== 'undefined' ? stringToSeed(`season_${season}_${chunkId}`) : 1) : Math.random;
-                
-                // 🚀 PERFORMANCE WIN: Evaluate Season once outside the 256-tile loop!
-                // Eliminates branch mispredictions inside the hot-loop.
-                if (season === 'Winter') {
-                    for (let y = 0; y < 16; y++) {
-                        for (let x = 0; x < 16; x++) {
-                            const tile = chunkData[y][x];
-                            if (tile === '≈') chunkData[y][x] = '🧊'; 
-                            else if (tile === '.' && random() < 0.3) chunkData[y][x] = '❄️';
-                            else if (tile === 'F' && random() < 0.3) chunkData[y][x] = '🌲'; // Aesthetic Tundra Pine
+                    const chunkId = `${chunkX},${chunkY}`;
+                    const chunkData = this.loadedChunks[chunkId];
+                    const season = window.getCurrentSeason();
+                    
+                    // Deterministic PRNG
+                    const random = typeof Alea !== 'undefined' ? Alea(typeof stringToSeed !== 'undefined' ? stringToSeed(`season_${season}_${chunkId}`) : 1) : Math.random;
+                    
+                    // 🚀 PERFORMANCE WIN: Evaluate Season once outside the 256-tile loop!
+                    if (season === 'Winter') {
+                        for (let y = 0; y < 16; y++) {
+                            for (let x = 0; x < 16; x++) {
+                                const tile = chunkData[y][x];
+                                if (tile === '≈') chunkData[y][x] = '🧊'; 
+                                else if (tile === '.' && random() < 0.3) chunkData[y][x] = '❄️';
+                                else if (tile === 'F' && random() < 0.3) chunkData[y][x] = '🌲'; // Aesthetic Tundra Pine
+                            }
+                        }
+                    } 
+                    else if (season === 'Spring') {
+                        for (let y = 0; y < 16; y++) {
+                            for (let x = 0; x < 16; x++) {
+                                const tile = chunkData[y][x];
+                                if (tile === '.' && random() < 0.05) chunkData[y][x] = '🌺';
+                            }
+                        }
+                    } 
+                    else if (season === 'Summer') {
+                        for (let y = 0; y < 16; y++) {
+                            for (let x = 0; x < 16; x++) {
+                                const tile = chunkData[y][x];
+                                if (tile === '≈' && random() < 0.3) chunkData[y][x] = 'd';
+                                if (tile === '.' && random() < 0.05) chunkData[y][x] = 'D'; 
+                            }
+                        }
+                    } 
+                    else if (season === 'Autumn') {
+                        for (let y = 0; y < 16; y++) {
+                            for (let x = 0; x < 16; x++) {
+                                const tile = chunkData[y][x];
+                                // Dying foliage
+                                if (tile === 'F' && random() < 0.2) chunkData[y][x] = 'd'; 
+                                
+                                // Clustered Mushrooms: Common in forests/swamps, incredibly rare on open plains
+                                if (tile === 'F' && random() < 0.06) chunkData[y][x] = '🍄';
+                                else if (tile === '≈' && random() < 0.08) chunkData[y][x] = '🍄';
+                                else if (tile === '.' && random() < 0.002) chunkData[y][x] = '🍄';
+                            }
                         }
                     }
-                } 
-                else if (season === 'Spring') {
-                    for (let y = 0; y < 16; y++) {
-                        for (let x = 0; x < 16; x++) {
-                            const tile = chunkData[y][x];
-                            if (tile === '.' && random() < 0.05) chunkData[y][x] = '🌺';
-                        }
-                    }
-                } 
-                else if (season === 'Summer') {
-                    for (let y = 0; y < 16; y++) {
-                        for (let x = 0; x < 16; x++) {
-                            const tile = chunkData[y][x];
-                            if (tile === '≈' && random() < 0.3) chunkData[y][x] = 'd';
-                            if (tile === '.' && random() < 0.05) chunkData[y][x] = 'D'; 
-                        }
-                    }
-                } 
-                else if (season === 'Autumn') {
-                    for (let y = 0; y < 16; y++) {
-                        for (let x = 0; x < 16; x++) {
-                            const tile = chunkData[y][x];
-                            if (tile === 'F' && random() < 0.2) chunkData[y][x] = 'd'; 
-                            if ((tile === '.' || tile === 'F') && random() < 0.03) chunkData[y][x] = '🍄';
-                        }
-                    }
-                }
-            };
+                };
+            });
         }
 
         // ==========================================
         // 4. WEATHER SKEWING
         // ==========================================
 
-        if (typeof window.updateWeather === 'function') {
-            const origUpdateWeather = window.updateWeather;
-            window.updateWeather = function() {
-                // Call the original weather machine to generate the forecast
-                origUpdateWeather();
+        applySafePatch(window, 'updateWeather', (origUpdateWeather) => {
+            return function() {
+                // Call the original weather machine to generate the forecast first
+                if (origUpdateWeather) origUpdateWeather.apply(this, arguments);
                 
                 const season = window.getCurrentSeason();
                 
@@ -311,21 +341,28 @@ window.ExpansionManager.register({
                     }
                 }
             };
-        }
+        });
 
         // ==========================================
         // 5. SEASONAL SURVIVAL MECHANICS
         // ==========================================
 
-        if (typeof window.endPlayerTurn === 'function') {
-            const origEndPlayerTurn = window.endPlayerTurn;
-            window.endPlayerTurn = function(updates = {}) {
+        applySafePatch(window, 'endPlayerTurn', (origEndPlayerTurn) => {
+            return function(updates = {}) {
                 
                 const p = gameState.player;
                 const season = window.getCurrentSeason();
 
-                // 🌟 LORE WIN: Amulet of Seasons Passive Traits
-                if (p.equipment && p.equipment.accessory && p.equipment.accessory.name === 'Amulet of Seasons') {
+                // 🌟 LORE WIN: Amulet of Seasons & Seasonal Gear Passives
+                const armor = p.equipment && p.equipment.armor;
+                const amulet = p.equipment && p.equipment.accessory;
+                
+                // 🚨 BUG FIX & ROBUSTNESS: Strict template checking prevents name-prefix bugs
+                const hasSeasonsAmulet = amulet && (amulet.name === 'Amulet of Seasons' || amulet.templateId === '💍s');
+                const hasSpringBoots = armor && (armor.name.includes('Springstep') || armor.templateId === '🥾sp');
+                const hasAutumnCloak = armor && (armor.name.includes('Autumnal') || armor.templateId === '🧥au');
+
+                if (hasSeasonsAmulet) {
                     if (season === 'Winter') {
                         if (p.frostbiteTurns > 0) {
                             p.frostbiteTurns = 0;
@@ -345,6 +382,12 @@ window.ExpansionManager.register({
                             p.thirst = Math.min(p.maxThirst, p.thirst + 1);
                         }
                     }
+                }
+
+                // Springstep Boots Root Immunity
+                if (hasSpringBoots && p.rootTurns > 0) {
+                    p.rootTurns = 0;
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, "FREE", "#4ade80");
                 }
 
                 // Only tick these massive overworld effects once every 15 turns to prevent log spam
@@ -387,41 +430,59 @@ window.ExpansionManager.register({
                     }
                 }
                 
+                // 🌟 LORE WIN: Ambient Particle System (Leaves & Petals)
+                if (gameState.mapMode === 'overworld' && typeof ParticleSystem !== 'undefined' && Math.random() < 0.1) {
+                    const currentTile = chunkManager && chunkManager.getTile(p.x, p.y);
+                    if (currentTile === 'F' || currentTile === '.') {
+                        const px = p.x + (Math.random() * 16 - 8);
+                        const py = p.y + (Math.random() * 16 - 8);
+                        
+                        if (season === 'Autumn') {
+                            ParticleSystem.spawn(px, py, '#f97316', 'smoke', '', 2); // Orange leaf
+                            const leaf = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length - 1];
+                            if (leaf) { leaf.vy = 0.02; leaf.vx = 0.05; leaf.gravity = 0; leaf.lifeFade = 0.01; }
+                        } else if (season === 'Spring') {
+                            ParticleSystem.spawn(px, py, '#f472b6', 'sparkle', '', 2); // Pink petal
+                            const petal = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length - 1];
+                            if (petal) { petal.vy = 0.01; petal.vx = 0.03; petal.gravity = 0; petal.lifeFade = 0.01; }
+                        }
+                    }
+                }
+                
                 // Use .apply to safely pass all original arguments forward!
                 if (origEndPlayerTurn) origEndPlayerTurn.apply(this, arguments);
             };
-        }
+        });
 
         // ==========================================
         // 6. ENEMY MIGRATIONS
         // ==========================================
 
-        if (typeof chunkManager !== 'undefined' && chunkManager.getEnemySpawn) {
-            const origGetEnemySpawn = chunkManager.getEnemySpawn;
-            
-            chunkManager.getEnemySpawn = function(biome, distSq, random) {
-                const season = window.getCurrentSeason();
-                
-                // 15% chance to intercept the spawn table and inject a seasonal enemy!
-                if (Math.random() < 0.15) {
-                    if (season === 'Winter' && (biome === '.' || biome === 'F')) return '⛄'; 
-                    if (season === 'Spring' && biome === 'F') return '🌸w'; // Verdant Warden
-                    if (season === 'Summer' && (biome === 'D' || biome === 'd')) return '🌞'; 
-                    if (season === 'Autumn' && (biome === 'F' || biome === 'd')) return '🎃s'; // Harvester Spirit
-                }
-                
-                return origGetEnemySpawn.call(this, biome, distSq, random);
-            };
+        if (typeof chunkManager !== 'undefined') {
+            applySafePatch(chunkManager, 'getEnemySpawn', (origGetEnemySpawn) => {
+                return function(biome, distSq, random) {
+                    const season = window.getCurrentSeason();
+                    
+                    // 15% chance to intercept the spawn table and inject a seasonal enemy!
+                    if (Math.random() < 0.15) {
+                        if (season === 'Winter' && (biome === '.' || biome === 'F')) return '⛄'; 
+                        if (season === 'Spring' && biome === 'F') return '🌸w'; // Verdant Warden
+                        if (season === 'Summer' && (biome === 'D' || biome === 'd')) return '🌞'; 
+                        if (season === 'Autumn' && (biome === 'F' || biome === 'd')) return '🎃s'; // Harvester Spirit
+                    }
+                    
+                    if (origGetEnemySpawn) return origGetEnemySpawn.apply(this, arguments);
+                    return null;
+                };
+            });
         }
 
         // ==========================================
         // 7. HOMESTEAD HARVEST BONUSES
         // ==========================================
 
-        if (typeof window.harvestPlot === 'function') {
-            const origHarvestPlot = window.harvestPlot;
-            
-            window.harvestPlot = function(plotIndex) {
+        applySafePatch(window, 'harvestPlot', (origHarvestPlot) => {
+            return function(plotIndex) {
                 const p = gameState.player;
                 
                 // 1. Capture the plot state BEFORE the original function runs and potentially wipes it
@@ -440,7 +501,7 @@ window.ExpansionManager.register({
                 }
                 
                 // 2. Call original logic to handle standard harvesting, XP, and inventory capacity checks
-                origHarvestPlot(plotIndex);
+                if (origHarvestPlot) origHarvestPlot.apply(this, arguments);
                 
                 const plotAfter = p.gardenPlots ? p.gardenPlots[plotIndex] : null;
                 
@@ -462,8 +523,6 @@ window.ExpansionManager.register({
                         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(p) : 9;
                         
                         // Safe Stack Checks
-                        // Prevents the player losing their Autumn bonus if their inventory is "full" but they
-                        // already hold a stackable pile of the exact same crop!
                         const existingStack = p.inventory.find(i => i && i.name === seedData.yields && !i.isEquipped);
                         const isStackable = typeof window.isStackableItem === 'function' ? window.isStackableItem(template ? template.type : 'ingredient') : true;
 
@@ -473,7 +532,6 @@ window.ExpansionManager.register({
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, "BONUS", "#f97316");
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
 
-                            // Force a new save payload with the updated stack!
                             if (typeof triggerDebouncedSave === 'function') {
                                 triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : p.inventory });
                             }
@@ -494,18 +552,23 @@ window.ExpansionManager.register({
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, "BONUS", "#f97316");
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
 
-                            // Force a new save payload with the newly pushed item!
                             if (typeof triggerDebouncedSave === 'function') {
                                 triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : p.inventory });
                             }
                         } 
                         else {
-                            logMessage(`{red:Autumn Bonus lost... Your inventory is completely full!}`);
+                            // 🚨 BUG FIX & QoL WIN: Drop on floor instead of permanent deletion!
+                            logMessage(`{red:Autumn Bonus lost... Your inventory is completely full! The crop falls to the ground.}`);
+                            if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
+                                window.EventManager.safeDropItem(gameState, p.x, p.y, template ? template.tile : '🌿');
+                            }
                         }
                     }
                 }
             };
-        }
+        });
+        
+        logger.log("Seasonal Hooks applied securely.");
     }
 });
 
