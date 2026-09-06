@@ -146,6 +146,7 @@ const FORMAT_REGEXES = [
     { rx: /{green:(.*?)}/g, repl: '<span class="text-green-500 font-bold drop-shadow-md">$1</span>' },
     { rx: /{blue:(.*?)}/g, repl: '<span class="text-blue-400 font-bold drop-shadow-md">$1</span>' },
     { rx: /{gold:(.*?)}/g, repl: '<span class="text-yellow-500 font-bold drop-shadow-md">$1</span>' },
+    { rx: /{yellow:(.*?)}/g, repl: '<span class="text-yellow-400 font-bold drop-shadow-md">$1</span>' },
     { rx: /{purple:(.*?)}/g, repl: '<span class="text-purple-400 font-bold drop-shadow-md">$1</span>' },
     { rx: /{cyan:(.*?)}/g, repl: '<span class="text-cyan-400 font-bold drop-shadow-md">$1</span>' },
     { rx: /{orange:(.*?)}/g, repl: '<span class="text-orange-400 font-bold drop-shadow-md">$1</span>' },
