@@ -25,60 +25,102 @@ function getSectorId(coordString) {
     }
 }
 
-// --- Anti-Cheat Tracking ---
-let lastValidatedState = null;
-const MAX_GOLD_PER_TICK = 5000; // Max gold you could reasonably earn between saves
-const MAX_XP_PER_TICK = 10000;  // Max XP you could reasonably earn between saves
+// --- Anti-Cheat Tracking (Secured Closure) ---
+window.AntiCheat = (function() {
+    let legitimateGoldDelta = 0;
+    let legitimateXpDelta = 0;
+    let lastValidatedState = null;
+    
+    // Burst Limiters to prevent console injection loops
+    let goldTransactionsThisTick = 0;
+    let xpTransactionsThisTick = 0;
+    let lastTickTime = Date.now();
 
-window.legitimateGoldDelta = 0;
-window.legitimateXpDelta = 0;
+    const MAX_GOLD_PER_TICK = 25000; 
+    const MAX_XP_PER_TICK = 30000;   
 
-window.trackLegitimateGold = function(amount) {
-    window.legitimateGoldDelta += amount;
-};
-window.trackLegitimateXp = function(amount) {
-    window.legitimateXpDelta += amount;
-};
+    return {
+        trackGold: function(amount) {
+            const now = Date.now();
+            if (now - lastTickTime > 1000) {
+                goldTransactionsThisTick = 0;
+                xpTransactionsThisTick = 0;
+                lastTickTime = now;
+            }
 
-// Define Admins who are allowed to bypass Anti-Cheat checks
-const ADMIN_EMAILS = [
-    "your.email@gmail.com", // <-- CHANGE THIS TO YOUR EMAIL
-    "admin@cavesandcastles.com"
-];
+            goldTransactionsThisTick++;
+            if (goldTransactionsThisTick > 25) {
+                console.warn("[AKASHIC ENGINE] Rate limit exceeded for gold generation.");
+                return false;
+            }
+            if (amount > 20000) { 
+                console.warn("[AKASHIC ENGINE] Suspiciously large gold transaction blocked.");
+                return false;
+            }
+            
+            legitimateGoldDelta += amount;
+            return true;
+        },
+        
+        trackXp: function(amount) {
+            const now = Date.now();
+            if (now - lastTickTime > 1000) {
+                goldTransactionsThisTick = 0;
+                xpTransactionsThisTick = 0;
+                lastTickTime = now;
+            }
 
-function validateStateBeforeSave(currentState) {
-    if (!lastValidatedState) return true; // First load is always trusted
+            xpTransactionsThisTick++;
+            if (xpTransactionsThisTick > 25 || amount > 20000) return false;
 
-    // 1. Admin Bypass: If you are logged in as an admin, allow any stat modifications
-    if (auth.currentUser && ADMIN_EMAILS.includes(auth.currentUser.email)) {
-        return true; 
-    }
+            legitimateXpDelta += amount;
+            return true;
+        },
 
-    // Subtract the legally earned gold/xp before checking for impossible jumps!
-    const goldDiff = (currentState.coins || 0) - (lastValidatedState.coins || 0) - (window.legitimateGoldDelta || 0);
-    const xpDiff = (currentState.xp || 0) - (lastValidatedState.xp || 0) - (window.legitimateXpDelta || 0);
-    const levelDiff = (currentState.level || 1) - (lastValidatedState.level || 1);
+        getDeltas: () => ({ gold: legitimateGoldDelta, xp: legitimateXpDelta }),
+        resetDeltas: () => { legitimateGoldDelta = 0; legitimateXpDelta = 0; },
+        setLastState: (state) => { lastValidatedState = JSON.parse(JSON.stringify(state)); },
+        
+        validate: function(currentState, currentUser) {
+            if (!lastValidatedState) return true; // First load is always trusted
 
-    // 2. Check for impossible mathematical jumps
-    if (goldDiff > MAX_GOLD_PER_TICK || xpDiff > MAX_XP_PER_TICK || levelDiff > 5) {
-        console.error(`🚨 ANTI-CHEAT TRIGGERED: Impossible stat jump detected. Gold diff: ${goldDiff}, XP diff: ${xpDiff}`);
-        return false;
-    }
+            const ADMIN_EMAILS = [
+                "your.email@gmail.com", // <-- CHANGE TO YOUR EMAIL
+                "admin@cavesandcastles.com"
+            ];
 
-    // 3. Prevent negative vital manipulation (Underflow exploiting)
-    if (currentState.health < 0 || currentState.coins < 0) {
-        console.error(`🚨 ANTI-CHEAT TRIGGERED: Negative value injection detected.`);
-        return false;
-    }
+            if (currentUser && ADMIN_EMAILS.includes(currentUser.email)) return true; 
 
-    // 4. Prevent "God Mode" memory injection by non-admins
-    if (currentState.health > currentState.maxHealth + 10) { // +10 buffer for weird buff interactions
-         console.error(`🚨 ANTI-CHEAT TRIGGERED: Health exceeds maximum bounds.`);
-         return false;
-    }
+            const goldDiff = (currentState.coins || 0) - (lastValidatedState.coins || 0) - legitimateGoldDelta;
+            const xpDiff = (currentState.xp || 0) - (lastValidatedState.xp || 0) - legitimateXpDelta;
+            const levelDiff = (currentState.level || 1) - (lastValidatedState.level || 1);
 
-    return true; // State is clean
-}
+            if (goldDiff > MAX_GOLD_PER_TICK || xpDiff > MAX_XP_PER_TICK || levelDiff > 5) {
+                console.error(`🚨 ANTI-CHEAT TRIGGERED: Impossible stat jump detected. Gold diff: ${goldDiff}, XP diff: ${xpDiff}`);
+                return false;
+            }
+            if (currentState.health < 0 || currentState.coins < 0) {
+                console.error(`🚨 ANTI-CHEAT TRIGGERED: Negative value injection detected.`);
+                return false;
+            }
+            if (currentState.health > currentState.maxHealth + 10) { 
+                 console.error(`🚨 ANTI-CHEAT TRIGGERED: Health exceeds maximum bounds.`);
+                 return false;
+            }
+            return true;
+        }
+    };
+})();
+
+// Lock the tracking functions so devtools can't overwrite them
+Object.defineProperty(window, 'trackLegitimateGold', {
+    value: window.AntiCheat.trackGold,
+    writable: false, configurable: false, enumerable: false
+});
+Object.defineProperty(window, 'trackLegitimateXp', {
+    value: window.AntiCheat.trackXp,
+    writable: false, configurable: false, enumerable: false
+});
 
 /**
  * Queues a Firestore update. If another update comes in before the timer fires,
@@ -238,8 +280,8 @@ function flushPendingSave(immediateUpdates = {}) {
         // --- 5. PROCESS MAIN PLAYER DATA ---
         if (Object.keys(dataToSave).length > 0) {
             const stateToVerify = { ...gameState.player, ...dataToSave };
-            // Use the new AntiCheat validator!
-            if (!AntiCheat.validate(stateToVerify, auth.currentUser)) {
+            // Use the new secure validator
+            if (!window.AntiCheat.validate(stateToVerify, auth.currentUser)) {
                 logMessage("{red:Reality destabilizes. Unnatural energies detected.}");
                 setTimeout(() => location.reload(), 2000);
                 return;
@@ -254,21 +296,27 @@ function flushPendingSave(immediateUpdates = {}) {
                 saveIcon.classList.add('opacity-100');
             }
             
-            Promise.all(batches.map(b => b.commit())).then(() => {
-                // Update the AntiCheat baseline securely!
-                AntiCheat.setLastState(gameState.player);
-                AntiCheat.resetDeltas();
-                
-                setTimeout(() => {
-                    if (saveIcon) {
-                        saveIcon.classList.remove('opacity-100');
-                        saveIcon.classList.add('opacity-0');
+            // Execute sequentially to prevent 10,000 writes/sec Firestore crash
+            (async () => {
+                try {
+                    for (const batch of batches) {
+                        await batch.commit();
                     }
-                }, 1500);
-            }).catch(err => {
-                console.error("Batch save failed:", err);
-                if (saveIcon) saveIcon.classList.add('opacity-0');
-            });
+                    // Update the AntiCheat baseline securely!
+                    window.AntiCheat.setLastState(gameState.player);
+                    window.AntiCheat.resetDeltas();
+                    
+                    setTimeout(() => {
+                        if (saveIcon) {
+                            saveIcon.classList.remove('opacity-100');
+                            saveIcon.classList.add('opacity-0');
+                        }
+                    }, 1500);
+                } catch (err) {
+                    console.error("Batch save failed:", err);
+                    if (saveIcon) saveIcon.classList.add('opacity-0');
+                }
+            })();
         }
     }
     
@@ -3208,8 +3256,8 @@ async function enterGame(playerData) {
             updateExploration();
             
             // --- SET ANTI-CHEAT BASELINE ---
-            if (typeof AntiCheat !== 'undefined') {
-                AntiCheat.setLastState(gameState.player);
+            if (typeof window.AntiCheat !== 'undefined') {
+                window.AntiCheat.setLastState(gameState.player);
             }
 
             // Drop the loading curtain!
