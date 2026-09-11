@@ -50,9 +50,16 @@ window.ExpansionManager = {
         // Failsafe deep clone that severs all prototype and reference links
         const clone = JSON.parse(JSON.stringify(item));
         
-        // Re-bind functions natively since JSON.stringify destroys them
-        if (typeof item.effect === 'function') clone.effect = item.effect;
-        if (typeof item.onHit === 'function') clone.onHit = item.onHit; 
+        // 🚨 FUTURE-PROOFING WIN: Dynamic Function Rebinding
+        // Instead of hardcoding `.effect` or `.onHit`, this loop safely carries over 
+        // ANY functions attached to the item object, supporting custom mod logic effortlessly!
+        for (const key in item) {
+            if (Object.prototype.hasOwnProperty.call(item, key)) {
+                if (typeof item[key] === 'function') {
+                    clone[key] = item[key];
+                }
+            }
+        }
         
         return clone;
     },
@@ -120,9 +127,13 @@ window.ExpansionManager = {
         // 🚨 ROBUSTNESS WIN: Dynamic context binding!
         // Instead of hard-binding `.bind(targetObj)`, we use a dynamic wrapper.
         // This ensures that if the original function relies on dynamic `this` mapping (like EventListeners), it doesn't break!
-        targetObj[methodName] = patchFactory(function() {
+        const patchedFunc = patchFactory(function() {
             return originalFunc.apply(this, arguments);
         });
+        
+        // Tag the function for transparency in devtools/debugging
+        patchedFunc._isAkashicPatched = true;
+        targetObj[methodName] = patchedFunc;
         
         return true;
     },
@@ -164,7 +175,9 @@ window.ExpansionManager = {
         const hooksToRun = this._compiledHooks[hookName];
         if (!hooksToRun || hooksToRun.length === 0) return context;
         
-        for (let i = 0; i < hooksToRun.length; i++) {
+        // 🚀 PERFORMANCE WIN: Cache array length to prevent V8 re-evaluation inside the hot loop!
+        const len = hooksToRun.length;
+        for (let i = 0; i < len; i++) {
             const hook = hooksToRun[i];
             
             try {
@@ -368,6 +381,13 @@ window.ExpansionManager = {
                 
                 // 🚀 PERFORMANCE WIN: Object.entries is faster and safer than for...in
                 for (const [key, val] of Object.entries(data[localKey])) {
+                    // 🚨 SECURITY WIN: Prototype Pollution Guard
+                    // Prevents a malicious/poorly-formatted expansion JSON from overwriting native JS internals!
+                    if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+                        console.warn(`%c[AKASHIC ENGINE] Temporal Anomaly: Blocked illegal memory overwrite (Prototype Pollution) by '${exp.id}'.`, "color: #ef4444; font-weight: bold;");
+                        continue;
+                    }
+
                     // Collision Warnings
                     if (workingDict[key]) {
                         console.warn(`%c[AKASHIC ENGINE] Overwrite Notice: '${exp.id}' is modifying existing ${localKey} entry: '${key}'.`, "color: #fb923c;");
