@@ -344,12 +344,15 @@ function useHotbarSlot(index) {
             const slotEl = document.getElementById(`hotbarSlot-${index}`);
             if (slotEl) {
                 slotEl.classList.remove('shake');
-                void slotEl.offsetWidth; 
-                slotEl.classList.add('shake');
-                slotEl.addEventListener('animationend', () => slotEl.classList.remove('shake'), { once: true });
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        slotEl.classList.add('shake');
+                        slotEl.addEventListener('animationend', () => slotEl.classList.remove('shake'), { once: true });
+                    });
+                });
             }
         };
-
+        
         const cooldowns = player.cooldowns || {};
         if (cooldowns[abilityId] > 0) {
             let cdMsg = `{gray:That ability is not ready yet! (${cooldowns[abilityId]} turns left)}`;
