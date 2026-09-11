@@ -1150,40 +1150,52 @@ function updateRegionDisplay() {
         finalRegionHtml = typeof getCastleName === 'function' ? getCastleName(gameState.currentCastleId) : 'Castle Ruins'; 
     }
     
-    // PERFORMANCE WIN: Cache DOM check
+    // Cache DOM check
     if (_uiCache.region !== finalRegionHtml) {
         regionDisplay.textContent = finalRegionHtml;
         _uiCache.region = finalRegionHtml;
     }
 }
 
-// BUG FIX & MEMORY LEAK PREVENTION: 
 // Replaced `.onanimationend =` assignment with self-cleaning `addEventListener` 
 // to prevent overwriting other animations and leaking closure scopes!
 function triggerStatFlash(statElement, positive = true) {
     if (!statElement) return;
     const animationClass = positive ? 'stat-flash-green' : 'stat-flash-red';
     
+    // Remove the class immediately
     statElement.classList.remove(animationClass);
-    void statElement.offsetWidth; 
-    statElement.classList.add(animationClass);
     
-    statElement.addEventListener('animationend', function handler() {
-        statElement.classList.remove(animationClass);
-        statElement.removeEventListener('animationend', handler);
-    }, { once: true });
+    // Double rAF (requestAnimationFrame)
+    // Ensures the browser registers the class removal before adding it back,
+    // seamlessly restarting the animation without halting the JS thread!
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            statElement.classList.add(animationClass);
+            
+            statElement.addEventListener('animationend', function handler() {
+                statElement.classList.remove(animationClass);
+                statElement.removeEventListener('animationend', handler);
+            }, { once: true });
+        });
+    });
 }
 
 function triggerStatAnimation(statElement, animationClass) {
     if (!statElement) return;
-    statElement.classList.remove(animationClass);
-    void statElement.offsetWidth; 
-    statElement.classList.add(animationClass);
     
-    statElement.addEventListener('animationend', function handler() {
-        statElement.classList.remove(animationClass);
-        statElement.removeEventListener('animationend', handler);
-    }, { once: true });
+    statElement.classList.remove(animationClass);
+    
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            statElement.classList.add(animationClass);
+            
+            statElement.addEventListener('animationend', function handler() {
+                statElement.classList.remove(animationClass);
+                statElement.removeEventListener('animationend', handler);
+            }, { once: true });
+        });
+    });
 }
 
 function renderStatusEffects() {
