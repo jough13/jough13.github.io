@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "clockwork_uprising",
     name: "The Clockwork Uprising",
-    version: "1.5", // Upgraded version!
+    version: "1.5",
     
     data: {
         // --- 1. EXPANDED ITEMS ---
@@ -160,9 +160,9 @@ window.ExpansionManager.register({
                                 reqHint: "Requires Clockwork Core",
                                 action: (state, ctx) => {
                                     // Consume the Core
-                                    const idx = state.player.inventory.findIndex(i => i && i.name === 'Clockwork Core' && !i.isEquipped);
-                                    state.player.inventory[idx].quantity--;
-                                    if (state.player.inventory[idx].quantity <= 0) state.player.inventory.splice(idx, 1);
+                                    if (typeof window.consumeItemSafely === 'function') {
+                                            window.consumeItemSafely(state.player.inventory, 'Clockwork Core', 1);
+                                        }
                                     
                                     logMessage("{yellow:You slot the glowing core into the machine's chest. It whirs to life!}");
                                     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
