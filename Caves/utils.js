@@ -17,41 +17,25 @@ window.withTimeout = function(promise, ms = 3000) {
 // Essential for limiting API calls, window resizing, or rapid UI button mashing
 window.debounce = function(func, wait) {
     let timeout;
-    const debounced = function(...args) {
+    return function(...args) {
         // 🚨 BUG FIX WIN: Context capturing
         // Guarantees `this` points to the correct DOM element or object, not the Window!
         const context = this; 
         clearTimeout(timeout);
         timeout = setTimeout(() => func.apply(context, args), wait);
     };
-    // 🚨 MEMORY LEAK FIX: Allow manual cancellation of the timer if the parent UI is destroyed
-    debounced.cancel = () => clearTimeout(timeout);
-    return debounced;
 };
 
 window.throttle = function(func, limit) {
     let inThrottle;
-    let lastFunc;
-    let lastRan;
-    const throttled = function(...args) {
-        const context = this; 
+    return function(...args) {
+        const context = this; // 🚨 BUG FIX WIN
         if (!inThrottle) {
             func.apply(context, args);
-            lastRan = Date.now();
             inThrottle = true;
-        } else {
-            clearTimeout(lastFunc);
-            lastFunc = setTimeout(function() {
-                if ((Date.now() - lastRan) >= limit) {
-                    func.apply(context, args);
-                    lastRan = Date.now();
-                }
-            }, limit - (Date.now() - lastRan));
+            setTimeout(() => inThrottle = false, limit);
         }
     };
-    // 🚨 MEMORY LEAK FIX
-    throttled.cancel = () => clearTimeout(lastFunc);
-    return throttled;
 };
 
 // ==========================================
@@ -174,13 +158,9 @@ window.MathUtils = {
     
     // Standard RPG Dice Roller (e.g., rollDice(6, 2) rolls 2d6)
     rollDice: (sides, count = 1) => {
-        // 🚨 BUG FIX WIN: Force minimum bounds of 1 to prevent NaN injection!
-        const safeSides = Math.max(1, parseInt(sides) || 1);
-        const safeCount = Math.max(1, parseInt(count) || 1);
-        
         let total = 0;
-        for (let i = 0; i < safeCount; i++) {
-            total += Math.floor(Math.random() * safeSides) + 1;
+        for (let i = 0; i < count; i++) {
+            total += Math.floor(Math.random() * sides) + 1;
         }
         return total;
     },
@@ -221,11 +201,7 @@ window.MathUtils = {
         const minutes = Math.floor((safeMs / (1000 * 60)) % 60);
         const hours = Math.floor((safeMs / (1000 * 60 * 60)) % 24);
         
-        // 🚨 ADDITION: Support for mapping TTLs (Time-To-Live) that span multiple days!
-        const days = Math.floor(safeMs / (1000 * 60 * 60 * 24));
-        
         let str = "";
-        if (days > 0) str += `${days}d `;
         if (hours > 0) str += `${hours}h `;
         if (minutes > 0) str += `${minutes}m `;
         if (seconds > 0 || str === "") str += `${seconds}s`;
@@ -644,39 +620,41 @@ window.getLoreTimeOfDay = function(hour) {
     return "The Star-lit Night";
 };
 
-// 🚨 LORE EXPANSION: Deeply Expanded Dictionary for Auto-Tagging
+// Deeply Expanded Dictionary for Auto-Tagging
 window.LORE_KEYWORDS = {
-    // Core Factions & Entities
+    // Factions & Entities
     'Void': 'void', 'Void Rift': 'void', 'Shadowed Hand': 'purple',
     'Old King': 'gold', 'First King': 'gold', 'Alaric': 'gold',
     'Leviathan': 'blue', 'Kraken': 'red', 'Drake': 'orange',
     'Ogre': 'orange', 'Dire Wolf': 'gray', 'Draugr': 'cyan', 
     'Void Demon': 'void', 'Efreet': 'orange', 'Vampire Lord': 'red',
     
-    // --- EXPANSION RACES & CLASSES ---
+    // --- NEW CLASSES & RACES ---
     'Fae Queen': 'fuchsia', 'Clockwork Prime': 'yellow',
     'Clockwork Guardian': 'yellow', 'Fallen Titan': 'orange',
     'Goliath': 'gray', 'Fae-Blood': 'fuchsia', 'Void-Kissed': 'purple',
     'Cleric': 'yellow', 'Hunter': 'green', 'Inquisitor': 'red', 
     'Oracle': 'cyan', 'Beastmaster': 'green', 'Sniper': 'gray',
-    'Dhampir': 'red', 'Sylph': 'cyan', 'Brawler': 'orange',
     
-    // --- LORE & EXPANSION MAGIC ---
+    // Magic & Leylines
     'Leylines': 'blue', 'Waystone': 'blue', 'Akashic': 'blue',
     'Fae': 'green', 'Fairy': 'green', 'Elder Tree': 'green',
     'Arcane Dust': 'purple', 'Enchanting Altar': 'purple',
     'Memory Shard': 'purple', 'Paradox Anomaly': 'gold',
     'Star-Metal': 'cyan', 'Mithril': 'cyan', 'Obsidian': 'gray',
-    'Purify': 'cyan', 'Purified': 'cyan', 'Radiant Spring': 'cyan', 
-    'Cloudseed': 'green', 'Akashic Records': 'blue', 'Bloodline Pendant': 'red',
     
-    // --- LORE & EXPANSION MECHANICS ---
+    // --- NEW MECHANICS ---
+    'Purify': 'cyan', 'Purified': 'cyan',
+    'Radiant Spring': 'cyan', 'Cloudseed': 'green',
+    
+    // Mechanics & Tools
     'Dimensional Vault': 'blue', 'Stash Box': 'yellow', 'Fishing Rod': 'cyan',
     'Pickaxe': 'gray', 'Machete': 'gray', 'Heavy Crossbow': 'red',
-    'Grand Fortress': 'red', 'Blood Moon': 'red', 'Colosseum': 'red', 
-    'Master Blacksmith': 'yellow', 'Cartographer': 'blue', 'Safe Haven': 'green',
-    'Infinite Spire': 'fuchsia', 'Molten Lord': 'orange', 'Void Terror': 'void',
-    'Ascendant': 'gold', 'Vanguard': 'blue', 'Syndicate': 'red', 'Grand Heist': 'gray',
+    
+    // Landmarks & Events
+    'Grand Fortress': 'red', 'Blood Moon': 'red',
+    'Colosseum': 'red', 'Master Blacksmith': 'yellow',
+    'Cartographer': 'blue', 'Safe Haven': 'green',
     
     // Special Materials & Valuables
     'Black Pearl': 'purple', 'Dragon Scale': 'red', 'Elemental Core': 'orange',
@@ -772,6 +750,41 @@ window.getRelativePositionText = function(dx, dy, atmospheric = false) {
     if (dir === 'nearby') return 'right on top of you';
     
     return `${distStr} ${atmospheric ? dir : capitalizeWords(dir)}`;
+};
+
+/**
+ * Safely consumes an exact quantity of items across multiple stacks.
+ * Looping backwards guarantees that splicing empty stacks doesn't shift the 
+ * indices of items we haven't checked yet!
+ * 
+ * @param {Array} inventory - The player's inventory array
+ * @param {String} itemName - The exact name of the item to consume
+ * @param {Number} quantity - The total amount to consume
+ * @returns {Boolean} - Returns true if the full quantity was successfully consumed
+ */
+
+window.consumeItemSafely = function(inventory, itemName, quantity = 1) {
+    let needed = quantity;
+    
+    for (let i = inventory.length - 1; i >= 0; i--) {
+        if (needed <= 0) break;
+        
+        const item = inventory[i];
+        // Ensure we only consume unequipped, matching items
+        if (item && item.name === itemName && !item.isEquipped) {
+            const take = Math.min(item.quantity, needed);
+            item.quantity -= take;
+            needed -= take;
+            
+            // If the stack is depleted, safely splice it out
+            if (item.quantity <= 0) {
+                inventory.splice(i, 1);
+            }
+        }
+    }
+    
+    // Return true if we found and consumed the requested amount
+    return needed === 0; 
 };
 
 // ==========================================
