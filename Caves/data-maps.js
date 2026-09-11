@@ -646,10 +646,8 @@ window.TILE_DATA = {
 
             setTimeout(() => {
                 const consumeItem = (name) => {
-                    const idx = inv.findIndex(i => i.name === name && !i.isEquipped);
-                    if (idx > -1) {
-                        inv[idx].quantity--;
-                        if (inv[idx].quantity <= 0) inv.splice(idx, 1);
+                    if (typeof window.consumeItemSafely === 'function') {
+                        window.consumeItemSafely(inv, name, 1);
                     }
                 };
 
