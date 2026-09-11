@@ -460,12 +460,16 @@ window.ExpansionManager.register({
                                         }
                                     };
 
-                                    const idx = state.player.inventory.findIndex(i => i && i.name === 'Iron Ore' && !i.isEquipped);
-                                    state.player.inventory[idx].quantity -= 10;
-                                    const freesSlot = state.player.inventory[idx].quantity <= 0;
-                                    if (freesSlot) state.player.inventory.splice(idx, 1);
+                                    let freesSlot = false;
+                                    const originalLength = state.player.inventory.length;
+
+                                    if (typeof window.consumeItemSafely === 'function') {
+                                        // This safely loops backwards and cleanly consumes 10 ore across multiple stacks if necessary!
+                                        window.consumeItemSafely(state.player.inventory, 'Iron Ore', 10);
+                                        freesSlot = state.player.inventory.length < originalLength;
+                                    }
                                     
-                                    // 🚨 LORE & ROBUSTNESS WIN: Safe reputation modifier
+                                    // Safe reputation modifier
                                     if (typeof window.modifyReputation === 'function') {
                                         window.modifyReputation('dwarven_clans', 20);
                                     }
