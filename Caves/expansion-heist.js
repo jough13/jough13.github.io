@@ -46,7 +46,7 @@ window.ExpansionManager.register({
                 flavor: "A heavy iron door with a complex locking mechanism.",
                 onInteract: (state, x, y) => {
                     const inv = state.player.inventory;
-                    const pickIdx = inv.findIndex(i => i && i.name === 'Lockpick' && !i.isEquipped);
+                    const hasPicklock = inv.some(i => i && i.name === 'Lockpick' && !i.isEquipped);
 
                     if (pickIdx === -1) {
                         logMessage("{red:The door is locked tight. You need a Lockpick.}");
@@ -69,8 +69,9 @@ window.ExpansionManager.register({
                         if (Math.random() < retainChance) {
                             logMessage("{cyan:Your deft fingers extract the lockpick unharmed.}");
                         } else {
-                            inv[pickIdx].quantity--;
-                            if (inv[pickIdx].quantity <= 0) inv.splice(pickIdx, 1);
+                            if (typeof window.consumeItemSafely === 'function') {
+                                window.consumeItemSafely(inv, 'Lockpick', 1);
+                            }
                         }
 
                         // Replace door with open door
