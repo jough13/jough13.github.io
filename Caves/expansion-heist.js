@@ -85,12 +85,13 @@ window.ExpansionManager.register({
                         state.screenShake = 5;
                         
                         // Break the pick
-                        inv[pickIdx].quantity--;
-                        if (inv[pickIdx].quantity <= 0) inv.splice(pickIdx, 1);
+                        if (typeof window.consumeItemSafely === 'function') {
+                            window.consumeItemSafely(inv, 'Lockpick', 1);
+                        }
                     }
 
                     if (typeof renderInventory === 'function') renderInventory();
-                    // 🚨 BUG FIX WIN: Ensure hotbar updates if lockpicks are bound!
+                    // Ensure hotbar updates if lockpicks are bound!
                     if (typeof renderHotbar === 'function') renderHotbar();
                     
                     // Always return an object to ensure the turn passes!
