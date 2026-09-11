@@ -34,7 +34,12 @@ if (typeof firebase === 'undefined') {
     // If we are offline, attempt to save the "Firestore" payload into localStorage so the 
     // player doesn't lose their character when they refresh the page!
     const _offlineSave = (path, data) => {
-        try { localStorage.setItem(`akashic_offline_${path}`, JSON.stringify(data)); } catch(e){}
+        try { 
+            localStorage.setItem(`akashic_offline_${path}`, JSON.stringify(data)); 
+        } catch(e) {
+            // 🚨 ROBUSTNESS WIN: Gracefully handle LocalStorage Quota Exceeded errors
+            console.warn("%c[AKASHIC ENGINE] Local storage quota exceeded! Reality is collapsing!", "color: #ef4444; font-weight: bold;");
+        }
     };
     const _offlineLoad = (path) => {
         try { return JSON.parse(localStorage.getItem(`akashic_offline_${path}`)); } catch(e){ return null; }
@@ -87,8 +92,9 @@ if (typeof firebase === 'undefined') {
 
     // --- REALTIME DATABASE (RTDB) MOCK ---
     const dummyRTDBRef = {
-        on: () => {},
-        off: () => {},
+        // 🚨 BUG FIX WIN: Make mock listeners chainable so expansions don't throw undefined errors!
+        on: function() { return this; },
+        off: function() { return this; },
         once: async () => ({ val: () => null, exists: () => false }), 
         update: () => Promise.resolve(),
         set: () => Promise.resolve(),
@@ -152,8 +158,11 @@ if (typeof firebase === 'undefined') {
     // Inject a critical UI banner instantly
     window.addEventListener('DOMContentLoaded', () => {
         const fallbackBanner = document.createElement('div');
-        fallbackBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-4 z-[999999] bg-red-950 text-red-200 border-b-4 border-red-600 shadow-[0_0_30px_rgba(220,38,38,1)] font-mono tracking-widest uppercase select-none';
+        fallbackBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-4 z-[999999] bg-red-950 text-red-200 border-b-4 border-red-600 shadow-[0_0_30px_rgba(220,38,38,1)] font-mono tracking-widest uppercase select-none cursor-pointer';
         fallbackBanner.innerHTML = "⚠️ CRITICAL LEYLINE FAILURE ⚠️<br><span class='text-[10px] font-normal text-red-300'>The Akashic Engine cannot connect. Local simulation engaged. Progress saved to browser.</span>";
+        
+        // Let the player dismiss the offline warning
+        fallbackBanner.onclick = () => { fallbackBanner.style.display = 'none'; };
         document.body.appendChild(fallbackBanner);
     });
 }
@@ -496,7 +505,7 @@ function handleAuthError(error) {
             friendlyMessage = 'Your temporal tether has snapped. Please re-anchor your soul (Log in again).';
             break;
         case 'auth/credential-already-in-use':
-            friendlyMessage = 'This artifact is already attuned to another traveler.';
+            friendlyMessage = 'This artifact is already attuned to another traveler. (Credential in use)';
             break;
         case 'auth/requires-recent-login':
             friendlyMessage = 'The ancient wards require a fresh tether. Log out and return to proceed.';
@@ -520,10 +529,20 @@ function handleAuthError(error) {
     if (_authErrorCache) {
         _authErrorCache.textContent = friendlyMessage;
         
-        // Add a slight shake animation to the error text for tactile feedback
+        // 🚨 PERFORMANCE & BUG FIX WIN: Double rAF (requestAnimationFrame) layout-thrashing fix!
+        // Prevents the browser from instantly freezing the UI to recalculate CSS positioning
         _authErrorCache.classList.remove('shake');
-        void _authErrorCache.offsetWidth; // trigger reflow
-        _authErrorCache.classList.add('shake');
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                _authErrorCache.classList.add('shake');
+                
+                // Self-cleaning listener prevents ghost animation builds
+                _authErrorCache.addEventListener('animationend', function handler() {
+                    _authErrorCache.classList.remove('shake');
+                    _authErrorCache.removeEventListener('animationend', handler);
+                }, { once: true });
+            });
+        });
     }
     
     if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
