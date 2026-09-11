@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_bloodline",
     name: "The Bloodline (Prestige System)",
-    version: "1.6", // Upgraded version!
+    version: "1.7", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -58,6 +58,18 @@ window.ExpansionManager.register({
                     return true;
                 }
             },
+            // 🌟 LORE WIN: New Mythic Title
+            '📜ch': {
+                name: 'Title: The Chronomancer', type: 'consumable', tile: '📜', _rarity: 'legendary',
+                description: "Equips the title 'The Chronomancer' above your name and in chat.",
+                effect: (state) => {
+                    state.player.activeTitle = "The Chronomancer";
+                    logMessage("{cyan:You are now known as The Chronomancer!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                    if (typeof renderStats === 'function') renderStats();
+                    return true;
+                }
+            },
             '⌛': {
                 name: 'Ascendant\'s Hourglass', type: 'consumable', tile: '⌛', _rarity: 'legendary', excludeFromLoot: true,
                 description: "Crush the glass to fold space and instantly teleport to the Infinite Spire.",
@@ -68,15 +80,24 @@ window.ExpansionManager.register({
                         return false;
                     }
                     
+                    // 🚨 QoL WIN: Prevent accidental consumptions of an endgame item!
+                    if (!confirm("Crushing the Hourglass will teleport you thousands of miles across the realm directly to the Infinite Spire. Proceed?")) {
+                        return false;
+                    }
+                    
                     logMessage("{gold:You crush the Hourglass. The sands of time whip around you!}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playTimelineShift();
                     
                     state.screenShake = 30;
                     state.screenFlash = { color: '#facc15', alpha: 0.8, decay: 0.02 };
                     
+                    // Full Heal before entering the most dangerous zone in the game
+                    if (typeof window.clampAllVitals === 'function') window.clampAllVitals();
+                    else state.player.health = state.player.maxHealth;
+                    
                     // Spire is always far out in the desert, roughly 2000-3000 coords out. Let's spawn an instance!
-                    const tx = 2500;
-                    const ty = 2500;
+                    const tx = 2500 + Math.floor(Math.random() * 500);
+                    const ty = 2500 + Math.floor(Math.random() * 500);
                     
                     // Drop the Spire tile at the destination to ensure it's there
                     if (typeof chunkManager !== 'undefined') {
@@ -119,6 +140,7 @@ window.ExpansionManager.register({
                 { name: 'Title: Realmwalker', price: 15000, stock: 1 },
                 { name: 'Title: Ascendant', price: 50000, stock: 1 },
                 { name: 'Title: God-Slayer', price: 75000, stock: 1 },
+                { name: 'Title: The Chronomancer', price: 100000, stock: 1 }, // New Title!
                 { name: 'Ascendant\'s Hourglass', price: 5000, stock: 5 },
                 { name: 'Golden Apple', price: 10000, stock: 5 },
                 { name: 'Elixir of Power', price: 10000, stock: 5 }
@@ -129,6 +151,26 @@ window.ExpansionManager.register({
     // --- 4. ENGINE HOOKS ---
     init: function() {
         
+        // 🚀 PERFORMANCE WIN: Lazy DOM Cache for Prestige Modal
+        const _pDOMCache = {
+            modal: null,
+            reqLevel: null,
+            reqSpire: null,
+            rewards: null,
+            nextGenNum: null,
+            ascendBtn: null,
+            shopBtn: null,
+            cancelBtn: null,
+            getModal: () => _pDOMCache.modal || (document.getElementById('prestigeModal') && (_pDOMCache.modal = document.getElementById('prestigeModal'))),
+            getReqLevel: () => _pDOMCache.reqLevel || (document.getElementById('reqLevel') && (_pDOMCache.reqLevel = document.getElementById('reqLevel'))),
+            getReqSpire: () => _pDOMCache.reqSpire || (document.getElementById('reqSpire') && (_pDOMCache.reqSpire = document.getElementById('reqSpire'))),
+            getRewards: () => _pDOMCache.rewards || (document.getElementById('prestigeRewards') && (_pDOMCache.rewards = document.getElementById('prestigeRewards'))),
+            getNextGenNum: () => _pDOMCache.nextGenNum || (document.getElementById('nextGenNum') && (_pDOMCache.nextGenNum = document.getElementById('nextGenNum'))),
+            getAscendBtn: () => _pDOMCache.ascendBtn || (document.getElementById('prestigeAscendBtn') && (_pDOMCache.ascendBtn = document.getElementById('prestigeAscendBtn'))),
+            getShopBtn: () => _pDOMCache.shopBtn || (document.getElementById('prestigeShopBtn') && (_pDOMCache.shopBtn = document.getElementById('prestigeShopBtn'))),
+            getCancelBtn: () => _pDOMCache.cancelBtn || (document.getElementById('prestigeCancelBtn') && (_pDOMCache.cancelBtn = document.getElementById('prestigeCancelBtn')))
+        };
+
         // ==========================================
         // 1. INJECT THE PRESTIGE UI MODAL
         // ==========================================
@@ -193,11 +235,11 @@ window.ExpansionManager.register({
             const hasSpireToken = player.inventory.some(i => i && i.name === 'Spire Token');
             const isLevel50 = player.level >= 50;
 
-            const reqLevelEl = document.getElementById('reqLevel');
-            const reqSpireEl = document.getElementById('reqSpire');
-            const rewardsEl = document.getElementById('prestigeRewards');
-            const ascendBtn = document.getElementById('prestigeAscendBtn');
-            const shopBtn = document.getElementById('prestigeShopBtn');
+            const reqLevelEl = _pDOMCache.getReqLevel();
+            const reqSpireEl = _pDOMCache.getReqSpire();
+            const rewardsEl = _pDOMCache.getRewards();
+            const ascendBtn = _pDOMCache.getAscendBtn();
+            const shopBtn = _pDOMCache.getShopBtn();
 
             // Render Checks
             if (isLevel50) {
@@ -220,7 +262,7 @@ window.ExpansionManager.register({
             if (isLevel50 && hasSpireToken) {
                 rewardsEl.classList.remove('hidden');
                 ascendBtn.classList.remove('hidden');
-                document.getElementById('nextGenNum').textContent = (player.generation || 0) + 1;
+                _pDOMCache.getNextGenNum().textContent = (player.generation || 0) + 1;
             } else {
                 rewardsEl.classList.add('hidden');
                 ascendBtn.classList.add('hidden');
@@ -233,10 +275,10 @@ window.ExpansionManager.register({
                 shopBtn.classList.add('hidden');
             }
 
-            document.getElementById('prestigeModal').classList.remove('hidden');
+            _pDOMCache.getModal().classList.remove('hidden');
         };
 
-        // DOM Listeners
+        // DOM Listeners (Robust injection)
         const bindButtonSafely = (id, handler) => {
             const btn = document.getElementById(id);
             if (btn) {
@@ -249,11 +291,11 @@ window.ExpansionManager.register({
 
         bindButtonSafely('prestigeCancelBtn', () => {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-            document.getElementById('prestigeModal').classList.add('hidden');
+            _pDOMCache.getModal().classList.add('hidden');
         });
 
         bindButtonSafely('prestigeShopBtn', () => {
-            document.getElementById('prestigeModal').classList.add('hidden');
+            _pDOMCache.getModal().classList.add('hidden');
             
             if (!gameState.shopStates) gameState.shopStates = {};
             const shopId = 'shop_ascendant';
@@ -282,7 +324,7 @@ window.ExpansionManager.register({
             const confirmAscension = window.confirm("WARNING: This will wipe your Level, Stats, Inventory, and Equipment. Your Bank, Gold, Homestead, and Lore will remain. Are you absolutely sure you want to Ascend?");
             if (!confirmAscension) return;
 
-            document.getElementById('prestigeModal').classList.add('hidden');
+            _pDOMCache.getModal().classList.add('hidden');
             
             // --- JUICE WIN: Cinematic Ascension ---
             logMessage("{yellow:The physical world begins to burn away...}");
@@ -306,7 +348,9 @@ window.ExpansionManager.register({
             logMessage("{gold:YOU ARE REBORN.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playTimelineShift();
             gameState.screenShake = 50;
-            gameState.screenFlash = { color: '#facc15', alpha: 1.0, decay: 0.015 };
+            
+            // Grand, slower fade for ascension
+            gameState.screenFlash = { color: '#facc15', alpha: 1.0, decay: 0.005 };
 
             // 1. Increment Generation & Handle Titles
             player.generation = (player.generation || 0) + 1;
@@ -325,7 +369,7 @@ window.ExpansionManager.register({
                 logMessage("{gold:You have unlocked the mythic title <The Demi-God>!}");
             }
 
-            // 2. Wipe Stats (And explicitly clear the hotbar to prevent Ghost Spells!)
+            // 2. Wipe Stats & Prevent Ghosts
             player.level = 1;
             player.xp = 0;
             player.xpToNextLevel = 100;
@@ -335,6 +379,16 @@ window.ExpansionManager.register({
             player.spellbook = {};
             player.skillbook = {};
             player.bounty = 0;
+            
+            // 🚨 STABILITY WIN: Purge Companions and Status Effects
+            player.companion = null;
+            player.isMounted = false;
+            player.poisonTurns = 0;
+            player.burnTurns = 0;
+            player.frostbiteTurns = 0;
+            player.madnessTurns = 0;
+            player.stunTurns = 0;
+            player.rootTurns = 0;
 
             player.hotbar = [null, null, null, null, null]; 
             player.cooldowns = {};
@@ -373,7 +427,7 @@ window.ExpansionManager.register({
                     dexterity: genMult, charisma: genMult, luck: genMult,
                     willpower: genMult, perception: genMult, endurance: genMult, intuition: genMult
                 };
-                newPendant.description = `An heirloom of your past lives. {gold:+${genMult} to All Stats}.`;
+                newPendant.description = `An heirloom of your past ${player.generation} lives. {gold:+${genMult} to All Stats}.`;
             }
 
             const rags = { templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true };
@@ -446,9 +500,15 @@ window.ExpansionManager.register({
             if (typeof renderEquipment === 'function') renderEquipment();
             if (typeof renderInventory === 'function') renderInventory();
             if (typeof renderHotbar === 'function') renderHotbar(); 
+            if (typeof window.renderPetUI === 'function') window.renderPetUI(); // Clear pet UI if any
             
             gameState.mapDirty = true;
             if (typeof render === 'function') render();
+            
+            // Force a deep sync immediately
+            if (typeof flushPendingSave === 'function') {
+                flushPendingSave({ _forceManualSave: true });
+            }
             
             if (typeof playerRef !== 'undefined') {
                 const resetPayload = typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(player) : player;
@@ -456,24 +516,8 @@ window.ExpansionManager.register({
                 resetPayload.currentRealm = 0;
                 resetPayload.realmMutators = [];
                 
-                let deleteField = null;
-                try {
-                    if (typeof window.getFirestoreDelete === 'function') {
-                        deleteField = window.getFirestoreDelete();
-                    } else if (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue) {
-                        deleteField = firebase.firestore.FieldValue.delete();
-                    }
-                } catch(e) {}
-                
-                if (deleteField) {
-                    resetPayload.spireBackupInv = deleteField;
-                    resetPayload.spireBackupEquip = deleteField;
-                }
-                
-                resetPayload.inventory = typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory;
-                resetPayload.bank = typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank;
-                
-                await playerRef.set(resetPayload);
+                // 🚨 STABILITY WIN: Always use `merge: true` with Firestore so we don't accidentally drop Map Subcollections
+                await playerRef.set(resetPayload, { merge: true });
             }
 
             if (typeof lastValidatedState !== 'undefined') {
@@ -539,11 +583,17 @@ window.ExpansionManager.register({
                     
                     if (gen > 0) {
                         // 🌟 Radiant Aura (Scales based on Generation!)
-                        if (gameState.activeFilter !== 'gold') {
-                            if (typeof ParticleSystem !== 'undefined' && Math.random() < 0.10) {
+                        // PERFORMANCE WIN: Only rolls Random when necessary
+                        if (gameState.activeFilter !== 'gold' && typeof ParticleSystem !== 'undefined') {
+                            if (Math.random() < 0.10) {
                                 let auraColor = '#e2e8f0'; // Gen 1: Silver
-                                if (gen >= 10) auraColor = '#facc15'; // Gen 10: Gold
-                                else if (gen >= 5) auraColor = '#a855f7'; // Gen 5: Purple
+                                if (gen >= 25) {
+                                    // Extreme high-level Ascendants shift between Void and Ethereal!
+                                    auraColor = Math.random() > 0.5 ? '#5eead4' : '#f472b6'; 
+                                }
+                                else if (gen >= 15) auraColor = '#ef4444'; // Crimson
+                                else if (gen >= 10) auraColor = '#facc15'; // Gold
+                                else if (gen >= 5) auraColor = '#a855f7'; // Purple
                                 
                                 ParticleSystem.spawn(player.x, player.y, auraColor, 'sparkle', '', 3);
                             }
@@ -551,23 +601,19 @@ window.ExpansionManager.register({
 
                         // 🚨 Ascendant Regeneration (Scales with Gen!)
                         if (gameState.playerTurnCount % 10 === 0) {
-                            let regenerated = false;
                             const healAmt = 1 + Math.floor(gen / 5); 
                             
                             if (player.health < player.maxHealth) {
                                 if (typeof window.modifyVital === 'function') window.modifyVital('health', healAmt);
                                 else player.health = Math.min(player.maxHealth, player.health + healAmt);
-                                regenerated = true;
                             }
                             if (player.mana < player.maxMana) {
                                 if (typeof window.modifyVital === 'function') window.modifyVital('mana', healAmt);
                                 else player.mana = Math.min(player.maxMana, player.mana + healAmt);
-                                regenerated = true;
                             }
                             if (player.stamina < player.maxStamina) {
                                 if (typeof window.modifyVital === 'function') window.modifyVital('stamina', healAmt);
                                 else player.stamina = Math.min(player.maxStamina, player.stamina + healAmt);
-                                regenerated = true;
                             }
                         }
                     }
@@ -579,17 +625,19 @@ window.ExpansionManager.register({
         });
 
         // D. CHAT & /WHO INJECTION
-        applySafePatch(window, 'syncPlayerState', (origSync) => {
-            return function() {
-                if (origSync) origSync();
-                if (typeof onlinePlayerRef !== 'undefined' && onlinePlayerRef && typeof gameState !== 'undefined' && gameState.player) {
-                    onlinePlayerRef.update({ 
-                        generation: gameState.player.generation || 0, 
-                        activeTitle: gameState.player.activeTitle || null 
-                    }).catch(()=>{});
-                }
-            };
-        });
+        if (typeof window.syncPlayerState === 'function') {
+            applySafePatch(window, 'syncPlayerState', (origSync) => {
+                return function() {
+                    if (origSync) origSync();
+                    if (typeof onlinePlayerRef !== 'undefined' && onlinePlayerRef && typeof gameState !== 'undefined' && gameState.player) {
+                        onlinePlayerRef.update({ 
+                            generation: gameState.player.generation || 0, 
+                            activeTitle: gameState.player.activeTitle || null 
+                        }).catch(()=>{});
+                    }
+                };
+            });
+        }
     }
 });
 
