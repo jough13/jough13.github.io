@@ -48,7 +48,7 @@ window.ExpansionManager.register({
                     const inv = state.player.inventory;
                     const hasPicklock = inv.some(i => i && i.name === 'Lockpick' && !i.isEquipped);
 
-                    if (pickIdx === -1) {
+                    if (!hasPicklock) { // <--- THE FIX
                         logMessage("{red:The door is locked tight. You need a Lockpick.}");
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                         return null;
@@ -62,9 +62,8 @@ window.ExpansionManager.register({
 
                     if (Math.random() < successChance) {
                         logMessage("{green:CLICK! The lock disengages and the door swings open.}");
-                        if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin(); // Metallic click
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin(); 
                         
-                        // 🌟 GAMEPLAY WIN: High-Dex characters have a chance to not break their lockpick!
                         const retainChance = Math.min(0.50, dex * 0.05);
                         if (Math.random() < retainChance) {
                             logMessage("{cyan:Your deft fingers extract the lockpick unharmed.}");
@@ -82,7 +81,7 @@ window.ExpansionManager.register({
                         state.mapDirty = true;
                     } else {
                         logMessage("{red:SNAP! The lockpick breaks off in the keyhole!}");
-                        if (typeof AudioSystem !== 'undefined') AudioSystem.playHit(); // Snap sound
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playHit(); 
                         state.screenShake = 5;
                         
                         // Break the pick
@@ -92,10 +91,8 @@ window.ExpansionManager.register({
                     }
 
                     if (typeof renderInventory === 'function') renderInventory();
-                    // Ensure hotbar updates if lockpicks are bound!
                     if (typeof renderHotbar === 'function') renderHotbar();
                     
-                    // Always return an object to ensure the turn passes!
                     return { inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv };
                 }
             }
