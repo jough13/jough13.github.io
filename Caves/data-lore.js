@@ -199,7 +199,10 @@ window.LORE_STONE_MESSAGES = Object.freeze([
     "The {purple:Void Blade} is not forged. It is grown, piece by piece, from the dying screams of stars.",
     "The {gold:Ascendants} did not die. They merely discarded their flesh to build the Infinite Spire.",
     "The Vanguard did not kill the Molten Lord. They locked the door and prayed he would not wake.",
-    "An outlaw's blood pays the kingdom's debts. A {red:Bounty Compass} only points to guilt."
+    "An outlaw's blood pays the kingdom's debts. A {red:Bounty Compass} only points to guilt.",
+    "An artisan's touch turns cloudy raw stone into pure starlight.",
+    "The brass men do not sleep. They wait in the sands.",
+    "The Infinite Spire cannot be climbed by mortal flesh alone. It demands you leave your past behind."
 ]);
 
 // ==========================================
@@ -461,7 +464,7 @@ window.VILLAGER_RUMORS = Object.freeze([
 
     // --- EXPANSION RUMORS ---
     "Legends speak of a {gold:Sword in the Stone}. Only the strongest can pull it. And the further from civilization it lies, the heavier it is.",
-    "They say a {gray:Fallen Titan} lies rusted in the wasteland. If you have a Pickaxe, you might pry loose its Star-Metal core.",
+    "They say a {gray:Fallen Titan} lies rusted in the wasteland. If you have a Pickaxe, you might pry loose its {cyan:Star-Metal} core.",
     "The {red:Blood Altars} in the swamps... they demand half your life force. But the power they grant is permanent, if you survive.",
     "Never trust a {purple:Shady Smuggler}. Though... my cousin bought a mystery box from one and found a legendary sword inside. It's a gamble.",
     "The {yellow:Lost City of the Sands} is a death trap. Millions of undead roam the streets, guarding endless treasure. Stay out of the deep desert.",
@@ -476,50 +479,8 @@ window.VILLAGER_RUMORS = Object.freeze([
     "If you see a player with a {red:Bounty Compass}, run. The Syndicate is hunting outlaws.",
     "You can build a {blue:Guild Stronghold} by claiming a Dark Castle ruin with a Guild Charter. Then your friends can share a massive vault!",
     "If you dig too deep in the {gray:Underworld}, the rocks start to pulse and chew. Bring a heavy pickaxe and a light.",
-
-    // --- EXPLORATION & WORLD ---
-    "If you find a pickaxe, try the mountains. Good {gray:Iron Ore} there.",
-    "The castle guards are tough, but they protect good loot.",
-    "Don't eat the yellow snow. Or the blue mushrooms. Actually, just stick to bread.",
-    "I saw a stone glowing in the woods last night. Didn't go near it.",
-    "My cousin went into the crypts. He came back... wrong. Kept staring at the wall.",
-    "{green:Endurance} helps you resist the swamp sickness. Eat your greens.",
-    "{blue:Wits} will help you find hidden doors in the caves. Knock on every wall!",
-    "The shopkeeper cheats at cards. Don't play him.",
-    "If you see a {purple:rift in the world}, jump in! What's the worst that could happen?",
-    "A {gold:Golden Apple} can bring a man back from the brink of death.",
-    "My grandad says if you're drowning, a {blue:Gill Potion} is better than a prayer.",
-    "Don't go into the Deadlands without a way to light the dark. The shadows there bite.",
-    "The Historian says he'll trade XP for those creepy {purple:Memory Shards}. I'd rather keep my memories, thanks.",
-    "I heard the Bandit Chief has a {gray:Steel Sword}. I bet it’s sharp enough to shave a ghost.",
-    "If you see a statue with red eyes, it wants an answer. If you're wrong, it wants your blood.",
-    "A wandering merchant sold me 'Dragon Repellent'. It was just garlic water. He went south.",
-    "Never camp near a circle of mushrooms. The Fae will steal your boots.",
-    "If you find an {gray:Obsidian Shard}, keep it hidden. The shadow acolytes can smell them.",
-    "If you see a ring of {purple:purple mushrooms}, step inside! The Fae might restore your magic... or they might teleport you across the world.",
-    "A Canoe is fine for the swamps, but if you want to brave the deep ocean, you need to build a {blue:Sailing Ship}.",
-    "Wooden arrows are fine, but {orange:Fire Arrows} can detonate oil barrels from a distance! Perfect for clearing out nests.",
-    "I lock my doors when the {red:Blood Moon} rises. The beasts go mad, but the brave say they carry richer bounties.",
-    "A clever mage doesn't need a boat. Just cast a {cyan:Frost Bolt} at the river and walk across the ice!",
-    "Careful with fire in the swamp. The {orange:gas pockets} will blow you to kingdom come if a spark hits them!",
-    "Don't stand in the water during a thunderstorm. And definitely don't cast {yellow:Lightning} spells unless you want to fry everything in the pool!",
-    "Those ruined Dark Castles are terrifying, but I hear they hold {gold:Loot Vaults} deep inside.",
-    "If you ever find a {purple:Void Key}, take it to a rift. It's a one-way ticket to nightmare-land.",
-    "If you plan on exploring deep into the wilds, you better rest in a {green:Cozy Bed} first. It beats walking back from the village.",
-    "The deeper you go into a dungeon, the nastier the monsters get. But the loot gets shinier, too.",
-    "A merchant told me he saw a man looking at the stars through a {gold:Brass Telescope}. Sounds boring to me.",
-    "I hear the Master Blacksmith can forge weapons out of {cyan:Star-Metal}... if you have the coin.",
-    "Don't go to the Colosseum in the deadlands. I knew a warrior who went to fight in the Arena. He never came back.",
-    "The Inquisitor pays top gold for Cultist amulets. He's trying to root out the Shadowed Hand.",
-    "Some say the {purple:Void Astrolabe} doesn't just teleport you... it takes you to a {purple:parallel dimension} altogether.",
-    "If the Leylines ever go down, or you get trapped in an alternate dimension, just strike a {cyan:Prime Tuning Fork} to return home.",
-    "I hear if your bags are completely full and you try to pull a soggy chest from the ocean, whatever is inside drops right into the water. Poof. Gone.",
-    "My uncle claims he caught a fish made entirely of stars out in the Void. Said it tasted like static.",
-    
-    // THE UNIFIED STORY HINTS
-    "They say the Old King isn't dead, just... waiting in the deep.",
-    "The mages in the tower used to turn lead into gold. Now they just try to erase what they've done.",
-    "They say the Old King's crown was shattered into five pieces. Not by the Cult... but by his own hand. Why would he do that?"
+    "I heard if you smash an {gray:Uncracked Geode} against the ground, you might find a diamond inside!",
+    "A {orange:Dimensional Drill} will tear through a solid mountain. Best not to point it at your toes."
 ]);
 
 // ==========================================
@@ -575,6 +536,8 @@ window.RANDOM_JOURNAL_PAGES = Object.freeze([
     "I found a sword buried in a stone block. I pulled until my hands bled, but I couldn't move it an inch. I need to get stronger.",
     "The Fallen Titans are machines of war from the Second Age. Their cores are made of pure star-metal. I just need a pickaxe.",
     "I drank from a Radiant Spring. The water tasted like starlight, and my wounds healed instantly. I wish I could bottle it.",
+    "We dug deeper than the old maps allowed. The stone here feels warm, like skin.",
+    "If you are reading this, I did not survive the Spire. The glass walls reflected a version of me that was smiling.",
     
     // UNIFIED STORY PAGES
     "The King hasn't eaten in weeks. He just stares at the {purple:Void Rift}, whispering to things that aren't there. He knows the Leviathan is coming.",
@@ -610,7 +573,9 @@ window.LORE_FRAGMENTS = Object.freeze([
     "I saw the Leviathan's eye today. It was larger than the moon. It looked right through me.",
     "I found the Lost City. The rumors were true. The streets are paved with gold and bones.",
     "The line went taut, and the ship pitched forward. It wasn't a fish. It was the ocean itself pulling us down.",
-    "I swear the clockwork spider looked at me with human eyes before I crushed it."
+    "I swear the clockwork spider looked at me with human eyes before I crushed it.",
+    "The Ascendants trade in Spire Tokens. It is currency minted from sheer willpower.",
+    "I watched a dwarf shatter a mountain with a drill powered by a captured star."
 ]);
 
 // ==========================================
@@ -653,6 +618,8 @@ window.VISIONS_OF_THE_PAST = Object.freeze([
     "A VISION: A vast city in the desert sinks into the sand in a single night. The screams are muffled by the shifting dunes.",
     "A VISION: A cultist slashes his palm over a crimson altar. The blood turns to dark smoke and forms a solid, jagged blade in his grip.",
     "A VISION: You see an entire civilization of Elves willingly walking into the Fairy Rings, abandoning the material plane as the sky turns purple.",
+    "A VISION: A lone figure climbs an infinite tower of black glass. As they climb, pieces of their armor turn to dust, and their skin glows with golden light.",
+    "A VISION: A team of dwarves activates a massive, screeching drill. The mountain shudders, but behind the stone, something biological begins to bleed.",
     
     // UNIFIED STORY VISIONS
     "A VISION: You see a golden king standing atop the fortress. He takes off his crown and smashes it against the stone. 'They cannot open the Rift without it,' he whispers.",
@@ -1109,6 +1076,20 @@ window.RIDDLE_DATA = Object.freeze([
         answers: ["skull", "a skull", "skeleton head", "the skull", "bone", "bones"],
         reward: "wits",
         message: "{purple:The hollow gaze of the statue pierces you. Your intellect sharpens.}"
+    },
+    {
+        id: "compass",
+        question: "I point the way but cannot walk. I have a face but cannot talk. What am I?",
+        answers: ["compass", "a compass", "the compass"],
+        reward: "intuition",
+        message: "{cyan:The statue points into the distance. You feel you know exactly where you are.}"
+    },
+    {
+        id: "firefly",
+        question: "I am a spark in the dark, a jewel in the night. I live for a moment, then fade from sight. What am I?",
+        answers: ["firefly", "a firefly", "lightning bug", "shooting star", "falling star", "meteor", "spark", "a spark"],
+        reward: "perception",
+        message: "{gold:A tiny light dances around the statue's head before vanishing. Your awareness broadens.}"
     }
 ]);
 
@@ -1199,6 +1180,8 @@ window.MUTATOR_HISTORY_DATA = Object.freeze({
 
 // Dynamic history overrides based on the active Mutator in a Shattered Realm
 window.getMutatorHistoryOverride = function(mutatorKey, baseHistory) {
+    if (!mutatorKey || typeof window.MUTATOR_HISTORY_DATA === 'undefined') return baseHistory;
+    
     const historyList = window.MUTATOR_HISTORY_DATA[mutatorKey];
     if (historyList && historyList.length > 0) {
         return historyList[Math.floor(Math.random() * historyList.length)];
