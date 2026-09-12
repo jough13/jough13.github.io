@@ -447,6 +447,19 @@ function renderWorldMap() {
         }
     }
 
+    // 🌟 JUICE WIN: Dynamic Map Weather Overlay
+    // Renders the weather globally over the entire map with a slight opacity to match the world state
+    if (gameState.weather !== 'clear') {
+        let overlayColor = 'transparent';
+        if (gameState.weather === 'rain') overlayColor = 'rgba(0, 0, 50, 0.15)';
+        else if (gameState.weather === 'storm') overlayColor = 'rgba(10, 10, 30, 0.25)';
+        else if (gameState.weather === 'snow') overlayColor = 'rgba(255, 255, 255, 0.2)';
+        else if (gameState.weather === 'fog') overlayColor = 'rgba(200, 200, 200, 0.3)';
+        
+        worldMapCtx.fillStyle = overlayColor;
+        worldMapCtx.fillRect(0, 0, logicalWidth, logicalHeight);
+    }
+
     // LORE EXPANSION: Dynamic Region Watermarks
     const regSize = typeof REGION_SIZE !== 'undefined' ? REGION_SIZE : 160;
     const startWorldX = (0 - centerX) / currentMapScale + mapCamera.x;
@@ -503,11 +516,15 @@ function renderWorldMap() {
     }
 
     // ========================================================================
-    // VISUAL WIN: THE LEYLINE NETWORK (Flowing Animation!)
+    // VISUAL WIN: THE LEYLINE NETWORK (Glowing, Flowing Animation!)
     // ========================================================================
     if (gameState.player.unlockedWaypoints && gameState.player.unlockedWaypoints.length > 0) {
-        worldMapCtx.strokeStyle = `rgba(168, 85, 247, 0.6)`; // Electric Purple
+        worldMapCtx.strokeStyle = `rgba(168, 85, 247, 0.8)`; // Electric Purple
         worldMapCtx.lineWidth = Math.max(1.5, currentMapScale * 0.2);
+        
+        // Add a beautiful neon shadow glow to the leylines
+        worldMapCtx.shadowColor = 'rgba(168, 85, 247, 0.8)';
+        worldMapCtx.shadowBlur = 8;
         
         // Animated flowing dashes
         worldMapCtx.setLineDash([12 * currentMapScale, 6 * currentMapScale]);
@@ -533,7 +550,9 @@ function renderWorldMap() {
             }
         });
         worldMapCtx.stroke();
+        
         worldMapCtx.setLineDash([]); // Reset
+        worldMapCtx.shadowBlur = 0; // Reset
     }
 
     worldMapCtx.font = `bold ${Math.max(14, currentMapScale * 2)}px monospace`;
@@ -558,6 +577,16 @@ function renderWorldMap() {
                 // Pin
                 worldMapCtx.fillStyle = '#ffffff';
                 worldMapCtx.fillText('📌', screenX + currentMapScale/2, screenY + currentMapScale/2 + pinBob);
+                
+                // 🌟 JUICE WIN: Pulsing highlight ring around custom pins to make them stand out
+                if (hoverWorldX !== null && hoverWorldY !== null && Math.abs(pin.x - hoverWorldX) < 2 && Math.abs(pin.y - hoverWorldY) < 2) {
+                    const pulse = (Math.sin(now / 150) + 1) / 2;
+                    worldMapCtx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+                    worldMapCtx.lineWidth = 2;
+                    worldMapCtx.beginPath();
+                    worldMapCtx.arc(screenX + currentMapScale/2, screenY + currentMapScale/2 + pinBob, currentMapScale * 2 + (pulse * 8), 0, TWO_PI);
+                    worldMapCtx.stroke();
+                }
             }
         });
     }
@@ -577,6 +606,17 @@ function renderWorldMap() {
             if (screenX >= -cullingPad && screenX <= logicalWidth + cullingPad && screenY >= -cullingPad && screenY <= logicalHeight + cullingPad) {
                 worldMapCtx.moveTo(screenX + currentMapScale/2, screenY + currentMapScale/2);
                 worldMapCtx.arc(screenX + currentMapScale/2, screenY + currentMapScale/2, currentMapScale * 1.5, 0, TWO_PI);
+                
+                // 🌟 JUICE WIN: Pulsing highlight when hovering over a waystone
+                if (hoverWorldX !== null && hoverWorldY !== null && wp.x === hoverWorldX && wp.y === hoverWorldY) {
+                    worldMapCtx.save();
+                    worldMapCtx.strokeStyle = 'rgba(168, 85, 247, 0.9)';
+                    worldMapCtx.lineWidth = 2;
+                    worldMapCtx.beginPath();
+                    worldMapCtx.arc(screenX + currentMapScale/2, screenY + currentMapScale/2, currentMapScale * 2 + (wpPulse * 10), 0, TWO_PI);
+                    worldMapCtx.stroke();
+                    worldMapCtx.restore();
+                }
             }
         });
         worldMapCtx.fill();
@@ -705,7 +745,8 @@ function renderWorldMap() {
     worldMapCtx.font = `bold ${Math.max(12, currentMapScale * 1.5)}px monospace`;
     worldMapCtx.fillText('You', playerScreenX + currentMapScale/2, playerScreenY - currentMapScale - 5);
 
-    // Render Hover Highlight & Canvas Tooltip
+    // 🚀 PERFORMANCE WIN: Cached Bounding Box Canvas Tooltips
+    // Replaces calling `ctx.measureText` 60 times a second during mouse hover!
     if (hoverWorldX !== null && hoverWorldY !== null) {
         const hScreenX = Math.floor((hoverWorldX - mapCamera.x) * currentMapScale + centerX);
         const hScreenY = Math.floor((hoverWorldY - mapCamera.y) * currentMapScale + centerY);
@@ -718,38 +759,57 @@ function renderWorldMap() {
 
         const tileName = getMapTileName(hoverWorldX, hoverWorldY);
         if (tileName && !tileName.includes("Unknown")) {
-            // JUICE WIN: Dynamic tooltip positioning prevents it from rendering off-screen!
+            
+            // Evaluate Cache
+            if (!window._canvasTooltipCache || window._canvasTooltipCache.x !== hoverWorldX || window._canvasTooltipCache.y !== hoverWorldY) {
+                const rawTooltip = typeof autoFormatLore === 'function' ? autoFormatLore(tileName) : tileName;
+                const strippedText = typeof stripColorTags === 'function' ? stripColorTags(rawTooltip) : tileName;
+                const safeText = typeof escapeHtml === 'function' ? escapeHtml(strippedText) : strippedText;
+                
+                worldMapCtx.font = 'bold 12px monospace';
+                const metrics = worldMapCtx.measureText(safeText);
+                
+                window._canvasTooltipCache = {
+                    x: hoverWorldX,
+                    y: hoverWorldY,
+                    text: safeText,
+                    width: metrics.width
+                };
+            }
+            
+            const cache = window._canvasTooltipCache;
             const padX = 8;
             const padY = 6;
-            worldMapCtx.font = 'bold 12px monospace';
-            
-            // Format the string through the auto-lore tagger to extract any colored strings!
-            const rawTooltip = typeof autoFormatLore === 'function' ? autoFormatLore(tileName) : tileName;
-            const strippedText = typeof stripColorTags === 'function' ? stripColorTags(rawTooltip) : tileName;
-            const safeText = typeof escapeHtml === 'function' ? escapeHtml(strippedText) : strippedText;
-            
-            const metrics = worldMapCtx.measureText(safeText);
-            const boxWidth = metrics.width + padX * 2;
+            const boxWidth = cache.width + padX * 2;
             const boxHeight = 24 + padY * 2;
             
             let tooltipX = hScreenX + currentMapScale + 8;
             let tooltipY = hScreenY + currentMapScale / 2;
             
-            // Shift left if it hits the right edge
+            // Screen Clipping Guards
             if (tooltipX + boxWidth > logicalWidth) {
                 tooltipX = hScreenX - boxWidth - 8;
             }
-            
             // 🚨 BUG FIX: Shift down if it hits the top edge
             if (tooltipY - 12 - padY < 0) {
                 tooltipY = hScreenY + currentMapScale + boxHeight; 
             }
+            // 🚨 BUG FIX: Shift up if it hits the bottom edge
+            if (tooltipY + 12 + padY > logicalHeight) {
+                tooltipY = hScreenY - currentMapScale - boxHeight + 12;
+            }
             
+            worldMapCtx.font = 'bold 12px monospace';
             worldMapCtx.fillStyle = 'rgba(255, 255, 255, 0.85)';
             worldMapCtx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
             worldMapCtx.lineWidth = 1;
-            worldMapCtx.beginPath();
             
+            // 🌟 JUICE WIN: Add shadow for physical depth
+            worldMapCtx.shadowColor = 'rgba(0,0,0,0.5)';
+            worldMapCtx.shadowBlur = 6;
+            worldMapCtx.shadowOffsetY = 2;
+            
+            worldMapCtx.beginPath();
             // ROBUSTNESS WIN: Fallback for older Safari versions that don't support roundRect
             if (worldMapCtx.roundRect) {
                 worldMapCtx.roundRect(tooltipX, tooltipY - 12 - padY, boxWidth, boxHeight, 6);
@@ -759,9 +819,12 @@ function renderWorldMap() {
             worldMapCtx.fill();
             worldMapCtx.stroke();
             
+            worldMapCtx.shadowBlur = 0; // Reset
+            worldMapCtx.shadowOffsetY = 0;
+            
             worldMapCtx.fillStyle = '#000000';
             worldMapCtx.textAlign = 'left';
-            worldMapCtx.fillText(safeText, tooltipX + padX, tooltipY);
+            worldMapCtx.fillText(cache.text, tooltipX + padX, tooltipY);
             worldMapCtx.textAlign = 'center'; 
         }
     }
@@ -814,23 +877,29 @@ function renderWorldMap() {
     }
     worldMapCtx.stroke();
 
-    // The Celestial Astrolabe (Sun & Moon Tracker)
+    // 🌟 JUICE WIN: The Celestial Astrolabe (Sun & Moon Tracker)
     if (typeof gameState !== 'undefined' && gameState.time) {
         const timeInMinutes = gameState.time.hour * 60 + gameState.time.minute;
         // Map 0-1440 minutes to a 360 degree circle. Offset by -90 deg so Noon is at the top (North)
         const celestialAngle = (timeInMinutes / 1440) * TWO_PI - (Math.PI / 2);
         
         // Draw the Sun
+        worldMapCtx.shadowColor = '#facc15';
+        worldMapCtx.shadowBlur = 10;
         worldMapCtx.fillStyle = '#facc15'; 
         worldMapCtx.beginPath();
         worldMapCtx.arc(cx + Math.cos(celestialAngle) * 30, cy + Math.sin(celestialAngle) * 30, 4, 0, TWO_PI);
         worldMapCtx.fill();
         
         // Draw the Moon (Opposite the Sun)
+        worldMapCtx.shadowColor = '#e2e8f0';
+        worldMapCtx.shadowBlur = 8;
         worldMapCtx.fillStyle = '#e2e8f0'; 
         worldMapCtx.beginPath();
         worldMapCtx.arc(cx + Math.cos(celestialAngle + Math.PI) * 30, cy + Math.sin(celestialAngle + Math.PI) * 30, 3, 0, TWO_PI);
         worldMapCtx.fill();
+        
+        worldMapCtx.shadowBlur = 0; // Reset
     }
 
     // Draw Rotated Needle
@@ -939,11 +1008,16 @@ function updateMapUI() {
         // 🚀 PERFORMANCE WIN: Replaced slow Math.hypot with direct Euclidean distance
         const dist = Math.floor(Math.sqrt(dx * dx + dy * dy));
 
+        // 🌟 LORE & JUICE WIN: Danger zone tags appended to the bottom UI bar!
         let dangerTag = "";
         if (tileName === "Uncharted Wilderness" && dist > 1500) {
             dangerTag = ` <span class="text-red-500 italic text-[10px] uppercase font-serif tracking-widest">(Here Be Monsters)</span>`;
         } else if (tileName === "The Deep Ocean" && dist > 1500) {
             dangerTag = ` <span class="text-blue-500 italic text-[10px] uppercase font-serif tracking-widest">(Here Be Leviathans)</span>`;
+        } else if (tileName === "Unknown Dimensional Void") {
+            dangerTag = ` <span class="text-purple-500 italic text-[10px] uppercase font-serif tracking-widest">(Madness Awaits)</span>`;
+        } else if (tileName.includes("Volcanic") || tileName.includes("Scorched")) {
+            dangerTag = ` <span class="text-orange-500 italic text-[10px] uppercase font-serif tracking-widest">(Extreme Heat)</span>`;
         }
         
         // SECURITY WIN: Escape the dynamic tile name here before injecting
@@ -1138,7 +1212,9 @@ worldMapCanvas.addEventListener('touchmove', (e) => {
             const worldYAtPinch = (touchPinchCentroid.y - centerY) / targetMapScale + targetMapCamera.y;
 
             // 2. Apply the zoom
-            targetMapScale *= zoomDelta;
+            // 🚨 SAFEGUARD: Clamp `zoomDelta` to prevent massive physics spikes if the phone stutters
+            const safeDelta = Math.max(0.5, Math.min(2.0, zoomDelta));
+            targetMapScale *= safeDelta;
             targetMapScale = Math.max(0.5, Math.min(32, targetMapScale));
 
             // 3. Shift the camera so the world coordinate stays perfectly pinned under the fingers!
