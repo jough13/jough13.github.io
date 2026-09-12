@@ -128,11 +128,18 @@ const _vitalDOMCache = {
     displays: {},
     wrapper: null,
     getDisplay: function(vital) {
-        if (!this.displays[vital]) this.displays[vital] = document.getElementById(vital + 'Display');
-        return this.displays[vital];
+        let el = this.displays[vital];
+        // 🚨 MEMORY LEAK FIX: Ensure we aren't holding onto Detached DOM Nodes!
+        if (!el || !document.body.contains(el)) {
+            el = document.getElementById(vital + 'Display');
+            this.displays[vital] = el;
+        }
+        return el;
     },
     getWrapper: function() {
-        if (!this.wrapper) this.wrapper = document.getElementById('gameCanvasWrapper');
+        if (!this.wrapper || !document.body.contains(this.wrapper)) {
+            this.wrapper = document.getElementById('gameCanvasWrapper');
+        }
         return this.wrapper;
     }
 };
@@ -572,7 +579,7 @@ window.modifyVital = function(vital, rawAmount) {
                 if (typeof logMessage !== 'undefined') logMessage("{cyan:Your Arcane Shield has shattered!}");
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playDisenchant(); 
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#3b82f6', 15);
-                gameState.screenShake = Math.max(gameState.screenShake || 0, 5);
+                gameState.screenShake = Math.max(gameState.screenShake || 0, 5); // 🚨 BUG FIX: Maintain highest shake
             }
             
             // If the shield absorbed the entire hit, abort the rest of the function!
@@ -645,6 +652,15 @@ window.modifyVital = function(vital, rawAmount) {
         }
     }
 
+    // 🌟 JUICE WIN: Massive Heal Overdrive!
+    if (actualChange > 0) {
+        const pctGained = maxVal > 0 ? actualChange / maxVal : 0;
+        if (vital === 'health' && pctGained >= 0.50) {
+            if (typeof logMessage !== 'undefined') logMessage("{green:A massive surge of vitality floods your body!}");
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#22c55e', 20);
+        }
+    }
+
     // 🌟 JUICE WIN: Native Critical Health State Management
     // Instantly handles the UI wrapper class without waiting for the `renderStats` loop!
     if (vital === 'health') {
@@ -681,10 +697,13 @@ window.modifyVital = function(vital, rawAmount) {
                 gameState.screenShake = Math.max(gameState.screenShake || 0, 15);
             }
             
-            // Near-death physical boundary crossed (Drop below 25%)
-            if (newVal <= (maxVal * 0.25) && oldVal > (maxVal * 0.25) && newVal > 0) {
+            // 🌟 JUICE WIN: Heartbeat Audio on entering critical health!
+            if (newVal > 0 && newVal <= (maxVal * 0.25) && oldVal > (maxVal * 0.25)) {
                 if (typeof logMessage !== 'undefined') logMessage("{red:Your vision blurs. You are clinging to life!}");
                 gameState.screenFlash = { color: '#991b1b', alpha: 0.5, decay: 0.05 };
+                if (typeof AudioSystem !== 'undefined') {
+                    AudioSystem.playNoise(2.0, 0.4, 100); // Deep, terrifying heartbeat thump!
+                }
             }
 
             // --- MOUNT EXPANSION: SECURE KNOCK-OFF ---
@@ -699,6 +718,11 @@ window.modifyVital = function(vital, rawAmount) {
                 }
             }
         } 
+        else if (vital === 'mana') {
+            if (newVal === 0 && oldVal > 0) {
+                if (typeof logMessage !== 'undefined') logMessage("{blue:Your magical reserves run completely dry. Your mind aches.}");
+            }
+        }
         else if (vital === 'psyche') {
             // Huge mental hit (Madness/Void Terrors)
             if (pctLost >= 0.30) {
