@@ -430,17 +430,22 @@ window.ExpansionManager.register({
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#9ca3af', 25);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
 
-                // 🚨 EXPLOIT FIX & ROBUSTNESS WIN: Safe Weapon Destruction
-                // The execute function has 'awaits'. A clever player could open their bag and unequip
-                // the gun mid-animation. We check identity (===) to ensure we destroy the EXACT 
-                // gun that was fired, even if they moved it to their backpack!
-                
+                // Safe Weapon Destruction
                 if (player.equipment.weapon && player.equipment.weapon.name === weapon.name) {
+                    // 1. Remove the stat bonuses and unequipping flags cleanly
                     if (typeof _internalUnequip === 'function') {
                         _internalUnequip(player.equipment.weapon, player);
                     } else if (typeof applyStatBonuses === 'function') {
                         applyStatBonuses(player.equipment.weapon, -1);
                     }
+                    
+                    // 2. Actually delete the item from the inventory array!
+                    const wpnIdx = player.inventory.indexOf(player.equipment.weapon);
+                    if (wpnIdx > -1) {
+                        player.inventory.splice(wpnIdx, 1);
+                    }
+
+                    // 3. Reset the equipment slot to Fists
                     player.equipment.weapon = { name: 'Fists', damage: 0, tags: ['blunt'] };
                 } else {
                     // --- Array.indexOf Reference Bleed ---
