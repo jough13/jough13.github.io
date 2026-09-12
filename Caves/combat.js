@@ -2529,7 +2529,8 @@ function handlePlayerDeath() {
                             pendingUpdates[cId][lKey] = { t: dropIcon, expires: expireTime }; 
                             
                             chunkManager.worldState[cId] = chunkManager.worldState[cId] || {};
-                            chunkManager.worldState[cId][lKey] = dropIcon;
+                            // Save it locally as the exact same object we send to Firebase!
+                            chunkManager.worldState[cId][lKey] = { t: dropIcon, expires: expireTime }; 
                         } else if (gameState.mapMode === 'dungeon') {
                             chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = dropIcon;
                         } else {
