@@ -629,26 +629,28 @@ function renderInventory() {
 
     // Dynamically inject the Auto-Sort button into the header if missing
     if (titleElement) {
+        // 1. Evaluate exactly what the text and classes should be BEFORE touching the DOM
+        const targetText = gameState.isDroppingItem ? "SELECT ITEM TO DROP" : "Inventory";
+        const targetClass = gameState.isDroppingItem ? "text-red-500 font-extrabold animate-pulse drop-shadow-md" : "text-default font-bold";
+
         if (!titleElement.querySelector('#sortInvBtn')) {
-            const titleText = titleElement.textContent;
+            // 2. Inject it with the correct data natively on the first pass
             titleElement.innerHTML = `
                 <div class="flex justify-between items-center w-full">
-                    <span id="invTitleText">${titleText}</span>
+                    <span id="invTitleText" class="${targetClass}">${targetText}</span>
                     <button id="sortInvBtn" onclick="sortInventory()" title="Consolidate and sort inventory" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded shadow transition-all active:scale-95 border-b-2 border-blue-800 active:border-b-0 active:mt-0.5 drop-shadow-sm">Auto-Sort</button>
                 </div>
             `;
-        }
-        
-        const titleSpan = document.getElementById('invTitleText');
-        if (gameState.isDroppingItem) {
-            titleSpan.textContent = "SELECT ITEM TO DROP";
-            titleSpan.className = 'text-red-500 font-extrabold animate-pulse drop-shadow-md';
         } else {
-            titleSpan.textContent = "Inventory";
-            titleSpan.className = 'text-default font-bold';
+            // 3. If the button is already there, just safely update the span
+            const titleSpan = document.getElementById('invTitleText');
+            if (titleSpan && titleSpan.textContent !== targetText) {
+                titleSpan.textContent = targetText;
+                titleSpan.className = targetClass;
+            }
         }
     }
-
+    
     if (!gameState.player.inventory || gameState.player.inventory.length === 0) {
         inventoryModalList.innerHTML = '<div class="w-full text-center mt-8 text-gray-500 italic font-serif">Your bag is completely empty.</div>';
     } else {
