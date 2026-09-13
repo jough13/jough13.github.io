@@ -744,7 +744,7 @@ function _internalUnequip(item, player) {
     }
 }
 
-function useInventoryItem(itemIndex) {
+async function useInventoryItem(itemIndex) {
     if (isItemProcessing) return;
     isItemProcessing = true;
 
@@ -836,7 +836,8 @@ function useInventoryItem(itemIndex) {
 
         // --- FISHING LOGIC ---
         else if (itemToUse.name === 'Fishing Rod' || itemToUse.name === 'Obsidian Fishing Rod' || itemToUse.name === 'Steel Fishing Rod') {
-            itemUsed = typeof executeFishing === 'function' ? executeFishing() : false;
+            // 🚨 FIX: Await the fishing execution to hold the Mutex lock open during the minigame
+            itemUsed = typeof executeFishing === 'function' ? await executeFishing() : false;
             if (itemUsed) closeInventoryOnUse = true; // Need to see the water!
         }
 
@@ -1150,7 +1151,9 @@ function useInventoryItem(itemIndex) {
         if (itemUsed) {
             if (closeInventoryOnUse && typeof closeInventoryModal === 'function') closeInventoryModal();
             if (typeof syncPlayerState === 'function') syncPlayerState();
-            if (typeof endPlayerTurn === 'function') endPlayerTurn();
+            
+            // 🚨 FIX: Await the end of the player turn to complete the execution trace!
+            if (typeof endPlayerTurn === 'function') await endPlayerTurn();
             
             // Explicitly save the mutated inventory to Firebase!
             // This prevents the "Infinite Potion" exploit upon refreshing the page.
