@@ -367,7 +367,7 @@ window.ExpansionManager.register({
                     if (player.health <= 0) return; // Die instantly, abort beam
                 }
 
-                // JUICE WIN: Massive Detonation Effects
+                // Massive Detonation Effects
                 gameState.screenShake = 20;
                 gameState.screenFlash = { color: '#facc15', alpha: 0.8, decay: 0.05 };
 
@@ -391,13 +391,17 @@ window.ExpansionManager.register({
                     
                     if (gameState.mapMode === 'dungeon') {
                         const map = chunkManager.caveMaps[gameState.currentCaveId];
-                        tile = (map && map[ty] && map[ty][tx]) ? map[ty][tx] : ' ';
+                        
+                        tile = map?.[ty]?.[tx] || ' ';
+                        
                         const theme = typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES[gameState.currentCaveTheme] : null;
                         const wallTile = theme ? theme.wall : '▓';
                         if (tile === wallTile || tile === '▒' || tile === '+') isSolid = true;
                     } else if (gameState.mapMode === 'castle') {
                         const map = chunkManager.castleMaps[gameState.currentCastleId];
-                        tile = (map && map[ty] && map[ty][tx]) ? map[ty][tx] : ' ';
+                        
+                        tile = map?.[ty]?.[tx] || ' ';
+                        
                         if (tile === '▓' || tile === '▒' || tile === '+') isSolid = true;
                     } else {
                         const enemyId = `overworld:${tx},${-ty}`;
