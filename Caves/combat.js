@@ -135,7 +135,12 @@ const EnemyNetworkManager = {
  * Fast Bresenham's Line Algorithm for Line of Sight checking.
  * Returns true if the path from (x0, y0) to (x1, y1) is clear of solid obstacles.
  */
+
 function hasLineOfSight(x0, y0, x1, y1) {
+    // 🚨 BUG FIX: Force inputs to integers to prevent infinite floating-point loops
+    x0 = Math.floor(x0); y0 = Math.floor(y0);
+    x1 = Math.floor(x1); y1 = Math.floor(y1);
+
     let dx = Math.abs(x1 - x0);
     let dy = Math.abs(y1 - y0);
     let sx = (x0 < x1) ? 1 : -1;
@@ -146,10 +151,8 @@ function hasLineOfSight(x0, y0, x1, y1) {
     let currY = y0;
 
     while (true) {
-        // If we reached the target coordinate, the path is clear!
         if (currX === x1 && currY === y1) return true;
 
-        // Check if the current tile blocks LoS (we skip the starting tile)
         if (currX !== x0 || currY !== y0) {
             let tileAt = '.';
             if (typeof chunkManager !== 'undefined') {
@@ -157,20 +160,20 @@ function hasLineOfSight(x0, y0, x1, y1) {
                     tileAt = chunkManager.getTile(currX, currY);
                 } else if (gameState.mapMode === 'dungeon') {
                     const map = chunkManager.caveMaps[gameState.currentCaveId];
-                    tileAt = (map && map[currY] && map[currY][currX]) ? map[currY][currX] : ' ';
+                    // Safely chain the Y and X lookups
+                    tileAt = map?.[currY]?.[currX] || ' ';
                 } else if (gameState.mapMode === 'castle') {
                     const map = chunkManager.castleMaps[gameState.currentCastleId];
-                    tileAt = (map && map[currY] && map[currY][currX]) ? map[currY][currX] : ' ';
+                    
+                    tileAt = map?.[currY]?.[currX] || ' ';
                 }
             }
 
-            // If the ray hits a Mountain, Wall, Closed Door, or the edge of the world, block the shot!
             if (['▓', '▒', '🧱', '^', '+', ' '].includes(tileAt)) {
                 return false;
             }
         }
 
-        // Calculate next step in the line
         let e2 = 2 * err;
         if (e2 > -dy) { err -= dy; currX += sx; }
         if (e2 < dx) { err += dx; currY += sy; }
