@@ -917,13 +917,17 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     
                     if (gameState.mapMode === 'dungeon') {
                         const map = typeof chunkManager !== 'undefined' ? chunkManager.caveMaps[gameState.currentCaveId] : null;
-                        tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
+                        
+                        tile = map?.[targetY]?.[targetX] || ' ';
+                        
                         const theme = typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES[gameState.currentCaveTheme] : null;
                         const wallTile = theme ? theme.wall : '▓';
                         if (tile === wallTile || tile === '▒' || tile === '+') isSolid = true;
                     } else if (gameState.mapMode === 'castle') {
                         const map = typeof chunkManager !== 'undefined' ? chunkManager.castleMaps[gameState.currentCastleId] : null;
-                        tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
+                        
+                        tile = map?.[targetY]?.[targetX] || ' ';
+                        
                         if (tile === '▓' || tile === '▒' || tile === '+') isSolid = true;
                     } else {
                         const enemyId = `overworld:${targetX},${-targetY}`;
