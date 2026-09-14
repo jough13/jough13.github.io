@@ -245,7 +245,7 @@ async function useSkill(skillId) {
                         }
                     }
 
-                    // --- 🚨 PERFORMANCE WIN: AOE BATCHING ---
+                    // --- AOE BATCHING ---
                     const whirlwindBatchedPayload = {};
                     let hitSomething = false;
 
@@ -403,10 +403,10 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
             }
         }
 
-        // --- 🚨 PERFORMANCE WIN: AOE BATCHING FOR MELEE SKILLS ---
+        // --- AOE BATCHING FOR MELEE SKILLS ---
         const meleeBatchedPayload = {};
 
-        for (const coords of enemiesToHit) {
+         for (const coords of enemiesToHit) {
             let tile;
             let map;
             
@@ -414,12 +414,13 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 
             if (gameState.mapMode === 'dungeon') {
                 map = chunkManager.caveMaps[gameState.currentCaveId];
-                tile = (map && map[coords.y]) ? map[coords.y][coords.x] : ' ';
+
+                tile = map?.[coords.y]?.[coords.x] || ' ';
             } else if (gameState.mapMode === 'castle') {
                 map = chunkManager.castleMaps[gameState.currentCastleId];
-                tile = (map && map[coords.y]) ? map[coords.y][coords.x] : ' ';
+
+                tile = map?.[coords.y]?.[coords.x] || ' ';
             } else {
-                // --- Check for LIVE moving enemies first! ---
                 const enemyId = `overworld:${coords.x},${-coords.y}`;
                 const liveEnemy = gameState.sharedEnemies[enemyId];
                 tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(coords.x, coords.y);
@@ -656,11 +657,13 @@ async function executeRangedAttack(dirX, dirY) {
                 const enemyId = `overworld:${targetX},${-targetY}`;
                 const liveEnemy = gameState.sharedEnemies[enemyId];
                 tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(targetX, targetY);
-                // Added closed doors '+' and stash boxes '☒' to arrow blockers
                 if (['^', 'F', '🧱', '+', '☒'].includes(tile) && !liveEnemy) isSolid = true;
             } else {
                 const map = (gameState.mapMode === 'dungeon') ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
-                tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
+                
+                // Optional chaining ensures off-map rays safely return ' '
+                tile = map?.[targetY]?.[targetX] || ' ';
+                
                 const theme = typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES[gameState.currentCaveTheme] : null;
                 const wallTile = theme ? theme.wall : '▓';
                 if (tile === wallTile || tile === '▒' || tile === '+') isSolid = true;
@@ -1013,7 +1016,7 @@ async function executeQuickstep(dirX, dirY) {
             return;
         }
 
-        // 🚨 EXPLOIT FIX WIN: Wall-Phasing Raycast
+        // Wall-Phasing Raycast
         // Rather than blindly skipping to tile 2 (allowing you to jump over walls), 
         // we physically check tile 1 and tile 2. If tile 1 is a solid wall, the dash stops!
         let targetX = player.x;
@@ -1030,17 +1033,19 @@ async function executeQuickstep(dirX, dirY) {
                 tile = chunkManager.getTile(checkX, checkY);
             } else if (gameState.mapMode === 'dungeon') {
                 const map = chunkManager.caveMaps[gameState.currentCaveId];
-                tile = map[checkY]?.[checkX] || ' ';
+
+                tile = map?.[checkY]?.[checkX] || ' ';
             } else if (gameState.mapMode === 'castle') {
                 const map = chunkManager.castleMaps[gameState.currentCastleId];
-                tile = map[checkY]?.[checkX] || ' ';
+
+                tile = map?.[checkY]?.[checkX] || ' ';
             }
 
             if (['▓', '▒', '🧱', '^', '+', '☒'].includes(tile)) {
                 break; // Stop at solid wall! Cannot phase through!
             }
 
-            // MECHANIC & JUICE WIN: Dagger Flurry Check
+            // Dagger Flurry Check
             if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tile]) {
                 targetX = checkX;
                 targetY = checkY;
@@ -1586,7 +1591,7 @@ function initSkillbookListeners() {
         skillListEl.addEventListener('click', (e) => {
             const skillItem = e.target.closest('.skill-item');
             if (skillItem && skillItem.dataset.skill) {
-                // Stop event from bubbling up to the modal background and instantly closing it
+                // 🚨 BUG FIX: Stop event from bubbling up to the modal background and instantly closing it
                 e.stopPropagation();
                 useSkill(skillItem.dataset.skill);
             }
