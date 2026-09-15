@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Posh Salon - Bridal Request</title>
+  
+  <!-- React and ReactDOM via CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  
+  <!-- Babel for in-browser JSX compilation -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    body {
+      background-color: #f4f4f4;
+      padding: 20px;
+    }
+
+    .bridal-form-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px;
+      background: #fdfdfd;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      color: #333;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .form-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .form-header h2 {
+      font-weight: 300;
+      letter-spacing: 2px;
+      margin: 0;
+      text-transform: uppercase;
+    }
+
+    .form-header h1 {
+      font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
+      font-size: 3.5rem;
+      font-weight: normal;
+      margin: 0;
+    }
+
+    .bridal-form {
+      border: 4px solid #222;
+      padding: 30px;
+    }
+
+    .input-group {
+      display: flex;
+      align-items: baseline;
+      margin-bottom: 20px;
+    }
+
+    .input-group label {
+      font-weight: bold;
+      font-size: 0.9rem;
+      margin-right: 10px;
+      white-space: nowrap;
+      text-transform: uppercase;
+    }
+
+    .input-group input[type="text"],
+    .input-group input[type="tel"],
+    .input-group input[type="email"],
+    .input-group input[type="date"],
+    .input-group input[type="time"] {
+      flex-grow: 1;
+      border: none;
+      border-bottom: 1px solid #222;
+      background: transparent;
+      padding: 5px;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .grid-2-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+    }
+
+    .checkbox-group {
+      display: flex;
+      gap: 30px;
+      margin: 20px 0;
+      align-items: center;
+    }
+
+    .checkbox-group label {
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .checkbox-group input[type="checkbox"],
+    .checkbox-group input[type="radio"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .services-line {
+      flex-grow: 1;
+      border-bottom: 1px solid #222;
+      margin-left: 10px;
+    }
+
+    .bottom-sections {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 40px;
+    }
+
+    .section-box {
+      border: 3px solid #222;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .section-box label {
+      font-weight: bold;
+      margin-bottom: 10px;
+      font-size: 1.1rem;
+    }
+
+    .section-box textarea {
+      width: 100%;
+      border: none;
+      resize: vertical;
+      background: transparent;
+      outline: none;
+      font-family: inherit;
+      font-size: 1rem;
+      flex-grow: 1;
+    }
+
+    .right-panels {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .agreement-checkboxes {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    .agreement-checkboxes div {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .submit-btn {
+      margin-top: 30px;
+      width: 100%;
+      padding: 15px;
+      background-color: #222;
+      color: white;
+      border: none;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .submit-btn:hover {
+      background-color: #444;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    const BridalRequestForm = () => {
+      const [formData, setFormData] = useState({
+        name: '',
+        phone: '',
+        email: '',
+        dateOfEvent: '',
+        venue: '',
+        locationType: '',
+        services: {
+          hair: false,
+          makeup: false,
+        },
+        targetFinishTime: '',
+        weddingPlanner: '',
+        notes: '',
+        agreement: {
+          sent: false,
+          signed: false,
+          cardOnFile: false,
+          depositRun: false,
+        },
+        partyMembers: ''
+      });
+
+      const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        
+        if (type === 'checkbox') {
+          if (['hair', 'makeup'].includes(name)) {
+            setFormData(prev => ({
+              ...prev,
+              services: { ...prev.services, [name]: checked }
+            }));
+          } else if (['sent', 'signed', 'cardOnFile', 'depositRun'].includes(name)) {
+            setFormData(prev => ({
+              ...prev,
+              agreement: { ...prev.agreement, [name]: checked }
+            }));
+          }
+        } else if (type === 'radio') {
+          setFormData(prev => ({ ...prev, locationType: value }));
+        } else {
+          setFormData(prev => ({ ...prev, [name]: value }));
+        }
+      };
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        console.log('Form Submitted Data:', formData);
+        alert('Form data logged to console!');
+      };
+
+      return (
+        <div className="bridal-form-container">
+          <div className="form-header">
+            <h2>Posh Salon</h2>
+            <h1>Bridal Request</h1>
+          </div>
+
+          <form onSubmit={handleSubmit} className="bridal-form">
+            <div className="input-group">
+              <label>NAME:</label>
+              <input type="text" name="name" value={formData.name} onChange={handleChange} />
+            </div>
+
+            <div className="grid-2-col">
+              <div className="input-group">
+                <label>PHONE:</label>
+                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} />
+              </div>
+              <div className="input-group">
+                <label>EMAIL:</label>
+                <input type="email" name="email" value={formData.email} onChange={handleChange} />
+              </div>
+            </div>
+
+            <div className="grid-2-col">
+              <div className="input-group">
+                <label>DATE OF EVENT:</label>
+                <input type="date" name="dateOfEvent" value={formData.dateOfEvent} onChange={handleChange} />
+              </div>
+              <div className="input-group">
+                <label>VENUE:</label>
+                <input type="text" name="venue" value={formData.venue} onChange={handleChange} />
+              </div>
+            </div>
+
+            <div className="checkbox-group">
+              <label>
+                <input type="radio" name="locationType" value="in-salon" 
+                       checked={formData.locationType === 'in-salon'} onChange={handleChange} />
+                IN-SALON
+              </label>
+              <label style={{marginLeft: '40px'}}>
+                <input type="radio" name="locationType" value="on-location" 
+                       checked={formData.locationType === 'on-location'} onChange={handleChange} />
+                ON-LOCATION
+              </label>
+            </div>
+
+            <div className="checkbox-group">
+              <label style={{flexGrow: 1, display: 'flex'}}>
+                <input type="checkbox" name="hair" checked={formData.services.hair} onChange={handleChange} />
+                HAIR <span className="services-line"></span>
+              </label>
+              <label style={{flexGrow: 1, display: 'flex'}}>
+                <input type="checkbox" name="makeup" checked={formData.services.makeup} onChange={handleChange} />
+                MAKEUP <span className="services-line"></span>
+              </label>
+            </div>
+
+            <div className="input-group" style={{marginTop: '20px'}}>
+              <label>TARGET FINISH TIME:</label>
+              <input type="time" name="targetFinishTime" value={formData.targetFinishTime} onChange={handleChange} style={{maxWidth: '150px'}} />
+            </div>
+
+            <div className="input-group">
+              <label>WEDDING PLANNER:</label>
+              <input type="text" name="weddingPlanner" value={formData.weddingPlanner} onChange={handleChange} />
+            </div>
+
+            <div className="bottom-sections">
+              <div className="section-box">
+                <label>Notes:</label>
+                <textarea name="notes" value={formData.notes} onChange={handleChange} rows="10"></textarea>
+              </div>
+
+              <div className="right-panels">
+                <div className="section-box">
+                  <label>AGREEMENT</label>
+                  <div className="agreement-checkboxes">
+                    <div>
+                      <label>
+                        <input type="checkbox" name="sent" checked={formData.agreement.sent} onChange={handleChange} />
+                        Sent
+                      </label>
+                      <label style={{marginLeft: '20px'}}>
+                        <input type="checkbox" name="signed" checked={formData.agreement.signed} onChange={handleChange} />
+                        Signed & Received
+                      </label>
+                    </div>
+                    <div>
+                      <label>
+                        <input type="checkbox" name="cardOnFile" checked={formData.agreement.cardOnFile} onChange={handleChange} />
+                        CARD ON FILE
+                      </label>
+                    </div>
+                    <div>
+                      <label>
+                        <input type="checkbox" name="depositRun" checked={formData.agreement.depositRun} onChange={handleChange} />
+                        DEPOSIT RUN
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="section-box" style={{flexGrow: 1}}>
+                  <label>PARTY MEMBERS:</label>
+                  <textarea name="partyMembers" value={formData.partyMembers} onChange={handleChange} rows="4"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" className="submit-btn">Submit Request</button>
+          </form>
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<BridalRequestForm />);
+  </script>
+</body>
+</html>
