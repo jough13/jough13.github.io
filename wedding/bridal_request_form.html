@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Posh Salon - Bridal Request</title>
   
   <!-- React and ReactDOM via CDN -->
@@ -14,7 +14,7 @@
 
   <style>
     :root {
-      --primary-color: #4A235A; /* Dark elegant purple */
+      --primary-color: #4A235A;
       --secondary-color: #6C3483;
       --bg-color: #f8f6fa;
       --text-color: #333;
@@ -25,6 +25,7 @@
       padding: 20px;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       color: var(--text-color);
+      margin: 0;
     }
 
     .bridal-form-container {
@@ -65,14 +66,15 @@
 
     .input-group {
       display: flex;
-      align-items: baseline;
+      align-items: center;
       margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
     }
 
     .input-group label {
       font-weight: 600;
       font-size: 0.9rem;
-      margin-right: 10px;
       white-space: nowrap;
       text-transform: uppercase;
       color: var(--primary-color);
@@ -87,11 +89,12 @@
       border: none;
       border-bottom: 1px solid #ccc;
       background: transparent;
-      padding: 5px;
+      padding: 8px 5px;
       font-size: 1rem;
       outline: none;
       color: var(--text-color);
       transition: border-color 0.3s;
+      min-width: 200px;
     }
 
     .input-group input:focus {
@@ -109,6 +112,7 @@
       gap: 30px;
       margin: 25px 0;
       align-items: center;
+      flex-wrap: wrap;
     }
 
     .checkbox-group label {
@@ -118,12 +122,13 @@
       gap: 10px;
       cursor: pointer;
       color: var(--primary-color);
+      padding: 5px 0;
     }
 
     .checkbox-group input[type="checkbox"],
     .checkbox-group input[type="radio"] {
-      width: 18px;
-      height: 18px;
+      width: 22px;
+      height: 22px;
       cursor: pointer;
       accent-color: var(--primary-color);
     }
@@ -132,6 +137,13 @@
       flex-grow: 1;
       border-bottom: 1px solid #ccc;
       margin-left: 10px;
+      min-width: 50px;
+    }
+    
+    .service-label {
+      flex-grow: 1; 
+      display: flex;
+      min-width: 150px;
     }
 
     .bottom-sections {
@@ -150,7 +162,7 @@
       background-color: #faf9fc;
     }
 
-    .section-box label {
+    .section-box label.box-title {
       font-weight: 600;
       margin-bottom: 10px;
       font-size: 1rem;
@@ -168,6 +180,8 @@
       font-size: 1rem;
       flex-grow: 1;
       color: var(--text-color);
+      padding: 5px;
+      box-sizing: border-box;
     }
 
     .right-panels {
@@ -182,16 +196,27 @@
       gap: 15px;
     }
     
-    .agreement-checkboxes div {
+    .agreement-row {
+      display: flex;
+      align-items: center;
+      gap: 25px;
+      flex-wrap: wrap;
+    }
+    
+    .agreement-row label {
       display: flex;
       align-items: center;
       gap: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--primary-color);
     }
 
     .button-group {
       display: flex;
       gap: 15px;
       margin-top: 30px;
+      flex-wrap: wrap;
     }
 
     .btn {
@@ -205,6 +230,10 @@
       transition: all 0.2s ease;
       text-transform: uppercase;
       letter-spacing: 1px;
+      text-align: center;
+      box-sizing: border-box;
+      display: inline-block;
+      min-width: 150px;
     }
 
     .submit-btn {
@@ -217,6 +246,22 @@
       box-shadow: 0 4px 8px rgba(108, 52, 131, 0.3);
     }
 
+    .load-file-input {
+      display: none;
+    }
+
+    .load-btn {
+      background-color: var(--secondary-color);
+      color: white;
+      width: 100%;
+      margin: 0;
+    }
+
+    .load-btn:hover {
+      background-color: var(--primary-color);
+      box-shadow: 0 4px 8px rgba(108, 52, 131, 0.3);
+    }
+
     .print-btn {
       background-color: #e8e3ec;
       color: var(--primary-color);
@@ -225,6 +270,69 @@
 
     .print-btn:hover {
       background-color: #d1c4e0;
+    }
+
+    /* Mobile Responsive Styles */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      
+      .bridal-form-container {
+        padding: 20px;
+      }
+
+      .bridal-form {
+        padding: 15px;
+      }
+
+      .form-header h1 {
+        font-size: 3rem;
+      }
+
+      .grid-2-col {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+
+      .bottom-sections {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .input-group {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .input-group input[type="text"],
+      .input-group input[type="tel"],
+      .input-group input[type="email"],
+      .input-group input[type="date"],
+      .input-group input[type="time"] {
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      .checkbox-group {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+      }
+
+      .agreement-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+      }
+
+      .button-group {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+      }
     }
 
     /* Print Styles */
@@ -306,32 +414,48 @@
       const handleSave = (e) => {
         e.preventDefault();
         
-        // Format the client name for the file (replace spaces with underscores, handle empty name)
         const safeName = formData.name 
           ? formData.name.trim().replace(/[^a-zA-Z0-9]/g, '_') 
           : 'New_Client';
-
-        // Get today's date in YYYY-MM-DD format
+        
         const today = new Date();
         const dateString = today.toISOString().split('T')[0];
-        
-        // Construct the filename
         const fileName = `${safeName}_${dateString}.json`;
 
-        // Create the JSON blob
         const jsonString = JSON.stringify(formData, null, 2);
         const blob = new Blob([jsonString], { type: "application/json" });
         
-        // Create a temporary link to trigger the download
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = fileName;
         
-        // Append to body, click, and clean up
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(link.href);
+      };
+
+      const handleLoad = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const parsedData = JSON.parse(event.target.result);
+            setFormData(prevData => ({
+              ...prevData,
+              ...parsedData,
+              services: { ...prevData.services, ...(parsedData.services || {}) },
+              agreement: { ...prevData.agreement, ...(parsedData.agreement || {}) }
+            }));
+          } catch (error) {
+            alert('Error parsing the file. Please ensure it is a valid saved form JSON.');
+            console.error('File parsing error:', error);
+          }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
       };
 
       const handlePrint = (e) => {
@@ -380,25 +504,25 @@
                        checked={formData.locationType === 'in-salon'} onChange={handleChange} />
                 IN-SALON
               </label>
-              <label style={{marginLeft: '40px'}}>
+              <label>
                 <input type="radio" name="locationType" value="on-location" 
                        checked={formData.locationType === 'on-location'} onChange={handleChange} />
                 ON-LOCATION
               </label>
             </div>
 
-            <div className="checkbox-group">
-              <label style={{flexGrow: 1, display: 'flex'}}>
+            <div className="checkbox-group" style={{marginTop: '10px'}}>
+              <label className="service-label">
                 <input type="checkbox" name="hair" checked={formData.services.hair} onChange={handleChange} />
                 HAIR <span className="services-line"></span>
               </label>
-              <label style={{flexGrow: 1, display: 'flex'}}>
+              <label className="service-label">
                 <input type="checkbox" name="makeup" checked={formData.services.makeup} onChange={handleChange} />
                 MAKEUP <span className="services-line"></span>
               </label>
             </div>
 
-            <div className="input-group" style={{marginTop: '20px'}}>
+            <div className="input-group" style={{marginTop: '30px'}}>
               <label>TARGET FINISH TIME:</label>
               <input type="time" name="targetFinishTime" value={formData.targetFinishTime} onChange={handleChange} style={{maxWidth: '150px'}} />
             </div>
@@ -410,31 +534,31 @@
 
             <div className="bottom-sections">
               <div className="section-box">
-                <label>Notes:</label>
+                <label className="box-title">Notes:</label>
                 <textarea name="notes" value={formData.notes} onChange={handleChange} rows="10"></textarea>
               </div>
 
               <div className="right-panels">
                 <div className="section-box">
-                  <label>AGREEMENT</label>
+                  <label className="box-title">AGREEMENT</label>
                   <div className="agreement-checkboxes">
-                    <div>
+                    <div className="agreement-row">
                       <label>
                         <input type="checkbox" name="sent" checked={formData.agreement.sent} onChange={handleChange} />
                         Sent
                       </label>
-                      <label style={{marginLeft: '20px'}}>
+                      <label>
                         <input type="checkbox" name="signed" checked={formData.agreement.signed} onChange={handleChange} />
                         Signed & Received
                       </label>
                     </div>
-                    <div>
+                    <div className="agreement-row">
                       <label>
                         <input type="checkbox" name="cardOnFile" checked={formData.agreement.cardOnFile} onChange={handleChange} />
                         CARD ON FILE
                       </label>
                     </div>
-                    <div>
+                    <div className="agreement-row">
                       <label>
                         <input type="checkbox" name="depositRun" checked={formData.agreement.depositRun} onChange={handleChange} />
                         DEPOSIT RUN
@@ -444,7 +568,7 @@
                 </div>
 
                 <div className="section-box" style={{flexGrow: 1}}>
-                  <label>PARTY MEMBERS:</label>
+                  <label className="box-title">PARTY MEMBERS:</label>
                   <textarea name="partyMembers" value={formData.partyMembers} onChange={handleChange} rows="4"></textarea>
                 </div>
               </div>
@@ -452,6 +576,18 @@
 
             <div className="button-group no-print">
               <button type="submit" className="btn submit-btn">Save Request</button>
+              
+              <div style={{flexGrow: 1, display: 'flex'}}>
+                <input 
+                  type="file" 
+                  id="load-file" 
+                  className="load-file-input" 
+                  accept=".json"
+                  onChange={handleLoad} 
+                />
+                <label htmlFor="load-file" className="btn load-btn">Load Request</label>
+              </div>
+
               <button type="button" onClick={handlePrint} className="btn print-btn">Print Form</button>
             </div>
           </form>
