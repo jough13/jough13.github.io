@@ -303,10 +303,35 @@
         }
       };
 
-      const handleSubmit = (e) => {
+      const handleSave = (e) => {
         e.preventDefault();
-        console.log('Form Submitted Data:', formData);
-        alert('Form data logged to console! Connect to a backend to save.');
+        
+        // Format the client name for the file (replace spaces with underscores, handle empty name)
+        const safeName = formData.name 
+          ? formData.name.trim().replace(/[^a-zA-Z0-9]/g, '_') 
+          : 'New_Client';
+
+        // Get today's date in YYYY-MM-DD format
+        const today = new Date();
+        const dateString = today.toISOString().split('T')[0];
+        
+        // Construct the filename
+        const fileName = `${safeName}_${dateString}.json`;
+
+        // Create the JSON blob
+        const jsonString = JSON.stringify(formData, null, 2);
+        const blob = new Blob([jsonString], { type: "application/json" });
+        
+        // Create a temporary link to trigger the download
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = fileName;
+        
+        // Append to body, click, and clean up
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
       };
 
       const handlePrint = (e) => {
@@ -321,7 +346,7 @@
             <h1>Bridal Request</h1>
           </div>
 
-          <form onSubmit={handleSubmit} className="bridal-form">
+          <form onSubmit={handleSave} className="bridal-form">
             <div className="input-group">
               <label>NAME:</label>
               <input type="text" name="name" value={formData.name} onChange={handleChange} />
@@ -425,9 +450,8 @@
               </div>
             </div>
 
-            {/* Buttons hidden during print */}
             <div className="button-group no-print">
-              <button type="submit" className="btn submit-btn">Submit Request</button>
+              <button type="submit" className="btn submit-btn">Save Request</button>
               <button type="button" onClick={handlePrint} className="btn print-btn">Print Form</button>
             </div>
           </form>
