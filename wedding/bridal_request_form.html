@@ -13,43 +13,54 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
+    :root {
+      --primary-color: #4A235A; /* Dark elegant purple */
+      --secondary-color: #6C3483;
+      --bg-color: #f8f6fa;
+      --text-color: #333;
+    }
+
     body {
-      background-color: #f4f4f4;
+      background-color: var(--bg-color);
       padding: 20px;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      color: var(--text-color);
     }
 
     .bridal-form-container {
       max-width: 800px;
       margin: 0 auto;
       padding: 40px;
-      background: #fdfdfd;
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      color: #333;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      background: #ffffff;
+      box-shadow: 0 8px 16px rgba(74, 35, 90, 0.1);
+      border-radius: 8px;
     }
 
     .form-header {
       text-align: center;
       margin-bottom: 30px;
+      color: var(--primary-color);
     }
 
     .form-header h2 {
       font-weight: 300;
-      letter-spacing: 2px;
+      letter-spacing: 3px;
       margin: 0;
       text-transform: uppercase;
+      font-size: 1.2rem;
     }
 
     .form-header h1 {
       font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
-      font-size: 3.5rem;
+      font-size: 4rem;
       font-weight: normal;
-      margin: 0;
+      margin: -10px 0 0 0;
     }
 
     .bridal-form {
-      border: 4px solid #222;
+      border: 3px solid var(--primary-color);
       padding: 30px;
+      border-radius: 4px;
     }
 
     .input-group {
@@ -59,11 +70,12 @@
     }
 
     .input-group label {
-      font-weight: bold;
+      font-weight: 600;
       font-size: 0.9rem;
       margin-right: 10px;
       white-space: nowrap;
       text-transform: uppercase;
+      color: var(--primary-color);
     }
 
     .input-group input[type="text"],
@@ -73,11 +85,17 @@
     .input-group input[type="time"] {
       flex-grow: 1;
       border: none;
-      border-bottom: 1px solid #222;
+      border-bottom: 1px solid #ccc;
       background: transparent;
       padding: 5px;
       font-size: 1rem;
       outline: none;
+      color: var(--text-color);
+      transition: border-color 0.3s;
+    }
+
+    .input-group input:focus {
+      border-bottom: 2px solid var(--secondary-color);
     }
 
     .grid-2-col {
@@ -89,16 +107,17 @@
     .checkbox-group {
       display: flex;
       gap: 30px;
-      margin: 20px 0;
+      margin: 25px 0;
       align-items: center;
     }
 
     .checkbox-group label {
-      font-weight: bold;
+      font-weight: 600;
       display: flex;
       align-items: center;
       gap: 10px;
       cursor: pointer;
+      color: var(--primary-color);
     }
 
     .checkbox-group input[type="checkbox"],
@@ -106,11 +125,12 @@
       width: 18px;
       height: 18px;
       cursor: pointer;
+      accent-color: var(--primary-color);
     }
 
     .services-line {
       flex-grow: 1;
-      border-bottom: 1px solid #222;
+      border-bottom: 1px solid #ccc;
       margin-left: 10px;
     }
 
@@ -122,16 +142,20 @@
     }
 
     .section-box {
-      border: 3px solid #222;
+      border: 2px solid var(--primary-color);
       padding: 15px;
       display: flex;
       flex-direction: column;
+      border-radius: 4px;
+      background-color: #faf9fc;
     }
 
     .section-box label {
-      font-weight: bold;
+      font-weight: 600;
       margin-bottom: 10px;
-      font-size: 1.1rem;
+      font-size: 1rem;
+      color: var(--primary-color);
+      text-transform: uppercase;
     }
 
     .section-box textarea {
@@ -143,6 +167,7 @@
       font-family: inherit;
       font-size: 1rem;
       flex-grow: 1;
+      color: var(--text-color);
     }
 
     .right-panels {
@@ -163,21 +188,66 @@
       gap: 10px;
     }
 
-    .submit-btn {
+    .button-group {
+      display: flex;
+      gap: 15px;
       margin-top: 30px;
-      width: 100%;
+    }
+
+    .btn {
+      flex-grow: 1;
       padding: 15px;
-      background-color: #222;
-      color: white;
       border: none;
+      border-radius: 4px;
       font-size: 1.1rem;
       font-weight: bold;
       cursor: pointer;
-      transition: background-color 0.2s;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .submit-btn {
+      background-color: var(--primary-color);
+      color: white;
     }
 
     .submit-btn:hover {
-      background-color: #444;
+      background-color: var(--secondary-color);
+      box-shadow: 0 4px 8px rgba(108, 52, 131, 0.3);
+    }
+
+    .print-btn {
+      background-color: #e8e3ec;
+      color: var(--primary-color);
+      border: 1px solid var(--primary-color);
+    }
+
+    .print-btn:hover {
+      background-color: #d1c4e0;
+    }
+
+    /* Print Styles */
+    @media print {
+      body {
+        background-color: white;
+        padding: 0;
+      }
+      .bridal-form-container {
+        box-shadow: none;
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .section-box {
+        background-color: white;
+      }
+      input, textarea {
+        color: black !important;
+      }
     }
   </style>
 </head>
@@ -236,7 +306,12 @@
       const handleSubmit = (e) => {
         e.preventDefault();
         console.log('Form Submitted Data:', formData);
-        alert('Form data logged to console!');
+        alert('Form data logged to console! Connect to a backend to save.');
+      };
+
+      const handlePrint = (e) => {
+        e.preventDefault();
+        window.print();
       };
 
       return (
@@ -350,7 +425,11 @@
               </div>
             </div>
 
-            <button type="submit" className="submit-btn">Submit Request</button>
+            {/* Buttons hidden during print */}
+            <div className="button-group no-print">
+              <button type="submit" className="btn submit-btn">Submit Request</button>
+              <button type="button" onClick={handlePrint} className="btn print-btn">Print Form</button>
+            </div>
           </form>
         </div>
       );
