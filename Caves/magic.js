@@ -158,6 +158,79 @@ async function castSpell(spellId) {
                     break;
                 }
 
+                case 'haste': {
+                    player.dexterityBonus = (Number(player.dexterityBonus) || 0) + 10;
+                    player.dexterityBonusTurns = Math.max(Number(player.dexterityBonusTurns) || 0, Number(spellData.duration) || 15);
+                    logMessage(`{green:Time slows down around you! (+10 Dexterity)}`);
+                    if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.dexterity, 'stat-pulse-green');
+                    updates.dexterityBonus = player.dexterityBonus;
+                    updates.dexterityBonusTurns = player.dexterityBonusTurns;
+                    spellCastSuccessfully = true;
+                    break;
+                }
+
+                case 'bloodSacrifice': {
+                    const actualRestore = typeof window.modifyVital === 'function' ? window.modifyVital('stamina', Number(spellData.baseRestore) || 15) : 0;
+                    if (actualRestore > 0) {
+                        logMessage(`{green:You sacrifice your blood for energy! (+${actualRestore} Stamina)}`);
+                        if (typeof ParticleSystem !== 'undefined') {
+                            ParticleSystem.createExplosion(player.x, player.y, '#be123c', 15);
+                            ParticleSystem.createFloatingText(player.x, player.y, `+${actualRestore}`, '#22c55e');
+                        }
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+                        spellCastSuccessfully = true;
+                    } else {
+                        logMessage("{gray:Your stamina is already full.}");
+                        if (typeof window.modifyVital === 'function') window.modifyVital('health', cost); // refund the HP cost
+                        spellCastSuccessfully = false;
+                    }
+                    break;
+                }
+
+                case 'bloodBoil': {
+                    const effWill = Number(player.willpower) || 1;
+                    const boilDamage = (Number(spellData.baseDamage) || 12) + (effWill * spellLevel);
+                    logMessage("{red:Your blood turns to superheated vapor and erupts!}");
+                    gameState.screenShake = 15;
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#991b1b', 30);
+                    
+                    const batchedPayload = {};
+                    for (let y = player.y - 1; y <= player.y + 1; y++) {
+                        for (let x = player.x - 1; x <= player.x + 1; x++) {
+                            if (x === player.x && y === player.y) continue;
+                            const res = await applySpellDamage(x, y, boilDamage, spellId, true);
+                            if (res && res.hit) Object.assign(batchedPayload, res.payload);
+                        }
+                    }
+                    if (Object.keys(batchedPayload).length > 0 && typeof rtdb !== 'undefined') {
+                        rtdb.ref().update(batchedPayload).catch(e => console.error("Blood Boil Batch Error:", e));
+                    }
+                    spellCastSuccessfully = true;
+                    break;
+                }
+
+                case 'holyNova': {
+                    const effWits = (Number(player.wits) || 1) + (Number(player.witsBonus) || 0);
+                    const novaDmg = (Number(spellData.baseDamage) || 8) + (effWits * spellLevel);
+                    logMessage("{gold:A blinding flash of holy energy erupts from you!}");
+                    gameState.screenShake = 10;
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#facc15', 25);
+                    
+                    const batchedPayload = {};
+                    for (let y = player.y - 1; y <= player.y + 1; y++) {
+                        for (let x = player.x - 1; x <= player.x + 1; x++) {
+                            if (x === player.x && y === player.y) continue;
+                            const res = await applySpellDamage(x, y, novaDmg, spellId, true);
+                            if (res && res.hit) Object.assign(batchedPayload, res.payload);
+                        }
+                    }
+                    if (Object.keys(batchedPayload).length > 0 && typeof rtdb !== 'undefined') {
+                        rtdb.ref().update(batchedPayload).catch(e => console.error("Holy Nova Batch Error:", e));
+                    }
+                    spellCastSuccessfully = true;
+                    break;
+                }
+
                 case 'divineLight': {
                     // Dynamic cure messaging with atmospheric text
                     let ailmentsCured = false;
@@ -1215,6 +1288,97 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     rtdb.ref().update(batchedLightningPayload).catch(e => console.error("Chain Lightning Batch Error:", e));
                 }
                 
+                break;
+            }
+
+            case 'voidStep': {
+                let targetX = player.x;
+                let targetY = player.y;
+                let canTeleport = true;
+
+                // Raycast up to 3 tiles, stopping before walls
+                for (let i = 1; i <= 3; i++) {
+                    const checkX = player.x + (dirX * i);
+                    const checkY = player.y + (dirY * i);
+                    let tileAt = '.';
+                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(checkX, checkY);
+                    else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[checkY]?.[checkX] || ' ';
+                    else tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[checkY]?.[checkX] || ' ';
+                    
+                    if (['▓', '▒', '🧱', '^', '+', '☒', '🔒'].includes(tileAt)) {
+                        canTeleport = false; break; 
+                    }
+                    targetX = checkX; targetY = checkY;
+                }
+
+                if (targetX === player.x && targetY === player.y) {
+                    logMessage("{gray:Your path through the Void is blocked.}");
+                    break;
+                }
+
+                if (typeof ParticleSystem !== 'undefined') {
+                    ParticleSystem.createExplosion(player.x, player.y, '#a855f7', 15);
+                    ParticleSystem.createExplosion(targetX, targetY, '#c084fc', 15);
+                }
+
+                player.x = targetX;
+                player.y = targetY;
+                player.stealthTurns = Math.max(player.stealthTurns || 0, 1);
+                logMessage("{purple:You fold space and vanish into the shadows!}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                hitSomething = true;
+                break;
+            }
+
+            case 'earthSpike': {
+                const effInt = Number(player.intuition) || 1;
+                const spikeDmg = (Number(spellData.baseDamage) || 6) + (effInt * spellLevel);
+                const tx = player.x + dirX;
+                const ty = player.y + dirY;
+                
+                logMessage("{yellow:A massive stone stalagmite erupts from the earth!}");
+                gameState.screenShake = 10;
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tx, ty, '#78350f', 15);
+                
+                if (await applySpellDamage(tx, ty, spikeDmg, spellId)) {
+                    hitSomething = true;
+                }
+                break;
+            }
+
+            case 'blizzard': {
+                const blizzDmg = (Number(spellData.baseDamage) || 6) + (effectiveWits * spellLevel);
+                const mx = player.x + (dirX * 3);
+                const my = player.y + (dirY * 3);
+
+                logMessage("{cyan:A raging blizzard engulfs the area!}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.3, 1000);
+                gameState.screenShake = 15;
+                if (typeof ParticleSystem !== 'undefined') {
+                    for(let i=0; i<20; i++) ParticleSystem.spawn(mx, my, '#e0f2fe', 'smoke', '', Math.random()*5+2);
+                }
+
+                const batchedPayload = {};
+                for (let y = my - 1; y <= my + 1; y++) {
+                    for (let x = mx - 1; x <= mx + 1; x++) {
+                        if (x === player.x && y === player.y && !gameState.godMode) {
+                            if (typeof window.modifyVital === 'function') window.modifyVital('health', -5);
+                            player.frostbiteTurns = Math.max(player.frostbiteTurns || 0, 2);
+                            logMessage("{cyan:You are caught in the freezing wind! (-5 HP)}");
+                            continue;
+                        }
+                        if (player.health <= 0 || gameState.isDead) break;
+                        const res = await applySpellDamage(x, y, blizzDmg, spellId, true);
+                        if (res && res.hit) {
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#7dd3fc');
+                            Object.assign(batchedPayload, res.payload);
+                        }
+                    }
+                }
+                if (Object.keys(batchedPayload).length > 0 && typeof rtdb !== 'undefined') {
+                    rtdb.ref().update(batchedPayload).catch(e => console.error("Blizzard Batch Error:", e));
+                }
+                hitSomething = true;
                 break;
             }
         }
