@@ -53,7 +53,10 @@ const ALTAR_WHISPERS = [
     "The leylines converge directly beneath this block.",
     "You feel a strange urge to shatter everything you own.",
     "A reflection in the polished stone shows a different face.",
-    "The runes carved into the base shift when you aren't looking."
+    "The runes carved into the base shift when you aren't looking.",
+    "The stone hums with the trapped souls of a thousand shattered blades.",
+    "A drop of blood on the altar vanishes instantly into the porous rock.",
+    "The air here tastes like static electricity."
 ];
 
 function openEnchantingModal() {
@@ -304,6 +307,11 @@ function handleDisenchant(index) {
         if (!player.metrics) player.metrics = {};
         player.metrics.itemsShattered = (player.metrics.itemsShattered || 0) + 1;
 
+        // 🚨 EXPANSION HOOK WIN
+        if (typeof window.ExpansionManager !== 'undefined') {
+            window.ExpansionManager.triggerHook('onItemShattered', { itemName: oldName, rarity: oldRarity, yield: yieldAmt, player });
+        }
+
         let flavorText = `You shattered the ${oldName} into ${yieldAmt} Arcane Dust.`;
         if (oldRarity === 'rare') flavorText = `The ${oldName} shatters with a sharp crack, releasing ${yieldAmt} Arcane Dust.`;
         else if (oldRarity === 'epic') flavorText = `A miniature shockwave ripples out as the ${oldName} is unmade. (+${yieldAmt} Dust)`;
@@ -349,6 +357,7 @@ function handleShatterMinor() {
         let totalDust = 0;
         let itemsShattered = 0;
         let shatteredNamesCount = {}; // UX WIN: Frequency map for clean output
+        let highestRarity = 'uncommon';
 
         // O(N) Array filter approach for mass deletion
         const remainingInventory = [];
@@ -362,6 +371,8 @@ function handleShatterMinor() {
                 const yieldAmt = DUST_YIELDS[item._rarity] || 1;
                 totalDust += yieldAmt;
                 itemsShattered++;
+                
+                if (item._rarity === 'rare') highestRarity = 'rare';
                 
                 // Track names for the summary cleanly
                 const cleanName = item.name.replace(ENCHANT_PREFIX_REGEX, '').trim();
@@ -386,6 +397,11 @@ function handleShatterMinor() {
             if (!player.metrics) player.metrics = {};
             player.metrics.itemsShattered = (player.metrics.itemsShattered || 0) + itemsShattered;
             
+            // 🚨 EXPANSION HOOK WIN
+            if (typeof window.ExpansionManager !== 'undefined') {
+                window.ExpansionManager.triggerHook('onItemShattered', { itemName: "Mass Minor Items", rarity: highestRarity, yield: totalDust, player });
+            }
+            
             // Concise, consolidated summary of what was actually destroyed!
             const summary = Object.entries(shatteredNamesCount).map(([name, qty]) => `${name}${qty > 1 ? ` (x${qty})` : ''}`).join(', ');
             logMessage(`{gray:Shattered: ${summary}}`);
@@ -393,7 +409,7 @@ function handleShatterMinor() {
             
             if (typeof AudioSystem !== 'undefined') AudioSystem.playDisenchant();
             if (typeof ParticleSystem !== 'undefined') {
-                ParticleSystem.createExplosion(player.x, player.y, '#a855f7', 25);
+                ParticleSystem.createExplosion(player.x, player.y, highestRarity === 'rare' ? '#a855f7' : '#4ade80', 25);
                 ParticleSystem.createFloatingText(player.x, player.y, `+${totalDust} Dust`, "#c084fc");
             }
             gameState.screenShake = 10;
@@ -431,8 +447,8 @@ function handleEnchant(index) {
         const currentRarity = item._rarity || 'normal';
         const cost = UPGRADE_COSTS[currentRarity];
 
-        const dustIdx = player.inventory.findIndex(i => i && i.name === 'Arcane Dust');
-        if (dustIdx === -1 || player.inventory[dustIdx].quantity < cost) {
+        const dustCheckIdx = player.inventory.findIndex(i => i && i.name === 'Arcane Dust');
+        if (dustCheckIdx === -1 || player.inventory[dustCheckIdx].quantity < cost) {
             logMessage("{red:You do not have enough Arcane Dust.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
@@ -442,7 +458,7 @@ function handleEnchant(index) {
         // If the item is stacked, we must create a new inventory slot for the upgraded version.
         // We ensure they have space BEFORE deducting the dust!
         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
-        const dustFreesSlot = (player.inventory[dustIdx].quantity === cost) ? 1 : 0;
+        const dustFreesSlot = (player.inventory[dustCheckIdx].quantity === cost) ? 1 : 0;
         
         if (item.quantity > 1 && player.inventory.length - dustFreesSlot >= invCap) {
             logMessage("{red:Inventory Full! You need an empty slot to enchant a stacked item.}");
@@ -450,10 +466,9 @@ function handleEnchant(index) {
             return; 
         }
 
-        player.inventory[dustIdx].quantity -= cost;
-        if (player.inventory[dustIdx].quantity <= 0) player.inventory.splice(dustIdx, 1);
-
-        // Stack Splitting Failsafe
+        // 🚨 CRITICAL BUG FIX: The Splice Index Drift 
+        // We do stack splitting FIRST, and hold the reference. 
+        // Then we deduct the dust at the end so it doesn't break the inventory index!
         let targetItem = item;
         if (item.quantity > 1) {
             item.quantity--;
@@ -563,9 +578,24 @@ function handleEnchant(index) {
             upgradeMsg = `The heavens tremble! You have forged a weapon of myth: ${targetItem.name}! [${statSummary.join(', ')}]`;
         }
         
+        // --- 🚨 APPLY THE DUST DEDUCTION SAFELY AT THE END ---
+        const actualDust = player.inventory.find(i => i && i.name === 'Arcane Dust');
+        if (actualDust) {
+            actualDust.quantity -= cost;
+            if (actualDust.quantity <= 0) {
+                const actualDustIdx = player.inventory.indexOf(actualDust);
+                if (actualDustIdx > -1) player.inventory.splice(actualDustIdx, 1);
+            }
+        }
+        
         // --- METRICS WIN ---
         if (!player.metrics) player.metrics = {};
         player.metrics.itemsEnchanted = (player.metrics.itemsEnchanted || 0) + 1;
+
+        // 🚨 EXPANSION HOOK WIN
+        if (typeof window.ExpansionManager !== 'undefined') {
+            window.ExpansionManager.triggerHook('onItemEnchanted', { item: targetItem, oldRarity: currentRarity, newRarity: newRarity, player });
+        }
 
         logMessage(`{gold:${upgradeMsg}}`);
         
@@ -598,17 +628,16 @@ function handlePurify(index) {
             return;
         }
 
-        const dustIdx = player.inventory.findIndex(i => i && i.name === 'Arcane Dust');
-        if (dustIdx === -1 || player.inventory[dustIdx].quantity < PURIFY_COST) {
+        const dustCheckIdx = player.inventory.findIndex(i => i && i.name === 'Arcane Dust');
+        if (dustCheckIdx === -1 || player.inventory[dustCheckIdx].quantity < PURIFY_COST) {
             logMessage(`{red:You need ${PURIFY_COST} Arcane Dust to purge the darkness from this item.}`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
         }
 
         // --- 🚨 BUG FIX WIN: STACK-SPLITTING CAPACITY CHECK ---
-        // We ensure they have space BEFORE deducting the dust!
         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
-        const dustFreesSlot = (player.inventory[dustIdx].quantity === PURIFY_COST) ? 1 : 0;
+        const dustFreesSlot = (player.inventory[dustCheckIdx].quantity === PURIFY_COST) ? 1 : 0;
         
         if (item.quantity > 1 && player.inventory.length - dustFreesSlot >= invCap) {
             logMessage("{red:Inventory Full! You need an empty slot to purify a stacked item.}");
@@ -616,11 +645,8 @@ function handlePurify(index) {
             return; 
         }
 
-        // Deduct Dust
-        player.inventory[dustIdx].quantity -= PURIFY_COST;
-        if (player.inventory[dustIdx].quantity <= 0) player.inventory.splice(dustIdx, 1);
-
-        // Stack Splitting Execution
+        // 🚨 CRITICAL BUG FIX: The Splice Index Drift 
+        // Stack Splitting Execution FIRST
         let targetItem = item;
         if (item.quantity > 1) {
             item.quantity--;
@@ -630,7 +656,6 @@ function handlePurify(index) {
         }
         
         // 🚨 BUG FIX & ROBUSTNESS WIN: Explicit Function Rehydration
-        // Ensures that procs and logic functions aren't stripped by JSON stringification!
         const tKey = targetItem.templateId || getEnchantItemKey(targetItem.name);
         const template = typeof window.ITEM_DATA !== 'undefined' && tKey ? window.ITEM_DATA[tKey] : null;
         if (template) {
@@ -659,6 +684,21 @@ function handlePurify(index) {
         // Rename the item (Replacing the cursed prefix with 'Purified')
         targetItem.name = targetItem.name.replace(CURSE_REGEX_GI, 'Purified').trim();
         
+        // --- 🚨 APPLY THE DUST DEDUCTION SAFELY AT THE END ---
+        const actualDust = player.inventory.find(i => i && i.name === 'Arcane Dust');
+        if (actualDust) {
+            actualDust.quantity -= PURIFY_COST;
+            if (actualDust.quantity <= 0) {
+                const actualDustIdx = player.inventory.indexOf(actualDust);
+                if (actualDustIdx > -1) player.inventory.splice(actualDustIdx, 1);
+            }
+        }
+
+        // 🚨 EXPANSION HOOK WIN
+        if (typeof window.ExpansionManager !== 'undefined') {
+            window.ExpansionManager.triggerHook('onItemPurified', { item: targetItem, player });
+        }
+
         logMessage(`{cyan:The dark magic is scoured away! You hold the ${targetItem.name}.}`);
         
         if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
