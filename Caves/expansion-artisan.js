@@ -1,9 +1,28 @@
 // --- START OF FILE expansion-artisan.js ---
 
+// ==========================================
+// THE ARTISAN'S GUILD (JEWELCRAFTING) EXPANSION
+// ==========================================
+
+// 🚀 PERFORMANCE WIN: Static O(1) Dictionary
+// Hoisted out of the execution loop to prevent massive Garbage Collection churn when rapidly cutting gems!
+window.GEM_CUTTING_MAP = Object.freeze({
+    'Raw Ruby': { result: 'Cut Ruby', hex: '#ef4444' },
+    'Raw Sapphire': { result: 'Cut Sapphire', hex: '#3b82f6' },
+    'Raw Diamond': { result: 'Cut Diamond', hex: '#f8fafc' },
+    'Raw Emerald': { result: 'Cut Emerald', hex: '#22c55e' },
+    'Raw Amethyst': { result: 'Cut Amethyst', hex: '#a855f7' },
+    'Raw Topaz': { result: 'Cut Topaz', hex: '#facc15' },
+    'Raw Onyx': { result: 'Cut Onyx', hex: '#374151' }
+});
+
+// 🚀 SECURITY & PERFORMANCE WIN: Prototype-free cache for instant item lookups
+window._artisanKeyCache = Object.create(null);
+
 window.ExpansionManager.register({
     id: "artisan_guild",
     name: "The Artisan's Guild (Jewelcrafting)",
-    version: "1.5", // Upgraded version!
+    version: "1.6", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -30,13 +49,14 @@ window.ExpansionManager.register({
                     const roll = Math.random();
                     let gemName = 'Raw Ruby';
                     let gemId = '💎r';
+                    let explodeColor = '#ef4444';
                     
-                    if (roll > 0.3) { gemName = 'Raw Sapphire'; gemId = '💎s'; }
-                    if (roll > 0.5) { gemName = 'Raw Topaz'; gemId = '💎t'; }
-                    if (roll > 0.7) { gemName = 'Raw Emerald'; gemId = '💎e'; }
-                    if (roll > 0.85) { gemName = 'Raw Amethyst'; gemId = '💎a'; }
-                    if (roll > 0.92) { gemName = 'Raw Onyx'; gemId = '💎o'; }
-                    if (roll > 0.97) { gemName = 'Raw Diamond'; gemId = '💎d'; }
+                    if (roll > 0.3) { gemName = 'Raw Sapphire'; gemId = '💎s'; explodeColor = '#3b82f6'; }
+                    if (roll > 0.5) { gemName = 'Raw Topaz'; gemId = '💎t'; explodeColor = '#facc15'; }
+                    if (roll > 0.7) { gemName = 'Raw Emerald'; gemId = '💎e'; explodeColor = '#22c55e'; }
+                    if (roll > 0.85) { gemName = 'Raw Amethyst'; gemId = '💎a'; explodeColor = '#a855f7'; }
+                    if (roll > 0.92) { gemName = 'Raw Onyx'; gemId = '💎o'; explodeColor = '#374151'; }
+                    if (roll > 0.97) { gemName = 'Raw Diamond'; gemId = '💎d'; explodeColor = '#f8fafc'; }
 
                     const yieldAmt = Math.floor(Math.random() * 2) + 1; // Yields 1 or 2 gems
                     const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
@@ -98,13 +118,22 @@ window.ExpansionManager.register({
                         state.player.inventory.push(newItem);
                         logMessage(`{purple:The geode shatters, revealing ${yieldAmt}x ${gemName}!}`);
                     } else {
-                        // Exploit closed: Passes specific gemId instead of a generic '💎' which spawned flawless diamonds!
                         logMessage(`{red:The geode shatters revealing ${yieldAmt}x ${gemName}, but your pack is full! They drop to the floor.}`);
                         safelyDropItem(gemId);
                     }
 
+                    // Occasional rare lore drop inside geodes!
+                    if (Math.random() < 0.05) {
+                        logMessage("{gold:You also notice a strange, glittering powder... (+1 Arcane Dust)}");
+                        const dust = state.player.inventory.find(i => i && i.name === 'Arcane Dust' && !i.isEquipped);
+                        if (dust) dust.quantity += 1;
+                        else if (state.player.inventory.length < invCap) {
+                            state.player.inventory.push({ templateId: '&', name: 'Arcane Dust', type: 'junk', quantity: 1, tile: '✨', isEquipped: false });
+                        }
+                    }
+
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
-                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#22d3ee', 15);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, explodeColor, 15);
                     
                     return true; // Consume geode
                 }
@@ -117,27 +146,20 @@ window.ExpansionManager.register({
                 effect: (state) => {
                     const inv = state.player.inventory;
                     let cutSomething = false;
-                    const gems = { 
-                        'Raw Ruby': 'Cut Ruby', 
-                        'Raw Sapphire': 'Cut Sapphire', 
-                        'Raw Diamond': 'Cut Diamond',
-                        'Raw Emerald': 'Cut Emerald',
-                        'Raw Amethyst': 'Cut Amethyst',
-                        'Raw Topaz': 'Cut Topaz',
-                        'Raw Onyx': 'Cut Onyx'
-                    };
                     
                     // Look for a raw gem to cut
                     for (let i = 0; i < inv.length; i++) {
-                        if (inv[i] && gems[inv[i].name] && !inv[i].isEquipped) {
-                            const cutName = gems[inv[i].name];
+                        const item = inv[i];
+                        if (item && window.GEM_CUTTING_MAP[item.name] && !item.isEquipped) {
+                            const mapping = window.GEM_CUTTING_MAP[item.name];
+                            const cutName = mapping.result;
+                            const gemColor = mapping.hex;
                             
                             // Safe Capacity Check
-                            // Checks if splitting the raw gem stack will overflow the inventory BEFORE executing!
                             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
-                            const hasStack = inv.find(item => item && item.name === cutName && !item.isEquipped);
+                            const hasStack = inv.find(o => o && o.name === cutName && !o.isEquipped);
                             
-                            if (!hasStack && inv[i].quantity > 1 && inv.length >= invCap) {
+                            if (!hasStack && item.quantity > 1 && inv.length >= invCap) {
                                 logMessage("{red:Your inventory is too full to hold the cut gem! Make space.}");
                                 if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                                 return false;
@@ -148,7 +170,7 @@ window.ExpansionManager.register({
                             let yieldAmt = 1;
                             let isFlawless = false;
                             
-                            let flawlessChance = 0.05 + (state.player.luck * 0.01);
+                            let flawlessChance = 0.05 + ((Number(state.player.luck) || 1) * 0.01);
                             if (state.player.className === 'Artisan') flawlessChance += 0.15;
                             
                             if (Math.random() < flawlessChance) {
@@ -157,29 +179,28 @@ window.ExpansionManager.register({
                             }
 
                             if (isFlawless) {
-                                logMessage(`{gold:Flawless execution! You cut the ${inv[i].name} with incredible precision!}`);
+                                logMessage(`{gold:Flawless execution! You cut the ${item.name} with incredible precision!}`);
                                 if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
-                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#facc15', 25);
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, gemColor, 25);
                                 state.screenShake = 5;
                             } else {
-                                logMessage(`{cyan:You carefully cut and polish the ${inv[i].name}...}`);
+                                logMessage(`{cyan:You carefully cut and polish the ${item.name}...}`);
                                 if (typeof AudioSystem !== 'undefined') AudioSystem.playCraftSuccess();
-                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#22d3ee', 10);
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, gemColor, 10);
                             }
                             
                             // 🚀 PERFORMANCE WIN: High-Speed Cache for Template Keys
-                            if (!window._artisanKeyCache) window._artisanKeyCache = {};
                             let templateKey = window._artisanKeyCache[cutName];
                             if (!templateKey) {
                                 templateKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === cutName);
-                                window._artisanKeyCache[cutName] = templateKey;
+                                if (templateKey) window._artisanKeyCache[cutName] = templateKey;
                             }
                             
-                            const template = window.ITEM_DATA[templateKey];
+                            const template = window.ITEM_DATA[templateKey] || { name: cutName, type: 'consumable', tile: '♦️' };
                             
                             // Consume 1 Raw Gem
-                            inv[i].quantity--;
-                            if (inv[i].quantity <= 0) inv.splice(i, 1);
+                            item.quantity--;
+                            if (item.quantity <= 0) inv.splice(i, 1);
                             
                             // Add Cut Gem(s)
                             if (hasStack) {
@@ -190,17 +211,24 @@ window.ExpansionManager.register({
                                 newItem.templateId = templateKey;
                                 newItem.quantity = yieldAmt;
                                 newItem.isEquipped = false;
-                                newItem.effect = template.effect; // Re-bind effect function manually since stringify stripped it
+                                newItem.effect = template.effect || null; // Re-bind effect function manually since stringify stripped it
                                 inv.push(newItem);
                             }
                             
+                            // --- METRICS WIN ---
+                            if (!state.player.metrics) state.player.metrics = {};
+                            state.player.metrics.gemsCut = (state.player.metrics.gemsCut || 0) + yieldAmt;
+
                             logMessage(`{purple:Successfully crafted: ${cutName} (x${yieldAmt})!}`);
                             cutSomething = true;
                             
                             // Force UI Sync and DB Debounce
                             if (typeof renderInventory === 'function') renderInventory();
                             if (typeof triggerDebouncedSave === 'function') {
-                                triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv });
+                                triggerDebouncedSave({ 
+                                    inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv,
+                                    metrics: state.player.metrics
+                                });
                             }
                             
                             break; // Only cut one at a time per click to prevent accidental mass consumption
@@ -290,6 +318,11 @@ window.ExpansionManager.register({
                     state.player.stamina = Math.max(0, state.player.stamina - 3);
                     state.screenShake = 5;
                     
+                    // 🌟 SYNERGY WIN: Miner's Helm / Artisan Bonus
+                    const hasMinerHelm = state.player.equipment.armor && state.player.equipment.armor.name === "Miner's Helm";
+                    const isArtisan = state.player.className === 'Artisan';
+                    const yieldBonus = (hasMinerHelm || isArtisan) ? 0.15 : 0;
+                    
                     // --- GAMEPLAY WIN: Ambush Chance! ---
                     if (Math.random() < 0.15) {
                         logMessage("{red:The gemstone cracks open... and legs sprout out! It's a Crystal Crawler!}");
@@ -309,6 +342,7 @@ window.ExpansionManager.register({
                             if (typeof EnemyNetworkManager !== 'undefined') {
                                 rtdb.ref(EnemyNetworkManager.getPath(x, y, enemyId)).set(state.sharedEnemies[enemyId]);
                             }
+                            if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, null, null, x, y);
                         } else {
                             // Instanced dungeon fallback
                             const eId = `${state.currentCaveId}:ambush_${Date.now()}`;
@@ -326,15 +360,31 @@ window.ExpansionManager.register({
                         if (roll > 0.92) { gem = 'Raw Onyx'; gemId = '💎o'; }
                         if (roll > 0.97) { gem = 'Raw Diamond'; gemId = '💎d'; }
 
+                        // Apply Synergy Bonus
+                        let qty = 1;
+                        if (Math.random() < yieldBonus) {
+                            qty = 2;
+                            logMessage("{gold:Your expertise reveals a second gemstone hidden in the rock!}");
+                        }
+
                         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
-                        if (state.player.inventory.length < invCap) {
+                        const existingStack = state.player.inventory.find(i => i && i.name === gem && !i.isEquipped);
+                        
+                        if (existingStack) {
+                            existingStack.quantity += qty;
+                            logMessage(`{purple:You mined ${qty}x ${gem}!}`);
+                        } else if (state.player.inventory.length < invCap) {
                             state.player.inventory.push({
-                                templateId: gemId, name: gem, type: 'trade', quantity: 1, tile: '💎', isEquipped: false
+                                templateId: gemId, name: gem, type: 'trade', quantity: qty, tile: '💎', isEquipped: false
                             });
-                            logMessage(`{purple:You mined a ${gem}!}`);
+                            logMessage(`{purple:You mined ${qty}x ${gem}!}`);
                         } else {
                             logMessage(`{red:You mined a ${gem}, but your pack is full!}`);
-                            if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(x, y, gemId, 24);
+                            if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
+                                window.EventManager.safeDropItem(state, x, y, gemId);
+                            } else {
+                                if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(x, y, gemId, 24);
+                            }
                         }
                     }
 
@@ -379,29 +429,51 @@ window.ExpansionManager.register({
                         text: "A merchant's cart lies overturned in the dirt. The horse is missing, but a small iron lockbox remains intact amongst the debris.",
                         choices: [
                             {
-                                text: "Pry open the lockbox.",
+                                text: "[Perception] Examine the tracks.",
+                                req: (player) => (Number(player.perception) + Number(player.perceptionBonus || 0) >= 4) || player.background === 'hunter',
+                                reqHint: "Requires 4 Perception or Hunter class",
                                 action: (state, ctx) => {
-                                    logMessage("{gray:You force the lockbox open...}");
+                                    logMessage("{blue:You notice the footprints belong to boots, not bare feet. This wasn't bandits... it was the Shadowed Hand.}");
+                                    if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                                    if (typeof grantXp === 'function') grantXp(50);
+                                },
+                                nextNode: 'ambush' // Connects to the next phase smoothly
+                            },
+                            {
+                                text: "Pry open the lockbox.",
+                                nextNode: 'ambush'
+                            }
+                        ]
+                    },
+                    'ambush': {
+                        text: "As you reach for the lockbox, the bushes rustle violently!",
+                        choices: [
+                            {
+                                text: "Stand your ground!",
+                                action: (state, ctx) => {
+                                    logMessage("{gray:You force the lockbox open as the attackers emerge!}");
                                     if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 1000);
                                     
                                     // 30% chance it's an ambush!
                                     if (Math.random() < 0.3) {
-                                        logMessage("{red:It's a trap! Bandits emerge from the brush!}");
+                                        logMessage("{red:It's a trap! Ambushers attack!}");
                                         state.screenShake = 15;
                                         if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
                                         
-                                        const eData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['b'] : { name: 'Bandit', maxHealth: 10, attack: 2, xp: 20 };
+                                        const eData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['c'] : { name: 'Cultist', maxHealth: 12, attack: 3, xp: 25 };
                                         const offsets = [[-1, 0], [1, 0], [0, -1]];
                                         
                                         offsets.forEach(off => {
                                             const ex = ctx.x + off[0];
                                             const ey = ctx.y + off[1];
                                             
-                                            if (['.', 'F', 'd', 'D'].includes(chunkManager.getTile(ex, ey))) {
+                                            const tileAt = typeof chunkManager !== 'undefined' ? chunkManager.getTile(ex, ey) : '.';
+                                            if (['.', 'F', 'd', 'D'].includes(tileAt)) {
                                                 const enemyId = `overworld:${ex},${-ey}`;
                                                 const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(eData, ex, ey) : eData;
                                                 
-                                                state.sharedEnemies[enemyId] = { ...scaledStats, tile: 'b', x: ex, y: ey, spawnTime: Date.now() };
+                                                state.sharedEnemies[enemyId] = { ...scaledStats, tile: 'c', x: ex, y: ey, spawnTime: Date.now() };
+                                                if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, null, null, ex, ey);
                                                 if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(ex, ey, enemyId)).set(state.sharedEnemies[enemyId]);
                                             }
                                         });
@@ -414,22 +486,8 @@ window.ExpansionManager.register({
                                         
                                         // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Outward Spiral Drop
                                         const dropSafely = (itemTile) => {
-                                            let placed = false;
-                                            if (typeof chunkManager !== 'undefined') {
-                                                for (let r = 0; r <= 2 && !placed; r++) {
-                                                    for (let dy = -r; dy <= r && !placed; dy++) {
-                                                        for (let dx = -r; dx <= r && !placed; dx++) {
-                                                            const tx = ctx.x + dx;
-                                                            const ty = ctx.y + dy;
-                                                            const tileAt = chunkManager.getTile(tx, ty);
-                                                            if (['.', 'F', 'd', 'D'].includes(tileAt)) {
-                                                                chunkManager.setWorldTile(tx, ty, itemTile, 24);
-                                                                placed = true;
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                                if (!placed) chunkManager.setWorldTile(ctx.x, ctx.y, itemTile, 24);
+                                            if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
+                                                window.EventManager.safeDropItem(state, ctx.x, ctx.y, itemTile);
                                             }
                                         };
                                         
@@ -470,8 +528,7 @@ window.ExpansionManager.register({
                                     // 🚨 Ensure state is saved!
                                     if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory, lootedTiles: Object.fromEntries(state.lootedTiles) });
                                 }
-                            },
-                            { text: "Walk away." }
+                            }
                         ]
                     }
                 }
@@ -540,6 +597,10 @@ window.ExpansionManager.register({
             
             // Visually append the socketed gem to the weapon's description so the player remembers!
             targetItem.description = (targetItem.description || "") + `\n\n{${pColorName}:[Socketed: ${gemName}]}`;
+
+            // --- METRICS WIN ---
+            if (!state.player.metrics) state.player.metrics = {};
+            state.player.metrics.itemsSocketed = (state.player.metrics.itemsSocketed || 0) + 1;
 
             // 3. Re-equip to apply the new, improved stats back to the player
             if (typeof applyStatBonuses === 'function') applyStatBonuses(targetItem, 1);
