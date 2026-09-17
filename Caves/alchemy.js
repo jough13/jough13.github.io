@@ -15,7 +15,7 @@ function getAlchemyItemKey(name) {
 window.ExpansionManager.register({
     id: "alchemy_and_throwables",
     name: "Alchemy & Throwables",
-    version: "1.6", // Upgraded version!
+    version: "1.7", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -127,6 +127,11 @@ window.ExpansionManager.register({
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#ef4444', 15);
                     
+                    // --- METRICS & EXPANDABILITY WIN ---
+                    if (!state.player.metrics) state.player.metrics = {};
+                    state.player.metrics.potionsConsumed = (state.player.metrics.potionsConsumed || 0) + 1;
+                    if (typeof window.ExpansionManager !== 'undefined') window.ExpansionManager.triggerHook('onPotionConsumed', { potionName: 'Elixir of Strength', player: state.player });
+                    
                     // 🚨 ECONOMY WIN: Safely return the empty bottle upon consumption!
                     const emptyStack = state.player.inventory.find(i => i && i.name === 'Empty Bottle' && !i.isEquipped);
                     const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
@@ -163,6 +168,11 @@ window.ExpansionManager.register({
                     if (typeof logMessage === 'function') logMessage(`{green:Your wounds rapidly knit together (+${actualHeal} HP). You feel feral! (+5 Str, -3 Wits)}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#16a34a', 25);
+                    
+                    // --- METRICS & EXPANDABILITY WIN ---
+                    if (!state.player.metrics) state.player.metrics = {};
+                    state.player.metrics.potionsConsumed = (state.player.metrics.potionsConsumed || 0) + 1;
+                    if (typeof window.ExpansionManager !== 'undefined') window.ExpansionManager.triggerHook('onPotionConsumed', { potionName: "Troll's Blood Elixir", player: state.player });
                     
                     // Bottle Return
                     const emptyStack = state.player.inventory.find(i => i && i.name === 'Empty Bottle' && !i.isEquipped);
@@ -253,9 +263,16 @@ window.ExpansionManager.register({
                             const upg = p.campsiteUpgrades || [];
                             
                             if (!upg.includes('mortar')) {
-                                const countMat = (name) => p.inventory.filter(i => i && i.name === name && !i.isEquipped).reduce((sum, i) => sum + i.quantity, 0);
-                                const wood = countMat('Wood Log');
-                                const stone = countMat('Stone');
+                                
+                                // 🚀 PERFORMANCE WIN: O(N) iterative loop to sum quantities instead of chaining .filter().reduce()
+                                let wood = 0, stone = 0;
+                                for (let i = 0; i < p.inventory.length; i++) {
+                                    const itm = p.inventory[i];
+                                    if (itm && !itm.isEquipped) {
+                                        if (itm.name === 'Wood Log') wood += itm.quantity;
+                                        else if (itm.name === 'Stone') stone += itm.quantity;
+                                    }
+                                }
                                 
                                 const canAfford = wood >= 10 && stone >= 15;
                                 const btnClass = canAfford ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-700 opacity-50 cursor-not-allowed';
@@ -271,7 +288,16 @@ window.ExpansionManager.register({
                                 if (btn) {
                                     btn.onclick = () => {
                                         // 🚨 ROBUSTNESS WIN: Double check affordability right at click time!
-                                        if (countMat('Wood Log') < 10 || countMat('Stone') < 15) {
+                                        let woodCurrent = 0, stoneCurrent = 0;
+                                        for (let i = 0; i < p.inventory.length; i++) {
+                                            const itm = p.inventory[i];
+                                            if (itm && !itm.isEquipped) {
+                                                if (itm.name === 'Wood Log') woodCurrent += itm.quantity;
+                                                else if (itm.name === 'Stone') stoneCurrent += itm.quantity;
+                                            }
+                                        }
+                                        
+                                        if (woodCurrent < 10 || stoneCurrent < 15) {
                                             if (typeof logMessage === 'function') logMessage("{red:You lack the materials to build this!}");
                                             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                                             return;
@@ -382,6 +408,10 @@ window.ExpansionManager.register({
                         player.inventory.splice(invIndex, 1);
                     }
                     
+                    // --- METRICS WIN ---
+                    if (!player.metrics) player.metrics = {};
+                    player.metrics.potionsThrown = (player.metrics.potionsThrown || 0) + 1;
+                    
                     // 🚨 PERFORMANCE WIN: Explicitly save the ENTIRE serialized inventory array here!
                     // If we don't, a player who throws their very last potion (triggering a splice deletion)
                     // and then refreshes their page will get the potion back, resulting in infinite potions!
@@ -448,6 +478,7 @@ window.ExpansionManager.register({
                                 if (selfDamage > 0) {
                                     if (typeof logMessage === 'function') logMessage(`{red:You are caught in your own blast! (-${selfDamage} HP)}`);
                                     if (typeof window.modifyVital === 'function') window.modifyVital('health', -selfDamage);
+                                    if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning(); // 🚨 JUICE WIN
                                 } else {
                                     if (typeof logMessage === 'function') logMessage("{gray:You are splashed by your own potion!}");
                                 }
@@ -675,6 +706,11 @@ window.ExpansionManager.register({
                     rtdb.ref().update(batchedPayload).catch(e => console.error("Alchemy Batch Error:", e));
                 }
                 
+                // 🚨 EXPANSION HOOK WIN
+                if (typeof window.ExpansionManager !== 'undefined') {
+                    window.ExpansionManager.triggerHook('onPotionThrown', { potionName, targetX, targetY, player });
+                }
+                
                 // Finalize Turn
                 gameState.isAiming = false;
                 gameState.mapDirty = true; // Ensure flames/tiles render
@@ -690,7 +726,8 @@ window.ExpansionManager.register({
                         burnTurns: player.burnTurns,
                         stealthTurns: player.stealthTurns,
                         frostbiteTurns: player.frostbiteTurns,
-                        stunTurns: player.stunTurns
+                        stunTurns: player.stunTurns,
+                        metrics: player.metrics
                     });
                 }
                 
