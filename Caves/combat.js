@@ -456,7 +456,8 @@ async function runSharedAiTurns() {
     }
 }
 
-// Centralized Defense & Dodge Calculator
+// 🚨 BUG FIX WIN: Centralized Defense & Dodge Calculator
+// Properly tallies base attributes and temporary bonuses (like Haste or Ironskin)
 function getPlayerDefenseStats() {
     const p = gameState.player;
     if (!p) return { totalDefense: 0, dodgeChance: 0 };
@@ -465,14 +466,18 @@ function getPlayerDefenseStats() {
     const offhandDefense = p.equipment?.offhand?.defense || 0;
     const accDefense = p.equipment?.accessory?.defense || 0;
 
-    const baseDefense = Math.floor((p.dexterity || 1) / 3);
-    const buffDefense = p.defenseBonus || 0;
+    const effDex = (Number(p.dexterity) || 1) + (Number(p.dexterityBonus) || 0);
+    const effCon = (Number(p.constitution) || 1) + (Number(p.constitutionBonus) || 0);
+    const effLuck = (Number(p.luck) || 1) + (Number(p.luckBonus) || 0);
+
+    const baseDefense = Math.floor(effDex / 3);
+    const buffDefense = Number(p.defenseBonus) || 0;
     const talentDefense = (p.talents && p.talents.includes('iron_skin')) ? 1 : 0;
-    const conBonus = Math.floor((p.constitution || 1) * 0.1);
+    const conBonus = Math.floor(effCon * 0.1);
     
     const totalDefense = baseDefense + armorDefense + offhandDefense + accDefense + buffDefense + conBonus + talentDefense;
 
-    let dodgeChance = Math.min((p.luck || 1) * 0.002, 0.25);
+    let dodgeChance = Math.min(effLuck * 0.002, 0.25);
     if (p.talents && p.talents.includes('evasion')) dodgeChance += 0.10;
 
     return { totalDefense, dodgeChance };
@@ -2343,14 +2348,24 @@ function calculateHitChance(player, enemy) {
     return Math.max(0.5, Math.min(0.98, chance));
 }
 
+// 🚨 BUG FIX WIN: Damage calculations correctly scale with temporary stat buffs
 function getPlayerDamageModifier(baseDamage) {
     const player = gameState.player;
     let finalDamage = baseDamage;
 
+    // Finesse Weapons (Daggers, Rapiers) swap Strength scaling for Dexterity scaling
     if (player.equipment.weapon && player.equipment.weapon.statBonuses && player.equipment.weapon.statBonuses.dexterity) {
-        const strContribution = player.strength + (player.strengthBonus || 0);
-        const dexContribution = player.dexterity;
+        const strContribution = (Number(player.strength) || 1) + (Number(player.strengthBonus) || 0);
+        const dexContribution = (Number(player.dexterity) || 1) + (Number(player.dexterityBonus) || 0);
         finalDamage = (finalDamage - strContribution) + dexContribution;
+    }
+
+    // Unarmed Mastery Talent!
+    if (player.equipment.weapon && player.equipment.weapon.name === 'Fists') {
+        if (player.talents && player.talents.includes('unarmed_mastery')) {
+            const strContribution = (Number(player.strength) || 1) + (Number(player.strengthBonus) || 0);
+            finalDamage += strContribution; // Unarmed scales 100% harder with strength!
+        }
     }
 
     if (player.talents && player.talents.includes('blood_rage')) {
