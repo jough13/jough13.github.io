@@ -74,10 +74,25 @@ function getMaxCraftable(recipeName, availableMats, inventory, isStackable, hasE
     
     const emptySlots = (typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9) - inventory.length;
     
+    // 🚨 BUG FIX & QoL WIN: Free-Slot Prediction Algorithm!
+    // If the inventory is currently 100% full, but crafting this item will *exactly consume* 
+    // the last of a material stack, it will free up a slot for the crafted item!
+    let guaranteedFreedSlots = 0;
+    for (const mat in recipe.materials) {
+        const req = recipe.materials[mat];
+        const has = availableMats[mat] || 0;
+        if (has === req) {
+            // If the total available is exactly what we need for ONE craft, a slot will open up!
+            guaranteedFreedSlots++;
+        }
+    }
+
+    const effectiveEmptySlots = emptySlots + guaranteedFreedSlots;
+
     if (isStackable) {
-        return emptySlots > 0 ? max : 0;
+        return effectiveEmptySlots > 0 ? max : 0;
     } else {
-        return Math.min(max, emptySlots);
+        return Math.min(max, effectiveEmptySlots);
     }
 }
 
@@ -132,9 +147,8 @@ function handleCraftItem(recipeName, requestBatch = false) {
         const batchSize = requestBatch ? Math.floor(maxCraftable) : 1;
         if (batchSize < 1) return;
 
-        // 🚨 BUG FIX WIN: Safe In-Place Array Mutation!
-        // We track the items we need to delete rather than `splicing` while looping backwards.
-        // Array.splice resizes the array, breaking index tracking and sometimes deleting the WRONG item!
+        // 🚨 BUG FIX & PERFORMANCE WIN: Safe In-Place Array Mutation!
+        // We track the items we need to delete using a Set, then filter the array cleanly ONCE.
         const itemsToErase = new Set();
 
         for (const matName in recipe.materials) {
@@ -168,7 +182,7 @@ function handleCraftItem(recipeName, requestBatch = false) {
             masterworkChance += 0.10;
         }
 
-        let perfectChance = 0.10 + ((player.luck || 1) * 0.02);
+        let perfectChance = 0.10 + ((Number(player.luck) || 1) * 0.02);
         if (player.talents && player.talents.includes('survivalist')) {
             perfectChance += 0.10;
         }
@@ -386,6 +400,12 @@ function handleCraftItem(recipeName, requestBatch = false) {
         if (!player.metrics) player.metrics = {};
         if (isCooking) player.metrics.potionsBrewed = (player.metrics.potionsBrewed || 0) + totalYield;
         else player.metrics.itemsCrafted = (player.metrics.itemsCrafted || 0) + totalYield;
+
+        // 🚨 EXPANSION HOOK WIN
+        if (typeof window.ExpansionManager !== 'undefined') {
+            const hookName = isCooking ? 'onItemCooked' : 'onItemCrafted';
+            window.ExpansionManager.triggerHook(hookName, { recipeName, itemTemplate, totalYield, hadEpicSuccess, player });
+        }
         
         if (typeof ParticleSystem !== 'undefined') {
             const floatText = `+${totalYield} Crafted`;
@@ -459,10 +479,16 @@ function openCraftingModal(mode = 'workbench') {
     if (window.inputQueue) window.inputQueue.length = 0; 
     gameState.currentCraftingMode = mode;
     
+    // 🌟 LORE & AUDIO WIN: Context-aware ambiance!
+    if (typeof AudioSystem !== 'undefined') {
+        if (mode === 'alchemy') AudioSystem.playNoise(0.2, 0.1, 1000); // Grinding/bubbling
+        else if (mode === 'cooking') AudioSystem.playNoise(0.3, 0.05, 500); // Sizzling
+        else AudioSystem.playHit(); // Heavy anvil thud
+    }
+
     renderCraftingModal();
     const modal = document.getElementById('craftingModal');
     if (modal) modal.classList.remove('hidden');
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
 }
 
 function renderCraftingModal() {
@@ -606,7 +632,7 @@ function renderCraftingModal() {
             specHtml = `<span class="text-purple-400 font-bold ml-2">| ${mwChance}% Masterwork</span>`;
         } 
         else if (isCooking && !isObscured) {
-            let perfChanceBase = 0.10 + ((player.luck || 1) * 0.02);
+            let perfChanceBase = 0.10 + ((Number(player.luck) || 1) * 0.02);
             if (player.talents && player.talents.includes('survivalist')) perfChanceBase += 0.10;
             
             const perfChance = Math.min(100, Math.floor(perfChanceBase * 100));
