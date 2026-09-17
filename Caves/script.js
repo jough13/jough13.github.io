@@ -2510,11 +2510,33 @@ function triggerRaidBossSpawn(playerX, playerY) {
 function recalculateDerivedStats() {
     const player = gameState.player;
     
+    // Tally up flat max vital bonuses from currently equipped gear!
+    // Strict number coercion prevents string concatenation bugs ("10" + 50 = "1050")
+    let gearHp = 0;
+    let gearMana = 0;
+    let gearStam = 0;
+    let gearPsyche = 0;
+
+    if (player.equipment) {
+        // High-performance array iteration over the equipment object
+        const slots = ['weapon', 'armor', 'offhand', 'accessory', 'ammo'];
+        for (let i = 0; i < slots.length; i++) {
+            const item = player.equipment[slots[i]];
+            if (item && item.statBonuses) {
+                gearHp += Number(item.statBonuses.maxHealth) || 0;
+                gearMana += Number(item.statBonuses.maxMana) || 0;
+                gearStam += Number(item.statBonuses.maxStamina) || 0;
+                gearPsyche += Number(item.statBonuses.maxPsyche) || 0;
+            }
+        }
+    }
+    
     // Clamp all derived max stats so they never drop below 1!
-    let calculatedMaxHealth = Math.max(1, 5 + (player.constitution * 5)) + (player.bonusMaxHealth || 0);
-    let calculatedMaxMana = Math.max(1, 5 + (player.wits * 5)) + (player.bonusMaxMana || 0);
-    let calculatedMaxStamina = Math.max(1, 5 + (player.endurance * 5)) + (player.bonusMaxStamina || 0);
-    let calculatedMaxPsyche = Math.max(1, 7 + (player.willpower * 3)) + (player.bonusMaxPsyche || 0);
+    // Include the new gear totals in the baseline math
+    let calculatedMaxHealth = Math.max(1, 5 + (player.constitution * 5)) + (player.bonusMaxHealth || 0) + gearHp;
+    let calculatedMaxMana = Math.max(1, 5 + (player.wits * 5)) + (player.bonusMaxMana || 0) + gearMana;
+    let calculatedMaxStamina = Math.max(1, 5 + (player.endurance * 5)) + (player.bonusMaxStamina || 0) + gearStam;
+    let calculatedMaxPsyche = Math.max(1, 7 + (player.willpower * 3)) + (player.bonusMaxPsyche || 0) + gearPsyche;
 
     if (player.completedLoreSets) {
         if (player.completedLoreSets.includes('void_research')) calculatedMaxMana += 10;
@@ -2527,7 +2549,7 @@ function recalculateDerivedStats() {
     player.maxPsyche = calculatedMaxPsyche;
 
     // Safety checks to ensure current vitals don't exceed the new maximums
-    // Also ensuring they don't accidentally drop below 1 if they were at 0 from a bug
+    // Also ensuring they don't accidentally drop below 1 if they were at 0 from a previous bug
     player.health = Math.max(1, Math.min(player.health, player.maxHealth));
     player.mana = Math.max(0, Math.min(player.mana, player.maxMana));
     player.stamina = Math.max(0, Math.min(player.stamina, player.maxStamina));
