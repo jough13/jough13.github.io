@@ -526,7 +526,11 @@ function handleInput(key) {
             if (!expansionHandled) {
                 if (abilityId === 'lunge') { if (typeof executeLunge === 'function') executeLunge(dirX, dirY); }
                 else if (abilityId === 'ranged_attack') { if (typeof executeRangedAttack === 'function') executeRangedAttack(dirX, dirY); }
-                else if (['shieldBash', 'cleave', 'kick', 'crush'].includes(abilityId)) { if (typeof executeMeleeSkill === 'function') executeMeleeSkill(abilityId, dirX, dirY); }
+                
+                else if (['shieldBash', 'cleave', 'kick', 'crush', 'mutilate', 'assassinate', 'flurry', 'pommel_strike'].includes(abilityId)) { 
+                   if (typeof executeMeleeSkill === 'function') executeMeleeSkill(abilityId, dirX, dirY); 
+                }
+                
                 else if (abilityId === 'quickstep') { if (typeof executeQuickstep === 'function') executeQuickstep(dirX, dirY); }
                 else if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) { if (typeof executeAimedSpell === 'function') executeAimedSpell(abilityId, dirX, dirY); }
                 else if (abilityId === 'pacify') { if (typeof executePacify === 'function') executePacify(dirX, dirY); }
