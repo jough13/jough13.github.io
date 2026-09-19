@@ -1470,6 +1470,19 @@ async function endPlayerTurn(turnUpdates = {}) {
             if (player.waterBreathingTurns === 0 && updates.waterBreathingTurns === 0) {
                 logMessage("Your magical gills fade away...");
             }
+            
+            // If the player is dragged into the deep, the mount goes down with them!
+            if (player.isMounted && player.companion) {
+                logMessage(`{red:Your loyal ${player.companion.name} is dragged down into the depths with you!}`);
+                player.isMounted = false;
+                player.companion = null;
+                
+                // Erase it from the database immediately to prevent sync ghosting
+                if (typeof playerRef !== 'undefined' && playerRef) {
+                    playerRef.update({ companion: null, isMounted: false }).catch(() => {});
+                }
+            }
+
             logMessage("The deep water swallows you whole!");
             logMessage("You have drowned.");
 
