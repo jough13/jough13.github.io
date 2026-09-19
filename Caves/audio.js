@@ -880,32 +880,36 @@ function forceUnlockAudio() {
     // Use getCtx() instead of initAudioContext() so we can catch 
     // AND resume an already-existing but suspended context!
     const ctx = AudioSystem.getCtx(); 
-    if (ctx) {
-        // Safari Suspend Fix
-        // Safari strictly requires `resume()` to be explicitly called inside the user gesture
-        // if the context was created in a suspended state prior to interaction!
-        if (ctx.state === 'suspended') {
-            ctx.resume().catch(()=>{});
-        }
+    if (!ctx) return;
+
+    // Helper to play the silent tone and detach listeners
+    const unlockAndCleanUp = () => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        gain.gain.value = 0.0001; 
         
-        if (ctx.state === 'running') {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            gain.gain.value = 0.0001; 
-            
-            osc.connect(gain);
-            gain.connect(ctx.destination); 
-            
-            osc.start(ctx.currentTime);
-            osc.stop(ctx.currentTime + 0.01);
-            
-            document.removeEventListener('click', forceUnlockAudio);
-            document.removeEventListener('touchstart', forceUnlockAudio);
-            document.removeEventListener('touchend', forceUnlockAudio);
-            document.removeEventListener('pointerdown', forceUnlockAudio);
-            document.removeEventListener('keydown', forceUnlockAudio);
-            document.removeEventListener('mouseup', forceUnlockAudio);
-        }
+        osc.connect(gain);
+        gain.connect(ctx.destination); 
+        
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.01);
+        
+        document.removeEventListener('click', forceUnlockAudio);
+        document.removeEventListener('touchstart', forceUnlockAudio);
+        document.removeEventListener('touchend', forceUnlockAudio);
+        document.removeEventListener('pointerdown', forceUnlockAudio);
+        document.removeEventListener('keydown', forceUnlockAudio);
+        document.removeEventListener('mouseup', forceUnlockAudio);
+    };
+
+    if (ctx.state === 'suspended') {
+        // Wait for the promise to resolve before cleaning up!
+        ctx.resume().then(() => {
+            unlockAndCleanUp();
+        }).catch(()=>{});
+    } else if (ctx.state === 'running') {
+        // If it's already running, clean up immediately
+        unlockAndCleanUp();
     }
 }
 
