@@ -308,6 +308,64 @@ async function useSkill(skillId) {
                     skillUsedSuccessfully = true;
                     break;
                 }
+                case 'shieldWall': {
+                    const defBoost = 10 + Math.floor(skillLevel * 0.5);
+                    player.defenseBonus = defBoost;
+                    player.defenseBonusTurns = skillData.duration || 3;
+                    logMessage(`{blue:You plant your feet and become a fortress! (+${defBoost} Def)}`);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "🛡️", "#3b82f6");
+                    if (typeof playerRef !== 'undefined') playerRef.update({ defenseBonus: player.defenseBonus, defenseBonusTurns: player.defenseBonusTurns });
+                    skillUsedSuccessfully = true;
+                    break;
+                }
+                case 'earthquake': {
+                    const effStr = (Number(player.strength) || 1) + (Number(player.strengthBonus) || 0);
+                    const eqDmg = Math.floor((effStr + (player.equipment.weapon?.damage || 0)) * 0.5);
+                    logMessage("{yellow:You slam your weapon into the ground, shattering the earth!}");
+                    gameState.screenShake = 20;
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+                    
+                    const batchedPayload = {};
+                    for (let y = -1; y <= 1; y++) {
+                        for (let x = -1; x <= 1; x++) {
+                            if (x === 0 && y === 0) continue;
+                            const tx = player.x + x;
+                            const ty = player.y + y;
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tx, ty, '#78350f', 5);
+                            
+                            let enemyInfo = null;
+                            let enemyId = null;
+                            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                                enemyId = `overworld:${tx},${-ty}`;
+                                enemyInfo = gameState.sharedEnemies[enemyId];
+                            } else {
+                                enemyInfo = gameState.instancedEnemies.find(e => e && e.x === tx && e.y === ty && e.health > 0);
+                            }
+                            
+                            if (enemyInfo) {
+                                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                                    const finalDmg = Math.max(1, eqDmg - (enemyInfo.defense || 0));
+                                    const res = await window.handleOverworldCombat(tx, ty, enemyInfo, enemyInfo.tile, finalDmg, true);
+                                    if (res && res.hit) {
+                                        res.payload[EnemyNetworkManager.getPath(tx, ty, enemyId)].stunTurns = 2; // Inject stun!
+                                        Object.assign(batchedPayload, res.payload);
+                                    }
+                                } else {
+                                    const finalDmg = Math.max(1, eqDmg - (enemyInfo.defense || 0));
+                                    enemyInfo.health -= finalDmg;
+                                    enemyInfo.stunTurns = 2; // Inject stun!
+                                    logMessage(`Earthquake hits ${enemyInfo.name} for {red:${finalDmg}} and stuns them!`);
+                                    if (enemyInfo.health <= 0 && typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemyInfo, tx, ty);
+                                }
+                            }
+                        }
+                    }
+                    if (Object.keys(batchedPayload).length > 0 && typeof rtdb !== 'undefined') {
+                        rtdb.ref().update(batchedPayload).catch(e => console.error("Earthquake Batch Error:", e));
+                    }
+                    skillUsedSuccessfully = true;
+                    break;
+                }
             }
 
             // --- 5. Finalize Self-Cast Turn ---
@@ -348,6 +406,41 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
         
         if (!offhandTags.includes('shield')) {
             logMessage("{red:You must have a Shield equipped in your off-hand to use Shield Bash!}");
+            gameState.isAiming = false;
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+    }
+
+    // --- 🚨 ROBUSTNESS WIN: Sub-skill requirements ---
+    const wpn = player.equipment.weapon || {};
+    const wpnTags = wpn.tags || [];
+
+    if (skillId === 'mutilate' || skillId === 'assassinate') {
+        if (!wpnTags.includes('dagger')) {
+            logMessage("{red:You must have a Dagger equipped to use this technique!}");
+            gameState.isAiming = false;
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+    }
+    if (skillId === 'assassinate' && player.stealthTurns <= 0) {
+        logMessage("{red:You must be hidden in Stealth to Assassinate!}");
+        gameState.isAiming = false;
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        return;
+    }
+    if (skillId === 'flurry') {
+        if (wpn.name !== 'Fists') {
+            logMessage("{red:You must be unarmed to use a Flurry of Blows!}");
+            gameState.isAiming = false;
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+    }
+    if (skillId === 'pommel_strike') {
+        if (!wpnTags.includes('blade') && !wpnTags.includes('blunt')) {
+            logMessage("{red:You need a solid bladed or blunt weapon for a Pommel Strike!}");
             gameState.isAiming = false;
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
@@ -478,13 +571,13 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
                         }
 
                         // --- EXPANSION WIN: APPLY STUN & JUICE (Shield Bash, Crush, OR Kick) ---
-                        if (skillId === 'shieldBash' || skillId === 'crush' || skillId === 'kick') {
+                        if (skillId === 'shieldBash' || skillId === 'crush' || skillId === 'kick' || skillId === 'pommel_strike') {
                             // Heavy Hit Feel
-                            gameState.screenShake = (skillId === 'kick') ? 8 : 15; 
+                            gameState.screenShake = (skillId === 'kick' || skillId === 'pommel_strike') ? 8 : 15; 
                             
                             if (!enemy.isBoss) {
-                                // Kick stuns for 2 turns, heavy bashes stun for 3
-                                enemy.stunTurns = (skillId === 'kick') ? 2 : 3;
+                                // Kick and Pommel Strike stun for 2 turns, heavy bashes stun for 3
+                                enemy.stunTurns = (skillId === 'kick' || skillId === 'pommel_strike') ? 2 : 3;
                                 logMessage(`{yellow:${enemy.name} is stunned!}`);
                                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(coords.x, coords.y, "STUNNED", "#facc15");
                             } else {
@@ -592,7 +685,7 @@ async function executeRangedAttack(dirX, dirY) {
         if (isPoison) arrowColor = '#22c55e'; // Green
         
         // Ranged attacks scale off Dexterity + Bow Dmg + Arrow Dmg
-        let rawPower = player.dexterity + weaponDamage + ammoDamage;
+        let rawPower = player.dexterity + (player.dexterityBonus || 0) + weaponDamage + ammoDamage;
 
         // JUICE: Crossbows hit harder but cause recoil
         if (isHeavyCrossbow) {
@@ -1004,12 +1097,12 @@ async function executeQuickstep(dirX, dirY) {
     const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA['quickstep'] : null;
     if (!skillData) return;
 
-    // --- 🚨 LOCK THE ENGINE ---
+    // --- LOCK THE ENGINE ---
     if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
 
     try {
         isProcessingMove = true;
-        // 🚨 SECURITY FIX: Re-verify resource cost!
+        // Re-verify resource cost!
         if (player.stamina < skillData.cost) {
             logMessage(`{red:You are too exhausted to quickstep!}`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -1091,24 +1184,72 @@ async function executeQuickstep(dirX, dirY) {
                 ParticleSystem.createExplosion(targetX, targetY, '#ef4444', 4); // Blood
             }
 
-            // Apply a solid chunk of damage immediately using the magic loop
+            // Calculate raw physical power for the flurry
             let effDex = (Number(player.dexterity) || 1) + (Number(player.dexterityBonus) || 0);
-            let flurryDamage = Math.floor(effDex * 1.5) + (player.equipment.weapon?.damage || 0);
+            let rawPower = Math.floor(effDex * 1.5) + (player.equipment.weapon?.damage || 0);
             
-            if (player.talents && player.talents.includes('shadow_strike') && player.stealthTurns > 0) flurryDamage *= 2; 
+            if (player.talents && player.talents.includes('shadow_strike') && player.stealthTurns > 0) rawPower *= 2; 
             
             // Wrap this inside a small timeout to let the dash finish visually before the damage registers
             setTimeout(async () => {
-                if (typeof applySpellDamage === 'function') {
-                    await applySpellDamage(targetX, targetY, flurryDamage, 'quickstep');
+                let tile = '.';
+                if (gameState.mapMode === 'dungeon') {
+                    tile = chunkManager.caveMaps[gameState.currentCaveId]?.[targetY]?.[targetX] || ' ';
+                } else if (gameState.mapMode === 'castle') {
+                    tile = chunkManager.castleMaps[gameState.currentCastleId]?.[targetY]?.[targetX] || ' ';
+                } else {
+                    const enemyId = `overworld:${targetX},${-targetY}`;
+                    const liveEnemy = gameState.sharedEnemies[enemyId];
+                    tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(targetX, targetY);
                 }
-                
-                // Add poison if we have a poisoned dagger
-                if (player.equipment.weapon?.inflicts === 'poison') {
-                    if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-                        // 🚨 GHOST GUARD
-                        const e = gameState.instancedEnemies.find(en => en && en.x === targetX && en.y === targetY && en.health > 0);
-                        if (e) e.poisonTurns = 3;
+
+                const enemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tile] : null;
+
+                if (enemyData) {
+                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                        const enemyId = `overworld:${targetX},${-targetY}`;
+                        const liveEnemy = gameState.sharedEnemies[enemyId];
+                        const enemyInfo = liveEnemy || enemyData;
+                        
+                        const mitigatedDmg = Math.max(1, rawPower - (enemyData.defense || 0));
+                        logMessage(`You dash and strike the ${enemyInfo.name} for {red:${mitigatedDmg}} damage!`);
+                        
+                        if (typeof handleOverworldCombat === 'function') {
+                            const success = await handleOverworldCombat(targetX, targetY, enemyData, tile, mitigatedDmg, false);
+                            
+                            // Safely apply poison dynamically to the database if the hit actually landed!
+                            if (success && player.equipment.weapon?.inflicts === 'poison' && typeof rtdb !== 'undefined' && typeof EnemyNetworkManager !== 'undefined') {
+                                rtdb.ref(EnemyNetworkManager.getPath(targetX, targetY, enemyId)).transaction(curr => {
+                                    if (!curr || curr.health <= 0) return undefined;
+                                    curr.poisonTurns = Math.max(curr.poisonTurns || 0, 3);
+                                    return curr;
+                                }).catch(()=>{});
+                            }
+                        }
+                    } else {
+                        // --- INSTANCED COMBAT RESOLUTION ---
+                        let enemy = gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY && e.health > 0);
+                        if (enemy) {
+                            enemy.health = Number(enemy.health);
+                            if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
+
+                            const mitigatedDmg = Math.max(1, rawPower - (enemy.defense || 0));
+                            enemy.health -= mitigatedDmg;
+                            logMessage(`You dash and strike the ${enemy.name} for {red:${mitigatedDmg}} damage!`);
+                            
+                            if (typeof ParticleSystem !== 'undefined') {
+                                ParticleSystem.createFloatingText(targetX, targetY, `-${mitigatedDmg}`, '#ef4444');
+                            }
+
+                            if (player.equipment.weapon?.inflicts === 'poison') {
+                                enemy.poisonTurns = Math.max(enemy.poisonTurns || 0, 3);
+                            }
+
+                            if (enemy.health <= 0) {
+                                logMessage(`You defeated the ${enemy.name}!`);
+                                if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, targetX, targetY);
+                            }
+                        }
                     }
                 }
             }, 50);
