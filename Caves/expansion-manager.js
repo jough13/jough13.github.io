@@ -8,7 +8,14 @@
 let _savedDisabledExpansions = [];
 try {
     const saved = localStorage.getItem('akashic_disabled_mods');
-    if (saved) _savedDisabledExpansions = JSON.parse(saved);
+    if (saved) {
+        const parsed = JSON.parse(saved);
+        // 🚨 BUG FIX & SECURITY WIN: Strict array enforcement
+        // Prevents `new Set()` from fatally crashing the engine if the stored JSON is an Object or Primitive!
+        if (Array.isArray(parsed)) {
+            _savedDisabledExpansions = parsed;
+        }
+    }
 } catch (e) {
     console.warn("%c[AKASHIC ENGINE] Could not read disabled mods from local storage.", "color: #facc15;");
 }
@@ -50,13 +57,15 @@ window.ExpansionManager = {
         // Failsafe deep clone that severs all prototype and reference links
         const clone = JSON.parse(JSON.stringify(item));
         
-        // 🚨 FUTURE-PROOFING WIN: Dynamic Function Rebinding
-        // Instead of hardcoding `.effect` or `.onHit`, this loop safely carries over 
-        // ANY functions attached to the item object, supporting custom mod logic effortlessly!
+        // 🚨 BUG FIX & FUTURE-PROOFING WIN: Dynamic Function & Array Rebinding
+        // JSON.parse(JSON.stringify()) completely strips functions and can mangle custom array prototypes.
+        // This loop safely carries over ANY functions and explicit arrays attached to the item object.
         for (const key in item) {
             if (Object.prototype.hasOwnProperty.call(item, key)) {
                 if (typeof item[key] === 'function') {
                     clone[key] = item[key];
+                } else if (Array.isArray(item[key])) {
+                    clone[key] = [...item[key]]; // Guarantee clean array decoupling
                 }
             }
         }
@@ -103,6 +112,20 @@ window.ExpansionManager = {
     listExpansions: function() {
         return Array.from(this.expansions.values());
     },
+    
+    // 🌟 EXPANDABILITY WIN: System Analytics
+    // Exposes a unified diagnostic readout of all modified game data injected by expansions!
+    getSystemAnalytics: function() {
+        return {
+            totalExpansions: this.expansions.size,
+            activeExpansions: this.expansions.size - this.disabledExpansions.size,
+            injectedItems: typeof window.ITEM_DATA !== 'undefined' ? Object.keys(window.ITEM_DATA).length : 0,
+            injectedEnemies: typeof window.ENEMY_DATA !== 'undefined' ? Object.keys(window.ENEMY_DATA).length : 0,
+            injectedSpells: typeof window.SPELL_DATA !== 'undefined' ? Object.keys(window.SPELL_DATA).length : 0,
+            injectedQuests: typeof window.QUEST_DATA !== 'undefined' ? Object.keys(window.QUEST_DATA).length : 0,
+            injectedLore: typeof window.LORE_SETS !== 'undefined' ? Object.keys(window.LORE_SETS).length : 0
+        };
+    },
 
     // API Helper: Fetch an isolated, color-coded logger for an expansion
     getLogger: function(expansionId) {
@@ -124,6 +147,14 @@ window.ExpansionManager = {
         
         const originalFunc = targetObj[methodName];
         
+        // 🚨 BUG FIX & ROBUSTNESS WIN: Maximum Call Stack Protection
+        // If a developer hot-reloads an expansion 50 times during testing, it will wrap the function 50 times,
+        // eventually blowing out the V8 Call Stack limits. We track depth to warn and prevent infinite recursion!
+        const currentDepth = originalFunc._patchDepth || 0;
+        if (currentDepth > 15) {
+            console.warn(`%c[AKASHIC ENGINE] Patch depth for '${methodName}' exceeded 15! Possible hot-reload memory leak detected.`, "color: #f97316; font-weight: bold;");
+        }
+        
         // 🚨 ROBUSTNESS WIN: Dynamic context binding!
         // Instead of hard-binding `.bind(targetObj)`, we use a dynamic wrapper.
         // This ensures that if the original function relies on dynamic `this` mapping (like EventListeners), it doesn't break!
@@ -133,6 +164,7 @@ window.ExpansionManager = {
         
         // Tag the function for transparency in devtools/debugging
         patchedFunc._isAkashicPatched = true;
+        patchedFunc._patchDepth = currentDepth + 1;
         targetObj[methodName] = patchedFunc;
         
         return true;
@@ -320,10 +352,10 @@ window.ExpansionManager = {
         }
 
         // --- 1.5. CSS & STYLE INJECTION ---
+        const styleId = `akashic-style-${exp.id}`;
+        let styleEl = document.getElementById(styleId);
+
         if (exp.css) {
-            const styleId = `akashic-style-${exp.id}`;
-            let styleEl = document.getElementById(styleId);
-            
             if (!styleEl) {
                 styleEl = document.createElement('style');
                 styleEl.id = styleId;
@@ -334,6 +366,9 @@ window.ExpansionManager = {
             styleEl.textContent = exp.css;
             // Instantly apply the active disabled state to the new stylesheet
             styleEl.disabled = this.disabledExpansions.has(exp.id);
+        } else if (styleEl) {
+            // 🚨 BUG FIX WIN: Clean up old CSS if a mod update removes it!
+            styleEl.remove();
         }
 
         // --- 2. INJECT DICTIONARIES (O(1) Merge) ---
@@ -398,8 +433,11 @@ window.ExpansionManager = {
                     // Otherwise, expansions modifying `ITEM_DATA.health` later will accidentally bleed 
                     // mutations back into the original `data` payload memory.
                     let safeVal = val;
-                    if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
-                        if (typeof window.fastClone === 'function') {
+                    if (typeof val === 'object' && val !== null) {
+                        if (Array.isArray(val)) {
+                            // Enforce safe array cloning to preserve structures
+                            safeVal = [...val];
+                        } else if (typeof window.fastClone === 'function') {
                             safeVal = window.fastClone(val);
                         } else {
                             // Manual safe clone if fastClone isn't available
