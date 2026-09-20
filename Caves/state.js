@@ -587,33 +587,20 @@ window.modifyVital = function(vital, rawAmount) {
         }
     }
     
-    // 🚨 MATHEMATICAL I-FRAMES (The "Double-Dip" Fix)
-    // If an exploding barrel and an arrow hit the player at the exact same millisecond, 
-    // the engine takes the LARGEST of the hits, and explicitly refunds the smaller hit to prevent 
-    // unfair double-dipping. 
-    // By modifying `amount` directly, we prevent floating point visual bugs in the UI!
+    // 🚨 BUG FIX: Removed the 100ms invincibility frame exploit.
+    // If three enemies strike the player in the same AI tick, the player will now correctly take all three hits!
     let originalHitAmount = Math.abs(amount);
+    
     if (vital === 'health' && amount < 0) {
-        const now = Date.now();
-        if (now - (p.lastHitTime || 0) < 100) {
-            if (originalHitAmount <= (p.lastHitDamage || 0)) {
-                return 0; // Reject the new, smaller/equal hit completely
-            } else {
-                // Reduce the new massive damage by the amount we ALREADY took
-                amount += (p.lastHitDamage || 0);
-            }
-        }
-        p.lastHitTime = now;
-        p.lastHitDamage = originalHitAmount; // Store the TOTAL damage of this new largest hit
         
-        // Track total lifetime damage taken
+        // --- TRACK LIFETIME METRICS ---
         if (p.metrics) {
-            p.metrics.damageTaken += Math.abs(amount);
+            p.metrics.damageTaken = (p.metrics.damageTaken || 0) + originalHitAmount;
             p.metrics.highestDamageTaken = Math.max(p.metrics.highestDamageTaken || 0, originalHitAmount);
             
-            // Track environmental damage separately if it wasn't triggered by an enemy
+            // Track environmental damage separately if it wasn't triggered by an active combat move
             if (typeof isProcessingMove === 'undefined' || !isProcessingMove) {
-                p.metrics.environmentalDamageTaken += Math.abs(amount);
+                p.metrics.environmentalDamageTaken = (p.metrics.environmentalDamageTaken || 0) + originalHitAmount;
             }
         }
     }
