@@ -404,6 +404,12 @@ async function restoreCloudBackup(slotId = 'latest') {
             const basePlayer = typeof createDefaultPlayerState === 'function' ? createDefaultPlayerState() : {};
             Object.assign(gameState.player, basePlayer);
             Object.assign(gameState.player, data);
+            
+            // Rehydrate the items so they have their `.effect` functions mapped correctly!
+            if (typeof window.rehydrateItemArray === 'function') {
+                gameState.player.inventory = window.rehydrateItemArray(gameState.player.inventory);
+                gameState.player.bank = window.rehydrateItemArray(gameState.player.bank);
+            }
         }
         
         // --- LORE & REWARD WIN: Paradox Anomaly ---
@@ -480,7 +486,9 @@ async function updateBackupUI(slotId = 'latest') {
     try {
         const doc = await playerRef.collection('backups').doc(slotId).get();
         if (doc.exists) {
-            const timestamp = doc.data().timestamp;
+            // 🚨 BUG FIX & ROBUSTNESS WIN: Valid Timestamp Guard
+            // If the backup saved correctly but the timestamp got dropped, fallback cleanly
+            const timestamp = Number(doc.data().timestamp) || Date.now();
             const date = new Date(timestamp);
             
             const dateString = date.toLocaleDateString();
@@ -491,7 +499,6 @@ async function updateBackupUI(slotId = 'latest') {
             
             let relativeStr = "";
             
-            // 🚨 BUG FIX: Fix minute calculation gap logic
             if (hoursOld < 0.016) relativeStr = "Just now";
             else if (hoursOld < 1) {
                 const mins = Math.max(1, Math.round(hoursOld * 60));
@@ -534,13 +541,13 @@ async function updateBackupUI(slotId = 'latest') {
 
 // 🚨 PERFORMANCE & ROBUSTNESS WIN: High-Speed Base64 Compression
 // The previous `unescape(encodeURIComponent(str))` approach is notoriously slow and 
-// crashes the JavaScript Call Stack on massive 1MB JSON files.
-// We now use the modern TextEncoder API, processing the byte array in discrete chunks!
+// crashes the JavaScript Call Stack on massive 1MB JSON files if the device has low RAM (e.g. Safari iOS).
+// We now use the modern TextEncoder API, processing the byte array in discrete chunks of 8192!
 function _utf8ToBase64(str) {
     if (typeof TextEncoder !== 'undefined') {
         const bytes = new TextEncoder().encode(str);
         let bin = '';
-        const chunkSize = 0x8000; // 32,768 bytes per chunk prevents stack overflow
+        const chunkSize = 8192; // 8,192 bytes per chunk mathematically prevents mobile Call Stack overflow!
         for (let i = 0; i < bytes.length; i += chunkSize) {
             bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
         }
@@ -570,14 +577,14 @@ window.exportTimelineToClipboard = function() {
         customPins: gameState.player.customPins || [],
         bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : (gameState.player.bank || []), 
         inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory,
-        equipment: typeof getSanitizedEquipment === 'function' ? getSanitizedEquipment() : gameState.player.equipment
+        equipment: typeof getSanitizedEquipment === 'function' ? getSanitizedEquipment() : gameState.player.equipment,
+        timestamp: typeof window.getServerTime === 'function' ? window.getServerTime() : Date.now()
     };
     
     // Strip heavy map arrays to keep string size manageable for clipboards
     delete rawData.lootedTiles;
     delete rawData.exploredChunks;
     delete rawData.foundLore;
-    delete rawData.timestamp;
 
     const backupState = typeof sanitizeForFirebase === 'function' 
         ? sanitizeForFirebase(rawData) 
@@ -649,7 +656,18 @@ window.importTimelineFromClipboard = async function() {
     try {
         // 1. Decode Base64 to JSON safely
         const jsonString = _base64ToUtf8(base64String);
-        const importedData = JSON.parse(jsonString);
+        let importedData = null;
+        
+        try {
+            importedData = JSON.parse(jsonString);
+        } catch (parseErr) {
+            throw new Error("Invalid JSON Payload");
+        }
+        
+        // 🚨 SECURITY WIN: Structural Sanity Check (Prevents JSON Bombing)
+        if (!importedData || typeof importedData !== 'object' || !Array.isArray(importedData.inventory)) {
+            throw new Error("Payload is not a valid Akashic Timeline.");
+        }
 
         // 2. Verify Integrity
         const strictSig = generateStrictSaveSignature(importedData);
@@ -665,7 +683,7 @@ window.importTimelineFromClipboard = async function() {
 
         // 3. Confirm Override
         const safeName = typeof escapeHtml === 'function' ? escapeHtml(importedData.name || "Unknown") : "Unknown";
-        const confirmRestore = confirm(`Valid timeline found: Level ${importedData.level} ${importedData.background} named '${safeName}'.\n\nWARNING: Importing this will completely overwrite your current character. Proceed?`);
+        const confirmRestore = confirm(`Valid timeline found: Level ${importedData.level || 1} ${importedData.background || 'Wanderer'} named '${safeName}'.\n\nWARNING: Importing this will completely overwrite your current character. Proceed?`);
         if (!confirmRestore) return;
 
         // 4. Execute Restore
@@ -709,13 +727,19 @@ window.importTimelineFromClipboard = async function() {
             chunkManager.worldState = {};
         }
 
-        // 🚨 BUG FIX WIN: Ghost State Protection (As described in backup restoration)
+        // 🚨 BUG FIX WIN: Ghost State Protection & Import Rehydration Failsafe
         if (typeof enterGame === 'function') {
             await enterGame(importedData);
         } else {
             const basePlayer = typeof createDefaultPlayerState === 'function' ? createDefaultPlayerState() : {};
             Object.assign(gameState.player, basePlayer);
             Object.assign(gameState.player, importedData);
+            
+            // 🚨 Rehydrate the items so they have their `.effect` functions mapped correctly!
+            if (typeof window.rehydrateItemArray === 'function') {
+                gameState.player.inventory = window.rehydrateItemArray(gameState.player.inventory);
+                gameState.player.bank = window.rehydrateItemArray(gameState.player.bank);
+            }
         }
 
         // Save to Firebase
