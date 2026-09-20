@@ -378,6 +378,7 @@ function updateCreationSummary() {
 
     // 🚨 BUG FIX & SECURITY WIN: Force strict slice before assigning to state to prevent DB injection
     // Also correctly accounts for names that are purely whitespace by stripping them away.
+    // Preserves apostrophes and hyphens for fantasy names!
     let rawName = nameInput.value.replace(/[^a-zA-Z0-9 \-']/g, '').replace(/\s+/g, ' ').trimStart().slice(0, 16);
     
     // QoL WIN: Auto Title-Case the name (e.g. "gandalf the grey" -> "Gandalf The Grey")
@@ -423,7 +424,7 @@ function updateCreationSummary() {
         }
     }
 
-    // GAMEPLAY WIN: Projected Vitals Preview
+    // GAMEPLAY WIN: Projected Vitals Preview (Matches logic from recalculateDerivedStats)
     const projHP = 5 + (calcCon * 5);
     const projMana = 5 + (calcWits * 5);
     const projStamina = 5 + (calcEnd * 5);
@@ -476,6 +477,13 @@ function updateCreationSummary() {
         if (creationState.race === 'voidkissed') origins.push("hears the Leviathan singing in their dreams.");
         if (creationState.race === 'dhampir') origins.push("struggles against the endless thirst.", "walks the line between the living and the dead.");
         if (creationState.race === 'sylph') origins.push("dances on the winds of a broken world.", "listens to the whispers of the storm.");
+        if (creationState.race === 'automaton') origins.push("was activated long after their masters turned to dust.");
+
+        // 🌟 CONTENT WIN: Unique Combination Overrides!
+        if (creationState.race === 'dwarf' && creationState.background === 'mage') origins.push("was born with a forbidden affinity for the arcane instead of stone.");
+        if (creationState.race === 'elf' && creationState.background === 'wretch') origins.push("was stripped of their immortality and cast into the mud.");
+        if (creationState.race === 'voidkissed' && creationState.background === 'cleric') origins.push("wields the holy light despite the darkness in their blood.");
+        if (creationState.race === 'automaton' && creationState.background === 'defector') origins.push("broke their own programming to escape the cult's servitude.");
         
         const originSeed = stringToSeed(creationState.name + creationState.race + creationState.background);
         const selectedOrigin = origins[Math.abs(originSeed) % origins.length];
@@ -550,20 +558,22 @@ setTimeout(() => {
 window.generateRandomName = function() {
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     
+    // Heavily expanded syllable pools for a richer fantasy name generator
     const prefixes = [
         "Thor", "Garr", "El", "Fae", "Kael", "Mor", "Vex", "Zar", "Brim", "Nyx",
         "Ael", "Val", "Dra", "Bael", "Xyl", "Quin", "Syl", "Or", "Ign", "Gloom",
         "Lu", "Cor", "Ash", "Sil", "Fen", "Grim", "Mal", "Ren", "Tav", "Zeph",
         "Aer", "Bryn", "Cael", "Dorn", "Ery", "Fael", "Gael", "Hald", "Ith", "Jor",
         "Vor", "Kra", "Zin", "Thal", "Orik", "Ul", "Xan", "Yrr", "Aka", "Chro", "Ley",
-        "Voss", "Thorne", "Aethel", "Kaelen", "Zael", "Vane", "Kast", "Maer"
+        "Voss", "Thorne", "Aethel", "Kaelen", "Zael", "Vane", "Kast", "Maer",
+        "Grim", "Bram", "Dur", "Thrain", "Morn", "Rokh", "Karg", "Grok" // Dwarven/Orcish heavy
     ];
     const suffixes = [
         "in", "ick", "ara", "en", "is", "os", "ia", "on", "us", "th",
         "ius", "dor", "mir", "vyn", "ryn", "las", "ric", "tar", "eth", "mont",
         "stone", "fire", "bane", "weaver", "shade", "moon", "sun", "heart", "blood",
         "forge", "smith", "strider", "whisper", "song", "wind", "storm",
-        "grip", "fist", "gaze", "step", "mancer", "walker", "born"
+        "grip", "fist", "gaze", "step", "mancer", "walker", "born", "sworn"
     ];
     
     // Fun RPG Titles (25% chance to append)
@@ -575,7 +585,6 @@ window.generateRandomName = function() {
         " Blood-drinker", " the Mad", " the Unforgiven", " the Returned",
         " the Ascendant", " the Runeweaver", " the Outlaw", " the Vanguard", 
         " the Core Delver", " the Pirate", " the Siren-Slayer",
-        // LORE WIN: Thematic Multiverse/Akashic Titles
         " the Ley-Walker", " of the Akashic Records", " the Void-Dancer", " the Unbound", " the Chronomancer"
     ];
     
@@ -747,157 +756,176 @@ function initCreationUI() {
     if (loadingIndicator) loadingIndicator.classList.add('hidden');
 }
 
+let isFinalizing = false; // 🚨 CRITICAL BUG FIX: Double-Click Lock
+
 async function finalizeCharacterCreation() {
-    const btn = _DOMCache.getFinalizeBtn();
-    if (!btn) return;
+    if (isFinalizing) return;
+    isFinalizing = true;
     
-    // SECURITY WIN: Failsafe to guarantee name is clean and bounded before saving to state
-    const cleanName = creationState.name ? creationState.name.replace(/[^a-zA-Z0-9 \-']/g, '').slice(0, 16).trim() : "";
-    if (cleanName === "") {
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
-    creationState.name = cleanName;
-    
-    btn.disabled = true;
-    btn.textContent = "Forging Destiny...";
-    btn.classList.add('animate-pulse');
-    
-    // JUICE WIN: Triumphant start sound!
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp(); 
-
-    const player = gameState.player;
-    
-    // Safe lookup
-    const bgData = typeof window.PLAYER_BACKGROUNDS !== 'undefined' ? window.PLAYER_BACKGROUNDS[creationState.background] : null;
-    const raceData = typeof window.PLAYER_RACES !== 'undefined' ? window.PLAYER_RACES[creationState.race] : null;
-
-    if (!bgData || !raceData) {
-        console.error("Missing Class or Race data during creation!");
-        alert("Game data error. Please reload the page.");
-        return;
-    }
-
-    // 1. Apply Base Data
-    player.name = creationState.name;
-    player.race = creationState.race;
-    player.gender = creationState.gender;
-    player.background = creationState.background; 
-    
-    // Set the character icon to the Race's Emoji!
-    player.character = raceData.icon || '@';
-
-    // 2. Apply Class Stats
-    if (bgData.stats) {
-        for (const stat in bgData.stats) {
-            player[stat] = (player[stat] || 1) + bgData.stats[stat];
-        }
-    }
-    
-    // 3. Apply Race Stats
-    if (raceData.stats) {
-        for (const stat in raceData.stats) {
-            player[stat] = (player[stat] || 1) + raceData.stats[stat];
-        }
-    }
-
-    // 4. Calculate Derived Stats
-    if (typeof recalculateDerivedStats === 'function') {
-        recalculateDerivedStats();
-    } else {
-        // Fallback if script.js hasn't loaded properly
-        player.maxHealth = Math.max(1, 5 + (player.constitution * 5));
-        player.maxMana = Math.max(1, 5 + (player.wits * 5));
-        player.maxStamina = Math.max(1, 5 + (player.endurance * 5));
-        player.maxPsyche = Math.max(1, 7 + (player.willpower * 3));
-    }
-    
-    player.health = player.maxHealth;
-    player.mana = player.maxMana;
-    player.stamina = player.maxStamina;
-    player.psyche = player.maxPsyche;
-
-    // 5. Apply Inventory (Class Kit)
-    // PERFORMANCE & BUG FIX WIN: Utilize cloneItemSafely to prevent 
-    // wiping out weapon effect logic!
-    if (bgData.items) {
-        bgData.items.forEach(newItem => {
-            const clonedItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(newItem) : JSON.parse(JSON.stringify(newItem));
-            player.inventory.push(clonedItem);
-        });
-    }
-
-    // 6. Auto-Equip
-    const weapon = player.inventory.find(i => i && i.type === 'weapon'); // 🚨 GHOST GUARD
-    const armor = player.inventory.find(i => i && i.type === 'armor'); // 🚨 GHOST GUARD
-    
-    if (weapon) { 
-        player.equipment.weapon = weapon; 
-        weapon.isEquipped = true; 
-        // 🚨 CRITICAL BUG FIX: Apply weapon stats
-        if (typeof applyStatBonuses === 'function') applyStatBonuses(weapon, 1); 
-    }
-    
-    if (armor) { 
-        player.equipment.armor = armor; 
-        armor.isEquipped = true; 
-        // Apply armor stats
-        if (typeof applyStatBonuses === 'function') applyStatBonuses(armor, 1); 
-    }
-
-    // 7. Save and Start
     try {
-        await playerRef.set(typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(player) : player);
+        const btn = _DOMCache.getFinalizeBtn();
+        if (!btn) return;
+        
+        // SECURITY WIN: Failsafe to guarantee name is clean and bounded before saving to state
+        const cleanName = creationState.name ? creationState.name.replace(/[^a-zA-Z0-9 \-']/g, '').slice(0, 16).trim() : "";
+        if (cleanName === "") {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+        creationState.name = cleanName;
+        
+        btn.disabled = true;
+        btn.textContent = "Forging Destiny...";
+        btn.classList.add('animate-pulse');
+        
+        // JUICE WIN: Triumphant start sound!
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp(); 
 
-        const charCreationModal = document.getElementById('charCreationModal');
-        const gameContainer = document.getElementById('gameContainer');
-        const canvas = document.getElementById('gameCanvas');
+        const player = gameState.player;
         
-        if (charCreationModal) charCreationModal.classList.add('hidden');
-        if (gameContainer) gameContainer.classList.remove('hidden');
-        if (canvas) canvas.style.visibility = 'visible';
+        // Safe lookup
+        const bgData = typeof window.PLAYER_BACKGROUNDS !== 'undefined' ? window.PLAYER_BACKGROUNDS[creationState.background] : null;
+        const raceData = typeof window.PLAYER_RACES !== 'undefined' ? window.PLAYER_RACES[creationState.race] : null;
+
+        if (!bgData || !raceData) {
+            console.error("Missing Class or Race data during creation!");
+            alert("Game data error. Please reload the page.");
+            return;
+        }
+
+        // 1. Apply Base Data
+        player.name = creationState.name;
+        player.race = creationState.race;
+        player.gender = creationState.gender;
+        player.background = creationState.background; 
         
-        gameState.mapMode = 'overworld';
-        
-        // LORE & JUICE WIN: Majestic spawn-in sequence!
-        if (typeof logMessage === 'function') {
-            logMessage(`{cyan:The leylines converge. A new destiny begins...}`);
-            logMessage(`{green:Welcome, ${player.name} the ${raceData.name} ${bgData.name}.}`);
+        // Set the character icon to the Race's Emoji!
+        player.character = raceData.icon || '@';
+
+        // 2. Apply Class Stats
+        if (bgData.stats) {
+            for (const stat in bgData.stats) {
+                player[stat] = (player[stat] || 1) + bgData.stats[stat];
+            }
         }
         
-        gameState.screenShake = 20; // Massive world-entry thud
-        if (typeof ParticleSystem !== 'undefined') {
-            ParticleSystem.createExplosion(player.x, player.y, '#3b82f6', 40); // Huge blue leyline burst
+        // 3. Apply Race Stats
+        if (raceData.stats) {
+            for (const stat in raceData.stats) {
+                player[stat] = (player[stat] || 1) + raceData.stats[stat];
+            }
+        }
+
+        // 4. Calculate Derived Stats
+        if (typeof recalculateDerivedStats === 'function') {
+            recalculateDerivedStats();
+        } else {
+            // Fallback if script.js hasn't loaded properly
+            player.maxHealth = Math.max(1, 5 + (player.constitution * 5));
+            player.maxMana = Math.max(1, 5 + (player.wits * 5));
+            player.maxStamina = Math.max(1, 5 + (player.endurance * 5));
+            player.maxPsyche = Math.max(1, 7 + (player.willpower * 3));
         }
         
-        // Force the UI to catch up with the newly created stats!
-        if (typeof renderStats === 'function') renderStats();
-        if (typeof renderEquipment === 'function') renderEquipment();
-        if (typeof renderInventory === 'function') renderInventory();
-        if (typeof renderTime === 'function') renderTime();
-        if (typeof resizeCanvas === 'function') resizeCanvas();
-        if (typeof render === 'function') render();
-    } catch (e) {
-        console.error("Failed to save new character:", e);
-        alert("Failed to finalize character creation. Check your connection.");
-        btn.disabled = false;
-        btn.innerHTML = "Begin Adventure <span>→</span>";
-        btn.classList.remove('animate-pulse');
+        player.health = player.maxHealth;
+        player.mana = player.maxMana;
+        player.stamina = player.maxStamina;
+        player.psyche = player.maxPsyche;
+
+        // 5. Apply Inventory (Class Kit)
+        // PERFORMANCE & BUG FIX WIN: Utilize cloneItemSafely to prevent 
+        // wiping out weapon effect logic!
+        if (bgData.items) {
+            bgData.items.forEach(newItem => {
+                const clonedItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(newItem) : JSON.parse(JSON.stringify(newItem));
+                player.inventory.push(clonedItem);
+            });
+        }
+
+        // 6. Auto-Equip
+        const weapon = player.inventory.find(i => i && i.type === 'weapon'); // 🚨 GHOST GUARD
+        const armor = player.inventory.find(i => i && i.type === 'armor'); // 🚨 GHOST GUARD
+        
+        if (weapon) { 
+            player.equipment.weapon = weapon; 
+            weapon.isEquipped = true; 
+            // 🚨 CRITICAL BUG FIX: Apply weapon stats
+            if (typeof applyStatBonuses === 'function') applyStatBonuses(weapon, 1); 
+        }
+        
+        if (armor) { 
+            player.equipment.armor = armor; 
+            armor.isEquipped = true; 
+            // Apply armor stats
+            if (typeof applyStatBonuses === 'function') applyStatBonuses(armor, 1); 
+        }
+
+        // 7. Save and Start
+        try {
+            await playerRef.set(typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(player) : player);
+
+            const charCreationModal = document.getElementById('charCreationModal');
+            const gameContainer = document.getElementById('gameContainer');
+            const canvas = document.getElementById('gameCanvas');
+            
+            if (charCreationModal) charCreationModal.classList.add('hidden');
+            if (gameContainer) gameContainer.classList.remove('hidden');
+            if (canvas) canvas.style.visibility = 'visible';
+            
+            gameState.mapMode = 'overworld';
+            
+            // LORE & JUICE WIN: Majestic spawn-in sequence!
+            if (typeof logMessage === 'function') {
+                logMessage(`{cyan:The leylines converge. A new destiny begins...}`);
+                logMessage(`{green:Welcome, ${player.name} the ${raceData.name} ${bgData.name}.}`);
+            }
+            
+            gameState.screenShake = 20; // Massive world-entry thud
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createExplosion(player.x, player.y, '#3b82f6', 40); // Huge blue leyline burst
+            }
+            
+            // Force the UI to catch up with the newly created stats!
+            if (typeof renderStats === 'function') renderStats();
+            if (typeof renderEquipment === 'function') renderEquipment();
+            if (typeof renderInventory === 'function') renderInventory();
+            if (typeof renderTime === 'function') renderTime();
+            if (typeof resizeCanvas === 'function') resizeCanvas();
+            if (typeof render === 'function') render();
+        } catch (e) {
+            console.error("Failed to save new character:", e);
+            alert("Failed to finalize character creation. Check your connection.");
+            btn.disabled = false;
+            btn.innerHTML = "Begin Adventure <span>→</span>";
+            btn.classList.remove('animate-pulse');
+        }
+    } finally {
+        isFinalizing = false;
     }
 }
 
 // 🚨 UI WIN: Make sure we properly hook up the dynamic slot rendering!
+// 🚀 PERFORMANCE WIN: Uses Promise.all to fetch all slots concurrently
 window.renderSlots = async function() {
     const slotsContainer = document.getElementById('slotsContainer');
     if (!slotsContainer) return;
     slotsContainer.innerHTML = '';
     
     const charsRef = db.collection('players').doc(currentUser.uid).collection('characters');
-
     const slotIds = ['slot1', 'slot2', 'slot3'];
 
-    for (const slotId of slotIds) {
-        const doc = await charsRef.doc(slotId).get();
+    // 🚀 Load all 3 documents from Firestore concurrently!
+    let slotDocs = [];
+    try {
+        slotDocs = await Promise.all(slotIds.map(id => charsRef.doc(id).get()));
+    } catch (e) {
+        console.error("Failed to load slots:", e);
+        return; // Failsafe
+    }
+
+    // Since Promise.all preserves order, we can iterate sequentially safely
+    slotDocs.forEach((doc, index) => {
+        const slotId = slotIds[index];
         const slotDiv = document.createElement('div');
         
         // 🚨 FIX: Make sure the slot container has a relative positioning to trap the z-index layers
@@ -956,7 +984,8 @@ window.renderSlots = async function() {
             `;
         }
         slotsContainer.appendChild(slotDiv);
-    }
+    });
+    
     const loadingIndicator = document.getElementById('loadingIndicator');
     if (loadingIndicator) loadingIndicator.classList.add('hidden');
 };
