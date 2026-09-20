@@ -38,6 +38,15 @@ window.EVENT_DATA = {
                                 const ex = ctx.x + spawnSpots[i][0];
                                 const ey = ctx.y + spawnSpots[i][1];
                                 
+                                // 🚨 BUG FIX: Terrain Coercion!
+                                // Ensure enemies don't spawn permanently entombed inside mountains/walls
+                                if (typeof chunkManager !== 'undefined') {
+                                    const tileAt = chunkManager.getTile(ex, ey);
+                                    if (['^', '▓', '▒', '🧱', '~', '≈'].includes(tileAt)) {
+                                        chunkManager.setWorldTile(ex, ey, 'd'); // Force into a deadland floor
+                                    }
+                                }
+                                
                                 const enemyId = `overworld:${ex},${-ey}`;
                                 const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyData, ex, ey) : enemyData;
                                 
@@ -175,10 +184,21 @@ window.EVENT_DATA = {
                                 logMessage("{purple:The blood summons a horror from the Void!}");
                                 const enemyTemplate = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['😈d'] : { name: 'Void Demon', maxHealth: 50, attack: 8 };
                                 const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyTemplate, ctx.x, ctx.y) : enemyTemplate;
-                                const enemyId = `overworld:${ctx.x+1},${-ctx.y}`;
-                                state.sharedEnemies[enemyId] = { ...scaledStats, tile: '😈d', x: ctx.x+1, y: ctx.y, spawnTime: Date.now() };
                                 
-                                if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(ctx.x+1, ctx.y, enemyId)).set(state.sharedEnemies[enemyId]);
+                                // 🚨 BUG FIX: Terrain Coercion!
+                                let spawnX = ctx.x + 1;
+                                let spawnY = ctx.y;
+                                if (typeof chunkManager !== 'undefined') {
+                                    const tileAt = chunkManager.getTile(spawnX, spawnY);
+                                    if (['^', '▓', '▒', '🧱', '~', '≈'].includes(tileAt)) {
+                                        chunkManager.setWorldTile(spawnX, spawnY, 'd'); 
+                                    }
+                                }
+
+                                const enemyId = `overworld:${spawnX},${-spawnY}`;
+                                state.sharedEnemies[enemyId] = { ...scaledStats, tile: '😈d', x: spawnX, y: spawnY, spawnTime: Date.now() };
+                                
+                                if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(spawnX, spawnY, enemyId)).set(state.sharedEnemies[enemyId]);
                             } else {
                                 if (Math.random() < 0.5) {
                                     state.player.bonusMaxHealth = (Number(state.player.bonusMaxHealth) || 0) + 3;
@@ -212,7 +232,6 @@ window.EVENT_DATA = {
             }
         }
     },
-    // --- 🌟 LORE WIN: New Event! ---
     'CURSED_SWORD_STONE': {
         title: "The Bleeding Stone",
         oncePerTile: true,
@@ -226,7 +245,7 @@ window.EVENT_DATA = {
                         req: (player) => player.health > 20,
                         reqHint: "Requires > 20 Health",
                         action: (state, ctx) => {
-                            // Deduct massive health
+                            // Deduct massive health safely
                             if (typeof window.modifyVital === 'function') window.modifyVital('health', -15);
                             else state.player.health -= 15;
                             
@@ -261,6 +280,91 @@ window.EVENT_DATA = {
                     {
                         text: "Leave it. It's not worth the risk."
                     }
+                ]
+            }
+        }
+    },
+    // 🌟 CONTENT WIN: New Interaction Event!
+    'GOBLIN_SCAVENGER': {
+        title: "Shifty Goblin",
+        oncePerTile: true,
+        lootedMessage: "The goblin is long gone, clutching his coin purse.",
+        nodes: {
+            'start': {
+                text: "A goblin wearing an oversized, stolen merchant's hat beckons you over from behind a rock.\n\n\"Hey tall one! Buy a shiny? Very magic, very cheap! Only 25 gold!\"",
+                choices: [
+                    {
+                        text: "Buy 'Shiny Rock' (25g)",
+                        req: (player) => player.coins >= 25,
+                        reqHint: "Requires 25 Gold",
+                        action: (state, ctx) => {
+                            state.player.coins -= 25;
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+                            window.EventManager.replaceEventTile(state, ctx.x, ctx.y, '.'); // He runs away
+                            
+                            if (Math.random() < 0.5) {
+                                logMessage("{red:He tosses you a normal rock and scampers away! You got scammed!}");
+                                window.EventManager.safeDropItem(state, state.player.x, state.player.y, '🪨');
+                            } else {
+                                logMessage("{green:He tosses you the rock and runs. You wipe off the mud... it's a Black Pearl!}");
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+                                const template = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['💎b'] : null;
+                                const item = template ? (typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template))) : { name: 'Black Pearl', type: 'junk', tile: '💎' };
+                                item.templateId = '💎b'; item.quantity = 1; item.isEquipped = false;
+                                
+                                if (state.player.inventory.length < (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) {
+                                    state.player.inventory.push(item);
+                                } else {
+                                    window.EventManager.safeDropItem(state, state.player.x, state.player.y, '💎');
+                                }
+                            }
+                            state.lootedTiles.add(ctx.tileId);
+                        }
+                    },
+                    {
+                        text: "Buy 'Magic Drink' (25g)",
+                        req: (player) => player.coins >= 25,
+                        reqHint: "Requires 25 Gold",
+                        action: (state, ctx) => {
+                            state.player.coins -= 25;
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+                            window.EventManager.replaceEventTile(state, ctx.x, ctx.y, '.');
+                            
+                            if (Math.random() < 0.5) {
+                                logMessage("{red:He hands you a flask of muddy swamp water and runs! Scam!}");
+                                window.EventManager.safeDropItem(state, state.player.x, state.player.y, '🤢');
+                            } else {
+                                logMessage("{green:He hands you a glowing vial and runs. It's an Elixir of Life!}");
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+                                const template = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['🍷'] : null;
+                                const item = template ? (typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template))) : { name: 'Elixir of Life', type: 'consumable', tile: '🍷' };
+                                item.templateId = '🍷'; item.quantity = 1; item.isEquipped = false;
+                                
+                                if (state.player.inventory.length < (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) {
+                                    state.player.inventory.push(item);
+                                } else {
+                                    window.EventManager.safeDropItem(state, state.player.x, state.player.y, '🍷');
+                                }
+                            }
+                            state.lootedTiles.add(ctx.tileId);
+                        }
+                    },
+                    {
+                        text: "[Charisma] Intimidate him.",
+                        req: (player) => (Number(player.charisma) + Number(player.charismaBonus || 0)) >= 3,
+                        reqHint: "Requires 3 Charisma",
+                        action: (state, ctx) => {
+                            logMessage("{gold:You draw your weapon and glare. The goblin shrieks, drops his coin purse, and flees!}");
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+                            
+                            state.player.coins = (Number(state.player.coins) || 0) + 50;
+                            if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(50);
+                            
+                            window.EventManager.replaceEventTile(state, ctx.x, ctx.y, '.');
+                            state.lootedTiles.add(ctx.tileId);
+                        }
+                    },
+                    { text: "Ignore him and walk away." }
                 ]
             }
         }
@@ -499,8 +603,8 @@ window.EventManager = {
         }
 
         if (typeof chunkManager !== 'undefined') {
-            // Spiral outwards up to 2 tiles away looking for an empty floor
-            for (let r = 0; r <= 2 && !placed; r++) {
+            // Spiral outwards up to 3 tiles away looking for an empty floor
+            for (let r = 0; r <= 3 && !placed; r++) {
                 for (let dy = -r; dy <= r && !placed; dy++) {
                     for (let dx = -r; dx <= r && !placed; dx++) {
                         const tx = startX + dx;
@@ -512,18 +616,18 @@ window.EventManager = {
                         else if (state.mapMode === 'castle') tileAt = chunkManager.castleMaps[state.currentCastleId]?.[ty]?.[tx];
 
                         if (tileAt === validFloor || tileAt === '.') {
-                            if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(tx, ty, itemTile, 24);
-                            else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][ty][tx] = itemTile;
-                            else if (state.mapMode === 'castle') chunkManager.castleMaps[state.currentCastleId][ty][tx] = itemTile;
+                            if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(tx, ty, itemTile || '🎒', 24);
+                            else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][ty][tx] = itemTile || '🎒';
+                            else if (state.mapMode === 'castle') chunkManager.castleMaps[state.currentCastleId][ty][tx] = itemTile || '🎒';
                             placed = true;
                         }
                     }
                 }
             }
             if (!placed) { // Absolute fallback to exact coordinate
-                if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(startX, startY, itemTile, 24);
-                else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][startY][startX] = itemTile;
-                else if (state.mapMode === 'castle') chunkManager.castleMaps[state.currentCastleId][startY][startX] = itemTile;
+                if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(startX, startY, itemTile || '🎒', 24);
+                else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][startY][startX] = itemTile || '🎒';
+                else if (state.mapMode === 'castle') chunkManager.castleMaps[state.currentCastleId][startY][startX] = itemTile || '🎒';
             }
             state.mapDirty = true;
         }
@@ -563,15 +667,17 @@ window.EventManager = {
         loreTitle.textContent = this.activeEvent.title;
 
         // 1. Render ONLY the text inside the scrollable lore container
-        loreContent.innerHTML = `<p class="font-serif leading-relaxed mb-2">${formatMenuText(node.text)}</p>`;
+        const formattedText = typeof formatMenuText === 'function' ? formatMenuText(node.text) : node.text;
+        loreContent.innerHTML = `<p class="font-serif leading-relaxed mb-2">${formattedText}</p>`;
 
         // 2. Build the buttons in a separate container using strings (high performance)
-        let btnHtml = `<div id="eventChoicesContainer" class="flex flex-col gap-3 flex-shrink-0 mt-4 border-t border-gray-700 pt-4 w-full opacity-0 translate-y-2 transition-all duration-300" style="animation: fade-in-up 0.3s ease-out forwards;">`;
+        // UX WIN: Custom scrollbar and max height ensures 4+ choices don't break mobile viewports!
+        let btnHtml = `<div id="eventChoicesContainer" class="flex flex-col gap-3 flex-shrink-0 mt-4 border-t border-gray-700 pt-4 w-full opacity-0 translate-y-2 transition-all duration-300 max-h-[35vh] overflow-y-auto custom-scrollbar pr-1" style="animation: fade-in-up 0.3s ease-out forwards;">`;
 
         node.choices.forEach((choice, index) => {
             const meetsReq = choice.req ? choice.req(gameState.player, this.activeContext) : true;
             
-            let btnText = formatMenuText(choice.text);
+            let btnText = typeof formatMenuText === 'function' ? formatMenuText(choice.text) : choice.text;
             if (!meetsReq && choice.reqHint) {
                 const safeHint = typeof escapeHtml === 'function' ? escapeHtml(choice.reqHint) : choice.reqHint;
                 btnText += ` <span class="text-[10px] uppercase tracking-widest bg-black bg-opacity-40 px-1 rounded shadow-inner border border-gray-700 ml-1">(${safeHint})</span>`;
@@ -579,7 +685,7 @@ window.EventManager = {
 
             const btnClass = meetsReq ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-800 active:border-b-0 active:mt-1' : 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-75 border-gray-700';
             
-            btnHtml += `<button id="evt-btn-${index}" class="w-full ${btnClass} font-bold py-3 px-4 rounded-xl shadow-md transition-transform border-b-4 ${meetsReq ? 'active:scale-95' : ''}" ${meetsReq ? '' : 'disabled'}>
+            btnHtml += `<button id="evt-btn-${index}" class="w-full ${btnClass} font-bold py-3 px-4 rounded-xl shadow-md transition-transform border-b-4 ${meetsReq ? 'active:scale-95' : ''} text-left sm:text-center" ${meetsReq ? '' : 'disabled'}>
                 ${btnText}
             </button>`;
         });
@@ -613,13 +719,18 @@ window.EventManager = {
         }, 0);
     },
 
-    executeChoice: function(choice) {
+    // 🚨 BUG FIX & STABILITY WIN: Made executeChoice strictly asynchronous!
+    // Prevents double-clicking buttons that trigger async database or particle logic!
+    executeChoice: async function(choice) {
         if (this.isProcessingChoice) return;
         this.isProcessingChoice = true;
 
         try {
             if (choice.action) {
-                choice.action(gameState, this.activeContext);
+                const result = choice.action(gameState, this.activeContext);
+                if (result instanceof Promise) {
+                    await result;
+                }
             }
 
             if (choice.nextNode) {
@@ -685,16 +796,18 @@ window.EventManager = {
                     if (mutation.attributeName === 'class' && loreModal.classList.contains('hidden')) {
                         // Purge event buttons
                         const oldContainer = document.getElementById('eventChoicesContainer');
-                        if (oldContainer) oldContainer.remove();
-                        
-                        // Restore original close button
-                        const closeBtn = document.getElementById('closeLoreButton');
-                        if (closeBtn) closeBtn.classList.remove('hidden');
-                        
-                        // Nullify state
-                        if (typeof window.EventManager !== 'undefined') {
-                            window.EventManager.activeEvent = null;
-                            window.EventManager.activeContext = null;
+                        if (oldContainer) {
+                            oldContainer.remove();
+                            
+                            // Restore original close button
+                            const closeBtn = document.getElementById('closeLoreButton');
+                            if (closeBtn) closeBtn.classList.remove('hidden');
+                            
+                            // Nullify state
+                            if (typeof window.EventManager !== 'undefined') {
+                                window.EventManager.activeEvent = null;
+                                window.EventManager.activeContext = null;
+                            }
                         }
                     }
                 });
