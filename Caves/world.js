@@ -3,6 +3,10 @@
 // Cache room templates globally to prevent expensive object parsing during cave generation
 window.CACHED_ROOM_TEMPLATES = null;
 
+// 🚀 PERFORMANCE WIN: Global frozen Set for O(1) terrain smoothing lookups
+// Prevents array reallocation 256 times per chunk generation!
+const _NATURAL_TERRAIN = Object.freeze(new Set(['.', 'F', 'd', 'D', '^', '~', '≈', '🌋', '🍄', '💎c', '🕸', '▤']));
+
 // ==========================================
 // UNDERWORLD GENERATION (Z-AXIS)
 // ==========================================
@@ -70,35 +74,36 @@ const chunkManager = {
     _maxTierCache: {}, // PERFORMANCE WIN: Cache for O(1) enemy tier lookups
     _cachedCommonFeatures: null, // PERFORMANCE WIN: Pre-filtered array of generic spawns
     
-    // 🚨 V8 PERFORMANCE WIN: Centralized Instancing Factory
-    // Guarantees strict shape consistency for all instanced enemies, preventing de-optimization!
+    // 🚨 V8 PERFORMANCE & ROBUSTNESS WIN: Centralized Instancing Factory
+    // Enforces strict typing (Number/Boolean) to guarantee that typo'd Expansion JSONs 
+    // don't corrupt the database or cause NaN string-concatenation combat bugs!
     _createInstancedEnemy(id, x, y, tile, scaledStats, template, overrideSpellDmg = null) {
         return {
-            id: id,
-            x: x,
-            y: y,
+            id: String(id),
+            x: Number(x),
+            y: Number(y),
             tile: tile,
             name: scaledStats.name || "Unknown",
-            isElite: scaledStats.isElite || false,
+            isElite: Boolean(scaledStats.isElite),
             color: scaledStats.color || template.color || null,
-            health: scaledStats.maxHealth || 10,
-            maxHealth: scaledStats.maxHealth || 10,
-            attack: scaledStats.attack || 1,
-            defense: template.defense || 0,
-            xp: scaledStats.xp || 0,
+            health: Number(scaledStats.maxHealth) || 10,
+            maxHealth: Number(scaledStats.maxHealth) || 10,
+            attack: Number(scaledStats.attack) || 1,
+            defense: Number(template.defense) || 0,
+            xp: Number(scaledStats.xp) || 0,
             loot: template.loot || '$',
-            caster: template.caster || false,
-            castRange: template.castRange || 0,
-            spellDamage: overrideSpellDmg !== null ? overrideSpellDmg : (template.spellDamage || 0),
-            isRanged: template.isRanged || false,
-            range: template.range || 0,
+            caster: Boolean(template.caster),
+            castRange: Number(template.castRange) || 0,
+            spellDamage: overrideSpellDmg !== null ? Number(overrideSpellDmg) : (Number(template.spellDamage) || 0),
+            isRanged: Boolean(template.isRanged),
+            range: Number(template.range) || 0,
             inflicts: template.inflicts || null,
-            inflictChance: template.inflictChance || 0,
-            teleporter: template.teleporter || false,
-            mountable: template.mountable || false,
-            isBoss: template.isBoss || false,
-            excludeFromLoot: template.excludeFromLoot || false,
-            tags: template.tags ? [...template.tags] : [],
+            inflictChance: Number(template.inflictChance) || 0,
+            teleporter: Boolean(template.teleporter),
+            mountable: Boolean(template.mountable),
+            isBoss: Boolean(template.isBoss),
+            excludeFromLoot: Boolean(template.excludeFromLoot),
+            tags: Array.isArray(template.tags) ? [...template.tags] : [],
             madnessTurns: 0,
             frostbiteTurns: 0,
             poisonTurns: 0,
@@ -275,6 +280,13 @@ const chunkManager = {
                         // Pothole Fill (Protect the exact spawn point!)
                         if (wallNeighbors >= 4 && (sx !== startPos.x || sy !== startPos.y)) {
                             map[sy][sx] = theme.wall;
+                        } 
+                        // 🌟 LORE & JUICE WIN: Stalagmite Generation
+                        // If it's a wide open room (0 walls touching), 2% chance to spawn an organic rock pillar!
+                        else if (wallNeighbors === 0 && random() < 0.02) {
+                            // Seed the PRNG securely so it matches the cave seed perfectly
+                            const stalagRand = typeof Alea !== 'undefined' ? Alea(stringToSeed(`${caveId}:stalag:${sx},${sy}`)) : Math.random;
+                            if (stalagRand() < 0.5) map[sy][sx] = (chosenThemeKey === 'ICE' || chosenThemeKey === 'FROZEN_RUIN') ? '🧊' : '🪨';
                         }
                     }
                 }
@@ -527,6 +539,8 @@ const chunkManager = {
                         // Convert chunk coords to world coords
                         const worldCaveX = cX * this.CHUNK_SIZE;
                         const worldCaveY = cY * this.CHUNK_SIZE;
+                        
+                        // 🚨 ROBUSTNESS WIN: Check if the combat engine loaded before attempting to scale
                         let scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyTemplate, worldCaveX, worldCaveY) : { ...enemyTemplate };
                         
                         let overrideDmg = enemyTemplate.spellDamage || 0;
@@ -1560,12 +1574,10 @@ const chunkManager = {
         // --- ZERO-ALLOCATION SMOOTHING PASS ---
         // Instead of allocating new arrays, we safely modify in place based on cached original neighbors
         // This removes harsh jagged diagonals and turns them into clean blocks, rendering much better in ASCII
-        const naturalTerrain = ['.', 'F', 'd', 'D', '^', '~', '≈', '🌋', '🍄', '💎c', '🕸', '▤']; 
-        
         for (let y = 1; y < this.CHUNK_SIZE - 1; y++) {
             for (let x = 1; x < this.CHUNK_SIZE - 1; x++) {
                 const currentTile = chunkData[y][x];
-                if (!naturalTerrain.includes(currentTile)) continue;
+                if (!_NATURAL_TERRAIN.has(currentTile)) continue;
 
                 const nN = chunkData[y - 1][x];
                 const nS = chunkData[y + 1][x];
@@ -1573,13 +1585,13 @@ const chunkManager = {
                 const nE = chunkData[y][x + 1];
 
                 // If 3 adjacent tiles share the same natural terrain type, assimilate to it
-                if (naturalTerrain.includes(nN)) {
+                if (_NATURAL_TERRAIN.has(nN)) {
                     if ((nN === nS && nN === nE) || (nN === nS && nN === nW) || (nN === nE && nN === nW)) {
                         chunkData[y][x] = nN;
                         continue;
                     }
                 }
-                if (naturalTerrain.includes(nS) && nS === nE && nS === nW) {
+                if (_NATURAL_TERRAIN.has(nS) && nS === nE && nS === nW) {
                     chunkData[y][x] = nS;
                 }
             }
