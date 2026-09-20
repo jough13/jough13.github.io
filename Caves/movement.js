@@ -149,7 +149,8 @@ async function claimWorldTile(x, y, expectedTile) {
     }
     
     try {
-        const txResult = await tileRef.transaction(currentData => {
+        // Wrapped transaction in a 3-second timeout to prevent engine deadlocks!
+        const txResult = await window.withTimeout(tileRef.transaction(currentData => {
             // If it's a TTL (time-to-live) object, check the 't' property. Otherwise check the string.
             const currentVal = (typeof currentData === 'object' && currentData !== null) ? currentData.t : currentData;
             
@@ -159,11 +160,12 @@ async function claimWorldTile(x, y, expectedTile) {
             
             // Erase the item by setting the tile permanently to the correct contextual terrain!
             return { t: baseTerrain }; 
-        });
+        }), 3000); // 3000ms failsafe timeout
         
         return txResult.committed;
     } catch (e) {
-        console.error("Failed to claim tile:", e);
+        // If the timeout fires, it throws an error and lands here safely, unlocking the engine.
+        console.warn("[AKASHIC ENGINE] Failed to claim tile or network timed out:", e.message);
         return false;
     }
 }
