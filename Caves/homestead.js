@@ -7,7 +7,7 @@
 window.ExpansionManager.register({
     id: "homestead_farming",
     name: "The Homestead (Farming & Campsites)",
-    version: "1.3", // Upgraded version!
+    version: "1.4", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -16,8 +16,29 @@ window.ExpansionManager.register({
             '🌱w': { name: 'Wildberry Seed', type: 'seed', tile: '🌱', description: "Plant in a Garden Plot to grow Wildberries." },
             '🍄s': { name: 'Bluecap Spore', type: 'seed', tile: '🍄', description: "Plant in a Garden Plot to grow Bluecap Mushrooms." },
             '🌺b': { name: 'Moonbloom Bulb', type: 'seed', tile: '🧅', description: "A rare bulb. Plant in a Garden Plot to grow Moonblooms.", _rarity: 'rare' },
-            // --- EXPANSION WIN: New Seeds & Fertilizer ---
             '🌵s': { name: 'Cactus Seed', type: 'seed', tile: '🌱', description: "Plant in a Garden Plot to grow Cactus Fruit." },
+            
+            // --- EXPANSION WINS: New Magic Seed & Fertilizer ---
+            '🍄g': { name: 'Ghostcap Spore', type: 'seed', tile: '🍄', description: "Plant in a Garden Plot to grow ethereal Ghostcaps. Thrives in the dark.", _rarity: 'epic' },
+            '🍄gc': {
+                name: 'Ghostcap', type: 'consumable', tile: '🍄', _rarity: 'epic',
+                description: "A translucent, humming fungus. {purple:+25 Psyche}, {gray:Grants 5 turns of Stealth.}",
+                effect: (state) => {
+                    if (typeof window.modifyVital === 'function') window.modifyVital('psyche', 25);
+                    else state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + 25);
+                    
+                    state.player.stealthTurns = Math.max(state.player.stealthTurns || 0, 5);
+                    if (typeof window.StealthManager !== 'undefined' && typeof window.StealthManager.updateUI === 'function') {
+                        state.player.isCrouching = true;
+                        window.StealthManager.updateUI();
+                    }
+                    
+                    logMessage("{purple:You consume the Ghostcap. The world fades and your mind expands! (+25 Psyche, +5 Stealth)}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#c084fc', 20);
+                    return true;
+                }
+            },
             '🦴m': { 
                 name: 'Bone Meal', type: 'consumable', tile: '🦴', _rarity: 'uncommon',
                 description: "Fertilizer made from crushed bones. {green:Instantly matures a growing Garden Plot.}",
@@ -40,6 +61,9 @@ window.ExpansionManager.register({
             trader: [
                 { name: 'Moonbloom Bulb', price: 200, stock: 2 },
                 { name: 'Bone Meal', price: 50, stock: 5 }
+            ],
+            black_market: [
+                { name: 'Ghostcap Spore', price: 400, stock: 1 }
             ]
         },
         craftingRecipes: {
@@ -66,17 +90,19 @@ window.ExpansionManager.register({
 
     // --- 4. ENGINE HOOKS ---
     init: function() {
+        const logger = window.ExpansionManager.getLogger("Homestead");
+
+        // 1. ATTACH FARMING DATA GLOBALLY (Modularly!)
+        if (typeof window.FARMING_DATA === 'undefined') window.FARMING_DATA = { seeds: {} };
         
-        // 1. ATTACH FARMING DATA GLOBALLY
-        window.FARMING_DATA = {
-            seeds: {
-                'Herb Seed': { yields: 'Medicinal Herb', turnsToGrow: 150, minYield: 1, maxYield: 3, xp: 20 },
-                'Wildberry Seed': { yields: 'Wildberry', turnsToGrow: 100, minYield: 2, maxYield: 4, xp: 15 },
-                'Cactus Seed': { yields: 'Cactus Fruit', turnsToGrow: 120, minYield: 1, maxYield: 3, xp: 20 },
-                'Bluecap Spore': { yields: 'Bluecap Mushroom', turnsToGrow: 200, minYield: 1, maxYield: 3, xp: 30 },
-                'Moonbloom Bulb': { yields: 'Moonbloom Petal', turnsToGrow: 400, minYield: 1, maxYield: 2, xp: 100 }
-            }
-        };
+        Object.assign(window.FARMING_DATA.seeds, {
+            'Herb Seed': { yields: 'Medicinal Herb', turnsToGrow: 150, minYield: 1, maxYield: 3, xp: 20 },
+            'Wildberry Seed': { yields: 'Wildberry', turnsToGrow: 100, minYield: 2, maxYield: 4, xp: 15 },
+            'Cactus Seed': { yields: 'Cactus Fruit', turnsToGrow: 120, minYield: 1, maxYield: 3, xp: 20 },
+            'Bluecap Spore': { yields: 'Bluecap Mushroom', turnsToGrow: 200, minYield: 1, maxYield: 3, xp: 30 },
+            'Moonbloom Bulb': { yields: 'Moonbloom Petal', turnsToGrow: 400, minYield: 1, maxYield: 2, xp: 100 },
+            'Ghostcap Spore': { yields: 'Ghostcap', turnsToGrow: 250, minYield: 1, maxYield: 2, xp: 75 }
+        });
 
         // PERFORMANCE WIN: O(1) Item Lookup Cache for Farming
         window._farmItemKeyCache = window._farmItemKeyCache || {};
@@ -88,183 +114,185 @@ window.ExpansionManager.register({
             return key;
         };
 
+        const applySafePatch = (target, method, factory) => {
+            if (typeof window.ExpansionManager.patchFunction === 'function') {
+                window.ExpansionManager.patchFunction(target, method, factory);
+            } else {
+                const orig = target[method];
+                target[method] = factory(orig ? orig.bind(target) : null);
+            }
+        };
+
         // 2. INTERCEPT CAMPSITE GENERATION (Place Garden Plots)
-        if (typeof chunkManager !== 'undefined' && chunkManager.generateCampsite) {
-            const originalGenerateCampsite = chunkManager.generateCampsite;
-            chunkManager.generateCampsite = function() {
-                const map = originalGenerateCampsite.call(this); 
-                
-                if (typeof gameState === 'undefined' || !gameState.player) return map;
-                
-                const upgrades = gameState.player.campsiteUpgrades || [];
-                
-                // Safe Array Bounds Checking
-                if (map && map[1]) {
-                    if (upgrades.includes('garden1') && map[1][2] !== undefined) map[1][2] = '🟫';
-                    if (upgrades.includes('garden2') && map[1][5] !== undefined) map[1][5] = '🟫';
-                    if (upgrades.includes('garden3') && map[1][8] !== undefined) map[1][8] = '🟫';
-                }
-                
-                return map;
-            };
+        if (typeof chunkManager !== 'undefined') {
+            applySafePatch(chunkManager, 'generateCampsite', (origGenerateCampsite) => {
+                return function() {
+                    const map = origGenerateCampsite ? origGenerateCampsite.call(this) : [];
+                    if (typeof gameState === 'undefined' || !gameState.player) return map;
+                    
+                    const upgrades = gameState.player.campsiteUpgrades || [];
+                    
+                    // Safe Array Bounds Checking
+                    if (map && map[1]) {
+                        if (upgrades.includes('garden1') && map[1][2] !== undefined) map[1][2] = '🟫';
+                        if (upgrades.includes('garden2') && map[1][5] !== undefined) map[1][5] = '🟫';
+                        if (upgrades.includes('garden3') && map[1][8] !== undefined) map[1][8] = '🟫';
+                    }
+                    
+                    return map;
+                };
+            });
         }
 
-        // 3. INTERCEPT CAMP LEDGER (Add Garden Upgrades!)
+        // 3. INTERCEPT CAMP LEDGER (Add Garden Upgrades WITHOUT breaking other mods!)
         setTimeout(() => {
             if (typeof window.TILE_DATA !== 'undefined' && window.TILE_DATA['📋']) {
                 const originalLedgerInteract = window.TILE_DATA['📋'].onInteract;
                 
                 window.TILE_DATA['📋'].onInteract = (state, x, y) => {
-                    const p = state.player;
-                    if (!p.campsiteUpgrades) p.campsiteUpgrades = [];
-                    const upg = p.campsiteUpgrades;
-
-                    // 🚨 PERFORMANCE WIN: Single O(N) pass to tally materials
-                    const counts = {};
-                    for (let i = 0; i < p.inventory.length; i++) {
-                        const itm = p.inventory[i];
-                        if (itm && !itm.isEquipped) {
-                            counts[itm.name] = (counts[itm.name] || 0) + itm.quantity;
-                        }
-                    }
-
-                    const wood = counts['Wood Log'] || 0;
-                    const stone = counts['Stone'] || 0;
-                    const iron = counts['Iron Ore'] || 0;
-                    const dust = counts['Void Dust'] || 0;
-
-                    const loreTitle = document.getElementById('loreTitle');
-                    const loreContent = document.getElementById('loreContent');
-                    const loreModal = document.getElementById('loreModal');
-
-                    if (!loreTitle || !loreContent || !loreModal) return null;
-
-                    loreTitle.textContent = "Campsite Ledger";
+                    // Call the original base game interaction FIRST so it sets up the core HTML!
+                    const res = originalLedgerInteract ? originalLedgerInteract(state, x, y) : null;
                     
-                    let html = `<p class="text-sm text-gray-300 mb-4 border-b border-gray-700 pb-2">Invest materials to expand your campsite. (Current: ${wood} Wood, ${stone} Stone, ${iron} Iron, ${dust} Void Dust)</p>`;
-
-                    const addBtn = (id, name, costStr, canAfford) => {
-                        const btnClass = canAfford ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-700 opacity-50 cursor-not-allowed';
-                        html += `<button id="btn_${id}" class="mb-2 ${btnClass} text-white font-bold py-2 px-4 rounded w-full flex justify-between shadow transition-transform active:scale-95 border-b-2 active:border-b-0 active:mt-0.5" ${canAfford ? '' : 'disabled'}>
-                            <span>Build ${name}</span> <span class="text-xs font-normal">${costStr}</span>
-                        </button>`;
-                    };
-
-                    // Existing Upgrades
-                    if (!upg.includes('stash')) addBtn('stash', 'Stash Box', '10 Wood, 5 Stone', wood >= 10 && stone >= 5);
-                    if (!upg.includes('workbench')) addBtn('workbench', 'Workbench', '15 Wood, 5 Iron', wood >= 15 && iron >= 5);
-                    if (!upg.includes('enchanter')) addBtn('enchanter', 'Enchanting Altar', '10 Stone, 5 Void Dust', stone >= 10 && dust >= 5);
-                    if (!upg.includes('waystone')) addBtn('waystone', 'Leyline Waystone', '10 Void Dust, 500 Gold', dust >= 10 && p.coins >= 500);
-                    if (!upg.includes('tent')) addBtn('tent', 'Large Tent', '20 Wood, 10 Wolf Pelt', wood >= 20 && counts['Wolf Pelt'] >= 10);
-                    
-                    // --- GARDEN UPGRADES ---
-                    if (!upg.includes('garden1')) addBtn('garden1', 'Garden Plot I', '5 Wood, 5 Stone', wood >= 5 && stone >= 5);
-                    else if (!upg.includes('garden2')) addBtn('garden2', 'Garden Plot II', '10 Wood, 10 Stone', wood >= 10 && stone >= 10);
-                    else if (!upg.includes('garden3')) addBtn('garden3', 'Garden Plot III', '15 Wood, 15 Stone', wood >= 15 && stone >= 15);
-
-                    loreContent.innerHTML = html;
-                    loreModal.classList.remove('hidden');
-
+                    // Use a tiny timeout to safely inject our content AFTER the DOM has painted
                     setTimeout(() => {
-                        // Live counter to check material logic exactly on click
-                        const countMatCurrent = (name) => p.inventory.filter(i => i && i.name === name && !i.isEquipped).reduce((sum, i) => sum + i.quantity, 0);
+                        const loreTitle = document.getElementById('loreTitle');
+                        const loreContent = document.getElementById('loreContent');
 
-                        const consume = (name, qty) => {
-                            let needed = qty;
-                            for (let i = p.inventory.length - 1; i >= 0; i--) {
-                                if (needed <= 0) break;
-                                let item = p.inventory[i];
-                                if (item && item.name === name && !item.isEquipped) {
-                                    let take = Math.min(item.quantity, needed);
-                                    item.quantity -= take;
-                                    needed -= take;
-                                    if (item.quantity <= 0) p.inventory.splice(i, 1);
+                        if (loreTitle && loreTitle.textContent === 'Campsite Ledger' && loreContent) {
+                            const p = state.player;
+                            if (!p.campsiteUpgrades) p.campsiteUpgrades = [];
+                            const upg = p.campsiteUpgrades;
+
+                            // Only inject if the garden buttons aren't already there!
+                            if (!document.getElementById('btn_garden1') && !upg.includes('garden3')) {
+                                const countMatCurrent = (name) => p.inventory.filter(i => i && i.name === name && !i.isEquipped).reduce((sum, i) => sum + i.quantity, 0);
+                                const wood = countMatCurrent('Wood Log');
+                                const stone = countMatCurrent('Stone');
+
+                                const addBtn = (id, name, costStr, canAfford) => {
+                                    const btnClass = canAfford ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-700 opacity-50 cursor-not-allowed';
+                                    return `<button id="btn_${id}" class="mb-2 ${btnClass} text-white font-bold py-2 px-4 rounded w-full flex justify-between shadow transition-transform active:scale-95 border-b-2 active:border-b-0 active:mt-0.5" ${canAfford ? '' : 'disabled'}>
+                                        <span>Build ${name}</span> <span class="text-xs font-normal">${costStr}</span>
+                                    </button>`;
+                                };
+
+                                let newHtml = '';
+                                if (!upg.includes('garden1')) newHtml += addBtn('garden1', 'Garden Plot I', '5 Wood, 5 Stone', wood >= 5 && stone >= 5);
+                                else if (!upg.includes('garden2')) newHtml += addBtn('garden2', 'Garden Plot II', '10 Wood, 10 Stone', wood >= 10 && stone >= 10);
+                                else if (!upg.includes('garden3')) newHtml += addBtn('garden3', 'Garden Plot III', '15 Wood, 15 Stone', wood >= 15 && stone >= 15);
+
+                                // Find the "Your camp is fully upgraded!" text from the core engine and remove it
+                                // so we can cleanly append our new buttons without UI overlap!
+                                const fullyUpgradedText = Array.from(loreContent.querySelectorAll('p')).find(p => p.textContent.includes('fully upgraded'));
+                                if (fullyUpgradedText) fullyUpgradedText.remove();
+
+                                loreContent.insertAdjacentHTML('beforeend', newHtml);
+                                
+                                // Check for FULL completion across base game + mod
+                                if (upg.length >= 7) { 
+                                    loreContent.insertAdjacentHTML('beforeend', `<p class="text-green-400 font-bold text-center mt-4">Your camp is fully upgraded!</p>`);
                                 }
+
+                                // Bind the click logic for the injected buttons
+                                const consume = (name, qty) => {
+                                    let needed = qty;
+                                    for (let i = p.inventory.length - 1; i >= 0; i--) {
+                                        if (needed <= 0) break;
+                                        let item = p.inventory[i];
+                                        if (item && item.name === name && !item.isEquipped) {
+                                            let take = Math.min(item.quantity, needed);
+                                            item.quantity -= take;
+                                            needed -= take;
+                                            if (item.quantity <= 0) p.inventory.splice(i, 1);
+                                        }
+                                    }
+                                };
+
+                                const bindUpgrade = (id, checkAfford, consumeReqs) => {
+                                    const btn = document.getElementById(`btn_${id}`);
+                                    if (btn) btn.onclick = () => {
+                                        // Re-verify at the exact moment of clicking to prevent race conditions!
+                                        if (!checkAfford()) {
+                                            if (typeof logMessage === 'function') logMessage("{red:You lack the materials to build this!}");
+                                            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                                            return;
+                                        }
+                                        
+                                        btn.disabled = true; 
+                                        consumeReqs();
+                                        p.campsiteUpgrades.push(id);
+                                        
+                                        if (typeof logMessage === 'function') logMessage(`{green:Campsite upgraded: ${id.toUpperCase()}!}`);
+                                        if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                                        
+                                        const loreModal = document.getElementById('loreModal');
+                                        if (loreModal) loreModal.classList.add('hidden');
+                                        
+                                        if (typeof chunkManager !== 'undefined') chunkManager.generateCampsite();
+                                        if (typeof gameState !== 'undefined') gameState.mapDirty = true;
+                                        if (typeof render === 'function') render();
+                                        
+                                        if (typeof triggerDebouncedSave === 'function') {
+                                            triggerDebouncedSave({ campsiteUpgrades: p.campsiteUpgrades, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : p.inventory, coins: p.coins });
+                                        }
+                                        if (typeof renderInventory === 'function') renderInventory();
+                                    };
+                                };
+
+                                bindUpgrade('garden1', () => countMatCurrent('Wood Log') >= 5 && countMatCurrent('Stone') >= 5, () => { consume('Wood Log', 5); consume('Stone', 5); });
+                                bindUpgrade('garden2', () => countMatCurrent('Wood Log') >= 10 && countMatCurrent('Stone') >= 10, () => { consume('Wood Log', 10); consume('Stone', 10); });
+                                bindUpgrade('garden3', () => countMatCurrent('Wood Log') >= 15 && countMatCurrent('Stone') >= 15, () => { consume('Wood Log', 15); consume('Stone', 15); });
                             }
-                        };
-
-                        const bindUpgrade = (id, checkAfford, consumeReqs, action) => {
-                            const btn = document.getElementById(`btn_${id}`);
-                            if (btn) btn.onclick = () => {
-                                // Re-verify at the exact moment of clicking to prevent race conditions!
-                                if (!checkAfford()) {
-                                    if (typeof logMessage === 'function') logMessage("{red:You lack the materials to build this!}");
-                                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                                    return;
-                                }
-                                
-                                btn.disabled = true; 
-                                
-                                consumeReqs();
-                                p.campsiteUpgrades.push(id);
-                                action();
-                                if (typeof logMessage === 'function') logMessage(`{green:Campsite upgraded: ${id.toUpperCase()}!}`);
-                                if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-                                loreModal.classList.add('hidden');
-                                
-                                chunkManager.generateCampsite();
-                                gameState.mapDirty = true;
-                                if (typeof render === 'function') render();
-                                
-                                if (typeof triggerDebouncedSave === 'function') {
-                                    triggerDebouncedSave({ campsiteUpgrades: p.campsiteUpgrades, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : p.inventory, coins: p.coins });
-                                }
-                                if (typeof renderInventory === 'function') renderInventory();
-                            };
-                        };
-
-                        bindUpgrade('stash', 
-                            () => countMatCurrent('Wood Log') >= 10 && countMatCurrent('Stone') >= 5, 
-                            () => { consume('Wood Log', 10); consume('Stone', 5); }, 
-                            () => {}
-                        );
-                        bindUpgrade('workbench', 
-                            () => countMatCurrent('Wood Log') >= 15 && countMatCurrent('Iron Ore') >= 5, 
-                            () => { consume('Wood Log', 15); consume('Iron Ore', 5); }, 
-                            () => {}
-                        );
-                        bindUpgrade('enchanter', 
-                            () => countMatCurrent('Stone') >= 10 && countMatCurrent('Void Dust') >= 5, 
-                            () => { consume('Stone', 10); consume('Void Dust', 5); }, 
-                            () => {}
-                        );
-                        bindUpgrade('tent', 
-                            () => countMatCurrent('Wood Log') >= 20 && countMatCurrent('Wolf Pelt') >= 10, 
-                            () => { consume('Wood Log', 20); consume('Wolf Pelt', 10); }, 
-                            () => {}
-                        );
-                        bindUpgrade('waystone', 
-                            () => countMatCurrent('Void Dust') >= 10 && p.coins >= 500, 
-                            () => { consume('Void Dust', 10); p.coins -= 500; }, 
-                            () => {}
-                        );
-                        
-                        // Bind Garden Actions
-                        bindUpgrade('garden1', 
-                            () => countMatCurrent('Wood Log') >= 5 && countMatCurrent('Stone') >= 5, 
-                            () => { consume('Wood Log', 5); consume('Stone', 5); }, 
-                            () => {}
-                        );
-                        bindUpgrade('garden2', 
-                            () => countMatCurrent('Wood Log') >= 10 && countMatCurrent('Stone') >= 10, 
-                            () => { consume('Wood Log', 10); consume('Stone', 10); }, 
-                            () => {}
-                        );
-                        bindUpgrade('garden3', 
-                            () => countMatCurrent('Wood Log') >= 15 && countMatCurrent('Stone') >= 15, 
-                            () => { consume('Wood Log', 15); consume('Stone', 15); }, 
-                            () => {}
-                        );
-
-                    }, 0);
-
-                    return null;
+                        }
+                    }, 10);
+                    
+                    return res;
                 };
             }
         }, 500); 
 
         // ==========================================
-        // 4. FARMING LOGIC & UI EXPORTS
+        // 4. LORE WIN: NATURAL RAIN WATERING
+        // ==========================================
+        if (typeof window.endPlayerTurn === 'function') {
+            applySafePatch(window, 'endPlayerTurn', (origEndPlayerTurn) => {
+                return function(updates = {}) {
+                    // Check if it's raining outside
+                    if (typeof gameState !== 'undefined' && gameState.weather === 'rain' && gameState.mapMode === 'overworld') {
+                        const p = gameState.player;
+                        if (p && p.gardenPlots) {
+                            let wateredAny = false;
+                            
+                            // Iterate through the plots and water them organically
+                            p.gardenPlots.forEach((plot, index) => {
+                                if (plot && !plot.watered) {
+                                    plot.watered = true;
+                                    plot.plantedAt -= 30; // Jump growth forward!
+                                    wateredAny = true;
+                                }
+                            });
+                            
+                            if (wateredAny) {
+                                // Don't spam the chat, just occasionally let them know their crops are happy
+                                if (typeof logMessage === 'function' && Math.random() < 0.15) {
+                                    logMessage("{blue:The gentle rain organically waters your crops back at camp.}");
+                                }
+                                
+                                // Auto-save the plot growth
+                                if (typeof triggerDebouncedSave === 'function') {
+                                    triggerDebouncedSave({ gardenPlots: p.gardenPlots });
+                                }
+                            }
+                        }
+                    }
+                    // Pass all original logic forward seamlessly
+                    if (origEndPlayerTurn) return origEndPlayerTurn.apply(this, arguments);
+                };
+            });
+        }
+
+        // ==========================================
+        // 5. FARMING LOGIC & UI EXPORTS
         // ==========================================
         
         let isFarmingProcessing = false; // 🚨 EXPLOIT FIX WIN: Mutex lock for fast clicking
@@ -307,7 +335,9 @@ window.ExpansionManager.register({
             // Build Seed Dropdown Options
             let seedOptions = `<option value="">-- Select Seed --</option>`;
             for (const [seedName, count] of Object.entries(seedCounts)) {
-                seedOptions += `<option value="${seedName}">${seedName} (x${count})</option>`;
+                // Security: Escape user-provided data just in case
+                const safeName = typeof escapeHtml === 'function' ? escapeHtml(seedName) : seedName;
+                seedOptions += `<option value="${safeName}">${safeName} (x${count})</option>`;
             }
 
             // Use DocumentFragment for batched DOM insertion
@@ -356,12 +386,14 @@ window.ExpansionManager.register({
                     const progress = Math.min(100, Math.max(0, progressRaw));
                     
                     const isReady = progress >= 100;
+                    const safePlotName = typeof escapeHtml === 'function' ? escapeHtml(plot.seedName) : plot.seedName;
                     
                     let icon = '🪴';
                     if (isReady) {
-                        if (seedData.yields === 'Bluecap Mushroom') icon = '🍄';
-                        else if (seedData.yields === 'Moonbloom Petal') icon = '🌺';
-                        else if (seedData.yields === 'Cactus Fruit') icon = '🌵';
+                        if (seedData && seedData.yields === 'Bluecap Mushroom') icon = '🍄';
+                        else if (seedData && seedData.yields === 'Ghostcap') icon = '🍄';
+                        else if (seedData && seedData.yields === 'Moonbloom Petal') icon = '🌺';
+                        else if (seedData && seedData.yields === 'Cactus Fruit') icon = '🌵';
                         else icon = '🌿';
                     }
 
@@ -370,25 +402,25 @@ window.ExpansionManager.register({
                         statusHtml = `
                             <div class="w-full flex-grow">
                                 <h3 class="font-bold text-green-400 text-lg" style="font-family: 'Uncial Antiqua', cursive;">Ready for Harvest</h3>
-                                <p class="text-xs text-gray-400 italic">Yields: ${seedData.yields}</p>
+                                <p class="text-xs text-gray-400 italic">Yields: ${seedData ? seedData.yields : 'Unknown Crop'}</p>
                             </div>
                             <button data-action="harvest" data-plot="${i}" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-3 px-6 rounded-lg shadow-md border-b-2 border-yellow-800 active:scale-95 active:border-b-0 active:mt-0.5 whitespace-nowrap">Harvest</button>
                         `;
                     } else {
                         statusHtml = `
                             <div class="w-full flex-grow">
-                                <h3 class="font-bold text-blue-400 text-lg">${plot.seedName}</h3>
+                                <h3 class="font-bold text-blue-400 text-lg">${safePlotName}</h3>
                                 <div class="w-full bg-gray-900 rounded h-2 mt-2 border border-gray-700 shadow-inner overflow-hidden">
                                     <div class="bg-green-500 h-full transition-all duration-500" style="width: ${progress}%"></div>
                                 </div>
                                 <p class="text-[10px] text-gray-500 mt-1 uppercase tracking-widest text-right">${Math.floor(progress)}% Grown</p>
                             </div>
                             <div class="flex gap-2">
-                                <button data-action="water" data-plot="${i}" class="${hasWater && !plot.watered ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-700 opacity-50 cursor-not-allowed'} text-white font-bold py-2 px-3 rounded shadow-md border-b-2 ${hasWater && !plot.watered ? 'border-blue-800 active:scale-95 active:border-b-0 active:mt-0.5' : 'border-gray-800'} whitespace-nowrap flex flex-col items-center" ${hasWater && !plot.watered ? '' : 'disabled'}>
+                                <button data-action="water" data-plot="${i}" class="${hasWater && !plot.watered ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-700 opacity-50 cursor-not-allowed'} text-white font-bold py-2 px-3 rounded shadow-md border-b-2 ${hasWater && !plot.watered ? 'border-blue-800 active:scale-95 active:border-b-0 active:mt-0.5' : 'border-gray-800'} whitespace-nowrap flex flex-col items-center" title="Jump growth forward 30 turns." ${hasWater && !plot.watered ? '' : 'disabled'}>
                                     <span>Water</span>
                                     <span class="text-[9px] font-normal opacity-80">(Needs Flask)</span>
                                 </button>
-                                <button data-action="fertilize" data-plot="${i}" class="${hasBoneMeal ? 'bg-purple-600 hover:bg-purple-500' : 'bg-gray-700 opacity-50 cursor-not-allowed'} text-white font-bold py-2 px-3 rounded shadow-md border-b-2 ${hasBoneMeal ? 'border-purple-800 active:scale-95 active:border-b-0 active:mt-0.5' : 'border-gray-800'} whitespace-nowrap flex flex-col items-center" ${hasBoneMeal ? '' : 'disabled'}>
+                                <button data-action="fertilize" data-plot="${i}" class="${hasBoneMeal ? 'bg-purple-600 hover:bg-purple-500' : 'bg-gray-700 opacity-50 cursor-not-allowed'} text-white font-bold py-2 px-3 rounded shadow-md border-b-2 ${hasBoneMeal ? 'border-purple-800 active:scale-95 active:border-b-0 active:mt-0.5' : 'border-gray-800'} whitespace-nowrap flex flex-col items-center" title="Instantly matures crop." ${hasBoneMeal ? '' : 'disabled'}>
                                     <span>Fertilize</span>
                                     <span class="text-[9px] font-normal opacity-80">(Needs Bone Meal)</span>
                                 </button>
@@ -444,7 +476,10 @@ window.ExpansionManager.register({
                     };
 
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playDig(player.x);
-                    if (typeof logMessage === 'function') logMessage(`{green:You planted a ${seedName} in the earth.}`);
+                    
+                    const safeSeedName = typeof escapeHtml === 'function' ? escapeHtml(seedName) : seedName;
+                    if (typeof logMessage === 'function') logMessage(`{green:You planted a ${safeSeedName} in the earth.}`);
+                    
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#16a34a', 10);
                     
                     // Save
@@ -497,8 +532,10 @@ window.ExpansionManager.register({
                     // Watering speeds up growth by jumping the plantedAt time back by 30 turns!
                     plot.plantedAt -= 30; 
 
+                    const safeName = typeof escapeHtml === 'function' ? escapeHtml(plot.seedName) : plot.seedName;
+
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.05, 500); // Splash
-                    if (typeof logMessage === 'function') logMessage(`{blue:You watered the ${plot.seedName}. It looks healthier!}`);
+                    if (typeof logMessage === 'function') logMessage(`{blue:You watered the ${safeName}. It looks healthier!}`);
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "WATERED", "#3b82f6");
 
                     if (typeof triggerDebouncedSave === 'function') {
@@ -529,9 +566,11 @@ window.ExpansionManager.register({
 
                     // Instantly mature the crop by jumping plantedAt to -1000
                     plot.plantedAt -= 1000; 
+                    
+                    const safeName = typeof escapeHtml === 'function' ? escapeHtml(plot.seedName) : plot.seedName;
 
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
-                    if (typeof logMessage === 'function') logMessage(`{purple:The Bone Meal works instantly! The ${plot.seedName} bursts into full bloom!}`);
+                    if (typeof logMessage === 'function') logMessage(`{purple:The Bone Meal works instantly! The ${safeName} bursts into full bloom!}`);
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#a855f7', 20);
 
                     if (typeof triggerDebouncedSave === 'function') {
@@ -555,7 +594,12 @@ window.ExpansionManager.register({
                 if (!plot) return;
 
                 const seedData = window.FARMING_DATA.seeds[plot.seedName];
-                if (!seedData) return;
+                if (!seedData) {
+                    // Safe cleanup if seed data vanished due to a mod uninstall
+                    player.gardenPlots[plotIndex] = null;
+                    if (typeof window.renderFarmingModal === 'function') window.renderFarmingModal();
+                    return; 
+                }
 
                 const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
                 const existingStack = player.inventory.find(i => i && i.name === seedData.yields && !i.isEquipped);
@@ -579,11 +623,13 @@ window.ExpansionManager.register({
                     baseKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === seedData.yields);
                 }
                 const template = window.ITEM_DATA[baseKey] || { type: 'ingredient', tile: '🌿' };
+                
+                const safeYieldName = typeof escapeHtml === 'function' ? escapeHtml(seedData.yields) : seedData.yields;
 
                 // Give Item safely
                 if (existingStack) {
                     existingStack.quantity += yieldAmount;
-                    if (typeof logMessage === 'function') logMessage(`{gold:You harvested ${yieldAmount}x ${seedData.yields}! (+${seedData.xp} Farming XP)}`);
+                    if (typeof logMessage === 'function') logMessage(`{gold:You harvested ${yieldAmount}x ${safeYieldName}! (+${seedData.xp} Farming XP)}`);
                 } 
                 else if (player.inventory.length < invCap) {
                     // Safe deep clone
@@ -600,11 +646,11 @@ window.ExpansionManager.register({
                     newItem.onHit = template.onHit || null;
                     
                     player.inventory.push(newItem);
-                    if (typeof logMessage === 'function') logMessage(`{gold:You harvested ${yieldAmount}x ${seedData.yields}! (+${seedData.xp} Farming XP)}`);
+                    if (typeof logMessage === 'function') logMessage(`{gold:You harvested ${yieldAmount}x ${safeYieldName}! (+${seedData.xp} Farming XP)}`);
                 } 
                 else {
                     // 🚨 BUG FIX & QoL WIN: Inventory is full! Drop it safely to the ground!
-                    if (typeof logMessage === 'function') logMessage(`{red:Your pack is full! The ${seedData.yields} falls to the ground.}`);
+                    if (typeof logMessage === 'function') logMessage(`{red:Your pack is full! The ${safeYieldName} falls to the ground.}`);
                     if (typeof window.EventManager !== 'undefined' && typeof window.EventManager.safeDropItem === 'function') {
                         window.EventManager.safeDropItem(gameState, player.x, player.y, template.tile || '🌿');
                     }
@@ -686,6 +732,8 @@ window.ExpansionManager.register({
         } else {
             setupFarmingListeners();
         }
+        
+        logger.log("Farming & Campsite hooks initialized safely.");
     }
 });
 
