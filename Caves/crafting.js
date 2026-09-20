@@ -5,7 +5,7 @@
 // ==========================================
 
 // O(1) Item Lookup Cache for Crafting
-// 🚀 PERFORMANCE & SECURITY WIN: Object.create(null) prevents prototype poisoning!
+// Object.create(null) prevents prototype poisoning!
 const _craftItemKeyCache = Object.create(null);
 
 function getCraftItemKey(name) {
@@ -203,7 +203,8 @@ function handleCraftItem(recipeName, requestBatch = false) {
                 return;
             } 
             // 2. Attempt Stash Vault (Massive QoL Fallback)
-            else if (player.bank && player.bank.length < stashCap) {
+            if (!player.bank) player.bank = []; // 🚨 ROBUSTNESS WIN: Safe init
+            if (player.bank.length < stashCap) {
                 player.bank.push(newItemObj);
                 logMessage(`{blue:Your pack is full! The ${safeName} was safely routed to your Dimensional Vault.}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
@@ -271,31 +272,56 @@ function handleCraftItem(recipeName, requestBatch = false) {
             let craftYield = recipe.yield || 1;
             let totalYield = craftYield * batchSize;
             
-            let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(itemTemplate) : JSON.parse(JSON.stringify(itemTemplate));
-            newItem.templateId = outputItemKey;
-            newItem.tile = itemTemplate.tile || outputItemKey || '?';
-            newItem.quantity = totalYield;
-            newItem.isEquipped = false;
-            
-            // 🚨 ROBUSTNESS WIN: Safe functional rehydration
-            newItem.effect = itemTemplate.effect;
-            newItem.onHit = itemTemplate.onHit;
-            newItem.procChance = itemTemplate.procChance;
-            newItem.inflicts = itemTemplate.inflicts;
-            newItem.inflictChance = itemTemplate.inflictChance;
-            newItem.tags = itemTemplate.tags ? [...itemTemplate.tags] : null;
-            
-            outputTracker[newItem.name] = (outputTracker[newItem.name] || 0) + totalYield;
-            
-            const curStack = player.inventory.find(item => item && item.name === newItem.name && !item.isEquipped);
-            if (curStack && isStackable) {
-                curStack.quantity += totalYield;
+            if (isStackable) {
+                let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(itemTemplate) : JSON.parse(JSON.stringify(itemTemplate));
+                newItem.templateId = outputItemKey;
+                newItem.tile = itemTemplate.tile || outputItemKey || '?';
+                newItem.quantity = totalYield;
+                newItem.isEquipped = false;
+                
+                // 🚨 ROBUSTNESS WIN: Safe functional rehydration
+                newItem.effect = itemTemplate.effect;
+                newItem.onHit = itemTemplate.onHit;
+                newItem.procChance = itemTemplate.procChance;
+                newItem.inflicts = itemTemplate.inflicts;
+                newItem.inflictChance = itemTemplate.inflictChance;
+                newItem.tags = itemTemplate.tags ? [...itemTemplate.tags] : null;
+                
+                outputTracker[newItem.name] = (outputTracker[newItem.name] || 0) + totalYield;
+                
+                const curStack = player.inventory.find(item => item && item.name === newItem.name && !item.isEquipped);
+                if (curStack) {
+                    curStack.quantity += totalYield;
+                } else {
+                    routeCraftedItemSafely(newItem);
+                }
             } else {
-                routeCraftedItemSafely(newItem);
+                // 🚨 CRITICAL BUG FIX: Unstackable items in the fast-path must be instantiated separately!
+                // Prevents creating a single Pickaxe object with a quantity of 5.
+                for (let k = 0; k < totalYield; k++) {
+                    let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(itemTemplate) : JSON.parse(JSON.stringify(itemTemplate));
+                    newItem.templateId = outputItemKey;
+                    newItem.tile = itemTemplate.tile || outputItemKey || '?';
+                    newItem.quantity = 1;
+                    newItem.isEquipped = false;
+                    
+                    newItem.effect = itemTemplate.effect;
+                    newItem.onHit = itemTemplate.onHit;
+                    newItem.procChance = itemTemplate.procChance;
+                    newItem.inflicts = itemTemplate.inflicts;
+                    newItem.inflictChance = itemTemplate.inflictChance;
+                    newItem.tags = itemTemplate.tags ? [...itemTemplate.tags] : null;
+                    
+                    outputTracker[newItem.name] = (outputTracker[newItem.name] || 0) + 1;
+                    routeCraftedItemSafely(newItem);
+                }
             }
         } 
         else {
             // NORMAL LOOP: For items that must calculate a masterwork/perfect chance on every single craft
+            const mwPrefixes = ["Flawless", "Peerless", "Exquisite", "Masterwork", "Divine"];
+            const culinaryPrefixes = ["Perfect", "Delicious", "Hearty", "Succulent", "Divine"];
+            
             for (let i = 0; i < batchSize; i++) {
                 let isMasterwork = false;
                 let craftYield = recipe.yield || 1; 
@@ -328,7 +354,6 @@ function handleCraftItem(recipeName, requestBatch = false) {
                     else if (baseRarity === 'rare') newItem._rarity = 'epic';
                     else newItem._rarity = 'legendary'; 
                     
-                    const mwPrefixes = ["Flawless", "Peerless", "Exquisite", "Masterwork", "Divine"];
                     const chosenPrefix = mwPrefixes[Math.floor(Math.random() * mwPrefixes.length)];
                     
                     newItem.name = `${chosenPrefix} ${itemTemplate.name}`;
@@ -353,11 +378,12 @@ function handleCraftItem(recipeName, requestBatch = false) {
                     if (newItem.type === 'armor') newItem.defense = (Number(newItem.defense) || 0) + 2;
                 }
 
-                // LORE WIN: Perfect Culinary Batches!
+                // 🌟 LORE WIN: Perfect Culinary Batches!
                 if (isCooking && Math.random() < perfectChance) {
                     culinaryCrits++;
                     newItem.quantity += 1; 
-                    newItem.name = `Perfect ${itemTemplate.name}`; 
+                    const culPrefix = culinaryPrefixes[Math.floor(Math.random() * culinaryPrefixes.length)];
+                    newItem.name = `${culPrefix} ${itemTemplate.name}`; 
                 }
 
                 outputTracker[newItem.name] = (outputTracker[newItem.name] || 0) + newItem.quantity;
@@ -377,15 +403,21 @@ function handleCraftItem(recipeName, requestBatch = false) {
         // --- ACCURATE LOGGING & EFFECTS ---
         let totalYield = 0;
         let hadEpicSuccess = false;
+        
+        const mwPrefixes = ["Flawless", "Peerless", "Exquisite", "Masterwork", "Divine"];
+        const culinaryPrefixes = ["Perfect", "Delicious", "Hearty", "Succulent", "Divine"];
 
         Object.entries(outputTracker).forEach(([name, count]) => {
             totalYield += count;
             const safeName = typeof escapeHtml === 'function' ? escapeHtml(name) : name;
             
-            if (name.includes("Flawless") || name.includes("Peerless") || name.includes("Exquisite") || name.includes("Masterwork") || name.includes("Divine")) {
+            const isMasterworkCraft = mwPrefixes.some(p => name.startsWith(p + " ")) && !isCooking;
+            const isCulinaryCrit = culinaryPrefixes.some(p => name.startsWith(p + " ")) && isCooking;
+            
+            if (isMasterworkCraft) {
                 logMessage(`{purple:Masterwork Success! You forged: ${safeName} (x${count})}`);
                 hadEpicSuccess = true;
-            } else if (name.includes("Perfect")) {
+            } else if (isCulinaryCrit) {
                 logMessage(`{gold:Culinary Perfection! You cooked: ${safeName} (x${count})}`);
                 hadEpicSuccess = true;
             } else {
@@ -585,9 +617,14 @@ function renderCraftingModal() {
             baseDescription = baseDescription.replace(/\{[a-zA-Z0-9_-]+:(.*?)\}/ig, '$1');
         }
 
-        // Apply "Blueprint" theme to obscured items
+        // 🌟 UX WIN: Dynamic Blueprint Teasers
         if (isObscured) {
-            displayName = isCooking ? "Unknown Recipe" : "Locked Schematic";
+            if (isCooking) displayName = "Unknown Recipe";
+            else if (gameState.currentCraftingMode === 'alchemy') displayName = "Unidentified Concoction";
+            else if (itemTemplate.type === 'weapon') displayName = "Weapon Schematic";
+            else if (itemTemplate.type === 'armor') displayName = "Armor Blueprint";
+            else displayName = "Locked Schematic";
+            
             displayTile = '🔒';
             baseDescription = `Requires ${isCooking ? 'Culinary' : 'Artisan'} Level ${recipe.level || 1} to decipher.`;
         }
