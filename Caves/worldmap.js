@@ -119,9 +119,18 @@ Object.assign(TILE_COLOR_MAP, {
 
 function getCachedMapChunk(cx, cy) {
     const key = `${cx},${cy}`;
-    if (mapChunkCache.has(key)) return mapChunkCache.get(key);
+    
+    if (mapChunkCache.has(key)) {
+        // Touch the chunk!
+        // Delete and re-insert the chunk so it moves to the very end of the Map's insertion order.
+        // This guarantees we never accidentally cull the chunks the player is currently staring at!
+        const canvas = mapChunkCache.get(key);
+        mapChunkCache.delete(key);
+        mapChunkCache.set(key, canvas);
+        return canvas;
+    }
 
-    // 🚨 PERFORMANCE & MEMORY LEAK WIN: Strict Canvas Culling
+    // Strict Canvas Culling
     // Simply deleting it from the Map object isn't enough; we must zero out the dimensions
     // to force the browser to instantly drop the VRAM allocation for that canvas!
     if (mapChunkCache.size >= MAX_CACHED_CHUNKS) {
@@ -136,6 +145,7 @@ function getCachedMapChunk(cx, cy) {
 
     const c = document.createElement('canvas');
     c.width = MAP_CHUNK_SIZE;
+
     c.height = MAP_CHUNK_SIZE;
     const ctx = c.getContext('2d', { alpha: false }); 
 
