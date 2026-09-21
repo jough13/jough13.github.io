@@ -25,25 +25,15 @@ class ExpansionManager {
 class Spider {
     constructor(x, y, team, role = 'harvester') {
         this.x = x; this.y = y; this.team = team; this.role = role;
-        
-        // Base Stats differ by role!
         this.size = role === 'soldier' ? 16 : 12;
         this.speed = role === 'soldier' ? (Math.random() * 1.5 + 1.5) : (Math.random() * 1.5 + 1.0);
-        this.hp = role === 'soldier' ? 200 : 100;
-        this.maxHp = this.hp;
-        this.damage = role === 'soldier' ? 30 : 15;
-        this.attackSpeed = role === 'soldier' ? 20 : 30;
-        this.cooldown = 0;
-        
-        this.angle = 0; this.state = 'idle'; this.target = null; this.cargo = 0; 
+        this.hp = role === 'soldier' ? 200 : 100; this.maxHp = this.hp;
+        this.damage = role === 'soldier' ? 30 : 15; this.attackSpeed = role === 'soldier' ? 20 : 30;
+        this.cooldown = 0; this.angle = 0; this.state = 'idle'; this.target = null; this.cargo = 0; 
         
         this.sprite = new Image();
-        if (role === 'soldier') {
-            this.sprite.src = team === 'black' ? 'assets/soldier_black.png' : 'assets/soldier_red.png';
-        } else {
-            this.sprite.src = team === 'black' ? 'assets/black_spider.png' : 'assets/red_spider.png';
-        }
-        
+        if (role === 'soldier') this.sprite.src = team === 'black' ? 'assets/soldier_black.png' : 'assets/soldier_red.png';
+        else this.sprite.src = team === 'black' ? 'assets/black_spider.png' : 'assets/red_spider.png';
         this.imageLoaded = false; this.sprite.onload = () => { this.imageLoaded = true; };
     }
     update(game) { }
@@ -105,17 +95,17 @@ class Projectile {
         this.x = x; this.y = y; this.target = target; this.damage = damage; this.team = team;
         this.speed = 5; this.active = true;
     }
-    update() {
+    update(game) {
         if(!this.target || this.target.hp <= 0) { this.active = false; return; }
         const dx = this.target.x - this.x; const dy = this.target.y - this.y;
         const dist = Math.hypot(dx, dy);
-        if (dist < 10) { this.target.hp -= this.damage; this.active = false; } 
+        if (dist < 10) { 
+            this.target.hp -= this.damage; this.active = false; 
+            game.bus.emit('particles', {x: this.target.x, y: this.target.y, color: this.team==='black'?'#aa00ff':'#ffaa00', count: 10});
+        } 
         else { this.x += (dx/dist) * this.speed; this.y += (dy/dist) * this.speed; }
     }
-    draw(ctx) {
-        ctx.fillStyle = this.team === 'black' ? '#aa00ff' : '#ffaa00'; 
-        ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, Math.PI*2); ctx.fill();
-    }
+    draw(ctx) { ctx.fillStyle = this.team === 'black' ? '#aa00ff' : '#ffaa00'; ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, Math.PI*2); ctx.fill(); }
 }
 
 // ==========================================
@@ -124,32 +114,23 @@ class Projectile {
 
 class Game {
     constructor() {
-        this.canvas = document.getElementById('gameCanvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.bus = new GameBus();
-        this.expansions = new ExpansionManager(this);
+        this.canvas = document.getElementById('gameCanvas'); this.ctx = this.canvas.getContext('2d');
+        this.bus = new GameBus(); this.expansions = new ExpansionManager(this);
         
-        this.world = { width: 4000, height: 4000 };
-        this.camera = { x: 0, y: 0 };
+        this.world = { width: 4000, height: 4000 }; this.camera = { x: 0, y: 0 }; this.tick = 0; 
         
         this.spiders = []; this.pumpkins = []; this.structures = []; 
         this.queens = []; this.projectiles = []; this.bugs = [];
+        this.particles = []; this.spells = []; 
+        this.bosses = []; // NEW: Boss Array
         
-        this.scores = { black: 400, red: 400 }; 
-        this.pop = { black: 0, red: 0 };
-        this.maxPop = { black: 10, red: 10 };
-        
-        // New Game States
+        this.scores = { black: 600, red: 400 }; 
+        this.pop = { black: 0, red: 0 }; this.maxPop = { black: 10, red: 10 };
         this.techLevel = { black: 0, red: 0 }; 
-        this.buildSelection = 'nest'; 
-        this.unitSelection = 'harvester';
-        this.gameState = 'playing'; 
+        this.buildSelection = 'nest'; this.unitSelection = 'harvester'; this.gameState = 'playing'; 
 
-        this.resize();
-        window.addEventListener('resize', () => this.resize());
-        this.setupInputs();
-        
-        requestAnimationFrame(() => this.loop());
+        this.resize(); window.addEventListener('resize', () => this.resize());
+        this.setupInputs(); requestAnimationFrame(() => this.loop());
     }
 
     resize() { this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight; }
@@ -157,22 +138,12 @@ class Game {
     setupInputs() {
         this.keys = {};
         window.addEventListener('keydown', e => {
-            const k = e.key.toLowerCase();
-            this.keys[k] = true;
-            if(k === '1') this.buildSelection = 'nest';
-            if(k === '2') this.buildSelection = 'eggsac';
-            if(k === '3') this.buildSelection = 'turret';
-            if(k === '4') this.buildSelection = 'wall';
-            if(k === '5') this.unitSelection = 'harvester';
-            if(k === '6') this.unitSelection = 'soldier';
-            
-            // Upgrade Hotkey
-            if(k === 'u') {
-                if(this.scores.black >= 250) {
-                    this.scores.black -= 250;
-                    this.techLevel.black++;
-                }
-            }
+            const k = e.key.toLowerCase(); this.keys[k] = true;
+            if(k === '1') this.buildSelection = 'nest'; if(k === '2') this.buildSelection = 'eggsac';
+            if(k === '3') this.buildSelection = 'turret'; if(k === '4') this.buildSelection = 'wall';
+            if(k === '5') this.unitSelection = 'harvester'; if(k === '6') this.unitSelection = 'soldier';
+            if(k === '7') this.buildSelection = 'venomStrike'; if(k === '8') this.buildSelection = 'silkTrap';
+            if(k === 'u' && this.scores.black >= 250) { this.scores.black -= 250; this.techLevel.black++; this.bus.emit('playSound', 'spell');}
         });
         window.addEventListener('keyup', e => this.keys[e.key.toLowerCase()] = false);
 
@@ -180,8 +151,7 @@ class Game {
 
         this.canvas.addEventListener('mousedown', (e) => {
             if (e.button === 0) { 
-                isDragging = true; hasMoved = false;
-                dragStartX = e.clientX; dragStartY = e.clientY;
+                isDragging = true; hasMoved = false; dragStartX = e.clientX; dragStartY = e.clientY;
                 camStartX = this.camera.x; camStartY = this.camera.y;
             }
         });
@@ -199,8 +169,11 @@ class Game {
                 isDragging = false;
                 if (!hasMoved && !this.isMinimapDragging) {
                     const worldX = e.clientX + this.camera.x; const worldY = e.clientY + this.camera.y;
-                    if (this.keys['e']) this.bus.emit('buildStructure', { x: worldX, y: worldY, team: 'black', type: this.buildSelection });
-                    else this.bus.emit('spawnSpider', { x: worldX, y: worldY, team: 'black', role: this.unitSelection });
+                    if (this.keys['e']) { this.bus.emit('buildStructure', { x: worldX, y: worldY, team: 'black', type: this.buildSelection }); } 
+                    else if (this.buildSelection === 'venomStrike' || this.buildSelection === 'silkTrap') {
+                        this.bus.emit('castSpell', { x: worldX, y: worldY, type: this.buildSelection, team: 'black' });
+                        this.buildSelection = 'nest'; 
+                    } else { this.bus.emit('spawnSpider', { x: worldX, y: worldY, team: 'black', role: this.unitSelection }); }
                 }
             }
         });
@@ -213,17 +186,17 @@ class Game {
         this.bus.on('spawnSpider', (data) => {
             const cost = data.role === 'soldier' ? 25 : 10;
             if (this.scores[data.team] >= cost && this.pop[data.team] < this.maxPop[data.team]) {
-                this.scores[data.team] -= cost;
-                this.spiders.push(new Spider(data.x, data.y, data.team, data.role));
+                this.scores[data.team] -= cost; this.spiders.push(new Spider(data.x, data.y, data.team, data.role));
             }
         });
         
         this.bus.on('buildStructure', (data) => {
             const costs = { 'nest': 150, 'eggsac': 50, 'turret': 100, 'wall': 25 };
-            const cost = costs[data.type];
-            if (this.scores[data.team] >= cost) {
-                this.scores[data.team] -= cost;
+            if (!costs[data.type]) return; 
+            if (this.scores[data.team] >= costs[data.type]) {
+                this.scores[data.team] -= costs[data.type];
                 this.structures.push(new Structure(data.x, data.y, data.team, data.type));
+                this.bus.emit('playSound', 'build');
             }
         });
     }
@@ -232,24 +205,19 @@ class Game {
         if(this.gameState !== 'playing') return;
         document.getElementById('debug').innerHTML = `
             <div style="display:flex; justify-content:space-between; font-size:1.1em;">
-                <span><strong>Black: ${this.scores.black}🎃</strong> | Pop: ${this.pop.black}/${this.maxPop.black} | <strong>Tech LVL: ${this.techLevel.black}</strong></span>
-                <span style="color:#ff4444;"><strong>Red: ${this.scores.red}🎃</strong> | Pop: ${this.pop.red}/${this.maxPop.red} | <strong>Tech LVL: ${this.techLevel.red}</strong></span>
+                <span><strong>Black: ${this.scores.black}🎃</strong> | Pop: ${this.pop.black}/${this.maxPop.black} | Tech: ${this.techLevel.black}</span>
+                <span style="color:#ff4444;"><strong>Red: ${this.scores.red}🎃</strong> | Pop: ${this.pop.red}/${this.maxPop.red} | Tech: ${this.techLevel.red}</span>
             </div>
             <hr style="border-color:#ff9d0055;">
-            <div style="display:flex; justify-content:space-between;">
+            <div style="display:flex; justify-content:space-between; font-size: 0.9em;">
                 <div>
-                    <strong>Spawns (Click):</strong> 
-                    <span style="${this.unitSelection==='harvester'?'color:white;':''}">[5] Harvester (10)</span> | 
-                    <span style="${this.unitSelection==='soldier'?'color:white;':''}">[6] Soldier (25)</span><br>
-                    <strong>Builds (E+Click):</strong> 
-                    <span style="${this.buildSelection==='nest'?'color:white;':''}">[1] Nest(150)</span> | 
-                    <span style="${this.buildSelection==='eggsac'?'color:white;':''}">[2] EggSac(50)</span> | 
-                    <span style="${this.buildSelection==='turret'?'color:white;':''}">[3] Turret(100)</span> | 
-                    <span style="${this.buildSelection==='wall'?'color:white;':''}">[4] Wall(25)</span>
+                    <strong>Spawns:</strong> <span style="${this.unitSelection==='harvester'?'color:white;':''}">[5] Harvest(10)</span> | <span style="${this.unitSelection==='soldier'?'color:white;':''}">[6] Soldier(25)</span><br>
+                    <strong>Builds(E):</strong> <span style="${this.buildSelection==='nest'?'color:white;':''}">[1] Nest(150)</span> | <span style="${this.buildSelection==='eggsac'?'color:white;':''}">[2] Sac(50)</span> | <span style="${this.buildSelection==='turret'?'color:white;':''}">[3] Turret(100)</span> | <span style="${this.buildSelection==='wall'?'color:white;':''}">[4] Wall(25)</span><br>
+                    <strong>Spells:</strong> <span style="${this.buildSelection==='venomStrike'?'color:white;':''}">[7] Strike(200)</span> | <span style="${this.buildSelection==='silkTrap'?'color:white;':''}">[8] Trap(100)</span>
                 </div>
                 <div style="text-align:right;">
-                    <strong>[U] Upgrade Swarm (250)</strong><br>
-                    <strong>[O] Save Game | [P] Load Game</strong>
+                    <strong>[U] Upgrade(250)</strong><br>
+                    <strong>[O] Save | [P] Load</strong>
                 </div>
             </div>
         `;
@@ -259,6 +227,7 @@ class Game {
 
     update() {
         if (this.gameState !== 'playing') return; 
+        this.tick++;
 
         const camSpeed = 15;
         if (this.keys['w']) this.camera.y -= camSpeed; if (this.keys['s']) this.camera.y += camSpeed;
@@ -273,26 +242,42 @@ class Game {
 
         this.structures.forEach(s => s.update(this)); this.spiders.forEach(s => s.update(this));
         this.queens.forEach(q => q.update(this)); this.projectiles.forEach(p => p.update(this));
-        this.bugs.forEach(b => b.update(this));
+        this.bugs.forEach(b => b.update(this)); 
+        this.particles.forEach(p => p.update()); this.spells.forEach(s => s.update(this));
+        this.bosses.forEach(b => b.update(this));
         
+        // Death Logic
+        this.spiders.filter(s => s.hp <= 0).forEach(s => { this.bus.emit('particles', {x: s.x, y: s.y, color: s.team, count: 30}); this.bus.emit('playSound', 'death'); });
+        this.structures.filter(s => s.hp <= 0).forEach(s => { this.bus.emit('particles', {x: s.x, y: s.y, color: '#888', count: 50}); this.bus.emit('playSound', 'death'); });
+        this.bosses.filter(b => b.hp <= 0).forEach(b => { this.bus.emit('particles', {x: b.x, y: b.y, color: '#00ff00', count: 100}); this.bus.emit('playSound', 'death'); });
+
         this.pumpkins = this.pumpkins.filter(p => p.resources > 0);
         this.spiders = this.spiders.filter(s => s.hp > 0);
         this.queens = this.queens.filter(q => q.hp > 0);
         this.structures = this.structures.filter(s => s.hp > 0);
         this.projectiles = this.projectiles.filter(p => p.active);
         this.bugs = this.bugs.filter(b => b.hp > 0);
+        this.particles = this.particles.filter(p => p.life > 0);
+        this.spells = this.spells.filter(s => s.life > 0);
+        this.bosses = this.bosses.filter(b => b.hp > 0);
 
         this.updateUI();
     }
 
     draw() {
         this.ctx.fillStyle = '#2c1e16'; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.save(); 
-        this.ctx.translate(-this.camera.x, -this.camera.y);
+        this.ctx.save(); this.ctx.translate(-this.camera.x, -this.camera.y);
+        
         this.bus.emit('preDraw', this.ctx);
+        this.spells.forEach(s => s.draw(this.ctx)); 
+        this.bus.emit('atmosphereDraw', this.ctx);
+
         this.structures.forEach(s => s.draw(this.ctx)); this.pumpkins.forEach(p => p.draw(this.ctx));
         this.bugs.forEach(b => b.draw(this.ctx)); this.spiders.forEach(s => s.draw(this.ctx));
         this.queens.forEach(q => q.draw(this.ctx)); this.projectiles.forEach(p => p.draw(this.ctx));
+        this.bosses.forEach(b => b.draw(this.ctx)); // Draw Boss
+        this.particles.forEach(p => p.draw(this.ctx)); 
+        
         this.ctx.restore();
         this.bus.emit('uiDraw', this.ctx);
     }
@@ -302,18 +287,219 @@ class Game {
 // 4. EXPANSIONS (THE MAGIC)
 // ==========================================
 
+// --- NEW EXPANSION A: WEB AUDIO SYNTHESIZER ---
+const AudioExpansion = {
+    init: (game) => {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioContext();
+        
+        // Browsers require a click to unlock audio
+        const unlock = () => { if(ctx.state === 'suspended') ctx.resume(); window.removeEventListener('click', unlock); };
+        window.addEventListener('click', unlock);
+
+        const playTone = (freq, type, duration, vol=0.05) => {
+            if(ctx.state === 'suspended') return;
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.type = type; osc.frequency.setValueAtTime(freq, ctx.currentTime);
+            osc.connect(gain); gain.connect(ctx.destination);
+            gain.gain.setValueAtTime(vol, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+            osc.start(); osc.stop(ctx.currentTime + duration);
+        };
+
+        game.bus.on('playSound', (type) => {
+            if (type === 'shoot') playTone(600, 'square', 0.1, 0.02); // Pew!
+            if (type === 'harvest') playTone(150, 'sawtooth', 0.1, 0.05); // Crunch!
+            if (type === 'death') playTone(100, 'sawtooth', 0.4, 0.08); // Splat
+            if (type === 'spell') playTone(800, 'sine', 0.5, 0.05); // Magic chime
+            if (type === 'build') playTone(300, 'triangle', 0.2, 0.05); // Thump
+        });
+    }
+};
+
+// --- NEW EXPANSION B: THE CENTIPEDE BOSS ---
+class CentipedeBoss {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.team = 'nature';
+        this.hp = 3000; this.maxHp = 3000; this.damage = 50; this.speed = 1.8;
+        this.angle = Math.random() * Math.PI*2;
+        this.history = []; // Stores past positions to draw segments!
+        this.segmentCount = 15;
+        this.cooldown = 0;
+    }
+    update(game) {
+        // Record history for the tail to follow
+        this.history.unshift({x: this.x, y: this.y, angle: this.angle});
+        if(this.history.length > this.segmentCount * 5) this.history.pop(); // Keep array small
+
+        // Aggro Logic: Attack EVERYTHING
+        let allTargets = game.spiders.concat(game.queens).concat(game.structures);
+        let nearest = null; let minDist = 800; // Huge aggro range
+        for (let t of allTargets) {
+            let d = Math.hypot(t.x - this.x, t.y - this.y);
+            if (d < minDist) { minDist = d; nearest = t; }
+        }
+
+        if (nearest) {
+            this.angle = Math.atan2(nearest.y - this.y, nearest.x - this.x);
+            if (minDist > 30) {
+                this.x += Math.cos(this.angle) * this.speed; this.y += Math.sin(this.angle) * this.speed;
+            } else {
+                this.cooldown--;
+                if(this.cooldown <= 0) {
+                    nearest.hp -= this.damage; this.cooldown = 20;
+                    game.bus.emit('particles', {x: nearest.x, y: nearest.y, color: '#00ff00', count: 10});
+                    game.bus.emit('playSound', 'harvest');
+                }
+            }
+        } else {
+            // Wander
+            if(Math.random() < 0.05) this.angle += (Math.random() - 0.5);
+            this.x += Math.cos(this.angle) * (this.speed * 0.5); this.y += Math.sin(this.angle) * (this.speed * 0.5);
+            this.x = Math.max(0, Math.min(this.x, game.world.width)); this.y = Math.max(0, Math.min(this.y, game.world.height));
+        }
+    }
+    draw(ctx) {
+        // Draw Segments (Trailing behind in history)
+        for(let i = 1; i < this.segmentCount; i++) {
+            let histIndex = i * 4; // Space them out
+            if(this.history[histIndex]) {
+                let pos = this.history[histIndex];
+                ctx.save(); ctx.translate(pos.x, pos.y); ctx.rotate(pos.angle);
+                // Draw Legs
+                ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(-15, -20); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(-15, 20); ctx.stroke();
+                // Draw Body
+                ctx.fillStyle = i % 2 === 0 ? '#113311' : '#225522';
+                ctx.beginPath(); ctx.arc(0, 0, 18 - (i*0.5), 0, Math.PI*2); ctx.fill();
+                ctx.restore();
+            }
+        }
+        
+        // Draw Head
+        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+        ctx.fillStyle = '#00ff00'; // Mandibles
+        ctx.beginPath(); ctx.moveTo(10, -10); ctx.lineTo(25, -5); ctx.lineTo(15, -2); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(10, 10); ctx.lineTo(25, 5); ctx.lineTo(15, 2); ctx.fill();
+        ctx.fillStyle = '#052205'; ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI*2); ctx.fill(); // Skull
+        ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(8, -8, 4, 0, Math.PI*2); ctx.arc(8, 8, 4, 0, Math.PI*2); ctx.fill(); // Evil Eyes
+        ctx.restore();
+
+        // Draw Health Bar
+        if(this.hp < this.maxHp) {
+            ctx.fillStyle='black'; ctx.fillRect(this.x-30, this.y-35, 60, 8);
+            ctx.fillStyle='red'; ctx.fillRect(this.x-29, this.y-34, 58, 6);
+            ctx.fillStyle='#00ff00'; ctx.fillRect(this.x-29, this.y-34, 58*(this.hp/this.maxHp), 6);
+        }
+    }
+}
+
+const GodUnitExpansion = {
+    init: (game) => {
+        // Spawn the boss far away after 1 minute of gameplay
+        setTimeout(() => {
+            console.log("THE CENTIPEDE AWAKENS!");
+            game.bosses.push(new CentipedeBoss(game.world.width/2, game.world.height/2));
+            game.bus.emit('playSound', 'spell');
+        }, 60000); // 60 seconds
+    }
+};
+
+// --- PREVIOUS EXPANSIONS RE-ATTACHED ---
+
+class Particle {
+    constructor(x, y, color) {
+        this.x = x; this.y = y; this.color = color;
+        const angle = Math.random() * Math.PI * 2; const speed = Math.random() * 4 + 1;
+        this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
+        this.life = Math.random() * 30 + 15; this.maxLife = this.life; this.size = Math.random() * 3 + 2;
+    }
+    update() { this.x += this.vx; this.y += this.vy; this.vx *= 0.9; this.vy *= 0.9; this.life--; }
+    draw(ctx) { ctx.globalAlpha = Math.max(0, this.life / this.maxLife); ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1.0; }
+}
+
+const ParticleExpansion = {
+    init: (game) => {
+        game.bus.on('particles', (data) => {
+            for(let i=0; i<data.count; i++) {
+                let c = data.color; if (c === 'black') c = '#5533aa'; if (c === 'red') c = '#ff2200';
+                game.particles.push(new Particle(data.x, data.y, c));
+            }
+        });
+    }
+}
+
+const AtmosphereExpansion = {
+    patch: (game) => {
+        game.bus.on('atmosphereDraw', (ctx) => {
+            const cycle = Math.sin(game.tick / 1800); const darkness = Math.max(0, cycle * 0.6); 
+            ctx.fillStyle = `rgba(5, 10, 35, ${darkness})`; ctx.fillRect(game.camera.x, game.camera.y, game.canvas.width, game.canvas.height);
+        });
+        const ogStructDraw = Structure.prototype.draw; Structure.prototype.draw = function(ctx) {
+            const cycle = Math.sin(game.tick / 1800);
+            if (cycle > 0 && (this.type === 'nest' || this.type === 'turret')) { ctx.shadowBlur = 30 * cycle; ctx.shadowColor = this.team === 'black' ? '#aa00ff' : '#ff3300'; }
+            ogStructDraw.call(this, ctx); ctx.shadowBlur = 0; 
+        };
+        const ogQueenDraw = Queen.prototype.draw; Queen.prototype.draw = function(ctx) {
+            const cycle = Math.sin(game.tick / 1800);
+            if (cycle > 0) { ctx.shadowBlur = 40 * cycle; ctx.shadowColor = this.team === 'black' ? '#ffffff' : '#ff0000'; }
+            ogQueenDraw.call(this, ctx); ctx.shadowBlur = 0;
+        };
+    }
+}
+
+class Spell {
+    constructor(x, y, team, type) { this.x = x; this.y = y; this.team = team; this.type = type; this.life = 600; this.radius = type === 'venomStrike' ? 100 : 150; }
+    update(game) {
+        this.life--;
+        const allEnemies = game.spiders.concat(game.queens).concat(game.bosses).filter(e => e.team !== this.team);
+        for(let e of allEnemies) {
+            if(Math.hypot(e.x - this.x, e.y - this.y) < this.radius) {
+                if(this.type === 'venomStrike') {
+                    if (game.tick % 15 === 0) { e.hp -= 5; game.bus.emit('particles', {x: e.x, y: e.y, color: '#00ff00', count: 2}); }
+                } else if (this.type === 'silkTrap') { e.isSlowed = true; }
+            }
+        }
+    }
+    draw(ctx) {
+        ctx.globalAlpha = Math.min(this.life / 60, 0.4); 
+        if(this.type === 'venomStrike') {
+            ctx.fillStyle = '#00ff00'; ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
+            if(Math.random() < 0.2) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(this.x + (Math.random()-0.5)*this.radius, this.y + (Math.random()-0.5)*this.radius, Math.random()*5, 0, Math.PI*2); ctx.fill(); }
+        } else {
+            ctx.fillStyle = '#ffffff'; ctx.beginPath();
+            for(let i=0; i<8; i++) { ctx.moveTo(this.x, this.y); ctx.lineTo(this.x + Math.cos(i * Math.PI/4)*this.radius, this.y + Math.sin(i * Math.PI/4)*this.radius); }
+            ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke();
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*0.6, 0, Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*0.3, 0, Math.PI*2); ctx.stroke();
+        }
+        ctx.globalAlpha = 1.0;
+    }
+}
+
+const SpellExpansion = {
+    init: (game) => {
+        game.bus.on('castSpell', (data) => {
+            const cost = data.type === 'venomStrike' ? 200 : 100;
+            if(game.scores[data.team] >= cost) {
+                game.scores[data.team] -= cost; game.spells.push(new Spell(data.x, data.y, data.team, data.type));
+                game.bus.emit('particles', {x: data.x, y: data.y, color: data.type === 'venomStrike' ? '#00ff00' : '#ffffff', count: 100});
+                game.bus.emit('playSound', 'spell');
+            }
+        });
+    }
+}
+
 const TerrainExpansion = {
     init: (game) => {
-        game.tileSize = 256; 
-        game.tiles = { dirt: new Image(), vines: new Image(), pebbles: new Image() };
+        game.tileSize = 256; game.tiles = { dirt: new Image(), vines: new Image(), pebbles: new Image() };
         game.tiles.dirt.src = 'assets/tile_dirt.png'; game.tiles.vines.src = 'assets/tile_vines.png'; game.tiles.pebbles.src = 'assets/tile_pebbles.png';
         game.generateMap = function() {
             this.mapGrid = [];
             for (let y = 0; y < Math.ceil(this.world.height / this.tileSize); y++) {
                 let row = [];
-                for (let x = 0; x < Math.ceil(this.world.width / this.tileSize); x++) {
-                    const r = Math.random(); row.push(r > 0.75 ? 'vines' : (r > 0.60 ? 'pebbles' : 'dirt'));
-                }
+                for (let x = 0; x < Math.ceil(this.world.width / this.tileSize); x++) { row.push(Math.random() > 0.75 ? 'vines' : (Math.random() > 0.60 ? 'pebbles' : 'dirt')); }
                 this.mapGrid.push(row);
             }
         };
@@ -338,10 +524,7 @@ const TerrainExpansion = {
 };
 
 class GoldenBug {
-    constructor(x, y) {
-        this.x = x; this.y = y; this.size = 15; this.hp = 250; this.maxHp = 250;
-        this.angle = Math.random() * Math.PI * 2; this.speed = 0.5; this.team = 'nature'; 
-    }
+    constructor(x, y) { this.x = x; this.y = y; this.size = 15; this.hp = 250; this.maxHp = 250; this.angle = Math.random() * Math.PI * 2; this.speed = 0.5; this.team = 'nature'; }
     update(game) {
         if(Math.random() < 0.05) this.angle += (Math.random() - 0.5);
         this.x += Math.cos(this.angle) * this.speed; this.y += Math.sin(this.angle) * this.speed;
@@ -359,23 +542,15 @@ class GoldenBug {
 const AdvancedBaseExpansion = {
     init: (game) => {
         setTimeout(() => {
-            const pad = 400;
-            const bX = pad + Math.random() * 200; const bY = pad + Math.random() * 200;
+            const pad = 400; const bX = pad + Math.random() * 200; const bY = pad + Math.random() * 200;
             const rX = game.world.width - pad - Math.random() * 200; const rY = game.world.height - pad - Math.random() * 200;
-
-            game.structures.push(new Structure(bX, bY, 'black', 'nest'));
-            game.structures.push(new Structure(bX + 80, bY, 'black', 'eggsac'));
-            game.structures.push(new Structure(rX, rY, 'red', 'nest'));
-            game.structures.push(new Structure(rX - 80, rY, 'red', 'eggsac'));
-
-            game.camera.x = Math.max(0, bX - (game.canvas.width / 2));
-            game.camera.y = Math.max(0, bY - (game.canvas.height / 2));
-            
+            game.structures.push(new Structure(bX, bY, 'black', 'nest')); game.structures.push(new Structure(bX + 80, bY, 'black', 'eggsac'));
+            game.structures.push(new Structure(rX, rY, 'red', 'nest')); game.structures.push(new Structure(rX - 80, rY, 'red', 'eggsac'));
+            game.camera.x = Math.max(0, bX - (game.canvas.width / 2)); game.camera.y = Math.max(0, bY - (game.canvas.height / 2));
             for (let i = 0; i < 20; i++) {
                 let pX = 600 + Math.random() * (game.world.width - 1200); let pY = 600 + Math.random() * (game.world.height - 1200);
                 for (let p = 0; p < Math.floor(Math.random() * 6) + 5; p++) game.pumpkins.push(new Pumpkin(pX + (Math.random() - 0.5) * 300, pY + (Math.random() - 0.5) * 300));
             }
-            
             for(let i=0; i<3; i++) game.bugs.push(new GoldenBug(game.world.width/2 + (Math.random()-0.5)*1000, game.world.height/2 + (Math.random()-0.5)*1000));
         }, 100);
     }
@@ -384,9 +559,7 @@ const AdvancedBaseExpansion = {
 class Queen extends Spider {
     constructor(x, y, team) {
         super(x, y, team);
-        this.size = 28; this.speed = 1.2; 
-        this.hp = 1500; this.maxHp = 1500; 
-        this.damage = 40; this.commandTarget = null; 
+        this.size = 28; this.speed = 1.2; this.hp = 1500; this.maxHp = 1500; this.damage = 40; this.commandTarget = null; 
         this.sprite.src = team === 'black' ? 'assets/queen_black.png' : 'assets/queen_red.png';
     }
     update(game) {
@@ -396,12 +569,15 @@ class Queen extends Spider {
         }
         if (this.commandTarget) {
             const dx = this.commandTarget.x - this.x; const dy = this.commandTarget.y - this.y;
-            const techSpeed = (game.techLevel[this.team] * 0.2); // Apply tech speed
+            let techSpeed = (game.techLevel[this.team] * 0.2); 
+            if(this.isSlowed) techSpeed -= (this.speed / 2); 
             if (Math.hypot(dx, dy) > 10) {
                 this.angle = Math.atan2(dy, dx);
-                this.x += Math.cos(this.angle) * (this.speed + techSpeed); this.y += Math.sin(this.angle) * (this.speed + techSpeed);
+                this.x += Math.cos(this.angle) * Math.max(0.1, (this.speed + techSpeed)); 
+                this.y += Math.sin(this.angle) * Math.max(0.1, (this.speed + techSpeed));
             } else this.commandTarget = null; 
         }
+        this.isSlowed = false; 
     }
     draw(ctx) {
         super.draw(ctx);
@@ -416,11 +592,9 @@ class Queen extends Spider {
 const QueenExpansion = {
     init: (game) => {
         setTimeout(() => {
-            if(game.queens.length > 0) return; // Prevent dupes on load
-            const bNest = game.structures.find(s => s.team === 'black' && s.type === 'nest');
-            const rNest = game.structures.find(s => s.team === 'red' && s.type === 'nest');
-            if(bNest) game.queens.push(new Queen(bNest.x + 50, bNest.y + 50, 'black'));
-            if(rNest) game.queens.push(new Queen(rNest.x - 50, rNest.y - 50, 'red'));
+            if(game.queens.length > 0) return;
+            const bNest = game.structures.find(s => s.team === 'black' && s.type === 'nest'); const rNest = game.structures.find(s => s.team === 'red' && s.type === 'nest');
+            if(bNest) game.queens.push(new Queen(bNest.x + 50, bNest.y + 50, 'black')); if(rNest) game.queens.push(new Queen(rNest.x - 50, rNest.y - 50, 'red'));
         }, 150);
         game.bus.on('commandQueen', (data) => {
             const queen = game.queens.find(q => q.team === data.team);
@@ -432,32 +606,26 @@ const QueenExpansion = {
 const HiveMindExpansion = {
     patch: (game) => {
         Structure.prototype.update = function(game) {
-            // Apply Turret Tech Upgrades
             const tDamage = 25 + (game.techLevel[this.team] * 10);
-
             if(this.type === 'turret') {
                 this.cooldown--;
                 if(this.cooldown <= 0) {
-                    let allEnemies = game.spiders.concat(game.queens).concat(game.bugs).filter(e => e.team !== this.team);
+                    let allEnemies = game.spiders.concat(game.queens).concat(game.bugs).concat(game.bosses).filter(e => e.team !== this.team);
                     for(let e of allEnemies) {
                         if(Math.hypot(e.x - this.x, e.y - this.y) < 200) { 
                             game.projectiles.push(new Projectile(this.x, this.y, e, tDamage, this.team));
+                            game.bus.emit('playSound', 'shoot');
                             this.cooldown = 45; break; 
                         }
                     }
                 }
             }
             if (this.team === 'red' && this.type === 'nest') {
-                // AI Tech Upgrade Logic
-                if (game.scores.red >= 250 && Math.random() < 0.1) {
-                    game.scores.red -= 250; game.techLevel.red++;
-                }
-
+                if (game.scores.red >= 250 && Math.random() < 0.1) { game.scores.red -= 250; game.techLevel.red++; }
                 if (game.scores.red >= 50 && game.pop.red < game.maxPop.red) {
                     if(!this.spawnTimer) this.spawnTimer = 0;
                     this.spawnTimer--;
                     if(this.spawnTimer <= 0) {
-                        // AI Chooses Harvester or Soldier based on random chance
                         const role = Math.random() > 0.6 ? 'soldier' : 'harvester';
                         const cost = role === 'soldier' ? 25 : 10;
                         if(game.scores.red >= cost) {
@@ -467,8 +635,7 @@ const HiveMindExpansion = {
                         }
                     }
                 } else if (game.pop.red >= game.maxPop.red && game.scores.red > 150) {
-                    game.scores.red -= 50;
-                    game.structures.push(new Structure(this.x + (Math.random()-0.5)*200, this.y + (Math.random()-0.5)*200, 'red', 'eggsac'));
+                    game.scores.red -= 50; game.structures.push(new Structure(this.x + (Math.random()-0.5)*200, this.y + (Math.random()-0.5)*200, 'red', 'eggsac'));
                 }
             }
         };
@@ -478,14 +645,11 @@ const HiveMindExpansion = {
 const CombatAndHarvesterExpansion = {
     patch: (game) => {
         Spider.prototype.update = function(game) {
-            // Apply Dynamic Tech Upgrades
-            const techLvl = game.techLevel[this.team];
-            const maxHpBonus = techLvl * 20;
-            const currentDamage = this.damage + (techLvl * 5);
-            const currentSpeed = this.speed + (techLvl * 0.15);
+            const techLvl = game.techLevel[this.team]; const maxHpBonus = techLvl * 20; const currentDamage = this.damage + (techLvl * 5); let currentSpeed = this.speed + (techLvl * 0.15);
+            if (this.isSlowed) currentSpeed *= 0.3; this.isSlowed = false; 
 
-            let allEnemies = game.spiders.concat(game.queens).concat(game.bugs).concat(game.structures).filter(e => e.team !== this.team && e.hp > 0);
-            let nearestEnemy = null; let minDist = 150 + (techLvl * 10); // Tech increases vision slightly
+            let allEnemies = game.spiders.concat(game.queens).concat(game.bugs).concat(game.structures).concat(game.bosses).filter(e => e.team !== this.team && e.hp > 0);
+            let nearestEnemy = null; let minDist = 150 + (techLvl * 10);
             for (let enemy of allEnemies) {
                 let d = Math.hypot(enemy.x - this.x, enemy.y - this.y);
                 if(enemy.type === 'wall' && d < 250) d -= 100; 
@@ -502,25 +666,25 @@ const CombatAndHarvesterExpansion = {
                     if (this.cooldown <= 0) {
                         nearestEnemy.hp -= currentDamage; this.cooldown = this.attackSpeed;
                         this.x -= Math.cos(this.angle) * 10; this.y -= Math.sin(this.angle) * 10; 
+                        game.bus.emit('particles', {x: nearestEnemy.x, y: nearestEnemy.y, color: this.team==='black'?'#aa00ff':'#ffaa00', count: 5}); 
+                        game.bus.emit('playSound', 'harvest');
                     }
                 }
                 return; 
             }
 
-            // Soldiers guard the Queen if no enemies!
             if (this.role === 'soldier') {
                 const myQueen = game.queens.find(q => q.team === this.team);
                 if (myQueen) {
                     const dx = myQueen.x - this.x; const dy = myQueen.y - this.y;
-                    if (Math.hypot(dx, dy) > 80) { // Keep distance
+                    if (Math.hypot(dx, dy) > 80) { 
                         this.angle = Math.atan2(dy, dx);
                         this.x += Math.cos(this.angle) * currentSpeed; this.y += Math.sin(this.angle) * currentSpeed;
                     }
                 }
-                return; // Soldiers don't harvest
+                return; 
             }
 
-            // Harvesters gather Pumpkins
             if (this.cargo === 0) this.state = 'seeking_pumpkin'; else this.state = 'returning_home';
             if (this.state === 'seeking_pumpkin') {
                 if (!this.target || this.target.resources <= 0) {
@@ -532,12 +696,8 @@ const CombatAndHarvesterExpansion = {
                 }
             } else {
                 let closest = null; let minD = Infinity;
-                game.structures.filter(s => s.team === this.team && s.type === 'nest').forEach(n => {
-                    let d = Math.hypot(n.x - this.x, n.y - this.y); if(d < minD) { minD = d; closest = n; }
-                });
-                game.queens.filter(q => q.team === this.team).forEach(q => {
-                    let d = Math.hypot(q.x - this.x, q.y - this.y); if(d < minD) { minD = d; closest = q; }
-                });
+                game.structures.filter(s => s.team === this.team && s.type === 'nest').forEach(n => { let d = Math.hypot(n.x - this.x, n.y - this.y); if(d < minD) { minD = d; closest = n; } });
+                game.queens.filter(q => q.team === this.team).forEach(q => { let d = Math.hypot(q.x - this.x, q.y - this.y); if(d < minD) { minD = d; closest = q; } });
                 this.target = closest;
             }
 
@@ -550,6 +710,8 @@ const CombatAndHarvesterExpansion = {
                 } else {
                     if (this.state === 'seeking_pumpkin' && this.target.resources > 0) {
                         this.cargo = 10; this.target.resources -= 10; this.target = null; 
+                        game.bus.emit('particles', {x: this.x, y: this.y, color: '#ff7b00', count: 5}); 
+                        game.bus.emit('playSound', 'harvest');
                     } else if (this.state === 'returning_home') {
                         game.scores[this.team] += this.cargo; this.cargo = 0; this.target = null;
                     }
@@ -576,14 +738,11 @@ const CombatAndHarvesterExpansion = {
 };
 
 const MinimapExpansion = {
-    // ... [Same logic as before, just keeps UI elements rendering correctly] ...
     init: (game) => {
         game.minimap = { size: 250, padding: 20 }; game.isMinimapDragging = false;
         game.moveCameraFromMinimap = function(localX, localY) {
-            const pctX = Math.max(0, Math.min(localX / this.minimap.size, 1));
-            const pctY = Math.max(0, Math.min(localY / this.minimap.size, 1));
-            this.camera.x = (pctX * this.world.width) - (this.canvas.width / 2);
-            this.camera.y = (pctY * this.world.height) - (this.canvas.height / 2);
+            const pctX = Math.max(0, Math.min(localX / this.minimap.size, 1)); const pctY = Math.max(0, Math.min(localY / this.minimap.size, 1));
+            this.camera.x = (pctX * this.world.width) - (this.canvas.width / 2); this.camera.y = (pctY * this.world.height) - (this.canvas.height / 2);
         };
         game.canvas.addEventListener('mousedown', (e) => {
             const mmX = game.canvas.width - game.minimap.size - game.minimap.padding; const mmY = game.canvas.height - game.minimap.size - game.minimap.padding;
@@ -591,13 +750,6 @@ const MinimapExpansion = {
                 game.isMinimapDragging = true; game.moveCameraFromMinimap(e.clientX - mmX, e.clientY - mmY);
             }
         });
-        window.addEventListener('mousemove', (e) => {
-            if (game.isMinimapDragging) {
-                const mmX = game.canvas.width - game.minimap.size - game.minimap.padding; const mmY = game.canvas.height - game.minimap.size - game.minimap.padding;
-                game.moveCameraFromMinimap(e.clientX - mmX, e.clientY - mmY);
-            }
-        });
-        window.addEventListener('mouseup', () => game.isMinimapDragging = false);
     },
     patch: (game) => {
         game.bus.on('uiDraw', (ctx) => {
@@ -614,10 +766,28 @@ const MinimapExpansion = {
             game.structures.forEach(s => drawDot(s, s.team === 'black' ? '#ffffff' : '#ff4444', 3));
             game.spiders.forEach(s => drawDot(s, s.team === 'black' ? '#aaaaaa' : '#aa0000', 1));
             game.bugs.forEach(b => drawDot(b, 'gold', 2.5));
+            game.bosses.forEach(b => drawDot(b, '#00ff00', 4)); // Draw Boss on minimap!
             game.queens.forEach(q => { drawDot(q, q.team === 'black' ? '#ffffff' : '#ff4444', 4); ctx.strokeStyle = 'gold'; ctx.lineWidth = 1; ctx.strokeRect(startX + (q.x * scaleX) - 5, startY + (q.y * scaleY) - 5, 10, 10); });
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; ctx.lineWidth = 1; ctx.strokeRect(startX + (game.camera.x * scaleX), startY + (game.camera.y * scaleY), game.canvas.width * scaleX, game.canvas.height * scaleY);
+        });
+    }
+};
 
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; ctx.lineWidth = 1;
-            ctx.strokeRect(startX + (game.camera.x * scaleX), startY + (game.camera.y * scaleY), game.canvas.width * scaleX, game.canvas.height * scaleY);
+const WebNetworkExpansion = {
+    patch: (game) => {
+        game.bus.on('preDraw', (ctx) => {
+            ctx.lineWidth = 1;
+            for (let i = 0; i < game.spiders.length; i++) {
+                let s1 = game.spiders[i];
+                if (s1.x < game.camera.x - 100 || s1.x > game.camera.x + game.canvas.width + 100 || s1.y < game.camera.y - 100 || s1.y > game.camera.y + game.canvas.height + 100) continue;
+                game.structures.filter(s => s.team === s1.team).forEach(struct => {
+                    if (Math.hypot(struct.x - s1.x, struct.y - s1.y) < 150) { ctx.strokeStyle = s1.team === 'black' ? 'rgba(255,255,255,0.3)' : 'rgba(255, 100, 100, 0.3)'; ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(struct.x, struct.y); ctx.stroke(); }
+                });
+                for (let j = i + 1; j < game.spiders.length; j++) {
+                    let s2 = game.spiders[j];
+                    if (s1.team === s2.team && Math.hypot(s2.x - s1.x, s2.y - s1.y) < 80) { ctx.strokeStyle = s1.team === 'black' ? 'rgba(255,255,255,0.2)' : 'rgba(255, 100, 100, 0.2)'; ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y); ctx.stroke(); }
+                }
+            }
         });
     }
 };
@@ -628,8 +798,7 @@ const GameLoopExpansion = {
         Game.prototype.update = function() {
             ogUpdate.call(this); 
             if (this.queens.length > 0 && this.gameState === 'playing') {
-                const blackQueen = this.queens.find(q => q.team === 'black');
-                const redQueen = this.queens.find(q => q.team === 'red');
+                const blackQueen = this.queens.find(q => q.team === 'black'); const redQueen = this.queens.find(q => q.team === 'red');
                 if (!blackQueen || blackQueen.hp <= 0) { this.gameState = 'lose'; document.getElementById('debug').innerHTML = ''; } 
                 else if (!redQueen || redQueen.hp <= 0) { this.gameState = 'win'; document.getElementById('debug').innerHTML = ''; }
             }
@@ -646,48 +815,34 @@ const GameLoopExpansion = {
                 ctx.fillStyle = '#ff0000'; ctx.fillText('DEFEAT', game.canvas.width / 2, game.canvas.height / 2 - 40);
                 ctx.font = '20px Courier New'; ctx.fillStyle = 'white'; ctx.fillText('Your Queen has fallen to the Red Swarm.', game.canvas.width / 2, game.canvas.height / 2 + 30);
             }
-            ctx.font = '16px Courier New'; ctx.fillStyle = '#888'; ctx.fillText('Refresh the page to play again.', game.canvas.width / 2, game.canvas.height / 2 + 90);
         });
     }
 };
 
-// --- NEW EXPANSION: SAVE AND LOAD ---
 const SaveLoadExpansion = {
     patch: (game) => {
         window.addEventListener('keydown', (e) => {
             if (e.key.toLowerCase() === 'o') {
-                // SAVE GAME
                 const state = {
-                    scores: game.scores, pop: game.pop, maxPop: game.maxPop, techLevel: game.techLevel, 
-                    camera: game.camera, mapGrid: game.mapGrid,
+                    scores: game.scores, pop: game.pop, maxPop: game.maxPop, techLevel: game.techLevel, camera: game.camera, mapGrid: game.mapGrid, tick: game.tick,
                     spiders: game.spiders.map(s => ({x: s.x, y: s.y, team: s.team, role: s.role, hp: s.hp, cargo: s.cargo})),
                     structures: game.structures.map(s => ({x: s.x, y: s.y, team: s.team, type: s.type, hp: s.hp})),
                     pumpkins: game.pumpkins.map(p => ({x: p.x, y: p.y, resources: p.resources})),
                     queens: game.queens.map(q => ({x: q.x, y: q.y, team: q.team, hp: q.hp})),
                     bugs: game.bugs.map(b => ({x: b.x, y: b.y, hp: b.hp}))
                 };
-                localStorage.setItem('spiderRTS_saveData', JSON.stringify(state));
-                alert("Game Saved Successfully!");
+                localStorage.setItem('spiderRTS_saveData', JSON.stringify(state)); alert("Game Saved!");
             }
-            
             if (e.key.toLowerCase() === 'p') {
-                // LOAD GAME
-                const data = localStorage.getItem('spiderRTS_saveData');
-                if(!data) return alert("No save game found!");
-                
+                const data = localStorage.getItem('spiderRTS_saveData'); if(!data) return alert("No save found!");
                 const state = JSON.parse(data);
-                game.scores = state.scores; game.pop = state.pop; game.maxPop = state.maxPop; 
-                game.techLevel = state.techLevel; game.camera = state.camera; game.mapGrid = state.mapGrid;
-                
-                // Re-instantiate objects to give them back their class functions (draw/update)
+                game.scores = state.scores; game.pop = state.pop; game.maxPop = state.maxPop; game.techLevel = state.techLevel; game.camera = state.camera; game.mapGrid = state.mapGrid; game.tick = state.tick || 0;
                 game.spiders = state.spiders.map(s => { let o = new Spider(s.x, s.y, s.team, s.role); o.hp = s.hp; o.cargo = s.cargo; return o; });
                 game.structures = state.structures.map(s => { let o = new Structure(s.x, s.y, s.team, s.type); o.hp = s.hp; return o; });
                 game.pumpkins = state.pumpkins.map(p => { let o = new Pumpkin(p.x, p.y); o.resources = p.resources; return o; });
                 game.queens = state.queens.map(q => { let o = new Queen(q.x, q.y, q.team); o.hp = q.hp; return o; });
                 game.bugs = state.bugs.map(b => { let o = new GoldenBug(b.x, b.y); o.hp = b.hp; return o; });
-                
-                game.projectiles = []; // Clear projectiles so they don't error out
-                alert("Game Loaded Successfully!");
+                game.projectiles = []; game.particles = []; game.spells = []; game.bosses = []; alert("Game Loaded!");
             }
         });
     }
@@ -698,12 +853,26 @@ const SaveLoadExpansion = {
 // ==========================================
 window.onload = () => {
     const game = new Game();
+    
+    // Core Game Systems
     game.expansions.load('TerrainGen', TerrainExpansion);
     game.expansions.load('AdvancedBaseBuilder', AdvancedBaseExpansion); 
     game.expansions.load('QueenSystem', QueenExpansion); 
-    game.expansions.load('MinimapUI', MinimapExpansion); 
-    game.expansions.load('GameLoop', GameLoopExpansion); 
     game.expansions.load('HiveMind', HiveMindExpansion); 
     game.expansions.load('CombatAndHarvesterAI', CombatAndHarvesterExpansion); 
-    game.expansions.load('SaveLoadManager', SaveLoadExpansion); // ADDED SAVING AND LOADING
+    game.expansions.load('WebNetwork', WebNetworkExpansion); 
+    
+    // UI & Game Loop
+    game.expansions.load('MinimapUI', MinimapExpansion); 
+    game.expansions.load('GameLoop', GameLoopExpansion); 
+    game.expansions.load('SaveLoadManager', SaveLoadExpansion); 
+    
+    // JUICE EXPANSIONS
+    game.expansions.load('ParticleEngine', ParticleExpansion); 
+    game.expansions.load('Atmosphere', AtmosphereExpansion); 
+    game.expansions.load('CommanderSpells', SpellExpansion); 
+    
+    // AUDIO AND BOSS EXPANSIONS!
+    game.expansions.load('AudioSynth', AudioExpansion);
+    game.expansions.load('CentipedeBoss', GodUnitExpansion); 
 };
