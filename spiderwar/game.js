@@ -2,7 +2,6 @@
 // 1. CORE ARCHITECTURE
 // ==========================================
 
-// The GameBus: Handles all events (Decouples systems)
 class GameBus {
     constructor() { this.listeners = {}; }
     on(event, callback) {
@@ -16,14 +15,13 @@ class GameBus {
     }
 }
 
-// The Expansion Manager: Handles plugins and monkey patching
 class ExpansionManager {
     constructor(game) {
         this.game = game;
         this.expansions = {};
     }
     load(name, expansion) {
-        console.log(`Loading expansion: ${name}`);
+        console.log(`[Plugin Loaded] ${name}`);
         this.expansions[name] = expansion;
         if (expansion.init) expansion.init(this.game);
         if (expansion.patch) expansion.patch(this.game);
@@ -31,7 +29,7 @@ class ExpansionManager {
 }
 
 // ==========================================
-// 2. GAME ENTITIES
+// 2. GAME ENTITIES (BASE)
 // ==========================================
 
 class Spider {
@@ -39,38 +37,50 @@ class Spider {
         this.x = x;
         this.y = y;
         this.team = team; // 'black' or 'red'
-        this.size = 15;
-        this.speed = Math.random() * 1 + 0.5;
-        this.target = null;
+        this.size = 12;
+        this.speed = Math.random() * 1.5 + 1.0; // Slightly faster!
+        this.angle = 0; // For rotation
         
-        // Setup sprite (Fallback if image not found)
+        // AI State
+        this.state = 'idle'; 
+        this.target = null;
+        this.cargo = 0; // How much pumpkin they hold
+        
         this.sprite = new Image();
         this.sprite.src = team === 'black' ? 'assets/black_spider.png' : 'assets/red_spider.png';
         this.imageLoaded = false;
         this.sprite.onload = () => { this.imageLoaded = true; };
     }
 
-    update() {
-        // Base logic: Just sit there. (We will monkey-patch movement in an expansion!)
-    }
+    update(game) { } // Will be monkey-patched!
 
     draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle); // Rotate to face direction
+        
         if (this.imageLoaded) {
-            ctx.drawImage(this.sprite, this.x - this.size, this.y - this.size, this.size*2, this.size*2);
+            ctx.drawImage(this.sprite, -this.size, -this.size, this.size*2, this.size*2);
         } else {
-            // Fallback drawing if AI sprites aren't loaded yet
+            // Fallback drawing
             ctx.fillStyle = this.team;
             ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.arc(0, 0, this.size, 0, Math.PI * 2);
             ctx.fill();
-            // Draw little legs
-            ctx.strokeStyle = this.team;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(this.x - this.size, this.y); ctx.lineTo(this.x - this.size - 10, this.y - 10);
-            ctx.moveTo(this.x + this.size, this.y); ctx.lineTo(this.x + this.size + 10, this.y - 10);
-            ctx.stroke();
+            // Draw an "eye" indicator to show forward direction
+            ctx.fillStyle = 'white';
+            ctx.fillRect(this.size/2, -3, 4, 6);
         }
+
+        // Draw cargo indicator (if holding pumpkin)
+        if (this.cargo > 0) {
+            ctx.fillStyle = '#ff7b00';
+            ctx.beginPath();
+            ctx.arc(0, 0, 5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
     }
 }
 
@@ -78,7 +88,8 @@ class Pumpkin {
     constructor(x, y) {
         this.x = x;
         this.y = y;
-        this.size = 30;
+        this.size = 25;
+        this.resources = 100; // Depletes as harvested
         
         this.sprite = new Image();
         this.sprite.src = 'assets/pumpkin.png';
@@ -87,17 +98,23 @@ class Pumpkin {
     }
     
     draw(ctx) {
+        if (this.resources <= 0) return; // Don't draw if dead
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        // Shrink slightly as it gets harvested
+        const scale = Math.max(0.4, this.resources / 100); 
+        ctx.scale(scale, scale);
+
         if (this.imageLoaded) {
-            ctx.drawImage(this.sprite, this.x - this.size, this.y - this.size, this.size*2, this.size*2);
+            ctx.drawImage(this.sprite, -this.size, -this.size, this.size*2, this.size*2);
         } else {
-            // Fallback drawing
             ctx.fillStyle = '#ff7b00';
             ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.arc(0, 0, this.size, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = '#2d5a27'; // stem
-            ctx.fillRect(this.x - 5, this.y - this.size - 10, 10, 15);
         }
+        ctx.restore();
     }
 }
 
@@ -112,18 +129,16 @@ class Game {
         this.bus = new GameBus();
         this.expansions = new ExpansionManager(this);
         
-        this.entities = [];
+        this.spiders = [];
         this.pumpkins = [];
+        this.nests = []; // Added for bases
         
+        this.scores = { black: 0, red: 0 };
+
         this.resize();
         window.addEventListener('resize', () => this.resize());
         this.setupInputs();
         
-        // Spawn initial pumpkins
-        for(let i=0; i<5; i++) {
-            this.pumpkins.push(new Pumpkin(Math.random() * this.canvas.width, Math.random() * this.canvas.height));
-        }
-
         // Start Loop
         requestAnimationFrame(() => this.loop());
     }
@@ -134,22 +149,27 @@ class Game {
     }
 
     setupInputs() {
-        // Left click = Black Team
         this.canvas.addEventListener('click', (e) => {
             this.bus.emit('spawnSpider', { x: e.clientX, y: e.clientY, team: 'black' });
         });
         
-        // Right click = Red Team
         this.canvas.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             this.bus.emit('spawnSpider', { x: e.clientX, y: e.clientY, team: 'red' });
         });
 
-        // Listen to our own bus to handle spawning
         this.bus.on('spawnSpider', (data) => {
-            this.entities.push(new Spider(data.x, data.y, data.team));
-            document.getElementById('debug').innerText = `Spiders: ${this.entities.length}`;
+            this.spiders.push(new Spider(data.x, data.y, data.team));
+            this.updateUI();
         });
+    }
+
+    updateUI() {
+        const debug = document.getElementById('debug');
+        if(debug) debug.innerHTML = `
+            Black Score: ${this.scores.black} | Red Score: ${this.scores.red} <br>
+            Spiders: ${this.spiders.length}
+        `;
     }
 
     loop() {
@@ -159,55 +179,223 @@ class Game {
     }
 
     update() {
-        this.bus.emit('beforeUpdate', this);
-        this.entities.forEach(ent => ent.update(this));
-        this.bus.emit('afterUpdate', this);
+        this.spiders.forEach(spider => spider.update(this));
+        // Remove dead pumpkins
+        this.pumpkins = this.pumpkins.filter(p => p.resources > 0);
     }
 
     draw() {
-        // Clear screen with a slight trail effect (vibe)
-        this.ctx.fillStyle = 'rgba(44, 30, 22, 1)';
+        this.ctx.fillStyle = '#2c1e16';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
+        // Draw order: Webs -> Bases(Nests) -> Pumpkins -> Spiders
+        this.nests.forEach(n => n.draw(this.ctx));
         this.pumpkins.forEach(p => p.draw(this.ctx));
-        this.entities.forEach(ent => ent.draw(this.ctx));
+        this.spiders.forEach(s => s.draw(this.ctx));
     }
 }
 
 // ==========================================
-// 4. EXPANSIONS (MONKEY PATCHING!)
+// 4. EXPANSIONS (THE MAGIC SAUCE)
 // ==========================================
 
-const ScurryExpansion = {
+// --- EXPANSION A: TERRAIN TILEMAP ---
+const TerrainExpansion = {
     init: (game) => {
-        console.log("Scurry AI initialized. Spiders will now seek pumpkins!");
+        game.tileSize = 128;
+        game.tiles = {
+            dirt: new Image(), vines: new Image(), pebbles: new Image()
+        };
+        game.tiles.dirt.src = 'assets/tile_dirt.png';
+        game.tiles.vines.src = 'assets/tile_vines.png';
+        game.tiles.pebbles.src = 'assets/tile_pebbles.png';
+
+        game.generateMap = function() {
+            this.mapGrid = [];
+            const cols = Math.ceil(this.canvas.width / this.tileSize);
+            const rows = Math.ceil(this.canvas.height / this.tileSize);
+            for (let y = 0; y < rows; y++) {
+                let row = [];
+                for (let x = 0; x < cols; x++) {
+                    const r = Math.random();
+                    row.push(r > 0.85 ? 'vines' : (r > 0.70 ? 'pebbles' : 'dirt'));
+                }
+                this.mapGrid.push(row);
+            }
+        };
+        game.generateMap();
     },
     patch: (game) => {
-        // Save the original Spider update method (though it's empty right now)
-        const originalUpdate = Spider.prototype.update;
+        const ogResize = Game.prototype.resize;
+        Game.prototype.resize = function() {
+            ogResize.call(this);
+            if (this.generateMap) this.generateMap();
+        };
 
-        // Monkey patch a new update method to give them RTS movement logic
+        const ogDraw = Game.prototype.draw;
+        Game.prototype.draw = function() {
+            // Draw background first
+            if (this.mapGrid) {
+                for (let y = 0; y < this.mapGrid.length; y++) {
+                    for (let x = 0; x < this.mapGrid[y].length; x++) {
+                        const img = this.tiles[this.mapGrid[y][x]];
+                        if (img.complete && img.naturalHeight !== 0) {
+                            this.ctx.drawImage(img, x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+                        }
+                    }
+                }
+            }
+            ogDraw.call(this); // Call original draw (which does spiders, nests, etc)
+        };
+    }
+};
+
+// --- EXPANSION B: BASE BUILDER (NESTS) ---
+class Nest {
+    constructor(x, y, team) {
+        this.x = x; this.y = y; this.team = team; this.size = 40;
+        this.sprite = new Image();
+        this.sprite.src = team === 'black' ? 'assets/nest_black.png' : 'assets/nest_red.png';
+        this.spriteLoaded = false;
+        this.sprite.onload = () => { this.spriteLoaded = true; }
+    }
+    draw(ctx) {
+        if(this.spriteLoaded) {
+            ctx.drawImage(this.sprite, this.x - this.size, this.y - this.size, this.size*2, this.size*2);
+        } else {
+            // Fallback web-hole
+            ctx.fillStyle = '#111';
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = this.team; ctx.lineWidth = 3; ctx.stroke();
+        }
+    }
+}
+
+const BaseBuilderExpansion = {
+    init: (game) => {
+        // Spawn initial bases and pumpkins when the game starts
+        setTimeout(() => {
+            game.nests.push(new Nest(100, game.canvas.height / 2, 'black'));
+            game.nests.push(new Nest(game.canvas.width - 100, game.canvas.height / 2, 'red'));
+            
+            for(let i=0; i<8; i++) {
+                game.pumpkins.push(new Pumpkin(
+                    (Math.random() * (game.canvas.width - 400)) + 200, 
+                    Math.random() * (game.canvas.height - 100) + 50
+                ));
+            }
+        }, 100);
+    }
+};
+
+// --- EXPANSION C: HARVESTING AI & ROTATION ---
+const HarvesterExpansion = {
+    patch: (game) => {
         Spider.prototype.update = function(gameInstance) {
-            originalUpdate.call(this, gameInstance); // Call original if it did anything
+            // 1. Determine State
+            if (this.cargo === 0) this.state = 'seeking_pumpkin';
+            else this.state = 'returning_home';
 
-            // If we don't have a target, pick a random pumpkin
-            if (!this.target && gameInstance.pumpkins.length > 0) {
-                this.target = gameInstance.pumpkins[Math.floor(Math.random() * gameInstance.pumpkins.length)];
+            // 2. Find Target based on state
+            if (this.state === 'seeking_pumpkin') {
+                if (!this.target || this.target.resources <= 0) {
+                    // Find random pumpkin
+                    if (gameInstance.pumpkins.length > 0) {
+                        this.target = gameInstance.pumpkins[Math.floor(Math.random() * gameInstance.pumpkins.length)];
+                    } else {
+                        this.target = null; // No pumpkins left!
+                    }
+                }
+            } else if (this.state === 'returning_home') {
+                // Find nearest friendly nest
+                this.target = gameInstance.nests.find(n => n.team === this.team);
             }
 
-            // Move towards target
+            // 3. Move and Interact
             if (this.target) {
                 const dx = this.target.x - this.x;
                 const dy = this.target.y - this.y;
                 const dist = Math.sqrt(dx*dx + dy*dy);
                 
-                if (dist > this.target.size) { // Stop at edge of pumpkin
-                    this.x += (dx / dist) * this.speed;
-                    this.y += (dy / dist) * this.speed;
+                // Calculate rotation angle (atan2 gives angle in radians)
+                this.angle = Math.atan2(dy, dx);
+
+                if (dist > this.target.size) { 
+                    // Move towards target
+                    this.x += Math.cos(this.angle) * this.speed;
+                    this.y += Math.sin(this.angle) * this.speed;
                 } else {
-                    // Jiggle around the pumpkin (harvesting vibe)
-                    this.x += (Math.random() - 0.5) * 2;
-                    this.y += (Math.random() - 0.5) * 2;
+                    // Reached target!
+                    if (this.state === 'seeking_pumpkin' && this.target.resources > 0) {
+                        this.cargo = 10;
+                        this.target.resources -= 10; // Bite off a chunk
+                        this.target = null; // Drop target so we recalculate
+                    } else if (this.state === 'returning_home') {
+                        gameInstance.scores[this.team] += this.cargo; // Score points!
+                        this.cargo = 0;
+                        this.target = null;
+                        gameInstance.updateUI();
+                    }
+                }
+            } else {
+                // Idle wander if no targets
+                this.angle += (Math.random() - 0.5) * 0.5;
+                this.x += Math.cos(this.angle) * (this.speed * 0.5);
+                this.y += Math.sin(this.angle) * (this.speed * 0.5);
+            }
+        };
+    }
+};
+
+// --- EXPANSION D: SILK NETWORK (TERRITORY WEBS) ---
+const WebNetworkExpansion = {
+    patch: (game) => {
+        const ogDraw = Game.prototype.draw;
+        
+        Game.prototype.draw = function() {
+            // We want webs to draw OVER terrain but UNDER spiders/pumpkins
+            // Let's inject a web-drawing function into the bus right before entities draw
+            ogDraw.call(this); // Draw background
+        }
+
+        // We tap into the draw loop by intercepting the end of the background draw
+        // Actually, let's just monkey patch the drawing directly to be safe and clean.
+        
+        const superOgDraw = Game.prototype.draw;
+        Game.prototype.draw = function() {
+            superOgDraw.call(this); // Draws map, pumpkins, nests, spiders
+
+            // DRAW WEBS OVERLAY
+            this.ctx.lineWidth = 1;
+            
+            for (let i = 0; i < this.spiders.length; i++) {
+                let s1 = this.spiders[i];
+                
+                // Connect to friendly nests
+                this.nests.filter(n => n.team === s1.team).forEach(nest => {
+                    const dist = Math.hypot(nest.x - s1.x, nest.y - s1.y);
+                    if (dist < 150) {
+                        this.ctx.strokeStyle = s1.team === 'black' ? 'rgba(255,255,255,0.3)' : 'rgba(255, 100, 100, 0.3)';
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(s1.x, s1.y);
+                        this.ctx.lineTo(nest.x, nest.y);
+                        this.ctx.stroke();
+                    }
+                });
+
+                // Connect to friendly spiders
+                for (let j = i + 1; j < this.spiders.length; j++) {
+                    let s2 = this.spiders[j];
+                    if (s1.team === s2.team) {
+                        const dist = Math.hypot(s2.x - s1.x, s2.y - s1.y);
+                        if (dist < 80) { // Max web distance
+                            this.ctx.strokeStyle = s1.team === 'black' ? 'rgba(255,255,255,0.2)' : 'rgba(255, 100, 100, 0.2)';
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(s1.x, s1.y);
+                            this.ctx.lineTo(s2.x, s2.y);
+                            this.ctx.stroke();
+                        }
+                    }
                 }
             }
         };
@@ -219,6 +407,9 @@ const ScurryExpansion = {
 // ==========================================
 window.onload = () => {
     const game = new Game();
-    // Load our expansion to instantly give spiders AI via monkey-patching!
-    game.expansions.load('ScurryAI', ScurryExpansion);
+    // Load Expansions in order of layering!
+    game.expansions.load('TerrainGen', TerrainExpansion);
+    game.expansions.load('BaseBuilder', BaseBuilderExpansion);
+    game.expansions.load('HarvesterAI', HarvesterExpansion); // Replaces Scurry AI
+    game.expansions.load('WebNetwork', WebNetworkExpansion);
 };
