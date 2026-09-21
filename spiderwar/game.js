@@ -26,7 +26,7 @@ class Spider {
     constructor(x, y, team, role = 'harvester') {
         this.x = x; this.y = y; this.team = team; this.role = role;
         this.size = role === 'soldier' ? 16 : 12;
-        this.speed = role === 'soldier' ? (Math.random() * 1.5 + 1.5) : (Math.random() * 1.5 + 1.0);
+        this.speed = role === 'soldier' ? (Math.random() * 1.0 + 1.2) : (Math.random() * 1.0 + 0.8);
         this.hp = role === 'soldier' ? 200 : 100; this.maxHp = this.hp;
         this.damage = role === 'soldier' ? 30 : 15; this.attackSpeed = role === 'soldier' ? 20 : 30;
         this.cooldown = 0; this.angle = 0; this.state = 'idle'; this.target = null; this.cargo = 0; 
@@ -121,13 +121,13 @@ class Game {
         
         this.spiders = []; this.pumpkins = []; this.structures = []; 
         this.queens = []; this.projectiles = []; this.bugs = [];
-        this.particles = []; this.spells = []; 
-        this.bosses = []; // NEW: Boss Array
+        this.particles = []; this.spells = []; this.bosses = []; 
         
         this.scores = { black: 600, red: 400 }; 
         this.pop = { black: 0, red: 0 }; this.maxPop = { black: 10, red: 10 };
         this.techLevel = { black: 0, red: 0 }; 
-        this.buildSelection = 'nest'; this.unitSelection = 'harvester'; this.gameState = 'playing'; 
+        this.buildSelection = 'nest'; this.gameState = 'playing'; 
+        this.selectedStructure = null; // Track what building we clicked
 
         this.resize(); window.addEventListener('resize', () => this.resize());
         this.setupInputs(); requestAnimationFrame(() => this.loop());
@@ -141,9 +141,7 @@ class Game {
             const k = e.key.toLowerCase(); this.keys[k] = true;
             if(k === '1') this.buildSelection = 'nest'; if(k === '2') this.buildSelection = 'eggsac';
             if(k === '3') this.buildSelection = 'turret'; if(k === '4') this.buildSelection = 'wall';
-            if(k === '5') this.unitSelection = 'harvester'; if(k === '6') this.unitSelection = 'soldier';
             if(k === '7') this.buildSelection = 'venomStrike'; if(k === '8') this.buildSelection = 'silkTrap';
-            if(k === 'u' && this.scores.black >= 250) { this.scores.black -= 250; this.techLevel.black++; this.bus.emit('playSound', 'spell');}
         });
         window.addEventListener('keyup', e => this.keys[e.key.toLowerCase()] = false);
 
@@ -167,13 +165,37 @@ class Game {
         window.addEventListener('mouseup', (e) => {
             if (e.button === 0 && isDragging) {
                 isDragging = false;
+                
+                // IGNORE CLICKS THAT HIT THE MODAL OR UI
+                if(e.target.closest('#structureModal') || e.target.closest('#ui')) return;
+
                 if (!hasMoved && !this.isMinimapDragging) {
                     const worldX = e.clientX + this.camera.x; const worldY = e.clientY + this.camera.y;
-                    if (this.keys['e']) { this.bus.emit('buildStructure', { x: worldX, y: worldY, team: 'black', type: this.buildSelection }); } 
+                    
+                    if (this.keys['e']) { 
+                        this.bus.emit('buildStructure', { x: worldX, y: worldY, team: 'black', type: this.buildSelection }); 
+                    } 
                     else if (this.buildSelection === 'venomStrike' || this.buildSelection === 'silkTrap') {
                         this.bus.emit('castSpell', { x: worldX, y: worldY, type: this.buildSelection, team: 'black' });
                         this.buildSelection = 'nest'; 
-                    } else { this.bus.emit('spawnSpider', { x: worldX, y: worldY, team: 'black', role: this.unitSelection }); }
+                    } 
+                    else { 
+                        // NEW LOGIC: Select Structure instead of Spawning
+                        let clickedStruct = null;
+                        for(let s of this.structures) {
+                            if (s.team === 'black' && Math.hypot(s.x - worldX, s.y - worldY) < s.size) {
+                                clickedStruct = s; break;
+                            }
+                        }
+                        
+                        this.selectedStructure = clickedStruct; // Update selection
+                        
+                        if(clickedStruct) {
+                            this.bus.emit('openModal', clickedStruct);
+                        } else {
+                            this.bus.emit('closeModal'); // Clicked empty dirt
+                        }
+                    }
                 }
             }
         });
@@ -186,7 +208,10 @@ class Game {
         this.bus.on('spawnSpider', (data) => {
             const cost = data.role === 'soldier' ? 25 : 10;
             if (this.scores[data.team] >= cost && this.pop[data.team] < this.maxPop[data.team]) {
-                this.scores[data.team] -= cost; this.spiders.push(new Spider(data.x, data.y, data.team, data.role));
+                this.scores[data.team] -= cost; 
+                // Add slight random offset so they pop out of the nest naturally
+                this.spiders.push(new Spider(data.x + (Math.random()-0.5)*50, data.y + (Math.random()-0.5)*50, data.team, data.role));
+                this.bus.emit('playSound', 'harvest'); // Egg hatching sound
             }
         });
         
@@ -211,12 +236,11 @@ class Game {
             <hr style="border-color:#ff9d0055;">
             <div style="display:flex; justify-content:space-between; font-size: 0.9em;">
                 <div>
-                    <strong>Spawns:</strong> <span style="${this.unitSelection==='harvester'?'color:white;':''}">[5] Harvest(10)</span> | <span style="${this.unitSelection==='soldier'?'color:white;':''}">[6] Soldier(25)</span><br>
-                    <strong>Builds(E):</strong> <span style="${this.buildSelection==='nest'?'color:white;':''}">[1] Nest(150)</span> | <span style="${this.buildSelection==='eggsac'?'color:white;':''}">[2] Sac(50)</span> | <span style="${this.buildSelection==='turret'?'color:white;':''}">[3] Turret(100)</span> | <span style="${this.buildSelection==='wall'?'color:white;':''}">[4] Wall(25)</span><br>
-                    <strong>Spells:</strong> <span style="${this.buildSelection==='venomStrike'?'color:white;':''}">[7] Strike(200)</span> | <span style="${this.buildSelection==='silkTrap'?'color:white;':''}">[8] Trap(100)</span>
+                    <strong>Actions:</strong> Click a Nest to spawn units/upgrade!<br>
+                    <strong>Builds(Hold E):</strong> <span style="${this.buildSelection==='nest'?'color:white;':''}">[1] Nest(150)</span> | <span style="${this.buildSelection==='eggsac'?'color:white;':''}">[2] Sac(50)</span> | <span style="${this.buildSelection==='turret'?'color:white;':''}">[3] Turret(100)</span> | <span style="${this.buildSelection==='wall'?'color:white;':''}">[4] Wall(25)</span><br>
+                    <strong>Spells(Click):</strong> <span style="${this.buildSelection==='venomStrike'?'color:white;':''}">[7] Strike(200)</span> | <span style="${this.buildSelection==='silkTrap'?'color:white;':''}">[8] Trap(100)</span>
                 </div>
                 <div style="text-align:right;">
-                    <strong>[U] Upgrade(250)</strong><br>
                     <strong>[O] Save | [P] Load</strong>
                 </div>
             </div>
@@ -246,7 +270,12 @@ class Game {
         this.particles.forEach(p => p.update()); this.spells.forEach(s => s.update(this));
         this.bosses.forEach(b => b.update(this));
         
-        // Death Logic
+        // Deselect if destroyed
+        if (this.selectedStructure && this.selectedStructure.hp <= 0) {
+            this.selectedStructure = null;
+            this.bus.emit('closeModal');
+        }
+        
         this.spiders.filter(s => s.hp <= 0).forEach(s => { this.bus.emit('particles', {x: s.x, y: s.y, color: s.team, count: 30}); this.bus.emit('playSound', 'death'); });
         this.structures.filter(s => s.hp <= 0).forEach(s => { this.bus.emit('particles', {x: s.x, y: s.y, color: '#888', count: 50}); this.bus.emit('playSound', 'death'); });
         this.bosses.filter(b => b.hp <= 0).forEach(b => { this.bus.emit('particles', {x: b.x, y: b.y, color: '#00ff00', count: 100}); this.bus.emit('playSound', 'death'); });
@@ -272,10 +301,21 @@ class Game {
         this.spells.forEach(s => s.draw(this.ctx)); 
         this.bus.emit('atmosphereDraw', this.ctx);
 
+        // Draw Selection Ring underneath the selected structure
+        if(this.selectedStructure) {
+            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.lineWidth = 2;
+            this.ctx.setLineDash([5, 5]);
+            this.ctx.beginPath();
+            this.ctx.arc(this.selectedStructure.x, this.selectedStructure.y, this.selectedStructure.size + 10, 0, Math.PI * 2);
+            this.ctx.stroke();
+            this.ctx.setLineDash([]);
+        }
+
         this.structures.forEach(s => s.draw(this.ctx)); this.pumpkins.forEach(p => p.draw(this.ctx));
         this.bugs.forEach(b => b.draw(this.ctx)); this.spiders.forEach(s => s.draw(this.ctx));
         this.queens.forEach(q => q.draw(this.ctx)); this.projectiles.forEach(p => p.draw(this.ctx));
-        this.bosses.forEach(b => b.draw(this.ctx)); // Draw Boss
+        this.bosses.forEach(b => b.draw(this.ctx)); 
         this.particles.forEach(p => p.draw(this.ctx)); 
         
         this.ctx.restore();
@@ -287,13 +327,96 @@ class Game {
 // 4. EXPANSIONS (THE MAGIC)
 // ==========================================
 
-// --- NEW EXPANSION A: WEB AUDIO SYNTHESIZER ---
+// --- NEW EXPANSION: DYNAMIC LAIR UI MODAL ---
+const LairUIExpansion = {
+    init: (game) => {
+        // Inject Custom CSS for the Modal dynamically!
+        const style = document.createElement('style');
+        style.innerHTML = `
+            #structureModal {
+                position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                background: rgba(20, 10, 5, 0.95); border: 2px solid #ff9d00; border-radius: 8px;
+                padding: 20px; color: white; font-family: 'Courier New', monospace;
+                display: none; z-index: 1000; min-width: 320px; box-shadow: 0 0 20px rgba(255, 157, 0, 0.5);
+            }
+            #structureModal h2 { margin-top: 0; color: #ff9d00; border-bottom: 1px solid #ff9d00; padding-bottom: 10px; text-transform: uppercase;}
+            .modal-btn { 
+                background: #332; border: 1px solid #ff9d00; color: #ff9d00; 
+                padding: 12px; margin: 5px 0; width: 100%; cursor: pointer; text-align: center;
+                font-family: inherit; font-size: 15px; font-weight: bold; transition: 0.2s; border-radius: 4px;
+            }
+            .modal-btn:hover { background: #ff9d00; color: #221; }
+            .modal-btn:active { background: #fff; }
+            .modal-btn:disabled { background: #222; border-color: #555; color: #555; cursor: not-allowed; }
+            .close-btn { position: absolute; top: 10px; right: 15px; cursor: pointer; color: red; font-size: 20px; font-weight: bold; }
+            .close-btn:hover { color: white; }
+        `;
+        document.head.appendChild(style);
+
+        // Inject the HTML Container
+        const modal = document.createElement('div');
+        modal.id = 'structureModal';
+        document.body.appendChild(modal);
+
+        game.bus.on('openModal', (structure) => {
+            modal.style.display = 'block';
+            
+            // Build the UI dynamically based on what we clicked!
+            let htmlContent = `<span class="close-btn" onclick="document.getElementById('structureModal').style.display='none'">X</span>`;
+            
+            if (structure.type === 'nest') {
+                htmlContent += `
+                    <h2>Main Nest (Lvl ${game.techLevel.black})</h2>
+                    <p style="color:#aaa; font-size: 14px;">HP: ${structure.hp}/${structure.maxHp}</p>
+                    <button class="modal-btn" id="btn-harvester">Hatch Harvester (10 🎃)</button>
+                    <button class="modal-btn" id="btn-soldier">Hatch Soldier (25 🎃)</button>
+                    <button class="modal-btn" id="btn-tech" style="margin-top: 20px; background: #522;">Evolve Tech (250 🎃)</button>
+                `;
+            } else if (structure.type === 'turret') {
+                htmlContent += `
+                    <h2>Venom Turret</h2>
+                    <p style="color:#aaa; font-size: 14px;">HP: ${structure.hp}/${structure.maxHp}</p>
+                    <p>Automated defense structure. Deals ${25 + (game.techLevel.black * 10)} damage per shot.</p>
+                `;
+            } else {
+                htmlContent += `
+                    <h2>${structure.type.toUpperCase()}</h2>
+                    <p style="color:#aaa; font-size: 14px;">HP: ${structure.hp}/${structure.maxHp}</p>
+                `;
+            }
+
+            modal.innerHTML = htmlContent;
+
+            // Attach listeners (Only if the buttons exist for that building type)
+            const btnHarv = document.getElementById('btn-harvester');
+            if (btnHarv) btnHarv.onclick = () => game.bus.emit('spawnSpider', { x: structure.x, y: structure.y, team: 'black', role: 'harvester' });
+            
+            const btnSoldier = document.getElementById('btn-soldier');
+            if (btnSoldier) btnSoldier.onclick = () => game.bus.emit('spawnSpider', { x: structure.x, y: structure.y, team: 'black', role: 'soldier' });
+            
+            const btnTech = document.getElementById('btn-tech');
+            if (btnTech) {
+                btnTech.onclick = () => {
+                    if (game.scores.black >= 250) {
+                        game.scores.black -= 250; game.techLevel.black++;
+                        game.bus.emit('playSound', 'spell');
+                        game.bus.emit('openModal', structure); // Re-render to show new level
+                    }
+                };
+            }
+        });
+
+        game.bus.on('closeModal', () => {
+            modal.style.display = 'none';
+        });
+    }
+};
+
+// --- AUDIO SYNTH EXPANSION ---
 const AudioExpansion = {
     init: (game) => {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         const ctx = new AudioContext();
-        
-        // Browsers require a click to unlock audio
         const unlock = () => { if(ctx.state === 'suspended') ctx.resume(); window.removeEventListener('click', unlock); };
         window.addEventListener('click', unlock);
 
@@ -308,33 +431,33 @@ const AudioExpansion = {
         };
 
         game.bus.on('playSound', (type) => {
-            if (type === 'shoot') playTone(600, 'square', 0.1, 0.02); // Pew!
-            if (type === 'harvest') playTone(150, 'sawtooth', 0.1, 0.05); // Crunch!
-            if (type === 'death') playTone(100, 'sawtooth', 0.4, 0.08); // Splat
-            if (type === 'spell') playTone(800, 'sine', 0.5, 0.05); // Magic chime
-            if (type === 'build') playTone(300, 'triangle', 0.2, 0.05); // Thump
+            if (type === 'shoot') playTone(600, 'square', 0.1, 0.02); 
+            if (type === 'harvest') playTone(150, 'sawtooth', 0.1, 0.05); 
+            if (type === 'death') playTone(100, 'sawtooth', 0.4, 0.08); 
+            if (type === 'spell') playTone(800, 'sine', 0.5, 0.05); 
+            if (type === 'build') playTone(300, 'triangle', 0.2, 0.05); 
         });
     }
 };
 
-// --- NEW EXPANSION B: THE CENTIPEDE BOSS ---
+// --- UPDATED CENTIPEDE BOSS (PACING FIX) ---
 class CentipedeBoss {
     constructor(x, y) {
         this.x = x; this.y = y; this.team = 'nature';
         this.hp = 3000; this.maxHp = 3000; this.damage = 50; this.speed = 1.8;
         this.angle = Math.random() * Math.PI*2;
-        this.history = []; // Stores past positions to draw segments!
-        this.segmentCount = 15;
-        this.cooldown = 0;
+        this.history = []; 
+        this.segmentCount = 15; this.cooldown = 0;
+
+        this.headSprite = new Image(); this.headSprite.src = 'assets/centipede_head.png';
+        this.bodySprite = new Image(); this.bodySprite.src = 'assets/centipede_body.png';
     }
     update(game) {
-        // Record history for the tail to follow
         this.history.unshift({x: this.x, y: this.y, angle: this.angle});
-        if(this.history.length > this.segmentCount * 5) this.history.pop(); // Keep array small
+        if(this.history.length > this.segmentCount * 5) this.history.pop(); 
 
-        // Aggro Logic: Attack EVERYTHING
         let allTargets = game.spiders.concat(game.queens).concat(game.structures);
-        let nearest = null; let minDist = 800; // Huge aggro range
+        let nearest = null; let minDist = 800; 
         for (let t of allTargets) {
             let d = Math.hypot(t.x - this.x, t.y - this.y);
             if (d < minDist) { minDist = d; nearest = t; }
@@ -353,40 +476,28 @@ class CentipedeBoss {
                 }
             }
         } else {
-            // Wander
             if(Math.random() < 0.05) this.angle += (Math.random() - 0.5);
             this.x += Math.cos(this.angle) * (this.speed * 0.5); this.y += Math.sin(this.angle) * (this.speed * 0.5);
             this.x = Math.max(0, Math.min(this.x, game.world.width)); this.y = Math.max(0, Math.min(this.y, game.world.height));
         }
     }
     draw(ctx) {
-        // Draw Segments (Trailing behind in history)
         for(let i = 1; i < this.segmentCount; i++) {
-            let histIndex = i * 4; // Space them out
+            let histIndex = i * 4; 
             if(this.history[histIndex]) {
                 let pos = this.history[histIndex];
                 ctx.save(); ctx.translate(pos.x, pos.y); ctx.rotate(pos.angle);
-                // Draw Legs
-                ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(-15, -20); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(-15, 20); ctx.stroke();
-                // Draw Body
-                ctx.fillStyle = i % 2 === 0 ? '#113311' : '#225522';
-                ctx.beginPath(); ctx.arc(0, 0, 18 - (i*0.5), 0, Math.PI*2); ctx.fill();
+                if (this.bodySprite.complete && this.bodySprite.naturalHeight !== 0) { ctx.drawImage(this.bodySprite, -15, -15, 30, 30); } 
+                else { ctx.fillStyle = i % 2 === 0 ? '#113311' : '#225522'; ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill(); }
                 ctx.restore();
             }
         }
         
-        // Draw Head
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
-        ctx.fillStyle = '#00ff00'; // Mandibles
-        ctx.beginPath(); ctx.moveTo(10, -10); ctx.lineTo(25, -5); ctx.lineTo(15, -2); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(10, 10); ctx.lineTo(25, 5); ctx.lineTo(15, 2); ctx.fill();
-        ctx.fillStyle = '#052205'; ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI*2); ctx.fill(); // Skull
-        ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(8, -8, 4, 0, Math.PI*2); ctx.arc(8, 8, 4, 0, Math.PI*2); ctx.fill(); // Evil Eyes
+        if (this.headSprite.complete && this.headSprite.naturalHeight !== 0) { ctx.drawImage(this.headSprite, -20, -20, 40, 40); } 
+        else { ctx.fillStyle = '#052205'; ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(8, -8, 4, 0, Math.PI*2); ctx.arc(8, 8, 4, 0, Math.PI*2); ctx.fill(); }
         ctx.restore();
 
-        // Draw Health Bar
         if(this.hp < this.maxHp) {
             ctx.fillStyle='black'; ctx.fillRect(this.x-30, this.y-35, 60, 8);
             ctx.fillStyle='red'; ctx.fillRect(this.x-29, this.y-34, 58, 6);
@@ -397,16 +508,13 @@ class CentipedeBoss {
 
 const GodUnitExpansion = {
     init: (game) => {
-        // Spawn the boss far away after 1 minute of gameplay
         setTimeout(() => {
             console.log("THE CENTIPEDE AWAKENS!");
             game.bosses.push(new CentipedeBoss(game.world.width/2, game.world.height/2));
             game.bus.emit('playSound', 'spell');
-        }, 60000); // 60 seconds
+        }, 180000); 
     }
 };
-
-// --- PREVIOUS EXPANSIONS RE-ATTACHED ---
 
 class Particle {
     constructor(x, y, color) {
@@ -559,7 +667,8 @@ const AdvancedBaseExpansion = {
 class Queen extends Spider {
     constructor(x, y, team) {
         super(x, y, team);
-        this.size = 28; this.speed = 1.2; this.hp = 1500; this.maxHp = 1500; this.damage = 40; this.commandTarget = null; 
+        this.size = 28; this.speed = 0.8; 
+        this.hp = 2500; this.maxHp = 2500; this.damage = 40; this.commandTarget = null; 
         this.sprite.src = team === 'black' ? 'assets/queen_black.png' : 'assets/queen_red.png';
     }
     update(game) {
@@ -621,20 +730,20 @@ const HiveMindExpansion = {
                 }
             }
             if (this.team === 'red' && this.type === 'nest') {
-                if (game.scores.red >= 250 && Math.random() < 0.1) { game.scores.red -= 250; game.techLevel.red++; }
+                if (game.scores.red >= 500 && Math.random() < 0.05) { game.scores.red -= 250; game.techLevel.red++; }
                 if (game.scores.red >= 50 && game.pop.red < game.maxPop.red) {
                     if(!this.spawnTimer) this.spawnTimer = 0;
                     this.spawnTimer--;
                     if(this.spawnTimer <= 0) {
-                        const role = Math.random() > 0.6 ? 'soldier' : 'harvester';
+                        const role = Math.random() > 0.8 ? 'soldier' : 'harvester'; 
                         const cost = role === 'soldier' ? 25 : 10;
                         if(game.scores.red >= cost) {
                             game.scores.red -= cost; 
                             game.bus.emit('spawnSpider', { x: this.x + (Math.random()-0.5)*100, y: this.y + (Math.random()-0.5)*100, team: 'red', role: role });
-                            this.spawnTimer = 90; 
+                            this.spawnTimer = 120; 
                         }
                     }
-                } else if (game.pop.red >= game.maxPop.red && game.scores.red > 150) {
+                } else if (game.pop.red >= game.maxPop.red && game.scores.red > 200) {
                     game.scores.red -= 50; game.structures.push(new Structure(this.x + (Math.random()-0.5)*200, this.y + (Math.random()-0.5)*200, 'red', 'eggsac'));
                 }
             }
@@ -766,7 +875,7 @@ const MinimapExpansion = {
             game.structures.forEach(s => drawDot(s, s.team === 'black' ? '#ffffff' : '#ff4444', 3));
             game.spiders.forEach(s => drawDot(s, s.team === 'black' ? '#aaaaaa' : '#aa0000', 1));
             game.bugs.forEach(b => drawDot(b, 'gold', 2.5));
-            game.bosses.forEach(b => drawDot(b, '#00ff00', 4)); // Draw Boss on minimap!
+            game.bosses.forEach(b => drawDot(b, '#00ff00', 4)); 
             game.queens.forEach(q => { drawDot(q, q.team === 'black' ? '#ffffff' : '#ff4444', 4); ctx.strokeStyle = 'gold'; ctx.lineWidth = 1; ctx.strokeRect(startX + (q.x * scaleX) - 5, startY + (q.y * scaleY) - 5, 10, 10); });
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; ctx.lineWidth = 1; ctx.strokeRect(startX + (game.camera.x * scaleX), startY + (game.camera.y * scaleY), game.canvas.width * scaleX, game.canvas.height * scaleY);
         });
@@ -863,6 +972,7 @@ window.onload = () => {
     game.expansions.load('WebNetwork', WebNetworkExpansion); 
     
     // UI & Game Loop
+    game.expansions.load('LairUI', LairUIExpansion); // NEW: The Base Menu Modal!
     game.expansions.load('MinimapUI', MinimapExpansion); 
     game.expansions.load('GameLoop', GameLoopExpansion); 
     game.expansions.load('SaveLoadManager', SaveLoadExpansion); 
@@ -872,7 +982,7 @@ window.onload = () => {
     game.expansions.load('Atmosphere', AtmosphereExpansion); 
     game.expansions.load('CommanderSpells', SpellExpansion); 
     
-    // AUDIO AND BOSS EXPANSIONS!
+    // AUDIO AND BOSS EXPANSIONS
     game.expansions.load('AudioSynth', AudioExpansion);
     game.expansions.load('CentipedeBoss', GodUnitExpansion); 
 };
