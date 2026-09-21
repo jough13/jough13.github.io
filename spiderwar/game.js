@@ -112,7 +112,7 @@ class Nest {
         this.sprite.onload = () => { this.spriteLoaded = true; }
     }
     
-    update(game) {} // Patched by expansions
+    update(game) {} 
 
     draw(ctx) {
         if(this.spriteLoaded) {
@@ -126,7 +126,7 @@ class Nest {
 }
 
 // ==========================================
-// 3. MAIN GAME CLASS
+// 3. MAIN GAME CLASS (NOW WITH CAMERA!)
 // ==========================================
 
 class Game {
@@ -136,11 +136,16 @@ class Game {
         this.bus = new GameBus();
         this.expansions = new ExpansionManager(this);
         
+        // Massive World Size!
+        this.world = { width: 4000, height: 4000 };
+        this.camera = { x: 0, y: 0, speed: 20 };
+        this.mouse = { screenX: 0, screenY: 0 };
+        
         this.spiders = [];
         this.pumpkins = [];
         this.nests = []; 
         
-        this.scores = { black: 100, red: 100 }; // Start with 100 points to jumpstart bases!
+        this.scores = { black: 100, red: 100 }; 
 
         this.resize();
         window.addEventListener('resize', () => this.resize());
@@ -155,11 +160,17 @@ class Game {
     }
 
     setupInputs() {
-        // You can still manually spawn for 10 points per click!
+        // Track mouse for Camera panning
+        window.addEventListener('mousemove', (e) => {
+            this.mouse.screenX = e.clientX;
+            this.mouse.screenY = e.clientY;
+        });
+
+        // Click to spawn (Account for Camera offset!)
         this.canvas.addEventListener('click', (e) => {
             if(this.scores.black >= 10) {
                 this.scores.black -= 10;
-                this.bus.emit('spawnSpider', { x: e.clientX, y: e.clientY, team: 'black' });
+                this.bus.emit('spawnSpider', { x: e.clientX + this.camera.x, y: e.clientY + this.camera.y, team: 'black' });
             }
         });
         
@@ -167,7 +178,7 @@ class Game {
             e.preventDefault();
             if(this.scores.red >= 10) {
                 this.scores.red -= 10;
-                this.bus.emit('spawnSpider', { x: e.clientX, y: e.clientY, team: 'red' });
+                this.bus.emit('spawnSpider', { x: e.clientX + this.camera.x, y: e.clientY + this.camera.y, team: 'red' });
             }
         });
 
@@ -181,7 +192,7 @@ class Game {
         const debug = document.getElementById('debug');
         if(debug) debug.innerHTML = `
             <strong>Black Resources: ${this.scores.black}</strong> | <strong>Red Resources: ${this.scores.red}</strong> <br>
-            Spiders: ${this.spiders.length} (Click costs 10 | Bases auto-spawn at 50)
+            Spiders: ${this.spiders.length} | Move mouse to edges to pan camera!
         `;
     }
 
@@ -192,12 +203,24 @@ class Game {
     }
 
     update() {
+        // 1. Camera Edge Panning Logic
+        const edge = 50;
+        if (this.mouse.screenX < edge) this.camera.x -= this.camera.speed;
+        if (this.mouse.screenX > this.canvas.width - edge) this.camera.x += this.camera.speed;
+        if (this.mouse.screenY < edge) this.camera.y -= this.camera.speed;
+        if (this.mouse.screenY > this.canvas.height - edge) this.camera.y += this.camera.speed;
+
+        // Clamp camera to world bounds
+        this.camera.x = Math.max(0, Math.min(this.camera.x, this.world.width - this.canvas.width));
+        this.camera.y = Math.max(0, Math.min(this.camera.y, this.world.height - this.canvas.height));
+
+        // 2. Entity Updates
         this.nests.forEach(nest => nest.update(this));
         this.spiders.forEach(spider => spider.update(this));
         
         // Cleanup dead entities
         this.pumpkins = this.pumpkins.filter(p => p.resources > 0);
-        this.spiders = this.spiders.filter(s => s.hp > 0); // Remove dead spiders!
+        this.spiders = this.spiders.filter(s => s.hp > 0);
         this.updateUI();
     }
 
@@ -205,71 +228,114 @@ class Game {
         this.ctx.fillStyle = '#2c1e16';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
+        // Apply Camera Translation
+        this.ctx.save();
+        this.ctx.translate(-this.camera.x, -this.camera.y);
+
+        // Let Expansions draw background/webs first
+        this.bus.emit('preDraw', this.ctx);
+
         this.nests.forEach(n => n.draw(this.ctx));
         this.pumpkins.forEach(p => p.draw(this.ctx));
         this.spiders.forEach(s => s.draw(this.ctx));
+
+        // Let Expansions draw overlays
+        this.bus.emit('postDraw', this.ctx);
+
+        this.ctx.restore();
     }
 }
 
 // ==========================================
-// 4. EXPANSIONS (THE MAGIC SAUCE)
+// 4. EXPANSIONS (PROCEDURAL GENERATION)
 // ==========================================
 
-const TerrainExpansion = { /* ... (Same as previous, omitted for brevity but included below in full) ... */ };
-TerrainExpansion.init = (game) => {
-    game.tileSize = 128;
-    game.tiles = { dirt: new Image(), vines: new Image(), pebbles: new Image() };
-    game.tiles.dirt.src = 'assets/tile_dirt.png';
-    game.tiles.vines.src = 'assets/tile_vines.png';
-    game.tiles.pebbles.src = 'assets/tile_pebbles.png';
+const TerrainExpansion = {
+    init: (game) => {
+        game.tileSize = 256; // Larger tiles for better performance on huge map
+        game.tiles = { dirt: new Image(), vines: new Image(), pebbles: new Image() };
+        game.tiles.dirt.src = 'assets/tile_dirt.png';
+        game.tiles.vines.src = 'assets/tile_vines.png';
+        game.tiles.pebbles.src = 'assets/tile_pebbles.png';
 
-    game.generateMap = function() {
-        this.mapGrid = [];
-        const cols = Math.ceil(this.canvas.width / this.tileSize);
-        const rows = Math.ceil(this.canvas.height / this.tileSize);
-        for (let y = 0; y < rows; y++) {
-            let row = [];
-            for (let x = 0; x < cols; x++) {
-                const r = Math.random();
-                row.push(r > 0.85 ? 'vines' : (r > 0.70 ? 'pebbles' : 'dirt'));
+        // Procedurally generate the massive 4000x4000 grid
+        game.generateMap = function() {
+            this.mapGrid = [];
+            const cols = Math.ceil(this.world.width / this.tileSize);
+            const rows = Math.ceil(this.world.height / this.tileSize);
+            for (let y = 0; y < rows; y++) {
+                let row = [];
+                for (let x = 0; x < cols; x++) {
+                    const r = Math.random();
+                    // Clump vines together using a rough check of previous tile
+                    let type = r > 0.85 ? 'vines' : (r > 0.70 ? 'pebbles' : 'dirt');
+                    if (x > 0 && row[x-1] === 'vines' && Math.random() > 0.4) type = 'vines';
+                    row.push(type);
+                }
+                this.mapGrid.push(row);
             }
-            this.mapGrid.push(row);
-        }
-    };
-    game.generateMap();
-};
-TerrainExpansion.patch = (game) => {
-    const ogResize = Game.prototype.resize;
-    Game.prototype.resize = function() { ogResize.call(this); if (this.generateMap) this.generateMap(); };
+        };
+        game.generateMap();
+    },
+    patch: (game) => {
+        // Draw the tilemap ONLY for tiles currently visible by the camera (Optimization)
+        game.bus.on('preDraw', (ctx) => {
+            if (!game.mapGrid) return;
+            
+            const startCol = Math.floor(game.camera.x / game.tileSize);
+            const endCol = startCol + (game.canvas.width / game.tileSize) + 1;
+            const startRow = Math.floor(game.camera.y / game.tileSize);
+            const endRow = startRow + (game.canvas.height / game.tileSize) + 1;
 
-    const ogDraw = Game.prototype.draw;
-    Game.prototype.draw = function() {
-        if (this.mapGrid) {
-            for (let y = 0; y < this.mapGrid.length; y++) {
-                for (let x = 0; x < this.mapGrid[y].length; x++) {
-                    const img = this.tiles[this.mapGrid[y][x]];
-                    if (img.complete && img.naturalHeight !== 0) {
-                        this.ctx.drawImage(img, x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+            for (let y = startRow; y <= endRow; y++) {
+                for (let x = startCol; x <= endCol; x++) {
+                    if (y >= 0 && y < game.mapGrid.length && x >= 0 && x < game.mapGrid[y].length) {
+                        const img = game.tiles[game.mapGrid[y][x]];
+                        if (img.complete && img.naturalHeight !== 0) {
+                            ctx.drawImage(img, x * game.tileSize, y * game.tileSize, game.tileSize, game.tileSize);
+                        }
                     }
                 }
             }
-        }
-        ogDraw.call(this);
-    };
+        });
+    }
 };
 
 const BaseBuilderExpansion = {
     init: (game) => {
         setTimeout(() => {
-            game.nests.push(new Nest(150, game.canvas.height / 2, 'black'));
-            game.nests.push(new Nest(game.canvas.width - 150, game.canvas.height / 2, 'red'));
+            // 1. Procedural Bases (Opposite corners of the giant map)
+            const padding = 400;
+            const blackBaseX = padding + Math.random() * 200;
+            const blackBaseY = padding + Math.random() * 200;
             
-            // Scatter Pumpkins in the middle
-            for(let i=0; i<12; i++) {
-                game.pumpkins.push(new Pumpkin(
-                    (Math.random() * (game.canvas.width - 600)) + 300, 
-                    Math.random() * (game.canvas.height - 150) + 75
-                ));
+            const redBaseX = game.world.width - padding - Math.random() * 200;
+            const redBaseY = game.world.height - padding - Math.random() * 200;
+
+            game.nests.push(new Nest(blackBaseX, blackBaseY, 'black'));
+            game.nests.push(new Nest(redBaseX, redBaseY, 'red'));
+
+            // Focus camera on Black base at start
+            game.camera.x = Math.max(0, blackBaseX - (game.canvas.width / 2));
+            game.camera.y = Math.max(0, blackBaseY - (game.canvas.height / 2));
+            
+            // 2. Procedural Pumpkin Patches (Scattered across the map)
+            const numPatches = 15; // 15 clusters of pumpkins
+            
+            for (let i = 0; i < numPatches; i++) {
+                // Keep them somewhat away from the direct edges
+                let patchX = 600 + Math.random() * (game.world.width - 1200);
+                let patchY = 600 + Math.random() * (game.world.height - 1200);
+                
+                // 5 to 10 pumpkins per patch
+                let patchSize = Math.floor(Math.random() * 6) + 5; 
+                
+                for (let p = 0; p < patchSize; p++) {
+                    // Jitter them in a small radius around the patch center
+                    let px = patchX + (Math.random() - 0.5) * 300;
+                    let py = patchY + (Math.random() - 0.5) * 300;
+                    game.pumpkins.push(new Pumpkin(px, py));
+                }
             }
         }, 100);
     }
@@ -277,21 +343,17 @@ const BaseBuilderExpansion = {
 
 const HiveMindExpansion = {
     patch: (game) => {
-        // Nests auto-spawn units if they have enough resources!
         Nest.prototype.update = function(gameInstance) {
-            // Check if team has enough points
             if (gameInstance.scores[this.team] >= 50) {
-                // Add a small cooldown so they don't instantly drain all points at once
                 if(!this.spawnTimer) this.spawnTimer = 0;
                 this.spawnTimer--;
                 
                 if(this.spawnTimer <= 0) {
-                    gameInstance.scores[this.team] -= 50; // Spend resources
-                    // Spawn a bit offset from the center of the nest
-                    const offsetX = (Math.random() - 0.5) * 50;
-                    const offsetY = (Math.random() - 0.5) * 50;
+                    gameInstance.scores[this.team] -= 50; 
+                    const offsetX = (Math.random() - 0.5) * 100;
+                    const offsetY = (Math.random() - 0.5) * 100;
                     gameInstance.bus.emit('spawnSpider', { x: this.x + offsetX, y: this.y + offsetY, team: this.team });
-                    this.spawnTimer = 60; // Wait ~1 second before spawning another
+                    this.spawnTimer = 60; 
                 }
             }
         };
@@ -307,7 +369,14 @@ const HarvesterExpansion = {
             if (this.state === 'seeking_pumpkin') {
                 if (!this.target || this.target.resources <= 0) {
                     if (gameInstance.pumpkins.length > 0) {
-                        this.target = gameInstance.pumpkins[Math.floor(Math.random() * gameInstance.pumpkins.length)];
+                        // Find the CLOSEST pumpkin to save travel time across huge map
+                        let closest = null;
+                        let minDist = Infinity;
+                        for(let p of gameInstance.pumpkins) {
+                            let d = Math.hypot(p.x - this.x, p.y - this.y);
+                            if(d < minDist) { minDist = d; closest = p; }
+                        }
+                        this.target = closest;
                     } else { this.target = null; }
                 }
             } else if (this.state === 'returning_home') {
@@ -339,6 +408,10 @@ const HarvesterExpansion = {
                 this.angle += (Math.random() - 0.5) * 0.5;
                 this.x += Math.cos(this.angle) * (this.speed * 0.5);
                 this.y += Math.sin(this.angle) * (this.speed * 0.5);
+                
+                // Keep spiders inside the world bounds
+                this.x = Math.max(0, Math.min(this.x, gameInstance.world.width));
+                this.y = Math.max(0, Math.min(this.y, gameInstance.world.height));
             }
         };
     }
@@ -346,22 +419,19 @@ const HarvesterExpansion = {
 
 const CombatExpansion = {
     patch: (game) => {
-        // Intercept Harvester Update to add Combat AI override
         const harvesterUpdate = Spider.prototype.update;
         
         Spider.prototype.update = function(gameInstance) {
-            // 1. Initialize stats if they don't exist
             if (this.hp === undefined) {
                 this.hp = 100;
                 this.maxHp = 100;
                 this.damage = 15;
-                this.attackSpeed = 30; // Frames between attacks
+                this.attackSpeed = 30; 
                 this.cooldown = 0;
             }
 
-            // 2. Scan for enemies
             let nearestEnemy = null;
-            let minDist = 120; // Aggro range
+            let minDist = 150; 
 
             for (let enemy of gameInstance.spiders) {
                 if (enemy.team !== this.team && enemy.hp > 0) {
@@ -373,43 +443,36 @@ const CombatExpansion = {
                 }
             }
 
-            // 3. Combat Logic overrides Harvester Logic
             if (nearestEnemy) {
                 this.state = 'combat';
                 this.angle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
                 
-                if (minDist > 20) { // Move into biting range
+                if (minDist > 20) { 
                     this.x += Math.cos(this.angle) * this.speed;
                     this.y += Math.sin(this.angle) * this.speed;
                 } else {
-                    // In range! Stop and fight
                     this.cooldown--;
                     if (this.cooldown <= 0) {
                         nearestEnemy.hp -= this.damage;
                         this.cooldown = this.attackSpeed;
-                        // Visual recoil/lunge (push backwards slightly, next frame moves them forward)
-                        this.x -= Math.cos(this.angle) * 8;
-                        this.y -= Math.sin(this.angle) * 8;
+                        this.x -= Math.cos(this.angle) * 10;
+                        this.y -= Math.sin(this.angle) * 10;
                     }
                 }
             } else {
-                // If no enemies nearby, do normal Harvester logic
                 harvesterUpdate.call(this, gameInstance);
             }
         };
 
-        // Intercept Draw to add Health Bars
         const ogDraw = Spider.prototype.draw;
         Spider.prototype.draw = function(ctx) {
-            ogDraw.call(this, ctx); // Draw normal spider
-
-            // Draw Health Bar if damaged
+            ogDraw.call(this, ctx); 
             if (this.hp !== undefined && this.hp < this.maxHp) {
-                ctx.fillStyle = 'black'; // border
+                ctx.fillStyle = 'black'; 
                 ctx.fillRect(this.x - 11, this.y - 21, 22, 5);
-                ctx.fillStyle = 'red'; // background
+                ctx.fillStyle = 'red'; 
                 ctx.fillRect(this.x - 10, this.y - 20, 20, 3);
-                ctx.fillStyle = '#00ff00'; // health remaining
+                ctx.fillStyle = '#00ff00'; 
                 ctx.fillRect(this.x - 10, this.y - 20, 20 * (this.hp / this.maxHp), 3);
             }
         };
@@ -418,34 +481,35 @@ const CombatExpansion = {
 
 const WebNetworkExpansion = {
     patch: (game) => {
-        const superOgDraw = Game.prototype.draw;
-        Game.prototype.draw = function() {
-            superOgDraw.call(this); 
-
-            this.ctx.lineWidth = 1;
-            for (let i = 0; i < this.spiders.length; i++) {
-                let s1 = this.spiders[i];
+        game.bus.on('preDraw', (ctx) => {
+            ctx.lineWidth = 1;
+            for (let i = 0; i < game.spiders.length; i++) {
+                let s1 = game.spiders[i];
                 
-                this.nests.filter(n => n.team === s1.team).forEach(nest => {
+                // Only draw webs if spiders are somewhat on screen to save massive performance
+                if (s1.x < game.camera.x - 100 || s1.x > game.camera.x + game.canvas.width + 100 ||
+                    s1.y < game.camera.y - 100 || s1.y > game.camera.y + game.canvas.height + 100) continue;
+
+                game.nests.filter(n => n.team === s1.team).forEach(nest => {
                     const dist = Math.hypot(nest.x - s1.x, nest.y - s1.y);
                     if (dist < 150) {
-                        this.ctx.strokeStyle = s1.team === 'black' ? 'rgba(255,255,255,0.3)' : 'rgba(255, 100, 100, 0.3)';
-                        this.ctx.beginPath(); this.ctx.moveTo(s1.x, s1.y); this.ctx.lineTo(nest.x, nest.y); this.ctx.stroke();
+                        ctx.strokeStyle = s1.team === 'black' ? 'rgba(255,255,255,0.3)' : 'rgba(255, 100, 100, 0.3)';
+                        ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(nest.x, nest.y); ctx.stroke();
                     }
                 });
 
-                for (let j = i + 1; j < this.spiders.length; j++) {
-                    let s2 = this.spiders[j];
+                for (let j = i + 1; j < game.spiders.length; j++) {
+                    let s2 = game.spiders[j];
                     if (s1.team === s2.team) {
                         const dist = Math.hypot(s2.x - s1.x, s2.y - s1.y);
                         if (dist < 80) { 
-                            this.ctx.strokeStyle = s1.team === 'black' ? 'rgba(255,255,255,0.2)' : 'rgba(255, 100, 100, 0.2)';
-                            this.ctx.beginPath(); this.ctx.moveTo(s1.x, s1.y); this.ctx.lineTo(s2.x, s2.y); this.ctx.stroke();
+                            ctx.strokeStyle = s1.team === 'black' ? 'rgba(255,255,255,0.2)' : 'rgba(255, 100, 100, 0.2)';
+                            ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y); ctx.stroke();
                         }
                     }
                 }
             }
-        };
+        });
     }
 };
 
@@ -454,12 +518,10 @@ const WebNetworkExpansion = {
 // ==========================================
 window.onload = () => {
     const game = new Game();
-    
-    // Load Expansions! Order matters!
     game.expansions.load('TerrainGen', TerrainExpansion);
     game.expansions.load('BaseBuilder', BaseBuilderExpansion);
-    game.expansions.load('HiveMind', HiveMindExpansion); // Auto-spawns
-    game.expansions.load('HarvesterAI', HarvesterExpansion); // Baseline logic
-    game.expansions.load('CombatAI', CombatExpansion); // WRAPS baseline logic to prioritize fighting
-    game.expansions.load('WebNetwork', WebNetworkExpansion); // Draws over everything
+    game.expansions.load('HiveMind', HiveMindExpansion); 
+    game.expansions.load('HarvesterAI', HarvesterExpansion); 
+    game.expansions.load('CombatAI', CombatExpansion); 
+    game.expansions.load('WebNetwork', WebNetworkExpansion); 
 };
