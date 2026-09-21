@@ -252,7 +252,9 @@ class Game {
 
 const TerrainExpansion = {
     init: (game) => {
-        game.tileSize = 256; // Larger tiles for better performance on huge map
+        console.log("Initializing Procedural Terrain...");
+        game.tileSize = 256; 
+        
         game.tiles = { dirt: new Image(), vines: new Image(), pebbles: new Image() };
         game.tiles.dirt.src = 'assets/tile_dirt.png';
         game.tiles.vines.src = 'assets/tile_vines.png';
@@ -267,32 +269,50 @@ const TerrainExpansion = {
                 let row = [];
                 for (let x = 0; x < cols; x++) {
                     const r = Math.random();
-                    // Clump vines together using a rough check of previous tile
-                    let type = r > 0.85 ? 'vines' : (r > 0.70 ? 'pebbles' : 'dirt');
-                    if (x > 0 && row[x-1] === 'vines' && Math.random() > 0.4) type = 'vines';
+                    // Increased the frequency of vines and pebbles so the map looks richer!
+                    let type = r > 0.75 ? 'vines' : (r > 0.60 ? 'pebbles' : 'dirt');
                     row.push(type);
                 }
                 this.mapGrid.push(row);
             }
+            console.log(`Map Generated: ${cols}x${rows} tiles`);
         };
         game.generateMap();
     },
     patch: (game) => {
-        // Draw the tilemap ONLY for tiles currently visible by the camera (Optimization)
+        // Draw the tilemap ONLY for tiles currently visible by the camera
         game.bus.on('preDraw', (ctx) => {
             if (!game.mapGrid) return;
             
+            // Clean integer math for camera boundaries
             const startCol = Math.floor(game.camera.x / game.tileSize);
-            const endCol = startCol + (game.canvas.width / game.tileSize) + 1;
+            const colsVisible = Math.ceil(game.canvas.width / game.tileSize);
+            const endCol = startCol + colsVisible + 1; // +1 to prevent pop-in at the edges
+            
             const startRow = Math.floor(game.camera.y / game.tileSize);
-            const endRow = startRow + (game.canvas.height / game.tileSize) + 1;
+            const rowsVisible = Math.ceil(game.canvas.height / game.tileSize);
+            const endRow = startRow + rowsVisible + 1;
 
             for (let y = startRow; y <= endRow; y++) {
                 for (let x = startCol; x <= endCol; x++) {
                     if (y >= 0 && y < game.mapGrid.length && x >= 0 && x < game.mapGrid[y].length) {
-                        const img = game.tiles[game.mapGrid[y][x]];
+                        const tileType = game.mapGrid[y][x];
+                        const img = game.tiles[tileType];
+                        
+                        const drawX = x * game.tileSize;
+                        const drawY = y * game.tileSize;
+
                         if (img.complete && img.naturalHeight !== 0) {
-                            ctx.drawImage(img, x * game.tileSize, y * game.tileSize, game.tileSize, game.tileSize);
+                            // If image is loaded, draw it!
+                            ctx.drawImage(img, drawX, drawY, game.tileSize, game.tileSize);
+                        } else {
+                            // FALLBACK: If image is missing or loading, draw a colored square so the map isn't blank!
+                            ctx.fillStyle = tileType === 'dirt' ? '#3d2817' : (tileType === 'vines' ? '#2d4c1e' : '#555555');
+                            ctx.fillRect(drawX, drawY, game.tileSize, game.tileSize);
+                            
+                            // Draw gridlines so you can actually see the tiles working
+                            ctx.strokeStyle = 'rgba(0,0,0,0.2)'; 
+                            ctx.strokeRect(drawX, drawY, game.tileSize, game.tileSize);
                         }
                     }
                 }
