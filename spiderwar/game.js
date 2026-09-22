@@ -136,7 +136,7 @@ class Game {
         
         this.spiders = []; this.structures = []; this.queens = []; 
         this.projectiles = []; this.particles = []; this.spells = []; this.bosses = []; 
-        this.resourceNodes = []; this.critters = [];      
+        this.resourceNodes = []; this.critters = []; this.decor = []; // NEW DECOR ARRAY
         
         this.eco = { black: { pumpkins: 600, dew: 100 }, red: { pumpkins: 600, dew: 100 } }; 
         this.pop = { black: 0, red: 0 }; this.maxPop = { black: 10, red: 10 };
@@ -150,7 +150,7 @@ class Game {
 
     resize() { this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight; }
     
-    // Fallback terrain getter (Overwritten by Perlin Terrain Expansion later)
+    // Fallback terrain getter
     getTerrainAt(x, y) { return 'dirt'; }
 
     checkTerritory(x, y, team) {
@@ -262,11 +262,11 @@ class Game {
         document.getElementById('debug').innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items: center;">
                 <div style="font-size:1.2em;">
-                    <span style="color:#aaa;">BLACK TEAM:</span> <strong>${this.eco.black.pumpkins}🎃 | ${this.eco.black.dew}💧</strong> 
+                    <span style="color:#aaa;">BLACK:</span> <strong>${this.eco.black.pumpkins}🎃 | ${this.eco.black.dew}💧</strong> 
                     <span style="font-size:0.8em; margin-left: 10px;">(Pop: ${this.pop.black}/${this.maxPop.black} | Tech: ${this.techLevel.black})</span>
                 </div>
                 <div style="font-size:1.2em; color:#ff4444;">
-                    <span style="color:#772222;">RED TEAM:</span> <strong>${this.eco.red.pumpkins}🎃 | ${this.eco.red.dew}💧</strong>
+                    <span style="color:#772222;">RED:</span> <strong>${this.eco.red.pumpkins}🎃 | ${this.eco.red.dew}💧</strong>
                 </div>
             </div>
             <div style="margin-top: 8px; font-size: 0.85em; color: #888;">
@@ -321,7 +321,7 @@ class Game {
         this.ctx.fillStyle = '#2c1e16'; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.save(); this.ctx.translate(-this.camera.x, -this.camera.y);
         
-        this.bus.emit('preDraw', this.ctx); // Terrain
+        this.bus.emit('preDraw', this.ctx); // Splat Terrain + Decor
         this.bus.emit('territoryDraw', this.ctx); 
         
         this.spells.forEach(s => s.draw(this.ctx)); 
@@ -458,7 +458,7 @@ const TerritoryExpansion = {
     }
 }
 
-// --- UPDATED EXPANSION: CONTINUOUS PERLIN NOISE & SCALED TERRAIN ---
+// --- NEW RENDERING ENGINE: ALPHA SPLATTING + CLUTTER DECOR ---
 const TerrainExpansion = {
     init: (game) => {
         game.tiles = { dirt: new Image(), vines: new Image(), pebbles: new Image(), water: new Image(), grass: new Image() };
@@ -468,9 +468,6 @@ const TerrainExpansion = {
             game.tiles[type].src = src;
             game.tiles[type].onload = () => {
                 const pattern = game.ctx.createPattern(game.tiles[type], 'repeat');
-                // Scale AI textures down to 35% to fix "zoomed in" look
-                const matrix = new DOMMatrix().scale(0.35, 0.35);
-                pattern.setTransform(matrix);
                 game.patterns[type] = pattern;
             };
         };
@@ -481,7 +478,7 @@ const TerrainExpansion = {
         loadPattern('water', 'assets/tile_water.png');
         loadPattern('grass', 'assets/tile_grass.png');
         
-        // 1. FAST 2D VALUE NOISE GENERATOR
+        // 1. Math Noise Generator
         game.noiseSeed = Math.random() * 1000;
         game.hashNoise = function(x, y) {
             let n = Math.sin(x * 12.9898 + y * 78.233 + this.noiseSeed) * 43758.5453;
@@ -506,7 +503,6 @@ const TerrainExpansion = {
             return val / max;
         };
 
-        // 2. Continuous Math terrain getter
         game.getTerrainAt = function(x, y) {
             const nx = x / 800; const ny = y / 800;
             const riverNoise = this.getOctaveNoise(nx * 0.5, ny * 0.5, 3);
@@ -516,12 +512,33 @@ const TerrainExpansion = {
             if (terrainNoise > 0.65) return 'grass';
             if (terrainNoise < 0.35) return 'pebbles';
             if (terrainNoise < 0.45 && terrainNoise > 0.35) return 'vines'; 
-            
             return 'dirt';
         };
+
+        // 2. Offscreen Canvas for Alpha Splatting
+        game.offCanvas = document.createElement('canvas');
+        game.offCtx = game.offCanvas.getContext('2d');
+        
+        // 3. Pre-render a soft radial brush
+        game.brush = document.createElement('canvas');
+        game.brush.width = 120; game.brush.height = 120;
+        let bCtx = game.brush.getContext('2d');
+        let grad = bCtx.createRadialGradient(60, 60, 0, 60, 60, 60);
+        grad.addColorStop(0, 'rgba(0,0,0,1)');
+        grad.addColorStop(0.7, 'rgba(0,0,0,0.8)');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        bCtx.fillStyle = grad;
+        bCtx.fillRect(0,0,120,120);
     },
     patch: (game) => {
         game.bus.on('preDraw', (ctx) => {
+            // Resize offscreen canvas to match screen
+            if (game.offCanvas.width !== game.canvas.width) {
+                game.offCanvas.width = game.canvas.width;
+                game.offCanvas.height = game.canvas.height;
+            }
+
+            // 1. Draw solid Dirt background
             ctx.fillStyle = game.patterns.dirt ? game.patterns.dirt : '#3d2817';
             ctx.fillRect(game.camera.x, game.camera.y, game.canvas.width, game.canvas.height);
 
@@ -533,22 +550,78 @@ const TerrainExpansion = {
 
             const biomes = ['vines', 'pebbles', 'grass', 'water']; 
             
+            // Transform matrix to scale patterns to 35% AND offset them by camera so they don't swim
+            const matrix = new DOMMatrix().scale(0.35, 0.35).translate(game.camera.x / 0.35, game.camera.y / 0.35);
+            
             biomes.forEach(biomeType => {
                 if(!game.patterns[biomeType]) return; 
-                ctx.fillStyle = game.patterns[biomeType];
-                ctx.beginPath();
                 
+                game.patterns[biomeType].setTransform(matrix);
+
+                // Clear offscreen mask
+                game.offCtx.clearRect(0, 0, game.offCanvas.width, game.offCanvas.height);
+                game.offCtx.globalCompositeOperation = 'source-over';
+                
+                // Draw soft black brush strokes where the biome exists
                 for (let y = startY; y <= endY; y += renderChunkSize) {
                     for (let x = startX; x <= endX; x += renderChunkSize) {
                         if (game.getTerrainAt(x, y) === biomeType) {
-                            ctx.moveTo(x, y);
-                            ctx.arc(x, y, renderChunkSize * 1.4, 0, Math.PI * 2);
+                            // Translate world coords to screen coords for the offscreen canvas
+                            game.offCtx.drawImage(game.brush, (x - game.camera.x) - 60, (y - game.camera.y) - 60);
                         }
                     }
                 }
-                ctx.fill(); 
+
+                // Fill the blurred black shapes with the texture
+                game.offCtx.globalCompositeOperation = 'source-in';
+                game.offCtx.fillStyle = game.patterns[biomeType];
+                game.offCtx.fillRect(0, 0, game.canvas.width, game.canvas.height);
+
+                // Draw the perfectly blended layer back onto the main canvas
+                ctx.drawImage(game.offCanvas, game.camera.x, game.camera.y);
+            });
+            
+            // Draw Clutter!
+            game.decor.forEach(d => {
+                // Only draw decor that is currently on screen
+                if(d.x > game.camera.x - 50 && d.x < game.camera.x + game.canvas.width + 50 && 
+                   d.y > game.camera.y - 50 && d.y < game.camera.y + game.canvas.height + 50) {
+                    if(d.sprite.complete && d.sprite.naturalHeight !== 0) {
+                        ctx.drawImage(d.sprite, d.x - d.size/2, d.y - d.size/2, d.size, d.size);
+                    }
+                }
             });
         });
+    }
+};
+
+// --- NEW EXPANSION: DECOR CLUTTER ---
+const DecorExpansion = {
+    init: (game) => {
+        // Load Decor Sprites
+        game.decorSprites = {
+            water: new Image(), grass: new Image(), pebbles: new Image()
+        };
+        game.decorSprites.water.src = 'assets/clutter_water.png';
+        game.decorSprites.grass.src = 'assets/clutter_grass.png';
+        game.decorSprites.pebbles.src = 'assets/clutter_pebbles.png';
+
+        // Wait a tiny bit for map to generate, then scatter clutter
+        setTimeout(() => {
+            for(let i=0; i<1500; i++) {
+                const dx = Math.random() * game.world.width;
+                const dy = Math.random() * game.world.height;
+                const terrain = game.getTerrainAt(dx, dy);
+                
+                if(['water', 'grass', 'pebbles'].includes(terrain)) {
+                    game.decor.push({
+                        x: dx, y: dy, type: terrain, 
+                        sprite: game.decorSprites[terrain],
+                        size: (Math.random() * 15) + 15 // Random size variation
+                    });
+                }
+            }
+        }, 500);
     }
 };
 
@@ -900,6 +973,8 @@ const MinimapExpansion = {
 
         game.canvas.addEventListener('mousedown', e => { if (e.button === 0) checkMinimapClick(e.clientX, e.clientY); });
         window.addEventListener('mousemove', e => checkMinimapMove(e.clientX, e.clientY));
+        
+        // BUG FIX: Unconditionally end drag state anywhere on screen!
         window.addEventListener('mouseup', e => { if (e.button === 0) game.isMinimapDragging = false; });
         
         game.canvas.addEventListener('touchstart', e => { if(e.touches.length===1) checkMinimapClick(e.touches[0].clientX, e.touches[0].clientY); }, {passive: false});
@@ -1128,19 +1203,20 @@ window.onload = () => {
     const game = new Game();
     
     // Core Game Systems
-    game.expansions.load('TerrainGen', TerrainExpansion); // SINE WAVE MAP GEN
+    game.expansions.load('TerrainGen', TerrainExpansion); 
+    game.expansions.load('DecorSystem', DecorExpansion); // NEW: CLUTTER SCATTERING
     game.expansions.load('AdvancedBaseBuilder', AdvancedBaseExpansion); 
     game.expansions.load('QueenSystem', QueenExpansion); 
     game.expansions.load('HiveMind', HiveMindExpansion); 
     game.expansions.load('CombatAndHarvesterAI', CombatAndHarvesterExpansion); 
     game.expansions.load('WebNetwork', WebNetworkExpansion); 
-    game.expansions.load('TerritoryControl', TerritoryExpansion); // NEW: ANNO TERRITORY OVERLAYS
+    game.expansions.load('TerritoryControl', TerritoryExpansion); 
     
     // UI EXPANSIONS
     game.expansions.load('MobileUI', MobileUIExpansion); 
     game.expansions.load('LairUI', LairUIExpansion); 
     game.expansions.load('MinimapUI', MinimapExpansion); 
-    game.expansions.load('GameLoop', GameLoopExpansion); // NEW: RESTART MODAL
+    game.expansions.load('GameLoop', GameLoopExpansion); 
     game.expansions.load('SaveLoadManager', SaveLoadExpansion); 
     
     // JUICE & AUDIO
