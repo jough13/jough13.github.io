@@ -481,17 +481,23 @@ const TerritoryExpansion = {
     }
 }
 
-// --- ORGANIC BLOB TERRAIN ---
+// --- UPDATED EXPANSION: CONTINUOUS PERLIN NOISE & SCALED TERRAIN ---
 const TerrainExpansion = {
     init: (game) => {
-        game.tileSize = 128; // Smaller grid for much higher resolution organic shapes!
         game.tiles = { dirt: new Image(), vines: new Image(), pebbles: new Image(), water: new Image(), grass: new Image() };
-        game.patterns = {}; // Store seamless CanvasPatterns here
+        game.patterns = {}; 
 
         const loadPattern = (type, src) => {
             game.tiles[type].src = src;
             game.tiles[type].onload = () => {
-                game.patterns[type] = game.ctx.createPattern(game.tiles[type], 'repeat');
+                const pattern = game.ctx.createPattern(game.tiles[type], 'repeat');
+                
+                // FIX THE "ZOOMED IN" BUG! 
+                // AI images are huge (1024x1024). We scale the texture down to 35% so it looks like a retro game scale.
+                const matrix = new DOMMatrix().scale(0.35, 0.35);
+                pattern.setTransform(matrix);
+                
+                game.patterns[type] = pattern;
             };
         };
 
@@ -501,61 +507,68 @@ const TerrainExpansion = {
         loadPattern('water', 'assets/tile_water.png');
         loadPattern('grass', 'assets/tile_grass.png');
         
-        game.generateMap = function() {
-            this.mapGrid = [];
-            const cols = Math.ceil(this.world.width / this.tileSize); 
-            const rows = Math.ceil(this.world.height / this.tileSize);
-            const seedA = Math.random() * 100; const seedB = Math.random() * 100;
-            
-            for (let y = 0; y < rows; y++) {
-                let row = [];
-                for (let x = 0; x < cols; x++) { 
-                    // Complex multi-octave noise for ultra-natural shapes
-                    let nx = x / 8; let ny = y / 8;
-                    let noise = Math.sin(nx + seedA) + Math.cos(ny + seedB) + (Math.sin(nx*2.5)*0.5);
-                    
-                    let type = 'dirt';
-                    if (noise > 1.1) type = 'water'; 
-                    else if (noise > 0.4) type = 'grass'; 
-                    else if (noise < -1.1) type = 'pebbles'; 
-                    else if (noise < -0.5) type = 'vines'; 
-                    row.push(type);
-                }
-                this.mapGrid.push(row);
-            }
-            
-            // Meandering River Generator
-            let riverX = Math.floor(cols / 2);
-            for(let y = 0; y < rows; y++) {
-                this.mapGrid[y][riverX] = 'water'; 
-                if(this.mapGrid[y][riverX-1]) this.mapGrid[y][riverX-1] = 'water'; 
-                if(this.mapGrid[y][riverX+1]) this.mapGrid[y][riverX+1] = 'water'; 
-                if(Math.random() > 0.4) riverX += (Math.random() > 0.5 ? 1 : -1);
-            }
-        };
-        game.generateMap();
-
-        // Seeded random for consistent wavy edges
-        game.seededRandom = function(x, y) {
-            let n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+        // 1. FAST 2D VALUE NOISE GENERATOR
+        game.noiseSeed = Math.random() * 1000;
+        game.hashNoise = function(x, y) {
+            let n = Math.sin(x * 12.9898 + y * 78.233 + this.noiseSeed) * 43758.5453;
             return n - Math.floor(n);
         };
+        game.lerp = (a, b, t) => a + t * (b - a);
+        game.getNoise = function(x, y) {
+            let xi = Math.floor(x); let yi = Math.floor(y);
+            let xf = x - xi; let yf = y - yi;
+            let u = xf * xf * (3.0 - 2.0 * xf); // Smoothstep
+            let v = yf * yf * (3.0 - 2.0 * yf);
+            let a = this.hashNoise(xi, yi); let b = this.hashNoise(xi + 1, yi);
+            let c = this.hashNoise(xi, yi + 1); let d = this.hashNoise(xi + 1, yi + 1);
+            return this.lerp(this.lerp(a, b, u), this.lerp(c, d, u), v);
+        };
+        game.getOctaveNoise = function(x, y, octaves) {
+            let val = 0; let freq = 1; let amp = 1; let max = 0;
+            for(let i=0; i<octaves; i++) {
+                val += this.getNoise(x*freq, y*freq) * amp;
+                max += amp; freq *= 2; amp *= 0.5;
+            }
+            return val / max;
+        };
+
+        // 2. OVERRIDE GET TERRAIN AT TO USE CONTINUOUS MATH INSTEAD OF A GRID!
+        game.getTerrainAt = function(x, y) {
+            // Scale world coordinates down to noise space (Zoom level of the biomes)
+            const nx = x / 800; const ny = y / 800;
+            
+            // Generate River (A deep ravine in the noise)
+            const riverNoise = this.getOctaveNoise(nx * 0.5, ny * 0.5, 3);
+            if (Math.abs(riverNoise - 0.5) < 0.04) return 'water'; // Winding river exactly through the middle values
+
+            // Generate other Biomes
+            const terrainNoise = this.getOctaveNoise(nx, ny, 3);
+            if (terrainNoise > 0.65) return 'grass';
+            if (terrainNoise < 0.35) return 'pebbles';
+            if (terrainNoise < 0.45 && terrainNoise > 0.35) return 'vines'; // Bordering pebbles
+            
+            return 'dirt';
+        };
+
+        // For save data compatibility, remove old grid dependency
+        game.mapGrid = null;
     },
     patch: (game) => {
         game.bus.on('preDraw', (ctx) => {
-            if (!game.mapGrid) return;
-            
-            // 1. Draw solid Dirt background first
+            // 1. Draw solid Dirt background first (Base layer)
             ctx.fillStyle = game.patterns.dirt ? game.patterns.dirt : '#3d2817';
             ctx.fillRect(game.camera.x, game.camera.y, game.canvas.width, game.canvas.height);
 
-            const startCol = Math.floor(game.camera.x / game.tileSize) - 2; 
-            const endCol = startCol + Math.ceil(game.canvas.width / game.tileSize) + 4;
-            const startRow = Math.floor(game.camera.y / game.tileSize) - 2; 
-            const endRow = startRow + Math.ceil(game.canvas.height / game.tileSize) + 4;
+            // 2. Draw organic Perlin noise layers on top
+            // We sample the screen in 40px chunks. Small enough for high detail, big enough to run at 60fps.
+            const renderChunkSize = 40; 
+            
+            // Snap start coordinates to chunk grid to prevent shimmering when camera moves
+            const startX = Math.floor(game.camera.x / renderChunkSize) * renderChunkSize;
+            const startY = Math.floor(game.camera.y / renderChunkSize) * renderChunkSize;
+            const endX = startX + game.canvas.width + renderChunkSize;
+            const endY = startY + game.canvas.height + renderChunkSize;
 
-            // 2. Draw biomes as massive, overlapping organic circles!
-            // Order matters: Water draws last so it overlaps nicely on top of grass shores.
             const biomes = ['vines', 'pebbles', 'grass', 'water']; 
             
             biomes.forEach(biomeType => {
@@ -563,19 +576,13 @@ const TerrainExpansion = {
                 ctx.fillStyle = game.patterns[biomeType];
                 ctx.beginPath();
                 
-                for (let y = startRow; y <= endRow; y++) {
-                    for (let x = startCol; x <= endCol; x++) {
-                        if (y >= 0 && y < game.mapGrid.length && x >= 0 && x < game.mapGrid[y].length) {
-                            if (game.mapGrid[y][x] === biomeType) {
-                                const cX = x * game.tileSize + (game.tileSize/2);
-                                const cY = y * game.tileSize + (game.tileSize/2);
-                                
-                                // Draw a circle much larger than the tile itself (1.3x)
-                                // Jitter the radius slightly to make the edges uneven and organic!
-                                let rJitter = game.seededRandom(x,y) * 40;
-                                ctx.moveTo(cX, cY);
-                                ctx.arc(cX, cY, (game.tileSize * 1.3) + rJitter, 0, Math.PI*2);
-                            }
+                for (let y = startY; y <= endY; y += renderChunkSize) {
+                    for (let x = startX; x <= endX; x += renderChunkSize) {
+                        if (game.getTerrainAt(x, y) === biomeType) {
+                            // Draw densely overlapping circles matching the perlin noise contour
+                            // radius is 1.4x the chunk size to create perfect, smooth blob merging
+                            ctx.moveTo(x, y);
+                            ctx.arc(x, y, renderChunkSize * 1.4, 0, Math.PI * 2);
                         }
                     }
                 }
