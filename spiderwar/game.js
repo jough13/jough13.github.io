@@ -80,7 +80,6 @@ class Structure {
         this.x = x; this.y = y; this.team = team; this.type = type;
         this.hp = type === 'wall' ? 500 : 200; this.maxHp = this.hp;
         
-        // TERRITORY GENERATORS
         this.territory = type === 'nest' ? 400 : (type === 'pylon' ? 250 : 0);
         
         if(type === 'nest') this.size = 40; else if(type === 'eggsac') this.size = 25; 
@@ -99,7 +98,7 @@ class Structure {
             else if(this.type === 'eggsac') { ctx.beginPath(); ctx.ellipse(this.x, this.y, this.size, this.size-10, 0, 0, Math.PI*2); ctx.fill(); }
             else if(this.type === 'turret') { ctx.fillRect(this.x - this.size, this.y - this.size, this.size*2, this.size*2); ctx.fillStyle='purple'; ctx.beginPath(); ctx.arc(this.x, this.y, 8, 0, Math.PI*2); ctx.fill(); }
             else if(this.type === 'wall') { ctx.fillRect(this.x - this.size, this.y - 10, this.size*2, 20); }
-            else if(this.type === 'pylon') { ctx.beginPath(); ctx.moveTo(this.x, this.y - this.size); ctx.lineTo(this.x - this.size, this.y + this.size); ctx.lineTo(this.x + this.size, this.y + this.size); ctx.fill(); } // Triangle fallback
+            else if(this.type === 'pylon') { ctx.beginPath(); ctx.moveTo(this.x, this.y - this.size); ctx.lineTo(this.x - this.size, this.y + this.size); ctx.lineTo(this.x + this.size, this.y + this.size); ctx.fill(); }
             ctx.strokeStyle = this.team; ctx.lineWidth = 2; ctx.stroke();
         }
     }
@@ -132,7 +131,7 @@ class Game {
         this.canvas = document.getElementById('gameCanvas'); this.ctx = this.canvas.getContext('2d');
         this.bus = new GameBus(); this.expansions = new ExpansionManager(this);
         
-        this.world = { width: 6000, height: 6000 }; // HUGE NEW MAP SIZE
+        this.world = { width: 6000, height: 6000 }; 
         this.camera = { x: 0, y: 0 }; this.tick = 0; 
         
         this.spiders = []; this.structures = []; this.queens = []; 
@@ -150,18 +149,13 @@ class Game {
     }
 
     resize() { this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight; }
-    getTerrainAt(x, y) {
-        if(!this.mapGrid || !this.tileSize) return 'dirt';
-        const tX = Math.floor(x / this.tileSize); const tY = Math.floor(y / this.tileSize);
-        if(this.mapGrid[tY] && this.mapGrid[tY][tX]) return this.mapGrid[tY][tX]; return 'dirt';
-    }
+    
+    // Fallback terrain getter (Overwritten by Perlin Terrain Expansion later)
+    getTerrainAt(x, y) { return 'dirt'; }
 
     checkTerritory(x, y, team) {
-        // Find if x,y is inside the radius of ANY friendly territory-generating structure
         for(let s of this.structures) {
-            if(s.team === team && s.territory > 0) {
-                if(Math.hypot(s.x - x, s.y - y) <= s.territory) return true;
-            }
+            if(s.team === team && s.territory > 0 && Math.hypot(s.x - x, s.y - y) <= s.territory) return true;
         }
         return false;
     }
@@ -170,22 +164,15 @@ class Game {
         this.keys = {};
         window.addEventListener('keydown', e => {
             const k = e.key.toLowerCase(); this.keys[k] = true;
-            
-            // Unify PC Hotkeys with the Mobile Toolbar!
             if(k === '1') { this.activeTool = 'nest'; this.bus.emit('toolChanged', 'nest'); }
             if(k === '2') { this.activeTool = 'eggsac'; this.bus.emit('toolChanged', 'eggsac'); }
             if(k === '3') { this.activeTool = 'turret'; this.bus.emit('toolChanged', 'turret'); }
             if(k === '4') { this.activeTool = 'wall'; this.bus.emit('toolChanged', 'wall'); }
             if(k === '7') { this.activeTool = 'venomStrike'; this.bus.emit('toolChanged', 'venomStrike'); }
             if(k === '8') { this.activeTool = 'silkTrap'; this.bus.emit('toolChanged', 'silkTrap'); }
-            
-            // Press Escape to cancel current tool
             if(k === 'escape') { this.activeTool = 'select'; this.bus.emit('toolChanged', 'select'); this.bus.emit('closeModal'); }
-            
-            // Upgrade Hotkey
             if(k === 'u' && this.eco.black.pumpkins >= 250) { this.eco.black.pumpkins -= 250; this.techLevel.black++; this.bus.emit('playSound', 'spell');}
         });
-        
         window.addEventListener('keyup', e => this.keys[e.key.toLowerCase()] = false);
 
         let isDragging = false; let dragStartX, dragStartY, camStartX, camStartY, hasMoved;
@@ -206,7 +193,6 @@ class Game {
         const endInteraction = (x, y, targetElem) => {
             if (isDragging) {
                 isDragging = false;
-                // Don't trigger game clicks if clicking UI elements
                 if(targetElem.closest && (targetElem.closest('#structureModal') || targetElem.closest('#mobileToolbar') || targetElem.closest('#ui') || targetElem.closest('#gameOverModal'))) return;
 
                 if (!hasMoved && !this.isMinimapDragging) {
@@ -222,14 +208,9 @@ class Game {
                     }
                     else if (['nest', 'eggsac', 'turret', 'wall', 'pylon'].includes(this.activeTool)) {
                         this.bus.emit('buildStructure', { x: worldX, y: worldY, team: 'black', type: this.activeTool });
-                        
-                        // If they hold Shift, let them keep painting buildings! Otherwise, auto-reset to Select tool.
-                        if (!this.keys['shift']) {
-                            this.activeTool = 'select'; this.bus.emit('toolChanged', 'select');
-                        }
+                        if (!this.keys['shift']) { this.activeTool = 'select'; this.bus.emit('toolChanged', 'select'); }
                     }
                     else {
-                        // "Select" tool logic: Try to click a building to open the UI
                         let clickedStruct = null;
                         for(let s of this.structures) { if (s.team === 'black' && Math.hypot(s.x - worldX, s.y - worldY) < s.size) { clickedStruct = s; break; } }
                         this.selectedStructure = clickedStruct; 
@@ -264,7 +245,6 @@ class Game {
             if (data.team === 'black' && this.structures.filter(s => s.team === 'black').length > 0) {
                 if(!this.checkTerritory(data.x, data.y, data.team)) {
                     game.bus.emit('particles', {x: data.x, y: data.y, color: '#ff0000', count: 10});
-                    console.log("Must build inside web territory!");
                     return; 
                 }
             }
@@ -290,7 +270,7 @@ class Game {
                 </div>
             </div>
             <div style="margin-top: 8px; font-size: 0.85em; color: #888;">
-                <strong>1. Select Tool (1-4, 7-8)</strong> -> <strong>2. Click Map to place!</strong> (Hold Shift to paint) | <strong>[U] Upgrade</strong> | <strong>Click Nest for Units</strong>
+                <strong>Hotkeys:</strong> [1] Nest [2] Sac [3] Turret [4] Wall | [5] Harvest [6] Soldier | [7] Strike [8] Trap | <strong>[U] Upgrade</strong>
             </div>
         `;
     }
@@ -342,7 +322,7 @@ class Game {
         this.ctx.save(); this.ctx.translate(-this.camera.x, -this.camera.y);
         
         this.bus.emit('preDraw', this.ctx); // Terrain
-        this.bus.emit('territoryDraw', this.ctx); // NEW: Anno Territory Overlay
+        this.bus.emit('territoryDraw', this.ctx); 
         
         this.spells.forEach(s => s.draw(this.ctx)); 
         this.bus.emit('atmosphereDraw', this.ctx);
@@ -461,11 +441,9 @@ const LairUIExpansion = {
     }
 };
 
-// --- NEW EXPANSION: ANNO TERRITORY OVERLAYS ---
 const TerritoryExpansion = {
     patch: (game) => {
         game.bus.on('territoryDraw', (ctx) => {
-            // Draw glowing circles around Nests and Pylons
             for(let s of game.structures) {
                 if(s.territory > 0) {
                     ctx.beginPath();
@@ -473,8 +451,7 @@ const TerritoryExpansion = {
                     ctx.fillStyle = s.team === 'black' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 0, 0, 0.05)';
                     ctx.fill();
                     ctx.strokeStyle = s.team === 'black' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 0, 0, 0.2)';
-                    ctx.lineWidth = 1;
-                    ctx.stroke();
+                    ctx.lineWidth = 1; ctx.stroke();
                 }
             }
         });
@@ -491,12 +468,9 @@ const TerrainExpansion = {
             game.tiles[type].src = src;
             game.tiles[type].onload = () => {
                 const pattern = game.ctx.createPattern(game.tiles[type], 'repeat');
-                
-                // FIX THE "ZOOMED IN" BUG! 
-                // AI images are huge (1024x1024). We scale the texture down to 35% so it looks like a retro game scale.
+                // Scale AI textures down to 35% to fix "zoomed in" look
                 const matrix = new DOMMatrix().scale(0.35, 0.35);
                 pattern.setTransform(matrix);
-                
                 game.patterns[type] = pattern;
             };
         };
@@ -517,7 +491,7 @@ const TerrainExpansion = {
         game.getNoise = function(x, y) {
             let xi = Math.floor(x); let yi = Math.floor(y);
             let xf = x - xi; let yf = y - yi;
-            let u = xf * xf * (3.0 - 2.0 * xf); // Smoothstep
+            let u = xf * xf * (3.0 - 2.0 * xf);
             let v = yf * yf * (3.0 - 2.0 * yf);
             let a = this.hashNoise(xi, yi); let b = this.hashNoise(xi + 1, yi);
             let c = this.hashNoise(xi, yi + 1); let d = this.hashNoise(xi + 1, yi + 1);
@@ -532,38 +506,26 @@ const TerrainExpansion = {
             return val / max;
         };
 
-        // 2. OVERRIDE GET TERRAIN AT TO USE CONTINUOUS MATH INSTEAD OF A GRID!
+        // 2. Continuous Math terrain getter
         game.getTerrainAt = function(x, y) {
-            // Scale world coordinates down to noise space (Zoom level of the biomes)
             const nx = x / 800; const ny = y / 800;
-            
-            // Generate River (A deep ravine in the noise)
             const riverNoise = this.getOctaveNoise(nx * 0.5, ny * 0.5, 3);
-            if (Math.abs(riverNoise - 0.5) < 0.04) return 'water'; // Winding river exactly through the middle values
+            if (Math.abs(riverNoise - 0.5) < 0.04) return 'water'; 
 
-            // Generate other Biomes
             const terrainNoise = this.getOctaveNoise(nx, ny, 3);
             if (terrainNoise > 0.65) return 'grass';
             if (terrainNoise < 0.35) return 'pebbles';
-            if (terrainNoise < 0.45 && terrainNoise > 0.35) return 'vines'; // Bordering pebbles
+            if (terrainNoise < 0.45 && terrainNoise > 0.35) return 'vines'; 
             
             return 'dirt';
         };
-
-        // For save data compatibility, remove old grid dependency
-        game.mapGrid = null;
     },
     patch: (game) => {
         game.bus.on('preDraw', (ctx) => {
-            // 1. Draw solid Dirt background first (Base layer)
             ctx.fillStyle = game.patterns.dirt ? game.patterns.dirt : '#3d2817';
             ctx.fillRect(game.camera.x, game.camera.y, game.canvas.width, game.canvas.height);
 
-            // 2. Draw organic Perlin noise layers on top
-            // We sample the screen in 40px chunks. Small enough for high detail, big enough to run at 60fps.
             const renderChunkSize = 40; 
-            
-            // Snap start coordinates to chunk grid to prevent shimmering when camera moves
             const startX = Math.floor(game.camera.x / renderChunkSize) * renderChunkSize;
             const startY = Math.floor(game.camera.y / renderChunkSize) * renderChunkSize;
             const endX = startX + game.canvas.width + renderChunkSize;
@@ -579,8 +541,6 @@ const TerrainExpansion = {
                 for (let y = startY; y <= endY; y += renderChunkSize) {
                     for (let x = startX; x <= endX; x += renderChunkSize) {
                         if (game.getTerrainAt(x, y) === biomeType) {
-                            // Draw densely overlapping circles matching the perlin noise contour
-                            // radius is 1.4x the chunk size to create perfect, smooth blob merging
                             ctx.moveTo(x, y);
                             ctx.arc(x, y, renderChunkSize * 1.4, 0, Math.PI * 2);
                         }
@@ -595,15 +555,9 @@ const TerrainExpansion = {
 const AdvancedBaseExpansion = {
     init: (game) => {
         setTimeout(() => {
-            const pad = 600; // Push bases further into the massive map
+            const pad = 600; 
             const bX = pad + Math.random() * 200; const bY = pad + Math.random() * 200;
             const rX = game.world.width - pad - Math.random() * 200; const rY = game.world.height - pad - Math.random() * 200;
-            
-            // Ensure bases start on safe dirt (override terrain)
-            const tBX = Math.floor(bX/game.tileSize); const tBY = Math.floor(bY/game.tileSize);
-            const tRX = Math.floor(rX/game.tileSize); const tRY = Math.floor(rY/game.tileSize);
-            if(game.mapGrid[tBY]) game.mapGrid[tBY][tBX] = 'dirt';
-            if(game.mapGrid[tRY]) game.mapGrid[tRY][tRX] = 'dirt';
 
             game.structures.push(new Structure(bX, bY, 'black', 'nest')); 
             game.structures.push(new Structure(bX + 80, bY, 'black', 'eggsac'));
@@ -612,17 +566,14 @@ const AdvancedBaseExpansion = {
             
             game.camera.x = Math.max(0, bX - (game.canvas.width / 2)); game.camera.y = Math.max(0, bY - (game.canvas.height / 2));
             
-            // Massive organic resource scattering
             for (let i = 0; i < 40; i++) {
                 let pX = 600 + Math.random() * (game.world.width - 1200); let pY = 600 + Math.random() * (game.world.height - 1200);
                 for (let p = 0; p < Math.floor(Math.random() * 6) + 5; p++) game.resourceNodes.push(new ResourceNode(pX + (Math.random() - 0.5) * 300, pY + (Math.random() - 0.5) * 300, 'pumpkin'));
             }
             for (let i = 0; i < 60; i++) { game.resourceNodes.push(new ResourceNode(Math.random() * game.world.width, Math.random() * game.world.height, 'dew')); }
             
-            // Spawn Critters
             for(let i=0; i<3; i++) game.critters.push(new GoldenBug(game.world.width/2 + (Math.random()-0.5)*1000, game.world.height/2 + (Math.random()-0.5)*1000));
             for(let i=0; i<30; i++) {
-                // Aphids prefer grass
                 let ax = Math.random() * game.world.width; let ay = Math.random() * game.world.height;
                 if(game.getTerrainAt(ax, ay) === 'grass' || Math.random() > 0.8) game.critters.push(new Aphid(ax, ay));
             }
@@ -663,7 +614,6 @@ const HiveMindExpansion = {
                     }
                 } else if (game.pop.red >= game.maxPop.red && game.eco.red.pumpkins > 200) {
                     game.eco.red.pumpkins -= 50; 
-                    // AI now builds Pylons to expand if it's out of space!
                     let bType = Math.random() > 0.7 ? 'pylon' : 'eggsac';
                     game.structures.push(new Structure(this.x + (Math.random()-0.5)*400, this.y + (Math.random()-0.5)*400, 'red', bType));
                 }
@@ -672,7 +622,6 @@ const HiveMindExpansion = {
     }
 };
 
-// --- UPDATED GAME LOOP: THE RESTART MODAL ---
 const GameLoopExpansion = {
     patch: (game) => {
         const style = document.createElement('style');
@@ -717,12 +666,10 @@ const GameLoopExpansion = {
         game.bus.on('uiDraw', (ctx) => {
             if (game.gameState === 'playing') return;
             ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'; ctx.fillRect(0, 0, game.canvas.width, game.canvas.height);
-            // Modal HTML handles the rest!
         });
     }
 };
 
-// --- AUDIO SYNTH EXPANSION ---
 const AudioExpansion = {
     init: (game) => {
         const AudioContext = window.AudioContext || window.webkitAudioContext; const ctx = new AudioContext();
@@ -742,7 +689,6 @@ const AudioExpansion = {
     }
 };
 
-// --- OTHER ENTITIES (UNCHANGED) ---
 class Aphid {
     constructor(x, y) { this.x = x; this.y = y; this.size = 8; this.hp = 30; this.maxHp = 30; this.angle = Math.random() * Math.PI * 2; this.speed = 0.3; this.team = 'nature'; this.color = '#7eff5e'; }
     update(game) {
@@ -935,7 +881,6 @@ const MinimapExpansion = {
             this.camera.y = (pctY * this.world.height) - (this.canvas.height / 2);
         };
         
-        // Helper to check if mouse is hitting the minimap
         const checkMinimapClick = (clientX, clientY) => {
             const mmX = game.canvas.width - game.minimap.size - game.minimap.padding; 
             const mmY = game.canvas.height - game.minimap.size - game.minimap.padding - 80; 
@@ -953,51 +898,31 @@ const MinimapExpansion = {
             }
         };
 
-        // MOUSE CONTROLS
-        game.canvas.addEventListener('mousedown', e => { 
-            if (e.button === 0) checkMinimapClick(e.clientX, e.clientY); 
-        });
-        
+        game.canvas.addEventListener('mousedown', e => { if (e.button === 0) checkMinimapClick(e.clientX, e.clientY); });
         window.addEventListener('mousemove', e => checkMinimapMove(e.clientX, e.clientY));
+        window.addEventListener('mouseup', e => { if (e.button === 0) game.isMinimapDragging = false; });
         
-        // THE BUG FIX: Unconditionally release the drag state no matter where the mouse is!
-        window.addEventListener('mouseup', e => { 
-            if (e.button === 0) game.isMinimapDragging = false; 
-        });
-        
-        // TOUCH CONTROLS (Mobile)
-        game.canvas.addEventListener('touchstart', e => { 
-            if(e.touches.length===1) checkMinimapClick(e.touches[0].clientX, e.touches[0].clientY); 
-        }, {passive: false});
-        
-        window.addEventListener('touchmove', e => { 
-            if(e.touches.length===1) checkMinimapMove(e.touches[0].clientX, e.touches[0].clientY); 
-        }, {passive: false});
-        
-        // Unconditionally release touch drag state
-        window.addEventListener('touchend', e => { 
-            game.isMinimapDragging = false; 
-        });
+        game.canvas.addEventListener('touchstart', e => { if(e.touches.length===1) checkMinimapClick(e.touches[0].clientX, e.touches[0].clientY); }, {passive: false});
+        window.addEventListener('touchmove', e => { if(e.touches.length===1) checkMinimapMove(e.touches[0].clientX, e.touches[0].clientY); }, {passive: false});
+        window.addEventListener('touchend', e => { game.isMinimapDragging = false; });
     },
     patch: (game) => {
         game.bus.on('uiDraw', (ctx) => {
             if(game.gameState !== 'playing') return;
             const size = game.minimap.size; const pad = game.minimap.padding;
             const startX = game.canvas.width - size - pad; 
-            const startY = game.canvas.height - size - pad - 90; // Raised to clear mobile toolbar
+            const startY = game.canvas.height - size - pad - 90; 
             
             ctx.fillStyle = 'rgba(20, 10, 5, 0.8)'; ctx.fillRect(startX, startY, size, size);
             ctx.strokeStyle = '#ff9d00'; ctx.lineWidth = 2; ctx.strokeRect(startX, startY, size, size);
 
             const scaleX = size / game.world.width; const scaleY = size / game.world.height;
             
-            // Draw River on minimap
             ctx.fillStyle = 'rgba(26, 78, 110, 0.5)'; 
             ctx.fillRect(startX + (game.world.width/2)*scaleX - 2, startY, 4, size);
 
             const drawDot = (ent, color, r) => { ctx.fillStyle = color; ctx.fillRect(startX + (ent.x * scaleX) - r, startY + (ent.y * scaleY) - r, r*2, r*2); };
 
-            // Draw all entities
             game.resourceNodes.forEach(r => drawDot(r, r.type === 'pumpkin' ? '#ff7b00' : '#00aaff', 1.5));
             game.structures.forEach(s => drawDot(s, s.team === 'black' ? '#ffffff' : '#ff4444', 3));
             game.spiders.forEach(s => drawDot(s, s.team === 'black' ? '#aaaaaa' : '#aa0000', 1));
@@ -1009,7 +934,6 @@ const MinimapExpansion = {
                 ctx.strokeRect(startX + (q.x * scaleX) - 5, startY + (q.y * scaleY) - 5, 10, 10); 
             });
             
-            // Draw Camera Viewport
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; ctx.lineWidth = 1; 
             ctx.strokeRect(startX + (game.camera.x * scaleX), startY + (game.camera.y * scaleY), game.canvas.width * scaleX, game.canvas.height * scaleY);
         });
@@ -1170,28 +1094,29 @@ const GodUnitExpansion = {
 };
 
 const SaveLoadExpansion = {
-    init: (game) => {
-        game.bus.on('triggerSave', () => {
-            const state = {
-                eco: game.eco, pop: game.pop, maxPop: game.maxPop, techLevel: game.techLevel, camera: game.camera, mapGrid: game.mapGrid, tick: game.tick,
-                spiders: game.spiders.map(s => ({x: s.x, y: s.y, team: s.team, role: s.role, hp: s.hp, cargo: s.cargo})),
-                structures: game.structures.map(s => ({x: s.x, y: s.y, team: s.team, type: s.type, hp: s.hp})),
-                resourceNodes: game.resourceNodes.map(p => ({x: p.x, y: p.y, type: p.type, resources: p.resources})),
-                queens: game.queens.map(q => ({x: q.x, y: q.y, team: q.team, hp: q.hp})),
-                critters: game.critters.map(b => ({x: b.x, y: b.y, hp: b.hp, color: b.color})) 
-            };
-            localStorage.setItem('spiderRTS_saveData', JSON.stringify(state)); alert("Game Saved!");
-        });
-
-        game.bus.on('triggerLoad', () => {
-            const data = localStorage.getItem('spiderRTS_saveData'); if(!data) return alert("No save found!");
-            const state = JSON.parse(data);
-            game.eco = state.eco; game.pop = state.pop; game.maxPop = state.maxPop; game.techLevel = state.techLevel; game.camera = state.camera; game.mapGrid = state.mapGrid; game.tick = state.tick || 0;
-            game.spiders = state.spiders.map(s => { let o = new Spider(s.x, s.y, s.team, s.role); o.hp = s.hp; o.cargo = s.cargo; return o; });
-            game.structures = state.structures.map(s => { let o = new Structure(s.x, s.y, s.team, s.type); o.hp = s.hp; return o; });
-            game.resourceNodes = state.resourceNodes.map(p => { let o = new ResourceNode(p.x, p.y, p.type); o.resources = p.resources; return o; });
-            game.queens = state.queens.map(q => { let o = new Queen(q.x, q.y, q.team); o.hp = q.hp; return o; });
-            game.projectiles = []; game.particles = []; game.spells = []; game.bosses = []; game.critters = []; alert("Game Loaded!");
+    patch: (game) => {
+        window.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'o') {
+                const state = {
+                    eco: game.eco, pop: game.pop, maxPop: game.maxPop, techLevel: game.techLevel, camera: game.camera, tick: game.tick,
+                    spiders: game.spiders.map(s => ({x: s.x, y: s.y, team: s.team, role: s.role, hp: s.hp, cargo: s.cargo})),
+                    structures: game.structures.map(s => ({x: s.x, y: s.y, team: s.team, type: s.type, hp: s.hp})),
+                    resourceNodes: game.resourceNodes.map(p => ({x: p.x, y: p.y, type: p.type, resources: p.resources})),
+                    queens: game.queens.map(q => ({x: q.x, y: q.y, team: q.team, hp: q.hp})),
+                    critters: game.critters.map(b => ({x: b.x, y: b.y, hp: b.hp, color: b.color})) 
+                };
+                localStorage.setItem('spiderRTS_saveData', JSON.stringify(state)); alert("Game Saved!");
+            }
+            if (e.key.toLowerCase() === 'p') {
+                const data = localStorage.getItem('spiderRTS_saveData'); if(!data) return alert("No save found!");
+                const state = JSON.parse(data);
+                game.eco = state.eco; game.pop = state.pop; game.maxPop = state.maxPop; game.techLevel = state.techLevel; game.camera = state.camera; game.tick = state.tick || 0;
+                game.spiders = state.spiders.map(s => { let o = new Spider(s.x, s.y, s.team, s.role); o.hp = s.hp; o.cargo = s.cargo; return o; });
+                game.structures = state.structures.map(s => { let o = new Structure(s.x, s.y, s.team, s.type); o.hp = s.hp; return o; });
+                game.resourceNodes = state.resourceNodes.map(p => { let o = new ResourceNode(p.x, p.y, p.type); o.resources = p.resources; return o; });
+                game.queens = state.queens.map(q => { let o = new Queen(q.x, q.y, q.team); o.hp = q.hp; return o; });
+                game.projectiles = []; game.particles = []; game.spells = []; game.bosses = []; game.critters = []; alert("Game Loaded!");
+            }
         });
     }
 };
