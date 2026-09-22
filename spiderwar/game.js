@@ -170,7 +170,22 @@ class Game {
         this.keys = {};
         window.addEventListener('keydown', e => {
             const k = e.key.toLowerCase(); this.keys[k] = true;
+            
+            // Unify PC Hotkeys with the Mobile Toolbar!
+            if(k === '1') { this.activeTool = 'nest'; this.bus.emit('toolChanged', 'nest'); }
+            if(k === '2') { this.activeTool = 'eggsac'; this.bus.emit('toolChanged', 'eggsac'); }
+            if(k === '3') { this.activeTool = 'turret'; this.bus.emit('toolChanged', 'turret'); }
+            if(k === '4') { this.activeTool = 'wall'; this.bus.emit('toolChanged', 'wall'); }
+            if(k === '7') { this.activeTool = 'venomStrike'; this.bus.emit('toolChanged', 'venomStrike'); }
+            if(k === '8') { this.activeTool = 'silkTrap'; this.bus.emit('toolChanged', 'silkTrap'); }
+            
+            // Press Escape to cancel current tool
+            if(k === 'escape') { this.activeTool = 'select'; this.bus.emit('toolChanged', 'select'); this.bus.emit('closeModal'); }
+            
+            // Upgrade Hotkey
+            if(k === 'u' && this.eco.black.pumpkins >= 250) { this.eco.black.pumpkins -= 250; this.techLevel.black++; this.bus.emit('playSound', 'spell');}
         });
+        
         window.addEventListener('keyup', e => this.keys[e.key.toLowerCase()] = false);
 
         let isDragging = false; let dragStartX, dragStartY, camStartX, camStartY, hasMoved;
@@ -191,6 +206,7 @@ class Game {
         const endInteraction = (x, y, targetElem) => {
             if (isDragging) {
                 isDragging = false;
+                // Don't trigger game clicks if clicking UI elements
                 if(targetElem.closest && (targetElem.closest('#structureModal') || targetElem.closest('#mobileToolbar') || targetElem.closest('#ui') || targetElem.closest('#gameOverModal'))) return;
 
                 if (!hasMoved && !this.isMinimapDragging) {
@@ -206,8 +222,14 @@ class Game {
                     }
                     else if (['nest', 'eggsac', 'turret', 'wall', 'pylon'].includes(this.activeTool)) {
                         this.bus.emit('buildStructure', { x: worldX, y: worldY, team: 'black', type: this.activeTool });
+                        
+                        // If they hold Shift, let them keep painting buildings! Otherwise, auto-reset to Select tool.
+                        if (!this.keys['shift']) {
+                            this.activeTool = 'select'; this.bus.emit('toolChanged', 'select');
+                        }
                     }
                     else {
+                        // "Select" tool logic: Try to click a building to open the UI
                         let clickedStruct = null;
                         for(let s of this.structures) { if (s.team === 'black' && Math.hypot(s.x - worldX, s.y - worldY) < s.size) { clickedStruct = s; break; } }
                         this.selectedStructure = clickedStruct; 
@@ -239,10 +261,8 @@ class Game {
             const costs = { 'nest': 150, 'eggsac': 50, 'turret': 100, 'wall': 25, 'pylon': 25 };
             if (!costs[data.type]) return; 
             
-            // TERRITORY CHECK! (Unless you are the AI, or it's the very first nest)
             if (data.team === 'black' && this.structures.filter(s => s.team === 'black').length > 0) {
                 if(!this.checkTerritory(data.x, data.y, data.team)) {
-                    // Flash error!
                     game.bus.emit('particles', {x: data.x, y: data.y, color: '#ff0000', count: 10});
                     console.log("Must build inside web territory!");
                     return; 
@@ -270,7 +290,7 @@ class Game {
                 </div>
             </div>
             <div style="margin-top: 8px; font-size: 0.85em; color: #888;">
-                <strong>Hotkeys:</strong> [1] Nest [2] Sac [3] Turret [4] Wall | [5] Harvest [6] Soldier | [7] Strike [8] Trap | <strong>[E] Build [U] Upgrade</strong>
+                <strong>1. Select Tool (1-4, 7-8)</strong> -> <strong>2. Click Map to place!</strong> (Hold Shift to paint) | <strong>[U] Upgrade</strong> | <strong>Click Nest for Units</strong>
             </div>
         `;
     }
