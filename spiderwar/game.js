@@ -481,17 +481,16 @@ const TerritoryExpansion = {
     }
 }
 
-// --- ORGANIC PATTERN SPLATTING ---
+// --- ORGANIC BLOB TERRAIN ---
 const TerrainExpansion = {
     init: (game) => {
-        game.tileSize = 256; 
+        game.tileSize = 128; // Smaller grid for much higher resolution organic shapes!
         game.tiles = { dirt: new Image(), vines: new Image(), pebbles: new Image(), water: new Image(), grass: new Image() };
-        game.patterns = {}; // New: We will store CanvasPatterns here!
+        game.patterns = {}; // Store seamless CanvasPatterns here
 
         const loadPattern = (type, src) => {
             game.tiles[type].src = src;
             game.tiles[type].onload = () => {
-                // When image loads, turn it into an infinite repeating pattern!
                 game.patterns[type] = game.ctx.createPattern(game.tiles[type], 'repeat');
             };
         };
@@ -504,27 +503,39 @@ const TerrainExpansion = {
         
         game.generateMap = function() {
             this.mapGrid = [];
-            const cols = Math.ceil(this.world.width / this.tileSize); const rows = Math.ceil(this.world.height / this.tileSize);
+            const cols = Math.ceil(this.world.width / this.tileSize); 
+            const rows = Math.ceil(this.world.height / this.tileSize);
             const seedA = Math.random() * 100; const seedB = Math.random() * 100;
             
             for (let y = 0; y < rows; y++) {
                 let row = [];
                 for (let x = 0; x < cols; x++) { 
-                    let noise = Math.sin(x/4 + seedA) + Math.cos(y/4 + seedB);
+                    // Complex multi-octave noise for ultra-natural shapes
+                    let nx = x / 8; let ny = y / 8;
+                    let noise = Math.sin(nx + seedA) + Math.cos(ny + seedB) + (Math.sin(nx*2.5)*0.5);
+                    
                     let type = 'dirt';
-                    if (noise > 1.2) type = 'water'; 
-                    else if (noise > 0.5) type = 'grass'; 
-                    else if (noise < -1.0) type = 'pebbles'; 
-                    else if (noise < -0.3) type = 'vines'; 
+                    if (noise > 1.1) type = 'water'; 
+                    else if (noise > 0.4) type = 'grass'; 
+                    else if (noise < -1.1) type = 'pebbles'; 
+                    else if (noise < -0.5) type = 'vines'; 
                     row.push(type);
                 }
                 this.mapGrid.push(row);
             }
+            
+            // Meandering River Generator
+            let riverX = Math.floor(cols / 2);
+            for(let y = 0; y < rows; y++) {
+                this.mapGrid[y][riverX] = 'water'; 
+                if(this.mapGrid[y][riverX-1]) this.mapGrid[y][riverX-1] = 'water'; 
+                if(this.mapGrid[y][riverX+1]) this.mapGrid[y][riverX+1] = 'water'; 
+                if(Math.random() > 0.4) riverX += (Math.random() > 0.5 ? 1 : -1);
+            }
         };
         game.generateMap();
 
-        // Helper: Deterministic pseudo-random number based on tile coordinates
-        // This ensures the "wavy edges" don't flicker/change shape when the camera moves!
+        // Seeded random for consistent wavy edges
         game.seededRandom = function(x, y) {
             let n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
             return n - Math.floor(n);
@@ -534,20 +545,21 @@ const TerrainExpansion = {
         game.bus.on('preDraw', (ctx) => {
             if (!game.mapGrid) return;
             
-            // 1. DRAW BASE DIRT EVERYWHERE (Fallback color if pattern not loaded)
+            // 1. Draw solid Dirt background first
             ctx.fillStyle = game.patterns.dirt ? game.patterns.dirt : '#3d2817';
             ctx.fillRect(game.camera.x, game.camera.y, game.canvas.width, game.canvas.height);
 
-            const startCol = Math.floor(game.camera.x / game.tileSize) - 1; 
-            const endCol = startCol + Math.ceil(game.canvas.width / game.tileSize) + 2;
-            const startRow = Math.floor(game.camera.y / game.tileSize) - 1; 
-            const endRow = startRow + Math.ceil(game.canvas.height / game.tileSize) + 2;
+            const startCol = Math.floor(game.camera.x / game.tileSize) - 2; 
+            const endCol = startCol + Math.ceil(game.canvas.width / game.tileSize) + 4;
+            const startRow = Math.floor(game.camera.y / game.tileSize) - 2; 
+            const endRow = startRow + Math.ceil(game.canvas.height / game.tileSize) + 4;
 
-            // 2. ORGANIC SPLAT RENDERING (Draw biomes in layers over the dirt)
-            const biomes = ['vines', 'pebbles', 'grass', 'water']; // Draw water last so it flows on top
+            // 2. Draw biomes as massive, overlapping organic circles!
+            // Order matters: Water draws last so it overlaps nicely on top of grass shores.
+            const biomes = ['vines', 'pebbles', 'grass', 'water']; 
             
             biomes.forEach(biomeType => {
-                if(!game.patterns[biomeType]) return; // Wait for image to load
+                if(!game.patterns[biomeType]) return; 
                 ctx.fillStyle = game.patterns[biomeType];
                 ctx.beginPath();
                 
@@ -555,27 +567,19 @@ const TerrainExpansion = {
                     for (let x = startCol; x <= endCol; x++) {
                         if (y >= 0 && y < game.mapGrid.length && x >= 0 && x < game.mapGrid[y].length) {
                             if (game.mapGrid[y][x] === biomeType) {
+                                const cX = x * game.tileSize + (game.tileSize/2);
+                                const cY = y * game.tileSize + (game.tileSize/2);
                                 
-                                const centerX = x * game.tileSize + (game.tileSize / 2);
-                                const centerY = y * game.tileSize + (game.tileSize / 2);
-                                
-                                // Instead of a square, we draw 3 overlapping, slightly randomized circles per tile.
-                                // Because we use fillStyle = pattern, the texture stays perfectly aligned!
-                                const r1 = game.seededRandom(x, y);
-                                const r2 = game.seededRandom(x+1, y);
-                                const r3 = game.seededRandom(x, y+1);
-                                
-                                const radius = game.tileSize * 0.75; // Extend past the rigid square
-                                
-                                ctx.moveTo(centerX, centerY);
-                                ctx.arc(centerX - 40 + (r1*80), centerY - 40 + (r2*80), radius, 0, Math.PI*2);
-                                ctx.arc(centerX + 40 - (r3*80), centerY + 40 - (r1*80), radius, 0, Math.PI*2);
-                                ctx.arc(centerX, centerY, radius * 1.1, 0, Math.PI*2);
+                                // Draw a circle much larger than the tile itself (1.3x)
+                                // Jitter the radius slightly to make the edges uneven and organic!
+                                let rJitter = game.seededRandom(x,y) * 40;
+                                ctx.moveTo(cX, cY);
+                                ctx.arc(cX, cY, (game.tileSize * 1.3) + rJitter, 0, Math.PI*2);
                             }
                         }
                     }
                 }
-                ctx.fill(); // Fill all blobs of this biome type at once!
+                ctx.fill(); 
             });
         });
     }
