@@ -27,12 +27,10 @@ class Spider {
         this.x = x; this.y = y; this.team = team; this.role = role;
         this.size = role === 'soldier' ? 16 : 12;
         this.baseSpeed = role === 'soldier' ? (Math.random() * 1.0 + 1.2) : (Math.random() * 1.0 + 0.8);
-        this.speed = this.baseSpeed; // Will be modified by terrain
+        this.speed = this.baseSpeed; 
         this.hp = role === 'soldier' ? 200 : 100; this.maxHp = this.hp;
         this.damage = role === 'soldier' ? 30 : 15; this.attackSpeed = role === 'soldier' ? 20 : 30;
         this.cooldown = 0; this.angle = 0; this.state = 'idle'; this.target = null; 
-        
-        // Cargo now tracks amount AND type
         this.cargo = { amount: 0, type: null }; 
         
         this.sprite = new Image();
@@ -50,20 +48,18 @@ class Spider {
             if(this.role === 'soldier') { ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI*2); ctx.fill(); }
         }
         if (this.cargo.amount > 0) { 
-            ctx.fillStyle = this.cargo.type === 'pumpkin' ? '#ff7b00' : '#00aaff'; // Orange or Blue
+            ctx.fillStyle = this.cargo.type === 'pumpkin' ? '#ff7b00' : '#00aaff'; 
             ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill(); 
         }
         ctx.restore();
     }
 }
 
-// UNIVERSAL RESOURCE NODE
 class ResourceNode {
     constructor(x, y, type) {
-        this.x = x; this.y = y; this.type = type; // 'pumpkin' or 'dew'
+        this.x = x; this.y = y; this.type = type; 
         this.size = type === 'pumpkin' ? 25 : 15; 
         this.resources = type === 'pumpkin' ? 100 : 50; 
-        
         this.sprite = new Image(); 
         this.sprite.src = type === 'pumpkin' ? 'assets/pumpkin.png' : 'assets/dewdrop.png';
         this.imageLoaded = false; this.sprite.onload = () => { this.imageLoaded = true; };
@@ -103,8 +99,26 @@ class Structure {
     }
 }
 
+class Projectile {
+    constructor(x, y, target, damage, team) {
+        this.x = x; this.y = y; this.target = target; this.damage = damage; this.team = team;
+        this.speed = 5; this.active = true;
+    }
+    update(game) {
+        if(!this.target || this.target.hp <= 0) { this.active = false; return; }
+        const dx = this.target.x - this.x; const dy = this.target.y - this.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 10) { 
+            this.target.hp -= this.damage; this.active = false; 
+            game.bus.emit('particles', {x: this.target.x, y: this.target.y, color: this.team==='black'?'#aa00ff':'#ffaa00', count: 10});
+        } 
+        else { this.x += (dx/dist) * this.speed; this.y += (dy/dist) * this.speed; }
+    }
+    draw(ctx) { ctx.fillStyle = this.team === 'black' ? '#aa00ff' : '#ffaa00'; ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, Math.PI*2); ctx.fill(); }
+}
+
 // ==========================================
-// 3. MAIN GAME CLASS 
+// 3. MAIN GAME CLASS (MOBILE UPDATED)
 // ==========================================
 
 class Game {
@@ -114,99 +128,96 @@ class Game {
         
         this.world = { width: 4000, height: 4000 }; this.camera = { x: 0, y: 0 }; this.tick = 0; 
         
-        // Entity Registries
         this.spiders = []; this.structures = []; this.queens = []; 
-        this.projectiles = []; this.particles = []; this.spells = []; 
-        this.bosses = []; 
+        this.projectiles = []; this.particles = []; this.spells = []; this.bosses = []; 
+        this.resourceNodes = []; this.critters = [];      
         
-        // Ecosystem Registries
-        this.resourceNodes = []; // Replaces pumpkins array
-        this.critters = [];      // Golden bugs and Aphids
-        
-        // Multi-Resource Economy!
-        this.eco = { 
-            black: { pumpkins: 600, dew: 100 }, 
-            red: { pumpkins: 600, dew: 100 } 
-        }; 
-        
+        this.eco = { black: { pumpkins: 600, dew: 100 }, red: { pumpkins: 600, dew: 100 } }; 
         this.pop = { black: 0, red: 0 }; this.maxPop = { black: 10, red: 10 };
         this.techLevel = { black: 0, red: 0 }; 
-        this.buildSelection = 'nest'; this.gameState = 'playing'; this.selectedStructure = null; 
+        
+        this.activeTool = 'select'; // Used by mobile UI toolbar
+        this.gameState = 'playing'; this.selectedStructure = null; 
 
         this.resize(); window.addEventListener('resize', () => this.resize());
         this.setupInputs(); requestAnimationFrame(() => this.loop());
     }
 
     resize() { this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight; }
-
-    // Helper to get terrain type underneath coordinates
     getTerrainAt(x, y) {
         if(!this.mapGrid || !this.tileSize) return 'dirt';
-        const tX = Math.floor(x / this.tileSize);
-        const tY = Math.floor(y / this.tileSize);
-        if(this.mapGrid[tY] && this.mapGrid[tY][tX]) return this.mapGrid[tY][tX];
-        return 'dirt';
+        const tX = Math.floor(x / this.tileSize); const tY = Math.floor(y / this.tileSize);
+        if(this.mapGrid[tY] && this.mapGrid[tY][tX]) return this.mapGrid[tY][tX]; return 'dirt';
     }
 
     setupInputs() {
-        this.keys = {};
-        window.addEventListener('keydown', e => {
-            const k = e.key.toLowerCase(); this.keys[k] = true;
-            if(k === '1') this.buildSelection = 'nest'; if(k === '2') this.buildSelection = 'eggsac';
-            if(k === '3') this.buildSelection = 'turret'; if(k === '4') this.buildSelection = 'wall';
-            if(k === '7') this.buildSelection = 'venomStrike'; if(k === '8') this.buildSelection = 'silkTrap';
-        });
-        window.addEventListener('keyup', e => this.keys[e.key.toLowerCase()] = false);
-
+        // Universal interaction handler for Mouse AND Touch
         let isDragging = false; let dragStartX, dragStartY, camStartX, camStartY, hasMoved;
 
-        this.canvas.addEventListener('mousedown', (e) => {
-            if (e.button === 0) { 
-                isDragging = true; hasMoved = false; dragStartX = e.clientX; dragStartY = e.clientY;
-                camStartX = this.camera.x; camStartY = this.camera.y;
-            }
-        });
+        const startInteraction = (x, y) => {
+            isDragging = true; hasMoved = false; dragStartX = x; dragStartY = y;
+            camStartX = this.camera.x; camStartY = this.camera.y;
+        };
 
-        window.addEventListener('mousemove', (e) => {
+        const moveInteraction = (x, y) => {
             if (isDragging && !this.isMinimapDragging) {
-                let dx = e.clientX - dragStartX; let dy = e.clientY - dragStartY;
+                let dx = x - dragStartX; let dy = y - dragStartY;
                 if (Math.hypot(dx, dy) > 5) hasMoved = true; 
                 if (hasMoved) { this.camera.x = camStartX - dx; this.camera.y = camStartY - dy; }
             }
-        });
+        };
 
-        window.addEventListener('mouseup', (e) => {
-            if (e.button === 0 && isDragging) {
+        const endInteraction = (x, y, targetElem) => {
+            if (isDragging) {
                 isDragging = false;
-                if(e.target.closest('#structureModal') || e.target.closest('#ui')) return;
+                // Ignore if clicked on UI (Toolbar, Modal, Debug)
+                if(targetElem.closest && (targetElem.closest('#structureModal') || targetElem.closest('#mobileToolbar') || targetElem.closest('#ui'))) return;
 
                 if (!hasMoved && !this.isMinimapDragging) {
-                    const worldX = e.clientX + this.camera.x; const worldY = e.clientY + this.camera.y;
+                    const worldX = x + this.camera.x; const worldY = y + this.camera.y;
                     
-                    if (this.keys['e']) { 
-                        this.bus.emit('buildStructure', { x: worldX, y: worldY, team: 'black', type: this.buildSelection }); 
-                    } 
-                    else if (this.buildSelection === 'venomStrike' || this.buildSelection === 'silkTrap') {
-                        this.bus.emit('castSpell', { x: worldX, y: worldY, type: this.buildSelection, team: 'black' });
-                        this.buildSelection = 'nest'; 
-                    } 
-                    else { 
+                    // Tool Execution Logic
+                    if (this.activeTool === 'commandQueen') {
+                        this.bus.emit('commandQueen', { x: worldX, y: worldY, team: 'black' });
+                        this.activeTool = 'select'; this.bus.emit('toolChanged', 'select'); // Reset tool
+                    }
+                    else if (['venomStrike', 'silkTrap'].includes(this.activeTool)) {
+                        this.bus.emit('castSpell', { x: worldX, y: worldY, type: this.activeTool, team: 'black' });
+                        this.activeTool = 'select'; this.bus.emit('toolChanged', 'select');
+                    }
+                    else if (['nest', 'eggsac', 'turret', 'wall'].includes(this.activeTool)) {
+                        this.bus.emit('buildStructure', { x: worldX, y: worldY, team: 'black', type: this.activeTool });
+                    }
+                    else {
+                        // Default "Select" Mode
                         let clickedStruct = null;
-                        for(let s of this.structures) {
-                            if (s.team === 'black' && Math.hypot(s.x - worldX, s.y - worldY) < s.size) { clickedStruct = s; break; }
-                        }
+                        for(let s of this.structures) { if (s.team === 'black' && Math.hypot(s.x - worldX, s.y - worldY) < s.size) { clickedStruct = s; break; } }
                         this.selectedStructure = clickedStruct; 
                         if(clickedStruct) this.bus.emit('openModal', clickedStruct);
                         else this.bus.emit('closeModal'); 
                     }
                 }
             }
+        };
+
+        // Mouse Events
+        this.canvas.addEventListener('mousedown', (e) => { if(e.button === 0) startInteraction(e.clientX, e.clientY); });
+        window.addEventListener('mousemove', (e) => { moveInteraction(e.clientX, e.clientY); });
+        window.addEventListener('mouseup', (e) => { if(e.button === 0) endInteraction(e.clientX, e.clientY, e.target); });
+
+        // Touch Events (Mobile)
+        this.canvas.addEventListener('touchstart', (e) => {
+            if(e.touches.length === 1) startInteraction(e.touches[0].clientX, e.touches[0].clientY);
+        }, {passive: false});
+        window.addEventListener('touchmove', (e) => {
+            if(e.touches.length === 1) moveInteraction(e.touches[0].clientX, e.touches[0].clientY);
+        }, {passive: false});
+        window.addEventListener('touchend', (e) => {
+            if(e.changedTouches.length === 1) endInteraction(e.changedTouches[0].clientX, e.changedTouches[0].clientY, e.target);
         });
 
-        this.canvas.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            this.bus.emit('commandQueen', { x: e.clientX + this.camera.x, y: e.clientY + this.camera.y, team: 'black' });
-        });
+        // Prevent context menu (long press on mobile)
+        this.canvas.addEventListener('contextmenu', e => e.preventDefault());
 
         this.bus.on('spawnSpider', (data) => {
             const cost = data.role === 'soldier' ? 25 : 10;
@@ -232,15 +243,8 @@ class Game {
         if(this.gameState !== 'playing') return;
         document.getElementById('debug').innerHTML = `
             <div style="display:flex; justify-content:space-between; font-size:1.1em;">
-                <span><strong>Black: ${this.eco.black.pumpkins}🎃 | ${this.eco.black.dew}💧</strong> | Pop: ${this.pop.black}/${this.maxPop.black} | Tech: ${this.techLevel.black}</span>
-                <span style="color:#ff4444;"><strong>Red: ${this.eco.red.pumpkins}🎃 | ${this.eco.red.dew}💧</strong> | Pop: ${this.pop.red}/${this.maxPop.red} | Tech: ${this.techLevel.red}</span>
-            </div>
-            <hr style="border-color:#ff9d0055;">
-            <div style="display:flex; justify-content:space-between; font-size: 0.9em;">
-                <div>
-                    <strong>Builds(Hold E):</strong> <span style="${this.buildSelection==='nest'?'color:white;':''}">[1] Nest(150🎃)</span> | <span style="${this.buildSelection==='eggsac'?'color:white;':''}">[2] Sac(50🎃)</span> | <span style="${this.buildSelection==='turret'?'color:white;':''}">[3] Turret(100🎃)</span> | <span style="${this.buildSelection==='wall'?'color:white;':''}">[4] Wall(25🎃)</span><br>
-                    <strong>Spells(Costs Dew!):</strong> <span style="${this.buildSelection==='venomStrike'?'color:white;':''}">[7] Strike(50💧)</span> | <span style="${this.buildSelection==='silkTrap'?'color:white;':''}">[8] Trap(25💧)</span>
-                </div>
+                <span><strong>Black: ${this.eco.black.pumpkins}🎃 | ${this.eco.black.dew}💧</strong> (Pop: ${this.pop.black}/${this.maxPop.black})</span>
+                <span style="color:#ff4444;"><strong>Red: ${this.eco.red.pumpkins}🎃 | ${this.eco.red.dew}💧</strong></span>
             </div>
         `;
     }
@@ -251,9 +255,6 @@ class Game {
         if (this.gameState !== 'playing') return; 
         this.tick++;
 
-        const camSpeed = 15;
-        if (this.keys['w']) this.camera.y -= camSpeed; if (this.keys['s']) this.camera.y += camSpeed;
-        if (this.keys['a']) this.camera.x -= camSpeed; if (this.keys['d']) this.camera.x += camSpeed;
         this.camera.x = Math.max(0, Math.min(this.camera.x, this.world.width - this.canvas.width));
         this.camera.y = Math.max(0, Math.min(this.camera.y, this.world.height - this.canvas.height));
 
@@ -315,19 +316,88 @@ class Game {
 // 4. EXPANSIONS (THE MAGIC)
 // ==========================================
 
+// --- NEW EXPANSION: MOBILE ACTION TOOLBAR ---
+const MobileUIExpansion = {
+    init: (game) => {
+        // Inject Mobile CSS
+        const style = document.createElement('style');
+        style.innerHTML = `
+            #mobileToolbar {
+                position: fixed; bottom: 0; left: 0; width: 100%; 
+                background: rgba(20, 10, 5, 0.95); border-top: 2px solid #ff9d00;
+                display: flex; overflow-x: auto; padding: 10px; box-sizing: border-box;
+                z-index: 2000; scrollbar-width: none; touch-action: pan-x;
+            }
+            #mobileToolbar::-webkit-scrollbar { display: none; }
+            .tool-btn {
+                background: #332; border: 2px solid #555; color: white; border-radius: 8px;
+                padding: 10px 15px; margin-right: 10px; font-family: 'Courier New', monospace; font-weight: bold;
+                flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center;
+                cursor: pointer; min-width: 70px;
+            }
+            .tool-btn.active { background: #ff9d00; color: #111; border-color: white; }
+            .tool-desc { font-size: 10px; opacity: 0.8; margin-top: 5px; }
+            
+            /* Move Debug UI to account for smaller screens */
+            #ui { pointer-events: auto; max-width: 90vw; }
+        `;
+        document.head.appendChild(style);
+
+        // Inject HTML
+        const toolbar = document.createElement('div');
+        toolbar.id = 'mobileToolbar';
+        toolbar.innerHTML = `
+            <div class="tool-btn active" data-tool="select">👆<div class="tool-desc">Select</div></div>
+            <div class="tool-btn" data-tool="commandQueen">👑<div class="tool-desc">Command</div></div>
+            <div class="tool-btn" data-tool="nest">🕸️<div class="tool-desc">Nest 150🎃</div></div>
+            <div class="tool-btn" data-tool="eggsac">🥚<div class="tool-desc">Sac 50🎃</div></div>
+            <div class="tool-btn" data-tool="turret">🔫<div class="tool-desc">Turret 100🎃</div></div>
+            <div class="tool-btn" data-tool="wall">🧱<div class="tool-desc">Wall 25🎃</div></div>
+            <div class="tool-btn" data-tool="venomStrike">☠️<div class="tool-desc">Strike 50💧</div></div>
+            <div class="tool-btn" data-tool="silkTrap">🕸️<div class="tool-desc">Trap 25💧</div></div>
+            <div class="tool-btn" data-tool="save">💾<div class="tool-desc">Save</div></div>
+            <div class="tool-btn" data-tool="load">📂<div class="tool-desc">Load</div></div>
+        `;
+        document.body.appendChild(toolbar);
+
+        // Tool Selection Logic
+        const buttons = document.querySelectorAll('.tool-btn');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const tool = btn.getAttribute('data-tool');
+                
+                // Handle instant actions
+                if(tool === 'save') { game.bus.emit('triggerSave'); return; }
+                if(tool === 'load') { game.bus.emit('triggerLoad'); return; }
+                
+                // Update active tool state
+                game.activeTool = tool;
+                game.bus.emit('toolChanged', tool);
+            });
+        });
+
+        // Visually update buttons when tool changes
+        game.bus.on('toolChanged', (toolName) => {
+            buttons.forEach(b => b.classList.remove('active'));
+            const activeBtn = document.querySelector(`.tool-btn[data-tool="${toolName}"]`);
+            if(activeBtn) activeBtn.classList.add('active');
+        });
+    }
+};
+
 const LairUIExpansion = {
     init: (game) => {
         const style = document.createElement('style');
         style.innerHTML = `
             #structureModal {
-                position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
                 background: rgba(20, 10, 5, 0.95); border: 2px solid #ff9d00; border-radius: 8px;
                 padding: 20px; color: white; font-family: 'Courier New', monospace;
-                display: none; z-index: 1000; min-width: 320px; box-shadow: 0 0 20px rgba(255, 157, 0, 0.5);
+                display: none; z-index: 1000; width: 80%; max-width: 320px; box-shadow: 0 0 20px rgba(255, 157, 0, 0.5);
             }
-            #structureModal h2 { margin-top: 0; color: #ff9d00; border-bottom: 1px solid #ff9d00; padding-bottom: 10px; text-transform: uppercase;}
-            .modal-btn { background: #332; border: 1px solid #ff9d00; color: #ff9d00; padding: 12px; margin: 5px 0; width: 100%; cursor: pointer; font-family: inherit; font-weight: bold; transition: 0.2s; border-radius: 4px; }
-            .modal-btn:hover { background: #ff9d00; color: #221; } .close-btn { position: absolute; top: 10px; right: 15px; cursor: pointer; color: red; font-size: 20px; font-weight: bold; } .close-btn:hover { color: white; }
+            #structureModal h2 { margin-top: 0; color: #ff9d00; border-bottom: 1px solid #ff9d00; padding-bottom: 10px; font-size: 18px;}
+            .modal-btn { background: #332; border: 1px solid #ff9d00; color: #ff9d00; padding: 15px; margin: 8px 0; width: 100%; cursor: pointer; font-family: inherit; font-weight: bold; font-size: 16px; border-radius: 8px; }
+            .close-btn { position: absolute; top: 10px; right: 15px; cursor: pointer; color: red; font-size: 24px; font-weight: bold; padding: 10px; }
         `;
         document.head.appendChild(style);
         const modal = document.createElement('div'); modal.id = 'structureModal'; document.body.appendChild(modal);
@@ -337,11 +407,11 @@ const LairUIExpansion = {
             let htmlContent = `<span class="close-btn" onclick="document.getElementById('structureModal').style.display='none'">X</span>`;
             if (structure.type === 'nest') {
                 htmlContent += `<h2>Main Nest (Lvl ${game.techLevel.black})</h2><p style="color:#aaa; font-size: 14px;">HP: ${structure.hp}/${structure.maxHp}</p>
-                    <button class="modal-btn" id="btn-harvester">Hatch Harvester (10 🎃)</button>
-                    <button class="modal-btn" id="btn-soldier">Hatch Soldier (25 🎃)</button>
-                    <button class="modal-btn" id="btn-tech" style="margin-top: 20px; background: #522;">Evolve Tech (250 🎃)</button>`;
+                    <button class="modal-btn" id="btn-harvester">Hatch Harvester (10🎃)</button>
+                    <button class="modal-btn" id="btn-soldier">Hatch Soldier (25🎃)</button>
+                    <button class="modal-btn" id="btn-tech" style="margin-top: 20px; background: #522;">Evolve Tech (250🎃)</button>`;
             } else if (structure.type === 'turret') {
-                htmlContent += `<h2>Venom Turret</h2><p style="color:#aaa; font-size: 14px;">HP: ${structure.hp}/${structure.maxHp}</p><p>Deals ${25 + (game.techLevel.black * 10)} damage.</p>`;
+                htmlContent += `<h2>Venom Turret</h2><p style="color:#aaa; font-size: 14px;">HP: ${structure.hp}/${structure.maxHp}</p><p>Deals ${25 + (game.techLevel.black * 10)} dmg.</p>`;
             } else { htmlContent += `<h2>${structure.type.toUpperCase()}</h2><p style="color:#aaa; font-size: 14px;">HP: ${structure.hp}/${structure.maxHp}</p>`; }
             modal.innerHTML = htmlContent;
 
@@ -357,8 +427,8 @@ const LairUIExpansion = {
 const AudioExpansion = {
     init: (game) => {
         const AudioContext = window.AudioContext || window.webkitAudioContext; const ctx = new AudioContext();
-        const unlock = () => { if(ctx.state === 'suspended') ctx.resume(); window.removeEventListener('click', unlock); };
-        window.addEventListener('click', unlock);
+        const unlock = () => { if(ctx.state === 'suspended') ctx.resume(); window.removeEventListener('click', unlock); window.removeEventListener('touchstart', unlock);};
+        window.addEventListener('click', unlock); window.addEventListener('touchstart', unlock);
         const playTone = (freq, type, duration, vol=0.05) => {
             if(ctx.state === 'suspended') return;
             const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.type = type; osc.frequency.setValueAtTime(freq, ctx.currentTime);
@@ -413,7 +483,16 @@ class CentipedeBoss {
     }
 }
 
-// --- NEW EXPANSION: ADVANCED BIOMES (RIVERS & GRASS) ---
+const GodUnitExpansion = {
+    init: (game) => {
+        setTimeout(() => {
+            console.log("THE CENTIPEDE AWAKENS!");
+            game.bosses.push(new CentipedeBoss(game.world.width/2, game.world.height/2));
+            game.bus.emit('playSound', 'spell');
+        }, 180000); 
+    }
+};
+
 const TerrainExpansion = {
     init: (game) => {
         game.tileSize = 256; 
@@ -423,8 +502,7 @@ const TerrainExpansion = {
         
         game.generateMap = function() {
             this.mapGrid = [];
-            const cols = Math.ceil(this.world.width / this.tileSize);
-            const rows = Math.ceil(this.world.height / this.tileSize);
+            const cols = Math.ceil(this.world.width / this.tileSize); const rows = Math.ceil(this.world.height / this.tileSize);
             
             for (let y = 0; y < rows; y++) {
                 let row = [];
@@ -432,16 +510,12 @@ const TerrainExpansion = {
                 this.mapGrid.push(row);
             }
             
-            // Generate a River cutting vertically through the middle
             let riverX = Math.floor(cols / 2);
             for(let y = 0; y < rows; y++) {
-                this.mapGrid[y][riverX] = 'water';
-                if(this.mapGrid[y][riverX-1]) this.mapGrid[y][riverX-1] = 'water'; // 2 tiles wide
-                // Random river meandering
+                this.mapGrid[y][riverX] = 'water'; if(this.mapGrid[y][riverX-1]) this.mapGrid[y][riverX-1] = 'water'; 
                 if(Math.random() > 0.6) riverX += (Math.random() > 0.5 ? 1 : -1);
             }
             
-            // Generate Grass Biome Patches
             for(let i=0; i<10; i++) {
                 let gX = Math.floor(Math.random() * cols); let gY = Math.floor(Math.random() * rows);
                 for(let dy=-2; dy<=2; dy++) {
@@ -466,7 +540,7 @@ const TerrainExpansion = {
                         const type = game.mapGrid[y][x]; const img = game.tiles[type];
                         if (img.complete && img.naturalHeight !== 0) ctx.drawImage(img, x*game.tileSize, y*game.tileSize, game.tileSize, game.tileSize);
                         else { 
-                            let col = '#3d2817'; // dirt
+                            let col = '#3d2817'; 
                             if(type === 'vines') col = '#2d4c1e'; else if(type === 'pebbles') col = '#555';
                             else if(type === 'water') col = '#1a4e6e'; else if(type === 'grass') col = '#3a7a2e';
                             ctx.fillStyle = col; ctx.fillRect(x*game.tileSize, y*game.tileSize, game.tileSize, game.tileSize); 
@@ -478,42 +552,15 @@ const TerrainExpansion = {
     }
 };
 
-// --- NEW EXPANSION: NEUTRAL CRITTERS (APHIDS) ---
 class Aphid {
-    constructor(x, y) { 
-        this.x = x; this.y = y; this.size = 8; this.hp = 30; this.maxHp = 30; 
-        this.angle = Math.random() * Math.PI * 2; this.speed = 0.3; this.team = 'nature'; this.color = '#7eff5e';
-    }
+    constructor(x, y) { this.x = x; this.y = y; this.size = 8; this.hp = 30; this.maxHp = 30; this.angle = Math.random() * Math.PI * 2; this.speed = 0.3; this.team = 'nature'; this.color = '#7eff5e'; }
     update(game) {
         if(Math.random() < 0.1) this.angle += (Math.random() - 0.5);
         this.x += Math.cos(this.angle) * this.speed; this.y += Math.sin(this.angle) * this.speed;
         this.x = Math.max(0, Math.min(this.x, game.world.width)); this.y = Math.max(0, Math.min(this.y, game.world.height));
-        // Drop dew on death
-        if(this.hp <= 0) {
-            game.resourceNodes.push(new ResourceNode(this.x, this.y, 'dew'));
-        }
+        if(this.hp <= 0) { game.resourceNodes.push(new ResourceNode(this.x, this.y, 'dew')); }
     }
-    draw(ctx) {
-        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.fillStyle = this.color; 
-        ctx.beginPath(); ctx.ellipse(0, 0, this.size, this.size-2, 0, 0, Math.PI*2); ctx.fill();
-        ctx.restore();
-    }
-}
-
-class GoldenBug {
-    constructor(x, y) { this.x = x; this.y = y; this.size = 15; this.hp = 250; this.maxHp = 250; this.angle = Math.random() * Math.PI * 2; this.speed = 0.5; this.team = 'nature'; this.color = 'gold';}
-    update(game) {
-        if(Math.random() < 0.05) this.angle += (Math.random() - 0.5);
-        this.x += Math.cos(this.angle) * this.speed; this.y += Math.sin(this.angle) * this.speed;
-        this.x = Math.max(0, Math.min(this.x, game.world.width)); this.y = Math.max(0, Math.min(this.y, game.world.height));
-        if(this.hp <= 0) for(let i=0; i<5; i++) game.resourceNodes.push(new ResourceNode(this.x + (Math.random()-0.5)*100, this.y + (Math.random()-0.5)*100, 'pumpkin'));
-    }
-    draw(ctx) {
-        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.fillStyle = '#ffd700'; 
-        ctx.beginPath(); ctx.ellipse(0, 0, this.size, this.size-5, 0, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#fff'; ctx.fillRect(this.size/2, -2, 4, 4); ctx.restore();
-        if(this.hp < this.maxHp) { ctx.fillStyle='red'; ctx.fillRect(this.x-10, this.y-20, 20, 4); ctx.fillStyle='lime'; ctx.fillRect(this.x-10, this.y-20, 20*(this.hp/this.maxHp), 4); }
-    }
+    draw(ctx) { ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.fillStyle = this.color; ctx.beginPath(); ctx.ellipse(0, 0, this.size, this.size-2, 0, 0, Math.PI*2); ctx.fill(); ctx.restore(); }
 }
 
 const AdvancedBaseExpansion = {
@@ -525,16 +572,11 @@ const AdvancedBaseExpansion = {
             game.structures.push(new Structure(rX, rY, 'red', 'nest')); game.structures.push(new Structure(rX - 80, rY, 'red', 'eggsac'));
             game.camera.x = Math.max(0, bX - (game.canvas.width / 2)); game.camera.y = Math.max(0, bY - (game.canvas.height / 2));
             
-            // Spawn Pumpkins
             for (let i = 0; i < 20; i++) {
                 let pX = 600 + Math.random() * (game.world.width - 1200); let pY = 600 + Math.random() * (game.world.height - 1200);
                 for (let p = 0; p < Math.floor(Math.random() * 6) + 5; p++) game.resourceNodes.push(new ResourceNode(pX + (Math.random() - 0.5) * 300, pY + (Math.random() - 0.5) * 300, 'pumpkin'));
             }
-            // Spawn Dew Drops near middle (river)
-            for (let i = 0; i < 30; i++) {
-                game.resourceNodes.push(new ResourceNode(game.world.width/2 + (Math.random()-0.5)*400, Math.random() * game.world.height, 'dew'));
-            }
-            
+            for (let i = 0; i < 30; i++) { game.resourceNodes.push(new ResourceNode(game.world.width/2 + (Math.random()-0.5)*400, Math.random() * game.world.height, 'dew')); }
             for(let i=0; i<3; i++) game.critters.push(new GoldenBug(game.world.width/2 + (Math.random()-0.5)*1000, game.world.height/2 + (Math.random()-0.5)*1000));
             for(let i=0; i<15; i++) game.critters.push(new Aphid(Math.random() * game.world.width, Math.random() * game.world.height));
         }, 100);
@@ -555,22 +597,15 @@ class Queen extends Spider {
         if (this.commandTarget) {
             const dx = this.commandTarget.x - this.x; const dy = this.commandTarget.y - this.y;
             
-            // Terrain Modifiers!
-            const terrain = game.getTerrainAt(this.x, this.y);
-            let tMod = 1.0;
-            if(terrain === 'water') tMod = 0.3; // Very slow in river
-            if(terrain === 'grass') tMod = 1.3; // Fast in grass
+            const terrain = game.getTerrainAt(this.x, this.y); let tMod = 1.0;
+            if(terrain === 'water') tMod = 0.3; if(terrain === 'grass') tMod = 1.3; 
 
             let techSpeed = (game.techLevel[this.team] * 0.2); 
             if(this.isSlowed) techSpeed -= (this.baseSpeed / 2); 
-            
             const currentSpeed = Math.max(0.1, (this.baseSpeed + techSpeed)) * tMod;
 
-            if (Math.hypot(dx, dy) > 10) {
-                this.angle = Math.atan2(dy, dx);
-                this.x += Math.cos(this.angle) * currentSpeed; 
-                this.y += Math.sin(this.angle) * currentSpeed;
-            } else this.commandTarget = null; 
+            if (Math.hypot(dx, dy) > 10) { this.angle = Math.atan2(dy, dx); this.x += Math.cos(this.angle) * currentSpeed; this.y += Math.sin(this.angle) * currentSpeed; } 
+            else this.commandTarget = null; 
         }
         this.isSlowed = false; 
     }
@@ -640,15 +675,9 @@ const HiveMindExpansion = {
 const CombatAndHarvesterExpansion = {
     patch: (game) => {
         Spider.prototype.update = function(game) {
-            const techLvl = game.techLevel[this.team]; 
-            const currentDamage = this.damage + (techLvl * 5); 
-            
-            // Terrain Modifiers
-            const terrain = game.getTerrainAt(this.x, this.y);
-            let tMod = 1.0;
-            if(terrain === 'water') tMod = 0.3; // River Slow
-            if(terrain === 'grass') tMod = 1.3; // Grass Speed
-            
+            const techLvl = game.techLevel[this.team]; const currentDamage = this.damage + (techLvl * 5); 
+            const terrain = game.getTerrainAt(this.x, this.y); let tMod = 1.0;
+            if(terrain === 'water') tMod = 0.3; if(terrain === 'grass') tMod = 1.3; 
             let currentSpeed = (this.baseSpeed + (techLvl * 0.15)) * tMod;
             if (this.isSlowed) currentSpeed *= 0.3; this.isSlowed = false; 
 
@@ -689,7 +718,6 @@ const CombatAndHarvesterExpansion = {
                 return; 
             }
 
-            // HARVESTER LOGIC - Now handles multiple resource types!
             if (this.cargo.amount === 0) this.state = 'seeking_pumpkin'; else this.state = 'returning_home';
             if (this.state === 'seeking_pumpkin') {
                 if (!this.target || this.target.resources <= 0) {
@@ -714,16 +742,12 @@ const CombatAndHarvesterExpansion = {
                     this.x += Math.cos(this.angle) * currentSpeed; this.y += Math.sin(this.angle) * currentSpeed;
                 } else {
                     if (this.state === 'seeking_pumpkin' && this.target.resources > 0) {
-                        this.cargo.amount = 10; 
-                        this.cargo.type = this.target.type; // Save if it's dew or pumpkin
-                        this.target.resources -= 10; this.target = null; 
+                        this.cargo.amount = 10; this.cargo.type = this.target.type; this.target.resources -= 10; this.target = null; 
                         game.bus.emit('particles', {x: this.x, y: this.y, color: this.cargo.type === 'pumpkin' ? '#ff7b00' : '#00aaff', count: 5}); 
                         game.bus.emit('playSound', 'harvest');
                     } else if (this.state === 'returning_home') {
-                        // Drop off proper resource type!
                         if(this.cargo.type === 'pumpkin') game.eco[this.team].pumpkins += this.cargo.amount;
                         else if(this.cargo.type === 'dew') game.eco[this.team].dew += this.cargo.amount;
-                        
                         this.cargo.amount = 0; this.target = null;
                     }
                 }
@@ -750,31 +774,41 @@ const CombatAndHarvesterExpansion = {
 
 const MinimapExpansion = {
     init: (game) => {
-        game.minimap = { size: 250, padding: 20 }; game.isMinimapDragging = false;
+        game.minimap = { size: 200, padding: 10 }; game.isMinimapDragging = false; // Made slightly smaller for mobile
         game.moveCameraFromMinimap = function(localX, localY) {
             const pctX = Math.max(0, Math.min(localX / this.minimap.size, 1)); const pctY = Math.max(0, Math.min(localY / this.minimap.size, 1));
             this.camera.x = (pctX * this.world.width) - (this.canvas.width / 2); this.camera.y = (pctY * this.world.height) - (this.canvas.height / 2);
         };
-        game.canvas.addEventListener('mousedown', (e) => {
-            const mmX = game.canvas.width - game.minimap.size - game.minimap.padding; const mmY = game.canvas.height - game.minimap.size - game.minimap.padding;
-            if (e.clientX >= mmX && e.clientX <= mmX + game.minimap.size && e.clientY >= mmY && e.clientY <= mmY + game.minimap.size) {
-                game.isMinimapDragging = true; game.moveCameraFromMinimap(e.clientX - mmX, e.clientY - mmY);
+        
+        // Touch map support
+        const handleMapInteraction = (clientX, clientY, isDown) => {
+            const mmX = game.canvas.width - game.minimap.size - game.minimap.padding; const mmY = game.canvas.height - game.minimap.size - game.minimap.padding - 80; // Offset for mobile bar
+            if (clientX >= mmX && clientX <= mmX + game.minimap.size && clientY >= mmY && clientY <= mmY + game.minimap.size) {
+                if(isDown !== null) game.isMinimapDragging = isDown;
+                if(game.isMinimapDragging) game.moveCameraFromMinimap(clientX - mmX, clientY - mmY);
+                return true;
             }
-        });
+            return false;
+        };
+
+        game.canvas.addEventListener('mousedown', e => handleMapInteraction(e.clientX, e.clientY, true));
+        window.addEventListener('mousemove', e => { if(game.isMinimapDragging) handleMapInteraction(e.clientX, e.clientY, null); });
+        
+        game.canvas.addEventListener('touchstart', e => { if(e.touches.length===1) handleMapInteraction(e.touches[0].clientX, e.touches[0].clientY, true); }, {passive: false});
+        window.addEventListener('touchmove', e => { if(game.isMinimapDragging && e.touches.length===1) handleMapInteraction(e.touches[0].clientX, e.touches[0].clientY, null); }, {passive: false});
     },
     patch: (game) => {
         game.bus.on('uiDraw', (ctx) => {
             if(game.gameState !== 'playing') return;
             const size = game.minimap.size; const pad = game.minimap.padding;
-            const startX = game.canvas.width - size - pad; const startY = game.canvas.height - size - pad;
+            const startX = game.canvas.width - size - pad; 
+            const startY = game.canvas.height - size - pad - 90; // Moved up to clear toolbar
+            
             ctx.fillStyle = 'rgba(20, 10, 5, 0.8)'; ctx.fillRect(startX, startY, size, size);
             ctx.strokeStyle = '#ff9d00'; ctx.lineWidth = 2; ctx.strokeRect(startX, startY, size, size);
 
             const scaleX = size / game.world.width; const scaleY = size / game.world.height;
-            
-            // Draw River on minimap!
-            ctx.fillStyle = 'rgba(26, 78, 110, 0.5)';
-            ctx.fillRect(startX + (game.world.width/2)*scaleX - 2, startY, 4, size);
+            ctx.fillStyle = 'rgba(26, 78, 110, 0.5)'; ctx.fillRect(startX + (game.world.width/2)*scaleX - 2, startY, 4, size);
 
             const drawDot = (ent, color, r) => { ctx.fillStyle = color; ctx.fillRect(startX + (ent.x * scaleX) - r, startY + (ent.y * scaleY) - r, r*2, r*2); };
 
@@ -881,7 +915,7 @@ class Spell {
 const SpellExpansion = {
     init: (game) => {
         game.bus.on('castSpell', (data) => {
-            const cost = data.type === 'venomStrike' ? 50 : 25; // SPELLS NOW COST DEW!
+            const cost = data.type === 'venomStrike' ? 50 : 25; 
             if(game.eco[data.team].dew >= cost) {
                 game.eco[data.team].dew -= cost; 
                 game.spells.push(new Spell(data.x, data.y, data.team, data.type));
@@ -899,8 +933,8 @@ const GameLoopExpansion = {
             ogUpdate.call(this); 
             if (this.queens.length > 0 && this.gameState === 'playing') {
                 const blackQueen = this.queens.find(q => q.team === 'black'); const redQueen = this.queens.find(q => q.team === 'red');
-                if (!blackQueen || blackQueen.hp <= 0) { this.gameState = 'lose'; document.getElementById('debug').innerHTML = ''; } 
-                else if (!redQueen || redQueen.hp <= 0) { this.gameState = 'win'; document.getElementById('debug').innerHTML = ''; }
+                if (!blackQueen || blackQueen.hp <= 0) { this.gameState = 'lose'; document.getElementById('debug').innerHTML = ''; document.getElementById('mobileToolbar').style.display='none';} 
+                else if (!redQueen || redQueen.hp <= 0) { this.gameState = 'win'; document.getElementById('debug').innerHTML = ''; document.getElementById('mobileToolbar').style.display='none';}
             }
         };
 
@@ -920,30 +954,28 @@ const GameLoopExpansion = {
 };
 
 const SaveLoadExpansion = {
-    patch: (game) => {
-        window.addEventListener('keydown', (e) => {
-            if (e.key.toLowerCase() === 'o') {
-                const state = {
-                    eco: game.eco, pop: game.pop, maxPop: game.maxPop, techLevel: game.techLevel, camera: game.camera, mapGrid: game.mapGrid, tick: game.tick,
-                    spiders: game.spiders.map(s => ({x: s.x, y: s.y, team: s.team, role: s.role, hp: s.hp, cargo: s.cargo})),
-                    structures: game.structures.map(s => ({x: s.x, y: s.y, team: s.team, type: s.type, hp: s.hp})),
-                    resourceNodes: game.resourceNodes.map(p => ({x: p.x, y: p.y, type: p.type, resources: p.resources})),
-                    queens: game.queens.map(q => ({x: q.x, y: q.y, team: q.team, hp: q.hp})),
-                    critters: game.critters.map(b => ({x: b.x, y: b.y, hp: b.hp, color: b.color})) // Rough save for critters
-                };
-                localStorage.setItem('spiderRTS_saveData', JSON.stringify(state)); alert("Game Saved!");
-            }
-            if (e.key.toLowerCase() === 'p') {
-                const data = localStorage.getItem('spiderRTS_saveData'); if(!data) return alert("No save found!");
-                const state = JSON.parse(data);
-                game.eco = state.eco; game.pop = state.pop; game.maxPop = state.maxPop; game.techLevel = state.techLevel; game.camera = state.camera; game.mapGrid = state.mapGrid; game.tick = state.tick || 0;
-                game.spiders = state.spiders.map(s => { let o = new Spider(s.x, s.y, s.team, s.role); o.hp = s.hp; o.cargo = s.cargo; return o; });
-                game.structures = state.structures.map(s => { let o = new Structure(s.x, s.y, s.team, s.type); o.hp = s.hp; return o; });
-                game.resourceNodes = state.resourceNodes.map(p => { let o = new ResourceNode(p.x, p.y, p.type); o.resources = p.resources; return o; });
-                game.queens = state.queens.map(q => { let o = new Queen(q.x, q.y, q.team); o.hp = q.hp; return o; });
-                // We won't re-instantiate bosses or critters perfectly yet to save prompt space, they will just respawn naturally
-                game.projectiles = []; game.particles = []; game.spells = []; game.bosses = []; game.critters = []; alert("Game Loaded!");
-            }
+    init: (game) => {
+        game.bus.on('triggerSave', () => {
+            const state = {
+                eco: game.eco, pop: game.pop, maxPop: game.maxPop, techLevel: game.techLevel, camera: game.camera, mapGrid: game.mapGrid, tick: game.tick,
+                spiders: game.spiders.map(s => ({x: s.x, y: s.y, team: s.team, role: s.role, hp: s.hp, cargo: s.cargo})),
+                structures: game.structures.map(s => ({x: s.x, y: s.y, team: s.team, type: s.type, hp: s.hp})),
+                resourceNodes: game.resourceNodes.map(p => ({x: p.x, y: p.y, type: p.type, resources: p.resources})),
+                queens: game.queens.map(q => ({x: q.x, y: q.y, team: q.team, hp: q.hp})),
+                critters: game.critters.map(b => ({x: b.x, y: b.y, hp: b.hp, color: b.color})) 
+            };
+            localStorage.setItem('spiderRTS_saveData', JSON.stringify(state)); alert("Game Saved!");
+        });
+
+        game.bus.on('triggerLoad', () => {
+            const data = localStorage.getItem('spiderRTS_saveData'); if(!data) return alert("No save found!");
+            const state = JSON.parse(data);
+            game.eco = state.eco; game.pop = state.pop; game.maxPop = state.maxPop; game.techLevel = state.techLevel; game.camera = state.camera; game.mapGrid = state.mapGrid; game.tick = state.tick || 0;
+            game.spiders = state.spiders.map(s => { let o = new Spider(s.x, s.y, s.team, s.role); o.hp = s.hp; o.cargo = s.cargo; return o; });
+            game.structures = state.structures.map(s => { let o = new Structure(s.x, s.y, s.team, s.type); o.hp = s.hp; return o; });
+            game.resourceNodes = state.resourceNodes.map(p => { let o = new ResourceNode(p.x, p.y, p.type); o.resources = p.resources; return o; });
+            game.queens = state.queens.map(q => { let o = new Queen(q.x, q.y, q.team); o.hp = q.hp; return o; });
+            game.projectiles = []; game.particles = []; game.spells = []; game.bosses = []; game.critters = []; alert("Game Loaded!");
         });
     }
 };
@@ -954,13 +986,15 @@ const SaveLoadExpansion = {
 window.onload = () => {
     const game = new Game();
     
-    game.expansions.load('TerrainGen', TerrainExpansion); // NOW HAS RIVERS AND GRASS!
+    game.expansions.load('TerrainGen', TerrainExpansion); 
     game.expansions.load('AdvancedBaseBuilder', AdvancedBaseExpansion); 
     game.expansions.load('QueenSystem', QueenExpansion); 
     game.expansions.load('HiveMind', HiveMindExpansion); 
     game.expansions.load('CombatAndHarvesterAI', CombatAndHarvesterExpansion); 
     game.expansions.load('WebNetwork', WebNetworkExpansion); 
     
+    // UI EXPANSIONS
+    game.expansions.load('MobileUI', MobileUIExpansion); // NEW: MOBILE ACTION BAR
     game.expansions.load('LairUI', LairUIExpansion); 
     game.expansions.load('MinimapUI', MinimapExpansion); 
     game.expansions.load('GameLoop', GameLoopExpansion); 
