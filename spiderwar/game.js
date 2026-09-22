@@ -79,8 +79,13 @@ class Structure {
     constructor(x, y, team, type) {
         this.x = x; this.y = y; this.team = team; this.type = type;
         this.hp = type === 'wall' ? 500 : 200; this.maxHp = this.hp;
+        
+        // TERRITORY GENERATORS
+        this.territory = type === 'nest' ? 400 : (type === 'pylon' ? 250 : 0);
+        
         if(type === 'nest') this.size = 40; else if(type === 'eggsac') this.size = 25; 
         else if(type === 'turret') { this.size = 20; this.cooldown = 0; } else if(type === 'wall') this.size = 35; 
+        else if(type === 'pylon') this.size = 18; 
 
         this.sprite = new Image(); this.sprite.src = `assets/${type}_${team}.png`;
         this.spriteLoaded = false; this.sprite.onload = () => { this.spriteLoaded = true; };
@@ -94,6 +99,7 @@ class Structure {
             else if(this.type === 'eggsac') { ctx.beginPath(); ctx.ellipse(this.x, this.y, this.size, this.size-10, 0, 0, Math.PI*2); ctx.fill(); }
             else if(this.type === 'turret') { ctx.fillRect(this.x - this.size, this.y - this.size, this.size*2, this.size*2); ctx.fillStyle='purple'; ctx.beginPath(); ctx.arc(this.x, this.y, 8, 0, Math.PI*2); ctx.fill(); }
             else if(this.type === 'wall') { ctx.fillRect(this.x - this.size, this.y - 10, this.size*2, 20); }
+            else if(this.type === 'pylon') { ctx.beginPath(); ctx.moveTo(this.x, this.y - this.size); ctx.lineTo(this.x - this.size, this.y + this.size); ctx.lineTo(this.x + this.size, this.y + this.size); ctx.fill(); } // Triangle fallback
             ctx.strokeStyle = this.team; ctx.lineWidth = 2; ctx.stroke();
         }
     }
@@ -118,7 +124,7 @@ class Projectile {
 }
 
 // ==========================================
-// 3. MAIN GAME CLASS (MOBILE UPDATED)
+// 3. MAIN GAME CLASS 
 // ==========================================
 
 class Game {
@@ -126,7 +132,8 @@ class Game {
         this.canvas = document.getElementById('gameCanvas'); this.ctx = this.canvas.getContext('2d');
         this.bus = new GameBus(); this.expansions = new ExpansionManager(this);
         
-        this.world = { width: 4000, height: 4000 }; this.camera = { x: 0, y: 0 }; this.tick = 0; 
+        this.world = { width: 6000, height: 6000 }; // HUGE NEW MAP SIZE
+        this.camera = { x: 0, y: 0 }; this.tick = 0; 
         
         this.spiders = []; this.structures = []; this.queens = []; 
         this.projectiles = []; this.particles = []; this.spells = []; this.bosses = []; 
@@ -136,8 +143,7 @@ class Game {
         this.pop = { black: 0, red: 0 }; this.maxPop = { black: 10, red: 10 };
         this.techLevel = { black: 0, red: 0 }; 
         
-        this.activeTool = 'select'; // Used by mobile UI toolbar
-        this.gameState = 'playing'; this.selectedStructure = null; 
+        this.activeTool = 'select'; this.gameState = 'playing'; this.selectedStructure = null; 
 
         this.resize(); window.addEventListener('resize', () => this.resize());
         this.setupInputs(); requestAnimationFrame(() => this.loop());
@@ -150,8 +156,23 @@ class Game {
         if(this.mapGrid[tY] && this.mapGrid[tY][tX]) return this.mapGrid[tY][tX]; return 'dirt';
     }
 
+    checkTerritory(x, y, team) {
+        // Find if x,y is inside the radius of ANY friendly territory-generating structure
+        for(let s of this.structures) {
+            if(s.team === team && s.territory > 0) {
+                if(Math.hypot(s.x - x, s.y - y) <= s.territory) return true;
+            }
+        }
+        return false;
+    }
+
     setupInputs() {
-        // Universal interaction handler for Mouse AND Touch
+        this.keys = {};
+        window.addEventListener('keydown', e => {
+            const k = e.key.toLowerCase(); this.keys[k] = true;
+        });
+        window.addEventListener('keyup', e => this.keys[e.key.toLowerCase()] = false);
+
         let isDragging = false; let dragStartX, dragStartY, camStartX, camStartY, hasMoved;
 
         const startInteraction = (x, y) => {
@@ -170,26 +191,23 @@ class Game {
         const endInteraction = (x, y, targetElem) => {
             if (isDragging) {
                 isDragging = false;
-                // Ignore if clicked on UI (Toolbar, Modal, Debug)
-                if(targetElem.closest && (targetElem.closest('#structureModal') || targetElem.closest('#mobileToolbar') || targetElem.closest('#ui'))) return;
+                if(targetElem.closest && (targetElem.closest('#structureModal') || targetElem.closest('#mobileToolbar') || targetElem.closest('#ui') || targetElem.closest('#gameOverModal'))) return;
 
                 if (!hasMoved && !this.isMinimapDragging) {
                     const worldX = x + this.camera.x; const worldY = y + this.camera.y;
                     
-                    // Tool Execution Logic
                     if (this.activeTool === 'commandQueen') {
                         this.bus.emit('commandQueen', { x: worldX, y: worldY, team: 'black' });
-                        this.activeTool = 'select'; this.bus.emit('toolChanged', 'select'); // Reset tool
+                        this.activeTool = 'select'; this.bus.emit('toolChanged', 'select'); 
                     }
                     else if (['venomStrike', 'silkTrap'].includes(this.activeTool)) {
                         this.bus.emit('castSpell', { x: worldX, y: worldY, type: this.activeTool, team: 'black' });
                         this.activeTool = 'select'; this.bus.emit('toolChanged', 'select');
                     }
-                    else if (['nest', 'eggsac', 'turret', 'wall'].includes(this.activeTool)) {
+                    else if (['nest', 'eggsac', 'turret', 'wall', 'pylon'].includes(this.activeTool)) {
                         this.bus.emit('buildStructure', { x: worldX, y: worldY, team: 'black', type: this.activeTool });
                     }
                     else {
-                        // Default "Select" Mode
                         let clickedStruct = null;
                         for(let s of this.structures) { if (s.team === 'black' && Math.hypot(s.x - worldX, s.y - worldY) < s.size) { clickedStruct = s; break; } }
                         this.selectedStructure = clickedStruct; 
@@ -200,23 +218,12 @@ class Game {
             }
         };
 
-        // Mouse Events
         this.canvas.addEventListener('mousedown', (e) => { if(e.button === 0) startInteraction(e.clientX, e.clientY); });
         window.addEventListener('mousemove', (e) => { moveInteraction(e.clientX, e.clientY); });
         window.addEventListener('mouseup', (e) => { if(e.button === 0) endInteraction(e.clientX, e.clientY, e.target); });
-
-        // Touch Events (Mobile)
-        this.canvas.addEventListener('touchstart', (e) => {
-            if(e.touches.length === 1) startInteraction(e.touches[0].clientX, e.touches[0].clientY);
-        }, {passive: false});
-        window.addEventListener('touchmove', (e) => {
-            if(e.touches.length === 1) moveInteraction(e.touches[0].clientX, e.touches[0].clientY);
-        }, {passive: false});
-        window.addEventListener('touchend', (e) => {
-            if(e.changedTouches.length === 1) endInteraction(e.changedTouches[0].clientX, e.changedTouches[0].clientY, e.target);
-        });
-
-        // Prevent context menu (long press on mobile)
+        this.canvas.addEventListener('touchstart', (e) => { if(e.touches.length === 1) startInteraction(e.touches[0].clientX, e.touches[0].clientY); }, {passive: false});
+        window.addEventListener('touchmove', (e) => { if(e.touches.length === 1) moveInteraction(e.touches[0].clientX, e.touches[0].clientY); }, {passive: false});
+        window.addEventListener('touchend', (e) => { if(e.changedTouches.length === 1) endInteraction(e.changedTouches[0].clientX, e.changedTouches[0].clientY, e.target); });
         this.canvas.addEventListener('contextmenu', e => e.preventDefault());
 
         this.bus.on('spawnSpider', (data) => {
@@ -229,8 +236,19 @@ class Game {
         });
         
         this.bus.on('buildStructure', (data) => {
-            const costs = { 'nest': 150, 'eggsac': 50, 'turret': 100, 'wall': 25 };
+            const costs = { 'nest': 150, 'eggsac': 50, 'turret': 100, 'wall': 25, 'pylon': 25 };
             if (!costs[data.type]) return; 
+            
+            // TERRITORY CHECK! (Unless you are the AI, or it's the very first nest)
+            if (data.team === 'black' && this.structures.filter(s => s.team === 'black').length > 0) {
+                if(!this.checkTerritory(data.x, data.y, data.team)) {
+                    // Flash error!
+                    game.bus.emit('particles', {x: data.x, y: data.y, color: '#ff0000', count: 10});
+                    console.log("Must build inside web territory!");
+                    return; 
+                }
+            }
+
             if (this.eco[data.team].pumpkins >= costs[data.type]) {
                 this.eco[data.team].pumpkins -= costs[data.type];
                 this.structures.push(new Structure(data.x, data.y, data.team, data.type));
@@ -255,6 +273,9 @@ class Game {
         if (this.gameState !== 'playing') return; 
         this.tick++;
 
+        const camSpeed = 15;
+        if (this.keys['w']) this.camera.y -= camSpeed; if (this.keys['s']) this.camera.y += camSpeed;
+        if (this.keys['a']) this.camera.x -= camSpeed; if (this.keys['d']) this.camera.x += camSpeed;
         this.camera.x = Math.max(0, Math.min(this.camera.x, this.world.width - this.canvas.width));
         this.camera.y = Math.max(0, Math.min(this.camera.y, this.world.height - this.canvas.height));
 
@@ -292,7 +313,9 @@ class Game {
         this.ctx.fillStyle = '#2c1e16'; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.save(); this.ctx.translate(-this.camera.x, -this.camera.y);
         
-        this.bus.emit('preDraw', this.ctx);
+        this.bus.emit('preDraw', this.ctx); // Terrain
+        this.bus.emit('territoryDraw', this.ctx); // NEW: Anno Territory Overlay
+        
         this.spells.forEach(s => s.draw(this.ctx)); 
         this.bus.emit('atmosphereDraw', this.ctx);
 
@@ -316,10 +339,8 @@ class Game {
 // 4. EXPANSIONS (THE MAGIC)
 // ==========================================
 
-// --- NEW EXPANSION: MOBILE ACTION TOOLBAR ---
 const MobileUIExpansion = {
     init: (game) => {
-        // Inject Mobile CSS
         const style = document.createElement('style');
         style.innerHTML = `
             #mobileToolbar {
@@ -337,46 +358,32 @@ const MobileUIExpansion = {
             }
             .tool-btn.active { background: #ff9d00; color: #111; border-color: white; }
             .tool-desc { font-size: 10px; opacity: 0.8; margin-top: 5px; }
-            
-            /* Move Debug UI to account for smaller screens */
             #ui { pointer-events: auto; max-width: 90vw; }
         `;
         document.head.appendChild(style);
 
-        // Inject HTML
-        const toolbar = document.createElement('div');
-        toolbar.id = 'mobileToolbar';
+        const toolbar = document.createElement('div'); toolbar.id = 'mobileToolbar';
         toolbar.innerHTML = `
             <div class="tool-btn active" data-tool="select">👆<div class="tool-desc">Select</div></div>
             <div class="tool-btn" data-tool="commandQueen">👑<div class="tool-desc">Command</div></div>
             <div class="tool-btn" data-tool="nest">🕸️<div class="tool-desc">Nest 150🎃</div></div>
             <div class="tool-btn" data-tool="eggsac">🥚<div class="tool-desc">Sac 50🎃</div></div>
+            <div class="tool-btn" data-tool="pylon">🗼<div class="tool-desc">Pylon 25🎃</div></div>
             <div class="tool-btn" data-tool="turret">🔫<div class="tool-desc">Turret 100🎃</div></div>
             <div class="tool-btn" data-tool="wall">🧱<div class="tool-desc">Wall 25🎃</div></div>
             <div class="tool-btn" data-tool="venomStrike">☠️<div class="tool-desc">Strike 50💧</div></div>
             <div class="tool-btn" data-tool="silkTrap">🕸️<div class="tool-desc">Trap 25💧</div></div>
-            <div class="tool-btn" data-tool="save">💾<div class="tool-desc">Save</div></div>
-            <div class="tool-btn" data-tool="load">📂<div class="tool-desc">Load</div></div>
         `;
         document.body.appendChild(toolbar);
 
-        // Tool Selection Logic
         const buttons = document.querySelectorAll('.tool-btn');
         buttons.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const tool = btn.getAttribute('data-tool');
-                
-                // Handle instant actions
-                if(tool === 'save') { game.bus.emit('triggerSave'); return; }
-                if(tool === 'load') { game.bus.emit('triggerLoad'); return; }
-                
-                // Update active tool state
-                game.activeTool = tool;
-                game.bus.emit('toolChanged', tool);
+                game.activeTool = tool; game.bus.emit('toolChanged', tool);
             });
         });
 
-        // Visually update buttons when tool changes
         game.bus.on('toolChanged', (toolName) => {
             buttons.forEach(b => b.classList.remove('active'));
             const activeBtn = document.querySelector(`.tool-btn[data-tool="${toolName}"]`);
@@ -412,6 +419,8 @@ const LairUIExpansion = {
                     <button class="modal-btn" id="btn-tech" style="margin-top: 20px; background: #522;">Evolve Tech (250🎃)</button>`;
             } else if (structure.type === 'turret') {
                 htmlContent += `<h2>Venom Turret</h2><p style="color:#aaa; font-size: 14px;">HP: ${structure.hp}/${structure.maxHp}</p><p>Deals ${25 + (game.techLevel.black * 10)} dmg.</p>`;
+            } else if (structure.type === 'pylon') {
+                htmlContent += `<h2>Web Pylon</h2><p style="color:#aaa; font-size: 14px;">HP: ${structure.hp}/${structure.maxHp}</p><p>Expands buildable territory.</p>`;
             } else { htmlContent += `<h2>${structure.type.toUpperCase()}</h2><p style="color:#aaa; font-size: 14px;">HP: ${structure.hp}/${structure.maxHp}</p>`; }
             modal.innerHTML = htmlContent;
 
@@ -424,75 +433,27 @@ const LairUIExpansion = {
     }
 };
 
-const AudioExpansion = {
-    init: (game) => {
-        const AudioContext = window.AudioContext || window.webkitAudioContext; const ctx = new AudioContext();
-        const unlock = () => { if(ctx.state === 'suspended') ctx.resume(); window.removeEventListener('click', unlock); window.removeEventListener('touchstart', unlock);};
-        window.addEventListener('click', unlock); window.addEventListener('touchstart', unlock);
-        const playTone = (freq, type, duration, vol=0.05) => {
-            if(ctx.state === 'suspended') return;
-            const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.type = type; osc.frequency.setValueAtTime(freq, ctx.currentTime);
-            osc.connect(gain); gain.connect(ctx.destination); gain.gain.setValueAtTime(vol, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
-            osc.start(); osc.stop(ctx.currentTime + duration);
-        };
-        game.bus.on('playSound', (type) => {
-            if (type === 'shoot') playTone(600, 'square', 0.1, 0.02); if (type === 'harvest') playTone(150, 'sawtooth', 0.1, 0.05); 
-            if (type === 'death') playTone(100, 'sawtooth', 0.4, 0.08); if (type === 'spell') playTone(800, 'sine', 0.5, 0.05); 
-            if (type === 'build') playTone(300, 'triangle', 0.2, 0.05); 
-        });
-    }
-};
-
-class CentipedeBoss {
-    constructor(x, y) {
-        this.x = x; this.y = y; this.team = 'nature'; this.hp = 3000; this.maxHp = 3000; this.damage = 50; this.speed = 1.8;
-        this.angle = Math.random() * Math.PI*2; this.history = []; this.segmentCount = 15; this.cooldown = 0;
-        this.headSprite = new Image(); this.headSprite.src = 'assets/centipede_head.png';
-        this.bodySprite = new Image(); this.bodySprite.src = 'assets/centipede_body.png';
-    }
-    update(game) {
-        this.history.unshift({x: this.x, y: this.y, angle: this.angle}); if(this.history.length > this.segmentCount * 5) this.history.pop(); 
-        let allTargets = game.spiders.concat(game.queens).concat(game.structures);
-        let nearest = null; let minDist = 800; 
-        for (let t of allTargets) { let d = Math.hypot(t.x - this.x, t.y - this.y); if (d < minDist) { minDist = d; nearest = t; } }
-        if (nearest) {
-            this.angle = Math.atan2(nearest.y - this.y, nearest.x - this.x);
-            if (minDist > 30) { this.x += Math.cos(this.angle) * this.speed; this.y += Math.sin(this.angle) * this.speed; } 
-            else { this.cooldown--; if(this.cooldown <= 0) { nearest.hp -= this.damage; this.cooldown = 20; game.bus.emit('particles', {x: nearest.x, y: nearest.y, color: '#00ff00', count: 10}); game.bus.emit('playSound', 'harvest'); } }
-        } else {
-            if(Math.random() < 0.05) this.angle += (Math.random() - 0.5);
-            this.x += Math.cos(this.angle) * (this.speed * 0.5); this.y += Math.sin(this.angle) * (this.speed * 0.5);
-            this.x = Math.max(0, Math.min(this.x, game.world.width)); this.y = Math.max(0, Math.min(this.y, game.world.height));
-        }
-    }
-    draw(ctx) {
-        for(let i = 1; i < this.segmentCount; i++) {
-            let histIndex = i * 4; 
-            if(this.history[histIndex]) {
-                let pos = this.history[histIndex]; ctx.save(); ctx.translate(pos.x, pos.y); ctx.rotate(pos.angle);
-                if (this.bodySprite.complete && this.bodySprite.naturalHeight !== 0) { ctx.drawImage(this.bodySprite, -15, -15, 30, 30); } 
-                else { ctx.fillStyle = i % 2 === 0 ? '#113311' : '#225522'; ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill(); }
-                ctx.restore();
+// --- NEW EXPANSION: ANNO TERRITORY OVERLAYS ---
+const TerritoryExpansion = {
+    patch: (game) => {
+        game.bus.on('territoryDraw', (ctx) => {
+            // Draw glowing circles around Nests and Pylons
+            for(let s of game.structures) {
+                if(s.territory > 0) {
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.territory, 0, Math.PI * 2);
+                    ctx.fillStyle = s.team === 'black' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 0, 0, 0.05)';
+                    ctx.fill();
+                    ctx.strokeStyle = s.team === 'black' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 0, 0, 0.2)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
             }
-        }
-        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
-        if (this.headSprite.complete && this.headSprite.naturalHeight !== 0) { ctx.drawImage(this.headSprite, -20, -20, 40, 40); } 
-        else { ctx.fillStyle = '#052205'; ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(8, -8, 4, 0, Math.PI*2); ctx.arc(8, 8, 4, 0, Math.PI*2); ctx.fill(); }
-        ctx.restore();
-        if(this.hp < this.maxHp) { ctx.fillStyle='black'; ctx.fillRect(this.x-30, this.y-35, 60, 8); ctx.fillStyle='red'; ctx.fillRect(this.x-29, this.y-34, 58, 6); ctx.fillStyle='#00ff00'; ctx.fillRect(this.x-29, this.y-34, 58*(this.hp/this.maxHp), 6); }
+        });
     }
 }
 
-const GodUnitExpansion = {
-    init: (game) => {
-        setTimeout(() => {
-            console.log("THE CENTIPEDE AWAKENS!");
-            game.bosses.push(new CentipedeBoss(game.world.width/2, game.world.height/2));
-            game.bus.emit('playSound', 'spell');
-        }, 180000); 
-    }
-};
-
+// --- UPDATED MAP GENERATION (ORGANIC SINE WAVES) ---
 const TerrainExpansion = {
     init: (game) => {
         game.tileSize = 256; 
@@ -504,27 +465,24 @@ const TerrainExpansion = {
             this.mapGrid = [];
             const cols = Math.ceil(this.world.width / this.tileSize); const rows = Math.ceil(this.world.height / this.tileSize);
             
+            // Generate Organic Biomes using overlapping Sine Waves
+            const seedA = Math.random() * 100; const seedB = Math.random() * 100;
+            
             for (let y = 0; y < rows; y++) {
                 let row = [];
-                for (let x = 0; x < cols; x++) { row.push(Math.random() > 0.75 ? 'vines' : (Math.random() > 0.60 ? 'pebbles' : 'dirt')); }
-                this.mapGrid.push(row);
-            }
-            
-            let riverX = Math.floor(cols / 2);
-            for(let y = 0; y < rows; y++) {
-                this.mapGrid[y][riverX] = 'water'; if(this.mapGrid[y][riverX-1]) this.mapGrid[y][riverX-1] = 'water'; 
-                if(Math.random() > 0.6) riverX += (Math.random() > 0.5 ? 1 : -1);
-            }
-            
-            for(let i=0; i<10; i++) {
-                let gX = Math.floor(Math.random() * cols); let gY = Math.floor(Math.random() * rows);
-                for(let dy=-2; dy<=2; dy++) {
-                    for(let dx=-2; dx<=2; dx++) {
-                        if(this.mapGrid[gY+dy] && this.mapGrid[gY+dy][gX+dx] && Math.random() > 0.3) {
-                            if(this.mapGrid[gY+dy][gX+dx] !== 'water') this.mapGrid[gY+dy][gX+dx] = 'grass';
-                        }
-                    }
+                for (let x = 0; x < cols; x++) { 
+                    // Create a noise value between -2 and 2
+                    let noise = Math.sin(x/4 + seedA) + Math.cos(y/4 + seedB);
+                    
+                    let type = 'dirt';
+                    if (noise > 1.2) type = 'water'; // Deep peaks are lakes/rivers
+                    else if (noise > 0.5) type = 'grass'; // Edges of water are lush
+                    else if (noise < -1.0) type = 'pebbles'; // Deep valleys are wasteland
+                    else if (noise < -0.3) type = 'vines'; // Edges of wasteland are vines
+                    
+                    row.push(type);
                 }
+                this.mapGrid.push(row);
             }
         };
         game.generateMap();
@@ -552,6 +510,157 @@ const TerrainExpansion = {
     }
 };
 
+const AdvancedBaseExpansion = {
+    init: (game) => {
+        setTimeout(() => {
+            const pad = 600; // Push bases further into the massive map
+            const bX = pad + Math.random() * 200; const bY = pad + Math.random() * 200;
+            const rX = game.world.width - pad - Math.random() * 200; const rY = game.world.height - pad - Math.random() * 200;
+            
+            // Ensure bases start on safe dirt (override terrain)
+            const tBX = Math.floor(bX/game.tileSize); const tBY = Math.floor(bY/game.tileSize);
+            const tRX = Math.floor(rX/game.tileSize); const tRY = Math.floor(rY/game.tileSize);
+            if(game.mapGrid[tBY]) game.mapGrid[tBY][tBX] = 'dirt';
+            if(game.mapGrid[tRY]) game.mapGrid[tRY][tRX] = 'dirt';
+
+            game.structures.push(new Structure(bX, bY, 'black', 'nest')); 
+            game.structures.push(new Structure(bX + 80, bY, 'black', 'eggsac'));
+            game.structures.push(new Structure(rX, rY, 'red', 'nest')); 
+            game.structures.push(new Structure(rX - 80, rY, 'red', 'eggsac'));
+            
+            game.camera.x = Math.max(0, bX - (game.canvas.width / 2)); game.camera.y = Math.max(0, bY - (game.canvas.height / 2));
+            
+            // Massive organic resource scattering
+            for (let i = 0; i < 40; i++) {
+                let pX = 600 + Math.random() * (game.world.width - 1200); let pY = 600 + Math.random() * (game.world.height - 1200);
+                for (let p = 0; p < Math.floor(Math.random() * 6) + 5; p++) game.resourceNodes.push(new ResourceNode(pX + (Math.random() - 0.5) * 300, pY + (Math.random() - 0.5) * 300, 'pumpkin'));
+            }
+            for (let i = 0; i < 60; i++) { game.resourceNodes.push(new ResourceNode(Math.random() * game.world.width, Math.random() * game.world.height, 'dew')); }
+            
+            // Spawn Critters
+            for(let i=0; i<3; i++) game.critters.push(new GoldenBug(game.world.width/2 + (Math.random()-0.5)*1000, game.world.height/2 + (Math.random()-0.5)*1000));
+            for(let i=0; i<30; i++) {
+                // Aphids prefer grass
+                let ax = Math.random() * game.world.width; let ay = Math.random() * game.world.height;
+                if(game.getTerrainAt(ax, ay) === 'grass' || Math.random() > 0.8) game.critters.push(new Aphid(ax, ay));
+            }
+        }, 100);
+    }
+};
+
+const HiveMindExpansion = {
+    patch: (game) => {
+        Structure.prototype.update = function(game) {
+            const tDamage = 25 + (game.techLevel[this.team] * 10);
+            if(this.type === 'turret') {
+                this.cooldown--;
+                if(this.cooldown <= 0) {
+                    let allEnemies = game.spiders.concat(game.queens).concat(game.critters).concat(game.bosses).filter(e => e.team !== this.team);
+                    for(let e of allEnemies) {
+                        if(Math.hypot(e.x - this.x, e.y - this.y) < 200) { 
+                            game.projectiles.push(new Projectile(this.x, this.y, e, tDamage, this.team));
+                            game.bus.emit('playSound', 'shoot');
+                            this.cooldown = 45; break; 
+                        }
+                    }
+                }
+            }
+            if (this.team === 'red' && this.type === 'nest') {
+                if (game.eco.red.pumpkins >= 500 && Math.random() < 0.05) { game.eco.red.pumpkins -= 250; game.techLevel.red++; }
+                if (game.eco.red.pumpkins >= 50 && game.pop.red < game.maxPop.red) {
+                    if(!this.spawnTimer) this.spawnTimer = 0;
+                    this.spawnTimer--;
+                    if(this.spawnTimer <= 0) {
+                        const role = Math.random() > 0.8 ? 'soldier' : 'harvester'; 
+                        const cost = role === 'soldier' ? 25 : 10;
+                        if(game.eco.red.pumpkins >= cost) {
+                            game.eco.red.pumpkins -= cost; 
+                            game.bus.emit('spawnSpider', { x: this.x + (Math.random()-0.5)*100, y: this.y + (Math.random()-0.5)*100, team: 'red', role: role });
+                            this.spawnTimer = 120; 
+                        }
+                    }
+                } else if (game.pop.red >= game.maxPop.red && game.eco.red.pumpkins > 200) {
+                    game.eco.red.pumpkins -= 50; 
+                    // AI now builds Pylons to expand if it's out of space!
+                    let bType = Math.random() > 0.7 ? 'pylon' : 'eggsac';
+                    game.structures.push(new Structure(this.x + (Math.random()-0.5)*400, this.y + (Math.random()-0.5)*400, 'red', bType));
+                }
+            }
+        };
+    }
+};
+
+// --- UPDATED GAME LOOP: THE RESTART MODAL ---
+const GameLoopExpansion = {
+    patch: (game) => {
+        const style = document.createElement('style');
+        style.innerHTML = `
+            #gameOverModal {
+                position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                background: rgba(10, 5, 0, 0.95); border: 4px solid; border-radius: 12px;
+                padding: 40px; color: white; font-family: 'Courier New', monospace; text-align: center;
+                display: none; z-index: 9999; box-shadow: 0 0 50px rgba(0,0,0,1);
+            }
+            #gameOverModal h1 { font-size: 40px; margin: 0 0 20px 0; }
+            .restart-btn { background: #fff; color: #000; padding: 15px 30px; font-size: 20px; font-weight: bold; border: none; cursor: pointer; border-radius: 8px; margin-top: 20px; transition: 0.2s;}
+            .restart-btn:hover { background: #ff9d00; transform: scale(1.05); }
+        `;
+        document.head.appendChild(style);
+        const goModal = document.createElement('div'); goModal.id = 'gameOverModal'; document.body.appendChild(goModal);
+
+        const ogUpdate = Game.prototype.update;
+        Game.prototype.update = function() {
+            ogUpdate.call(this); 
+            if (this.queens.length > 0 && this.gameState === 'playing') {
+                const blackQueen = this.queens.find(q => q.team === 'black'); const redQueen = this.queens.find(q => q.team === 'red');
+                if (!blackQueen || blackQueen.hp <= 0) { 
+                    this.gameState = 'lose'; 
+                    document.getElementById('debug').style.display = 'none'; 
+                    document.getElementById('mobileToolbar').style.display='none';
+                    goModal.style.borderColor = '#ff0000';
+                    goModal.innerHTML = `<h1 style="color:#ff0000;">DEFEAT</h1><p>Your Queen has fallen to the Red Swarm.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
+                    goModal.style.display = 'block';
+                } 
+                else if (!redQueen || redQueen.hp <= 0) { 
+                    this.gameState = 'win'; 
+                    document.getElementById('debug').style.display = 'none'; 
+                    document.getElementById('mobileToolbar').style.display='none';
+                    goModal.style.borderColor = '#00ff00';
+                    goModal.innerHTML = `<h1 style="color:#00ff00;">VICTORY</h1><p>The Pumpkin Patch belongs to the Black Swarm.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
+                    goModal.style.display = 'block';
+                }
+            }
+        };
+
+        game.bus.on('uiDraw', (ctx) => {
+            if (game.gameState === 'playing') return;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'; ctx.fillRect(0, 0, game.canvas.width, game.canvas.height);
+            // Modal HTML handles the rest!
+        });
+    }
+};
+
+// --- AUDIO SYNTH EXPANSION ---
+const AudioExpansion = {
+    init: (game) => {
+        const AudioContext = window.AudioContext || window.webkitAudioContext; const ctx = new AudioContext();
+        const unlock = () => { if(ctx.state === 'suspended') ctx.resume(); window.removeEventListener('click', unlock); window.removeEventListener('touchstart', unlock);};
+        window.addEventListener('click', unlock); window.addEventListener('touchstart', unlock);
+        const playTone = (freq, type, duration, vol=0.05) => {
+            if(ctx.state === 'suspended') return;
+            const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.type = type; osc.frequency.setValueAtTime(freq, ctx.currentTime);
+            osc.connect(gain); gain.connect(ctx.destination); gain.gain.setValueAtTime(vol, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+            osc.start(); osc.stop(ctx.currentTime + duration);
+        };
+        game.bus.on('playSound', (type) => {
+            if (type === 'shoot') playTone(600, 'square', 0.1, 0.02); if (type === 'harvest') playTone(150, 'sawtooth', 0.1, 0.05); 
+            if (type === 'death') playTone(100, 'sawtooth', 0.4, 0.08); if (type === 'spell') playTone(800, 'sine', 0.5, 0.05); 
+            if (type === 'build') playTone(300, 'triangle', 0.2, 0.05); 
+        });
+    }
+};
+
+// --- OTHER ENTITIES (UNCHANGED) ---
 class Aphid {
     constructor(x, y) { this.x = x; this.y = y; this.size = 8; this.hp = 30; this.maxHp = 30; this.angle = Math.random() * Math.PI * 2; this.speed = 0.3; this.team = 'nature'; this.color = '#7eff5e'; }
     update(game) {
@@ -563,25 +672,21 @@ class Aphid {
     draw(ctx) { ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.fillStyle = this.color; ctx.beginPath(); ctx.ellipse(0, 0, this.size, this.size-2, 0, 0, Math.PI*2); ctx.fill(); ctx.restore(); }
 }
 
-const AdvancedBaseExpansion = {
-    init: (game) => {
-        setTimeout(() => {
-            const pad = 400; const bX = pad + Math.random() * 200; const bY = pad + Math.random() * 200;
-            const rX = game.world.width - pad - Math.random() * 200; const rY = game.world.height - pad - Math.random() * 200;
-            game.structures.push(new Structure(bX, bY, 'black', 'nest')); game.structures.push(new Structure(bX + 80, bY, 'black', 'eggsac'));
-            game.structures.push(new Structure(rX, rY, 'red', 'nest')); game.structures.push(new Structure(rX - 80, rY, 'red', 'eggsac'));
-            game.camera.x = Math.max(0, bX - (game.canvas.width / 2)); game.camera.y = Math.max(0, bY - (game.canvas.height / 2));
-            
-            for (let i = 0; i < 20; i++) {
-                let pX = 600 + Math.random() * (game.world.width - 1200); let pY = 600 + Math.random() * (game.world.height - 1200);
-                for (let p = 0; p < Math.floor(Math.random() * 6) + 5; p++) game.resourceNodes.push(new ResourceNode(pX + (Math.random() - 0.5) * 300, pY + (Math.random() - 0.5) * 300, 'pumpkin'));
-            }
-            for (let i = 0; i < 30; i++) { game.resourceNodes.push(new ResourceNode(game.world.width/2 + (Math.random()-0.5)*400, Math.random() * game.world.height, 'dew')); }
-            for(let i=0; i<3; i++) game.critters.push(new GoldenBug(game.world.width/2 + (Math.random()-0.5)*1000, game.world.height/2 + (Math.random()-0.5)*1000));
-            for(let i=0; i<15; i++) game.critters.push(new Aphid(Math.random() * game.world.width, Math.random() * game.world.height));
-        }, 100);
+class GoldenBug {
+    constructor(x, y) { this.x = x; this.y = y; this.size = 15; this.hp = 250; this.maxHp = 250; this.angle = Math.random() * Math.PI * 2; this.speed = 0.5; this.team = 'nature'; this.color = 'gold';}
+    update(game) {
+        if(Math.random() < 0.05) this.angle += (Math.random() - 0.5);
+        this.x += Math.cos(this.angle) * this.speed; this.y += Math.sin(this.angle) * this.speed;
+        this.x = Math.max(0, Math.min(this.x, game.world.width)); this.y = Math.max(0, Math.min(this.y, game.world.height));
+        if(this.hp <= 0) for(let i=0; i<5; i++) game.resourceNodes.push(new ResourceNode(this.x + (Math.random()-0.5)*100, this.y + (Math.random()-0.5)*100, 'pumpkin'));
     }
-};
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.fillStyle = '#ffd700'; 
+        ctx.beginPath(); ctx.ellipse(0, 0, this.size, this.size-5, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.fillRect(this.size/2, -2, 4, 4); ctx.restore();
+        if(this.hp < this.maxHp) { ctx.fillStyle='red'; ctx.fillRect(this.x-10, this.y-20, 20, 4); ctx.fillStyle='lime'; ctx.fillRect(this.x-10, this.y-20, 20*(this.hp/this.maxHp), 4); }
+    }
+}
 
 class Queen extends Spider {
     constructor(x, y, team) {
@@ -633,51 +738,15 @@ const QueenExpansion = {
     }
 };
 
-const HiveMindExpansion = {
-    patch: (game) => {
-        Structure.prototype.update = function(game) {
-            const tDamage = 25 + (game.techLevel[this.team] * 10);
-            if(this.type === 'turret') {
-                this.cooldown--;
-                if(this.cooldown <= 0) {
-                    let allEnemies = game.spiders.concat(game.queens).concat(game.critters).concat(game.bosses).filter(e => e.team !== this.team);
-                    for(let e of allEnemies) {
-                        if(Math.hypot(e.x - this.x, e.y - this.y) < 200) { 
-                            game.projectiles.push(new Projectile(this.x, this.y, e, tDamage, this.team));
-                            game.bus.emit('playSound', 'shoot');
-                            this.cooldown = 45; break; 
-                        }
-                    }
-                }
-            }
-            if (this.team === 'red' && this.type === 'nest') {
-                if (game.eco.red.pumpkins >= 500 && Math.random() < 0.05) { game.eco.red.pumpkins -= 250; game.techLevel.red++; }
-                if (game.eco.red.pumpkins >= 50 && game.pop.red < game.maxPop.red) {
-                    if(!this.spawnTimer) this.spawnTimer = 0;
-                    this.spawnTimer--;
-                    if(this.spawnTimer <= 0) {
-                        const role = Math.random() > 0.8 ? 'soldier' : 'harvester'; 
-                        const cost = role === 'soldier' ? 25 : 10;
-                        if(game.eco.red.pumpkins >= cost) {
-                            game.eco.red.pumpkins -= cost; 
-                            game.bus.emit('spawnSpider', { x: this.x + (Math.random()-0.5)*100, y: this.y + (Math.random()-0.5)*100, team: 'red', role: role });
-                            this.spawnTimer = 120; 
-                        }
-                    }
-                } else if (game.pop.red >= game.maxPop.red && game.eco.red.pumpkins > 200) {
-                    game.eco.red.pumpkins -= 50; game.structures.push(new Structure(this.x + (Math.random()-0.5)*200, this.y + (Math.random()-0.5)*200, 'red', 'eggsac'));
-                }
-            }
-        };
-    }
-};
-
 const CombatAndHarvesterExpansion = {
     patch: (game) => {
         Spider.prototype.update = function(game) {
-            const techLvl = game.techLevel[this.team]; const currentDamage = this.damage + (techLvl * 5); 
+            const techLvl = game.techLevel[this.team]; 
+            const currentDamage = this.damage + (techLvl * 5); 
+            
             const terrain = game.getTerrainAt(this.x, this.y); let tMod = 1.0;
             if(terrain === 'water') tMod = 0.3; if(terrain === 'grass') tMod = 1.3; 
+            
             let currentSpeed = (this.baseSpeed + (techLvl * 0.15)) * tMod;
             if (this.isSlowed) currentSpeed *= 0.3; this.isSlowed = false; 
 
@@ -729,7 +798,7 @@ const CombatAndHarvesterExpansion = {
                 }
             } else {
                 let closest = null; let minD = Infinity;
-                game.structures.filter(s => s.team === this.team && s.type === 'nest').forEach(n => { let d = Math.hypot(n.x - this.x, n.y - this.y); if(d < minD) { minD = d; closest = n; } });
+                game.structures.filter(s => s.team === this.team && (s.type === 'nest' || s.type === 'pylon')).forEach(n => { let d = Math.hypot(n.x - this.x, n.y - this.y); if(d < minD) { minD = d; closest = n; } });
                 game.queens.filter(q => q.team === this.team).forEach(q => { let d = Math.hypot(q.x - this.x, q.y - this.y); if(d < minD) { minD = d; closest = q; } });
                 this.target = closest;
             }
@@ -774,15 +843,14 @@ const CombatAndHarvesterExpansion = {
 
 const MinimapExpansion = {
     init: (game) => {
-        game.minimap = { size: 200, padding: 10 }; game.isMinimapDragging = false; // Made slightly smaller for mobile
+        game.minimap = { size: 200, padding: 10 }; game.isMinimapDragging = false;
         game.moveCameraFromMinimap = function(localX, localY) {
             const pctX = Math.max(0, Math.min(localX / this.minimap.size, 1)); const pctY = Math.max(0, Math.min(localY / this.minimap.size, 1));
             this.camera.x = (pctX * this.world.width) - (this.canvas.width / 2); this.camera.y = (pctY * this.world.height) - (this.canvas.height / 2);
         };
         
-        // Touch map support
         const handleMapInteraction = (clientX, clientY, isDown) => {
-            const mmX = game.canvas.width - game.minimap.size - game.minimap.padding; const mmY = game.canvas.height - game.minimap.size - game.minimap.padding - 80; // Offset for mobile bar
+            const mmX = game.canvas.width - game.minimap.size - game.minimap.padding; const mmY = game.canvas.height - game.minimap.size - game.minimap.padding - 80; 
             if (clientX >= mmX && clientX <= mmX + game.minimap.size && clientY >= mmY && clientY <= mmY + game.minimap.size) {
                 if(isDown !== null) game.isMinimapDragging = isDown;
                 if(game.isMinimapDragging) game.moveCameraFromMinimap(clientX - mmX, clientY - mmY);
@@ -793,7 +861,6 @@ const MinimapExpansion = {
 
         game.canvas.addEventListener('mousedown', e => handleMapInteraction(e.clientX, e.clientY, true));
         window.addEventListener('mousemove', e => { if(game.isMinimapDragging) handleMapInteraction(e.clientX, e.clientY, null); });
-        
         game.canvas.addEventListener('touchstart', e => { if(e.touches.length===1) handleMapInteraction(e.touches[0].clientX, e.touches[0].clientY, true); }, {passive: false});
         window.addEventListener('touchmove', e => { if(game.isMinimapDragging && e.touches.length===1) handleMapInteraction(e.touches[0].clientX, e.touches[0].clientY, null); }, {passive: false});
     },
@@ -801,15 +868,11 @@ const MinimapExpansion = {
         game.bus.on('uiDraw', (ctx) => {
             if(game.gameState !== 'playing') return;
             const size = game.minimap.size; const pad = game.minimap.padding;
-            const startX = game.canvas.width - size - pad; 
-            const startY = game.canvas.height - size - pad - 90; // Moved up to clear toolbar
+            const startX = game.canvas.width - size - pad; const startY = game.canvas.height - size - pad - 90; 
             
             ctx.fillStyle = 'rgba(20, 10, 5, 0.8)'; ctx.fillRect(startX, startY, size, size);
             ctx.strokeStyle = '#ff9d00'; ctx.lineWidth = 2; ctx.strokeRect(startX, startY, size, size);
-
             const scaleX = size / game.world.width; const scaleY = size / game.world.height;
-            ctx.fillStyle = 'rgba(26, 78, 110, 0.5)'; ctx.fillRect(startX + (game.world.width/2)*scaleX - 2, startY, 4, size);
-
             const drawDot = (ent, color, r) => { ctx.fillStyle = color; ctx.fillRect(startX + (ent.x * scaleX) - r, startY + (ent.y * scaleY) - r, r*2, r*2); };
 
             game.resourceNodes.forEach(r => drawDot(r, r.type === 'pumpkin' ? '#ff7b00' : '#00aaff', 1.5));
@@ -926,30 +989,53 @@ const SpellExpansion = {
     }
 }
 
-const GameLoopExpansion = {
-    patch: (game) => {
-        const ogUpdate = Game.prototype.update;
-        Game.prototype.update = function() {
-            ogUpdate.call(this); 
-            if (this.queens.length > 0 && this.gameState === 'playing') {
-                const blackQueen = this.queens.find(q => q.team === 'black'); const redQueen = this.queens.find(q => q.team === 'red');
-                if (!blackQueen || blackQueen.hp <= 0) { this.gameState = 'lose'; document.getElementById('debug').innerHTML = ''; document.getElementById('mobileToolbar').style.display='none';} 
-                else if (!redQueen || redQueen.hp <= 0) { this.gameState = 'win'; document.getElementById('debug').innerHTML = ''; document.getElementById('mobileToolbar').style.display='none';}
+class CentipedeBoss {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.team = 'nature'; this.hp = 3000; this.maxHp = 3000; this.damage = 50; this.speed = 1.8;
+        this.angle = Math.random() * Math.PI*2; this.history = []; this.segmentCount = 15; this.cooldown = 0;
+        this.headSprite = new Image(); this.headSprite.src = 'assets/centipede_head.png';
+        this.bodySprite = new Image(); this.bodySprite.src = 'assets/centipede_body.png';
+    }
+    update(game) {
+        this.history.unshift({x: this.x, y: this.y, angle: this.angle}); if(this.history.length > this.segmentCount * 5) this.history.pop(); 
+        let allTargets = game.spiders.concat(game.queens).concat(game.structures);
+        let nearest = null; let minDist = 800; 
+        for (let t of allTargets) { let d = Math.hypot(t.x - this.x, t.y - this.y); if (d < minDist) { minDist = d; nearest = t; } }
+        if (nearest) {
+            this.angle = Math.atan2(nearest.y - this.y, nearest.x - this.x);
+            if (minDist > 30) { this.x += Math.cos(this.angle) * this.speed; this.y += Math.sin(this.angle) * this.speed; } 
+            else { this.cooldown--; if(this.cooldown <= 0) { nearest.hp -= this.damage; this.cooldown = 20; game.bus.emit('particles', {x: nearest.x, y: nearest.y, color: '#00ff00', count: 10}); game.bus.emit('playSound', 'harvest'); } }
+        } else {
+            if(Math.random() < 0.05) this.angle += (Math.random() - 0.5);
+            this.x += Math.cos(this.angle) * (this.speed * 0.5); this.y += Math.sin(this.angle) * (this.speed * 0.5);
+            this.x = Math.max(0, Math.min(this.x, game.world.width)); this.y = Math.max(0, Math.min(this.y, game.world.height));
+        }
+    }
+    draw(ctx) {
+        for(let i = 1; i < this.segmentCount; i++) {
+            let histIndex = i * 4; 
+            if(this.history[histIndex]) {
+                let pos = this.history[histIndex]; ctx.save(); ctx.translate(pos.x, pos.y); ctx.rotate(pos.angle);
+                if (this.bodySprite.complete && this.bodySprite.naturalHeight !== 0) { ctx.drawImage(this.bodySprite, -15, -15, 30, 30); } 
+                else { ctx.fillStyle = i % 2 === 0 ? '#113311' : '#225522'; ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill(); }
+                ctx.restore();
             }
-        };
+        }
+        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+        if (this.headSprite.complete && this.headSprite.naturalHeight !== 0) { ctx.drawImage(this.headSprite, -20, -20, 40, 40); } 
+        else { ctx.fillStyle = '#052205'; ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(8, -8, 4, 0, Math.PI*2); ctx.arc(8, 8, 4, 0, Math.PI*2); ctx.fill(); }
+        ctx.restore();
+        if(this.hp < this.maxHp) { ctx.fillStyle='black'; ctx.fillRect(this.x-30, this.y-35, 60, 8); ctx.fillStyle='red'; ctx.fillRect(this.x-29, this.y-34, 58, 6); ctx.fillStyle='#00ff00'; ctx.fillRect(this.x-29, this.y-34, 58*(this.hp/this.maxHp), 6); }
+    }
+}
 
-        game.bus.on('uiDraw', (ctx) => {
-            if (game.gameState === 'playing') return;
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'; ctx.fillRect(0, 0, game.canvas.width, game.canvas.height);
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = 'bold 80px Courier New';
-            if (game.gameState === 'win') {
-                ctx.fillStyle = '#00ff00'; ctx.fillText('VICTORY', game.canvas.width / 2, game.canvas.height / 2 - 40);
-                ctx.font = '20px Courier New'; ctx.fillStyle = 'white'; ctx.fillText('The Pumpkin Patch belongs to the Black Swarm.', game.canvas.width / 2, game.canvas.height / 2 + 30);
-            } else if (game.gameState === 'lose') {
-                ctx.fillStyle = '#ff0000'; ctx.fillText('DEFEAT', game.canvas.width / 2, game.canvas.height / 2 - 40);
-                ctx.font = '20px Courier New'; ctx.fillStyle = 'white'; ctx.fillText('Your Queen has fallen to the Red Swarm.', game.canvas.width / 2, game.canvas.height / 2 + 30);
-            }
-        });
+const GodUnitExpansion = {
+    init: (game) => {
+        setTimeout(() => {
+            console.log("THE CENTIPEDE AWAKENS!");
+            game.bosses.push(new CentipedeBoss(game.world.width/2, game.world.height/2));
+            game.bus.emit('playSound', 'spell');
+        }, 180000); 
     }
 };
 
@@ -986,20 +1072,23 @@ const SaveLoadExpansion = {
 window.onload = () => {
     const game = new Game();
     
-    game.expansions.load('TerrainGen', TerrainExpansion); 
+    // Core Game Systems
+    game.expansions.load('TerrainGen', TerrainExpansion); // SINE WAVE MAP GEN
     game.expansions.load('AdvancedBaseBuilder', AdvancedBaseExpansion); 
     game.expansions.load('QueenSystem', QueenExpansion); 
     game.expansions.load('HiveMind', HiveMindExpansion); 
     game.expansions.load('CombatAndHarvesterAI', CombatAndHarvesterExpansion); 
     game.expansions.load('WebNetwork', WebNetworkExpansion); 
+    game.expansions.load('TerritoryControl', TerritoryExpansion); // NEW: ANNO TERRITORY OVERLAYS
     
     // UI EXPANSIONS
-    game.expansions.load('MobileUI', MobileUIExpansion); // NEW: MOBILE ACTION BAR
+    game.expansions.load('MobileUI', MobileUIExpansion); 
     game.expansions.load('LairUI', LairUIExpansion); 
     game.expansions.load('MinimapUI', MinimapExpansion); 
-    game.expansions.load('GameLoop', GameLoopExpansion); 
+    game.expansions.load('GameLoop', GameLoopExpansion); // NEW: RESTART MODAL
     game.expansions.load('SaveLoadManager', SaveLoadExpansion); 
     
+    // JUICE & AUDIO
     game.expansions.load('ParticleEngine', ParticleExpansion); 
     game.expansions.load('Atmosphere', AtmosphereExpansion); 
     game.expansions.load('CommanderSpells', SpellExpansion); 
