@@ -918,45 +918,93 @@ const CombatAndHarvesterExpansion = {
 
 const MinimapExpansion = {
     init: (game) => {
-        game.minimap = { size: 200, padding: 10 }; game.isMinimapDragging = false;
+        game.minimap = { size: 200, padding: 10 }; 
+        game.isMinimapDragging = false;
+        
         game.moveCameraFromMinimap = function(localX, localY) {
-            const pctX = Math.max(0, Math.min(localX / this.minimap.size, 1)); const pctY = Math.max(0, Math.min(localY / this.minimap.size, 1));
-            this.camera.x = (pctX * this.world.width) - (this.canvas.width / 2); this.camera.y = (pctY * this.world.height) - (this.canvas.height / 2);
+            const pctX = Math.max(0, Math.min(localX / this.minimap.size, 1)); 
+            const pctY = Math.max(0, Math.min(localY / this.minimap.size, 1));
+            this.camera.x = (pctX * this.world.width) - (this.canvas.width / 2); 
+            this.camera.y = (pctY * this.world.height) - (this.canvas.height / 2);
         };
         
-        const handleMapInteraction = (clientX, clientY, isDown) => {
-            const mmX = game.canvas.width - game.minimap.size - game.minimap.padding; const mmY = game.canvas.height - game.minimap.size - game.minimap.padding - 80; 
+        // Helper to check if mouse is hitting the minimap
+        const checkMinimapClick = (clientX, clientY) => {
+            const mmX = game.canvas.width - game.minimap.size - game.minimap.padding; 
+            const mmY = game.canvas.height - game.minimap.size - game.minimap.padding - 80; 
             if (clientX >= mmX && clientX <= mmX + game.minimap.size && clientY >= mmY && clientY <= mmY + game.minimap.size) {
-                if(isDown !== null) game.isMinimapDragging = isDown;
-                if(game.isMinimapDragging) game.moveCameraFromMinimap(clientX - mmX, clientY - mmY);
-                return true;
+                game.isMinimapDragging = true; 
+                game.moveCameraFromMinimap(clientX - mmX, clientY - mmY);
             }
-            return false;
         };
 
-        game.canvas.addEventListener('mousedown', e => handleMapInteraction(e.clientX, e.clientY, true));
-        window.addEventListener('mousemove', e => { if(game.isMinimapDragging) handleMapInteraction(e.clientX, e.clientY, null); });
-        game.canvas.addEventListener('touchstart', e => { if(e.touches.length===1) handleMapInteraction(e.touches[0].clientX, e.touches[0].clientY, true); }, {passive: false});
-        window.addEventListener('touchmove', e => { if(game.isMinimapDragging && e.touches.length===1) handleMapInteraction(e.touches[0].clientX, e.touches[0].clientY, null); }, {passive: false});
+        const checkMinimapMove = (clientX, clientY) => {
+            if (game.isMinimapDragging) {
+                const mmX = game.canvas.width - game.minimap.size - game.minimap.padding; 
+                const mmY = game.canvas.height - game.minimap.size - game.minimap.padding - 80;
+                game.moveCameraFromMinimap(clientX - mmX, clientY - mmY);
+            }
+        };
+
+        // MOUSE CONTROLS
+        game.canvas.addEventListener('mousedown', e => { 
+            if (e.button === 0) checkMinimapClick(e.clientX, e.clientY); 
+        });
+        
+        window.addEventListener('mousemove', e => checkMinimapMove(e.clientX, e.clientY));
+        
+        // THE BUG FIX: Unconditionally release the drag state no matter where the mouse is!
+        window.addEventListener('mouseup', e => { 
+            if (e.button === 0) game.isMinimapDragging = false; 
+        });
+        
+        // TOUCH CONTROLS (Mobile)
+        game.canvas.addEventListener('touchstart', e => { 
+            if(e.touches.length===1) checkMinimapClick(e.touches[0].clientX, e.touches[0].clientY); 
+        }, {passive: false});
+        
+        window.addEventListener('touchmove', e => { 
+            if(e.touches.length===1) checkMinimapMove(e.touches[0].clientX, e.touches[0].clientY); 
+        }, {passive: false});
+        
+        // Unconditionally release touch drag state
+        window.addEventListener('touchend', e => { 
+            game.isMinimapDragging = false; 
+        });
     },
     patch: (game) => {
         game.bus.on('uiDraw', (ctx) => {
             if(game.gameState !== 'playing') return;
             const size = game.minimap.size; const pad = game.minimap.padding;
-            const startX = game.canvas.width - size - pad; const startY = game.canvas.height - size - pad - 90; 
+            const startX = game.canvas.width - size - pad; 
+            const startY = game.canvas.height - size - pad - 90; // Raised to clear mobile toolbar
             
             ctx.fillStyle = 'rgba(20, 10, 5, 0.8)'; ctx.fillRect(startX, startY, size, size);
             ctx.strokeStyle = '#ff9d00'; ctx.lineWidth = 2; ctx.strokeRect(startX, startY, size, size);
+
             const scaleX = size / game.world.width; const scaleY = size / game.world.height;
+            
+            // Draw River on minimap
+            ctx.fillStyle = 'rgba(26, 78, 110, 0.5)'; 
+            ctx.fillRect(startX + (game.world.width/2)*scaleX - 2, startY, 4, size);
+
             const drawDot = (ent, color, r) => { ctx.fillStyle = color; ctx.fillRect(startX + (ent.x * scaleX) - r, startY + (ent.y * scaleY) - r, r*2, r*2); };
 
+            // Draw all entities
             game.resourceNodes.forEach(r => drawDot(r, r.type === 'pumpkin' ? '#ff7b00' : '#00aaff', 1.5));
             game.structures.forEach(s => drawDot(s, s.team === 'black' ? '#ffffff' : '#ff4444', 3));
             game.spiders.forEach(s => drawDot(s, s.team === 'black' ? '#aaaaaa' : '#aa0000', 1));
             game.critters.forEach(c => drawDot(c, c.color || 'gold', 2));
             game.bosses.forEach(b => drawDot(b, '#00ff00', 4)); 
-            game.queens.forEach(q => { drawDot(q, q.team === 'black' ? '#ffffff' : '#ff4444', 4); ctx.strokeStyle = 'gold'; ctx.lineWidth = 1; ctx.strokeRect(startX + (q.x * scaleX) - 5, startY + (q.y * scaleY) - 5, 10, 10); });
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; ctx.lineWidth = 1; ctx.strokeRect(startX + (game.camera.x * scaleX), startY + (game.camera.y * scaleY), game.canvas.width * scaleX, game.canvas.height * scaleY);
+            game.queens.forEach(q => { 
+                drawDot(q, q.team === 'black' ? '#ffffff' : '#ff4444', 4); 
+                ctx.strokeStyle = 'gold'; ctx.lineWidth = 1; 
+                ctx.strokeRect(startX + (q.x * scaleX) - 5, startY + (q.y * scaleY) - 5, 10, 10); 
+            });
+            
+            // Draw Camera Viewport
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; ctx.lineWidth = 1; 
+            ctx.strokeRect(startX + (game.camera.x * scaleX), startY + (game.camera.y * scaleY), game.canvas.width * scaleX, game.canvas.height * scaleY);
         });
     }
 };
