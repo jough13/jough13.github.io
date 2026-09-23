@@ -458,139 +458,136 @@ const TerritoryExpansion = {
     }
 }
 
-// --- NEW RENDERING ENGINE: ALPHA SPLATTING + CLUTTER DECOR ---
+// --- UPDATED EXPANSION: CASCARONE-STYLE AUTO-TILING (BITMASKING) ---
 const TerrainExpansion = {
     init: (game) => {
-        game.tiles = { dirt: new Image(), vines: new Image(), pebbles: new Image(), water: new Image(), grass: new Image() };
-        game.patterns = {}; 
-
-        const loadPattern = (type, src) => {
-            game.tiles[type].src = src;
-            game.tiles[type].onload = () => {
-                const pattern = game.ctx.createPattern(game.tiles[type], 'repeat');
-                game.patterns[type] = pattern;
-            };
-        };
-
-        loadPattern('dirt', 'assets/tile_dirt.png');
-        loadPattern('vines', 'assets/tile_vines.png');
-        loadPattern('pebbles', 'assets/tile_pebbles.png');
-        loadPattern('water', 'assets/tile_water.png');
-        loadPattern('grass', 'assets/tile_grass.png');
+        game.tileSize = 256; 
         
-        // 1. Math Noise Generator
-        game.noiseSeed = Math.random() * 1000;
-        game.hashNoise = function(x, y) {
-            let n = Math.sin(x * 12.9898 + y * 78.233 + this.noiseSeed) * 43758.5453;
-            return n - Math.floor(n);
+        // Load our base tiles + our 5 new specific River tiles
+        game.tiles = { 
+            dirt: new Image(), vines: new Image(), pebbles: new Image(), grass: new Image(),
+            water_straight: new Image(), water_corner: new Image(), 
+            water_end: new Image(), water_t: new Image(), water_cross: new Image()
         };
-        game.lerp = (a, b, t) => a + t * (b - a);
-        game.getNoise = function(x, y) {
-            let xi = Math.floor(x); let yi = Math.floor(y);
-            let xf = x - xi; let yf = y - yi;
-            let u = xf * xf * (3.0 - 2.0 * xf);
-            let v = yf * yf * (3.0 - 2.0 * yf);
-            let a = this.hashNoise(xi, yi); let b = this.hashNoise(xi + 1, yi);
-            let c = this.hashNoise(xi, yi + 1); let d = this.hashNoise(xi + 1, yi + 1);
-            return this.lerp(this.lerp(a, b, u), this.lerp(c, d, u), v);
-        };
-        game.getOctaveNoise = function(x, y, octaves) {
-            let val = 0; let freq = 1; let amp = 1; let max = 0;
-            for(let i=0; i<octaves; i++) {
-                val += this.getNoise(x*freq, y*freq) * amp;
-                max += amp; freq *= 2; amp *= 0.5;
+        game.tiles.dirt.src = 'assets/tile_dirt.png'; game.tiles.vines.src = 'assets/tile_vines.png'; 
+        game.tiles.pebbles.src = 'assets/tile_pebbles.png'; game.tiles.grass.src = 'assets/tile_grass.png';
+        
+        game.tiles.water_straight.src = 'assets/water_straight.png';
+        game.tiles.water_corner.src = 'assets/water_corner.png';
+        game.tiles.water_end.src = 'assets/water_end.png';
+        game.tiles.water_t.src = 'assets/water_t.png';
+        game.tiles.water_cross.src = 'assets/water_cross.png';
+        
+        game.generateMap = function() {
+            this.mapGrid = [];
+            const cols = Math.ceil(this.world.width / this.tileSize); 
+            const rows = Math.ceil(this.world.height / this.tileSize);
+            
+            // 1. Fill map with base biomes (Grid-style)
+            for (let y = 0; y < rows; y++) {
+                let row = [];
+                for (let x = 0; x < cols; x++) { 
+                    let type = Math.random() > 0.75 ? 'vines' : (Math.random() > 0.60 ? 'pebbles' : 'dirt');
+                    // Add some grass clumps
+                    if(Math.random() > 0.85) type = 'grass';
+                    row.push({ type: type, sprite: type, angle: 0 });
+                }
+                this.mapGrid.push(row);
             }
-            return val / max;
-        };
-
-        game.getTerrainAt = function(x, y) {
-            const nx = x / 800; const ny = y / 800;
-            const riverNoise = this.getOctaveNoise(nx * 0.5, ny * 0.5, 3);
-            if (Math.abs(riverNoise - 0.5) < 0.04) return 'water'; 
-
-            const terrainNoise = this.getOctaveNoise(nx, ny, 3);
-            if (terrainNoise > 0.65) return 'grass';
-            if (terrainNoise < 0.35) return 'pebbles';
-            if (terrainNoise < 0.45 && terrainNoise > 0.35) return 'vines'; 
-            return 'dirt';
-        };
-
-        // 2. Offscreen Canvas for Alpha Splatting
-        game.offCanvas = document.createElement('canvas');
-        game.offCtx = game.offCanvas.getContext('2d');
-        
-        // 3. Pre-render a soft radial brush
-        game.brush = document.createElement('canvas');
-        game.brush.width = 120; game.brush.height = 120;
-        let bCtx = game.brush.getContext('2d');
-        let grad = bCtx.createRadialGradient(60, 60, 0, 60, 60, 60);
-        grad.addColorStop(0, 'rgba(0,0,0,1)');
-        grad.addColorStop(0.7, 'rgba(0,0,0,0.8)');
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
-        bCtx.fillStyle = grad;
-        bCtx.fillRect(0,0,120,120);
-    },
-    patch: (game) => {
-        game.bus.on('preDraw', (ctx) => {
-            // Resize offscreen canvas to match screen
-            if (game.offCanvas.width !== game.canvas.width) {
-                game.offCanvas.width = game.canvas.width;
-                game.offCanvas.height = game.canvas.height;
+            
+            // 2. Carve a winding river!
+            let rX = Math.floor(cols / 2);
+            for (let rY = 0; rY < rows; rY++) {
+                this.mapGrid[rY][rX].type = 'water';
+                // Randomly meander left or right
+                if(Math.random() > 0.5 && rY < rows - 1) {
+                    const dir = Math.random() > 0.5 ? 1 : -1;
+                    rX += dir;
+                    // Keep in bounds
+                    rX = Math.max(1, Math.min(rX, cols-2));
+                    this.mapGrid[rY][rX].type = 'water';
+                }
             }
 
-            // 1. Draw solid Dirt background
-            ctx.fillStyle = game.patterns.dirt ? game.patterns.dirt : '#3d2817';
-            ctx.fillRect(game.camera.x, game.camera.y, game.canvas.width, game.canvas.height);
+            // 3. BITMASKING (Auto-Tiling) FOR THE RIVER
+            this.updateBitmasks = function() {
+                // Map the 16 possible neighbor combinations to our 5 tiles + rotations
+                const bitMap = {
+                    0: {s: 'water_end', a: 0},           1: {s: 'water_end', a: 0},        // N
+                    2: {s: 'water_end', a: Math.PI/2},   4: {s: 'water_end', a: Math.PI},  // E, S
+                    8: {s: 'water_end', a: -Math.PI/2},  5: {s: 'water_straight', a: 0},   // W, N+S
+                    10: {s: 'water_straight', a: Math.PI/2}, 3: {s: 'water_corner', a: 0}, // E+W, N+E
+                    6: {s: 'water_corner', a: Math.PI/2}, 12: {s: 'water_corner', a: Math.PI}, // E+S, S+W
+                    9: {s: 'water_corner', a: -Math.PI/2}, 7: {s: 'water_t', a: 0},        // W+N, N+E+S
+                    14: {s: 'water_t', a: Math.PI/2},    13: {s: 'water_t', a: Math.PI},   // E+S+W, S+W+N
+                    11: {s: 'water_t', a: -Math.PI/2},   15: {s: 'water_cross', a: 0}      // W+N+E, All
+                };
 
-            const renderChunkSize = 40; 
-            const startX = Math.floor(game.camera.x / renderChunkSize) * renderChunkSize;
-            const startY = Math.floor(game.camera.y / renderChunkSize) * renderChunkSize;
-            const endX = startX + game.canvas.width + renderChunkSize;
-            const endY = startY + game.canvas.height + renderChunkSize;
+                for (let y = 0; y < rows; y++) {
+                    for (let x = 0; x < cols; x++) {
+                        if (this.mapGrid[y][x].type === 'water') {
+                            // Check Neighbors (North=1, East=2, South=4, West=8)
+                            let mask = 0;
+                            if (y > 0 && this.mapGrid[y-1][x].type === 'water') mask += 1;
+                            if (x < cols-1 && this.mapGrid[y][x+1].type === 'water') mask += 2;
+                            if (y < rows-1 && this.mapGrid[y+1][x].type === 'water') mask += 4;
+                            if (x > 0 && this.mapGrid[y][x-1].type === 'water') mask += 8;
 
-            const biomes = ['vines', 'pebbles', 'grass', 'water']; 
-            
-            // Transform matrix to scale patterns to 35% AND offset them by camera so they don't swim
-            const matrix = new DOMMatrix().scale(0.35, 0.35).translate(game.camera.x / 0.35, game.camera.y / 0.35);
-            
-            biomes.forEach(biomeType => {
-                if(!game.patterns[biomeType]) return; 
-                
-                game.patterns[biomeType].setTransform(matrix);
-
-                // Clear offscreen mask
-                game.offCtx.clearRect(0, 0, game.offCanvas.width, game.offCanvas.height);
-                game.offCtx.globalCompositeOperation = 'source-over';
-                
-                // Draw soft black brush strokes where the biome exists
-                for (let y = startY; y <= endY; y += renderChunkSize) {
-                    for (let x = startX; x <= endX; x += renderChunkSize) {
-                        if (game.getTerrainAt(x, y) === biomeType) {
-                            // Translate world coords to screen coords for the offscreen canvas
-                            game.offCtx.drawImage(game.brush, (x - game.camera.x) - 60, (y - game.camera.y) - 60);
+                            this.mapGrid[y][x].sprite = bitMap[mask].s;
+                            this.mapGrid[y][x].angle = bitMap[mask].a;
                         }
                     }
                 }
+            };
+            this.updateBitmasks(); // Run the mask on generation
+        };
+        game.generateMap();
 
-                // Fill the blurred black shapes with the texture
-                game.offCtx.globalCompositeOperation = 'source-in';
-                game.offCtx.fillStyle = game.patterns[biomeType];
-                game.offCtx.fillRect(0, 0, game.canvas.width, game.canvas.height);
-
-                // Draw the perfectly blended layer back onto the main canvas
-                ctx.drawImage(game.offCanvas, game.camera.x, game.camera.y);
-            });
+        // Update Terrain Getter to read the new object array
+        game.getTerrainAt = function(x, y) {
+            const tX = Math.floor(x / this.tileSize); const tY = Math.floor(y / this.tileSize);
+            if(this.mapGrid[tY] && this.mapGrid[tY][tX]) return this.mapGrid[tY][tX].type;
+            return 'dirt';
+        };
+    },
+    patch: (game) => {
+        game.bus.on('preDraw', (ctx) => {
+            if (!game.mapGrid) return;
+            const startCol = Math.floor(game.camera.x / game.tileSize); const endCol = startCol + Math.ceil(game.canvas.width / game.tileSize) + 1;
+            const startRow = Math.floor(game.camera.y / game.tileSize); const endRow = startRow + Math.ceil(game.canvas.height / game.tileSize) + 1;
             
-            // Draw Clutter!
-            game.decor.forEach(d => {
-                // Only draw decor that is currently on screen
-                if(d.x > game.camera.x - 50 && d.x < game.camera.x + game.canvas.width + 50 && 
-                   d.y > game.camera.y - 50 && d.y < game.camera.y + game.canvas.height + 50) {
-                    if(d.sprite.complete && d.sprite.naturalHeight !== 0) {
-                        ctx.drawImage(d.sprite, d.x - d.size/2, d.y - d.size/2, d.size, d.size);
+            for (let y = startRow; y <= endRow; y++) {
+                for (let x = startCol; x <= endCol; x++) {
+                    if (y >= 0 && y < game.mapGrid.length && x >= 0 && x < game.mapGrid[y].length) {
+                        const tileData = game.mapGrid[y][x];
+                        const img = game.tiles[tileData.sprite];
+                        
+                        const drawX = x * game.tileSize;
+                        const drawY = y * game.tileSize;
+
+                        if (img && img.complete && img.naturalHeight !== 0) {
+                            if (tileData.angle !== 0) {
+                                // Rotate specific Auto-tiles (like river corners)
+                                ctx.save();
+                                ctx.translate(drawX + game.tileSize/2, drawY + game.tileSize/2);
+                                ctx.rotate(tileData.angle);
+                                ctx.drawImage(img, -game.tileSize/2, -game.tileSize/2, game.tileSize, game.tileSize);
+                                ctx.restore();
+                            } else {
+                                // Draw normally
+                                ctx.drawImage(img, drawX, drawY, game.tileSize, game.tileSize);
+                            }
+                        } else {
+                            // Fallbacks
+                            let col = '#3d2817'; 
+                            if(tileData.type === 'vines') col = '#2d4c1e'; else if(tileData.type === 'pebbles') col = '#555';
+                            else if(tileData.type === 'water') col = '#1a4e6e'; else if(tileData.type === 'grass') col = '#3a7a2e';
+                            ctx.fillStyle = col; ctx.fillRect(drawX, drawY, game.tileSize, game.tileSize);
+                            ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.strokeRect(drawX, drawY, game.tileSize, game.tileSize);
+                        }
                     }
                 }
-            });
+            }
         });
     }
 };
@@ -631,6 +628,15 @@ const AdvancedBaseExpansion = {
             const pad = 600; 
             const bX = pad + Math.random() * 200; const bY = pad + Math.random() * 200;
             const rX = game.world.width - pad - Math.random() * 200; const rY = game.world.height - pad - Math.random() * 200;
+            
+            // Ensure bases start on safe dirt (Now updating the object property!)
+            const tBX = Math.floor(bX/game.tileSize); const tBY = Math.floor(bY/game.tileSize);
+            const tRX = Math.floor(rX/game.tileSize); const tRY = Math.floor(rY/game.tileSize);
+            if(game.mapGrid[tBY]) game.mapGrid[tBY][tBX].type = 'dirt';
+            if(game.mapGrid[tRY]) game.mapGrid[tRY][tRX].type = 'dirt';
+            
+            // Recalculate rivers just in case we spawned on one!
+            game.updateBitmasks();
 
             game.structures.push(new Structure(bX, bY, 'black', 'nest')); 
             game.structures.push(new Structure(bX + 80, bY, 'black', 'eggsac'));
