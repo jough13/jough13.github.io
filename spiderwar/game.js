@@ -662,42 +662,58 @@ const AdvancedBaseExpansion = {
 
 const HiveMindExpansion = {
     patch: (game) => {
-        Structure.prototype.update = function(game) {
-            const tDamage = 25 + (game.techLevel[this.team] * 10);
-            if(this.type === 'turret') {
-                this.cooldown--;
-                if(this.cooldown <= 0) {
-                    let allEnemies = game.spiders.concat(game.queens).concat(game.critters).concat(game.bosses).filter(e => e.team !== this.team);
-                    for(let e of allEnemies) {
-                        if(Math.hypot(e.x - this.x, e.y - this.y) < 200) { 
-                            game.projectiles.push(new Projectile(this.x, this.y, e, tDamage, this.team));
-                            game.bus.emit('playSound', 'shoot');
-                            this.cooldown = 45; break; 
+        game.bus.on('preDraw', (ctx) => {
+            if (!game.mapGrid) return;
+            
+            const startCol = Math.floor(game.camera.x / game.tileSize); 
+            const endCol = startCol + Math.ceil(game.canvas.width / game.tileSize) + 1;
+            const startRow = Math.floor(game.camera.y / game.tileSize); 
+            const endRow = startRow + Math.ceil(game.canvas.height / game.tileSize) + 1;
+            
+            // 1. THE FIX: Draw a universal base layer of dirt first!
+            // This allows you to use transparent backgrounds on your river/grass tiles.
+            if(game.tiles.dirt && game.tiles.dirt.complete) {
+                // Create a temporary pattern just for the background fill
+                const bgPattern = ctx.createPattern(game.tiles.dirt, 'repeat');
+                ctx.fillStyle = bgPattern;
+                ctx.save();
+                // Offset the pattern so it pans smoothly with the camera
+                ctx.translate(-game.camera.x % game.tileSize, -game.camera.y % game.tileSize);
+                ctx.fillRect(-game.tileSize, -game.tileSize, game.canvas.width + game.tileSize*2, game.canvas.height + game.tileSize*2);
+                ctx.restore();
+            } else {
+                ctx.fillStyle = '#3d2817';
+                ctx.fillRect(game.camera.x, game.camera.y, game.canvas.width, game.canvas.height);
+            }
+
+            // 2. Draw the grid tiles on top!
+            for (let y = startRow; y <= endRow; y++) {
+                for (let x = startCol; x <= endCol; x++) {
+                    if (y >= 0 && y < game.mapGrid.length && x >= 0 && x < game.mapGrid[y].length) {
+                        const tileData = game.mapGrid[y][x];
+                        
+                        // Optimization: Skip drawing dirt tiles, since we already painted the whole background dirt!
+                        if (tileData.sprite === 'dirt') continue;
+
+                        const img = game.tiles[tileData.sprite];
+                        const drawX = x * game.tileSize;
+                        const drawY = y * game.tileSize;
+
+                        if (img && img.complete && img.naturalHeight !== 0) {
+                            if (tileData.angle !== 0) {
+                                ctx.save();
+                                ctx.translate(drawX + game.tileSize/2, drawY + game.tileSize/2);
+                                ctx.rotate(tileData.angle);
+                                ctx.drawImage(img, -game.tileSize/2, -game.tileSize/2, game.tileSize, game.tileSize);
+                                ctx.restore();
+                            } else {
+                                ctx.drawImage(img, drawX, drawY, game.tileSize, game.tileSize);
+                            }
                         }
                     }
                 }
             }
-            if (this.team === 'red' && this.type === 'nest') {
-                if (game.eco.red.pumpkins >= 500 && Math.random() < 0.05) { game.eco.red.pumpkins -= 250; game.techLevel.red++; }
-                if (game.eco.red.pumpkins >= 50 && game.pop.red < game.maxPop.red) {
-                    if(!this.spawnTimer) this.spawnTimer = 0;
-                    this.spawnTimer--;
-                    if(this.spawnTimer <= 0) {
-                        const role = Math.random() > 0.8 ? 'soldier' : 'harvester'; 
-                        const cost = role === 'soldier' ? 25 : 10;
-                        if(game.eco.red.pumpkins >= cost) {
-                            game.eco.red.pumpkins -= cost; 
-                            game.bus.emit('spawnSpider', { x: this.x + (Math.random()-0.5)*100, y: this.y + (Math.random()-0.5)*100, team: 'red', role: role });
-                            this.spawnTimer = 120; 
-                        }
-                    }
-                } else if (game.pop.red >= game.maxPop.red && game.eco.red.pumpkins > 200) {
-                    game.eco.red.pumpkins -= 50; 
-                    let bType = Math.random() > 0.7 ? 'pylon' : 'eggsac';
-                    game.structures.push(new Structure(this.x + (Math.random()-0.5)*400, this.y + (Math.random()-0.5)*400, 'red', bType));
-                }
-            }
-        };
+        });
     }
 };
 
