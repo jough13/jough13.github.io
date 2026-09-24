@@ -162,14 +162,9 @@ class Game {
 
     setupInputs() {
         this.keys = {};
+        
         window.addEventListener('keydown', e => {
             const k = e.key.toLowerCase(); this.keys[k] = true;
-            if(k === '1') { this.activeTool = 'nest'; this.bus.emit('toolChanged', 'nest'); }
-            if(k === '2') { this.activeTool = 'eggsac'; this.bus.emit('toolChanged', 'eggsac'); }
-            if(k === '3') { this.activeTool = 'turret'; this.bus.emit('toolChanged', 'turret'); }
-            if(k === '4') { this.activeTool = 'wall'; this.bus.emit('toolChanged', 'wall'); }
-            if(k === '7') { this.activeTool = 'venomStrike'; this.bus.emit('toolChanged', 'venomStrike'); }
-            if(k === '8') { this.activeTool = 'silkTrap'; this.bus.emit('toolChanged', 'silkTrap'); }
             if(k === 'escape') { this.activeTool = 'select'; this.bus.emit('toolChanged', 'select'); this.bus.emit('closeModal'); }
             if(k === 'u' && this.eco.black.pumpkins >= 250) { this.eco.black.pumpkins -= 250; this.techLevel.black++; this.bus.emit('playSound', 'spell');}
         });
@@ -221,7 +216,7 @@ class Game {
             }
         };
 
-        this.canvas.addEventListener('mousedown', (e) => { if(e.button === 0) startInteraction(e.clientX, e.clientY); });
+        this.canvas.addEventListener('mousedown', (e) => { if(e.button === 0 && !e.shiftKey) startInteraction(e.clientX, e.clientY); });
         window.addEventListener('mousemove', (e) => { moveInteraction(e.clientX, e.clientY); });
         window.addEventListener('mouseup', (e) => { if(e.button === 0) endInteraction(e.clientX, e.clientY, e.target); });
         this.canvas.addEventListener('touchstart', (e) => { if(e.touches.length === 1) startInteraction(e.touches[0].clientX, e.touches[0].clientY); }, {passive: false});
@@ -441,22 +436,85 @@ const LairUIExpansion = {
     }
 };
 
-const TerritoryExpansion = {
+const SilkNetworkExpansion = {
     patch: (game) => {
+        // 1. Draw the organic Web / Creep layer
         game.bus.on('territoryDraw', (ctx) => {
+            ctx.save();
+            // Use composite operations so overlapping webs merge together nicely
+            ctx.globalCompositeOperation = 'screen'; 
+            
             for(let s of game.structures) {
                 if(s.territory > 0) {
+                    // Draw the base glow
+                    let grad = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.territory);
+                    if (s.team === 'black') {
+                        grad.addColorStop(0, 'rgba(150, 100, 255, 0.25)'); // Purple/White web
+                        grad.addColorStop(1, 'rgba(150, 100, 255, 0)');
+                    } else {
+                        grad.addColorStop(0, 'rgba(255, 50, 50, 0.25)'); // Red web
+                        grad.addColorStop(1, 'rgba(255, 50, 50, 0)');
+                    }
+                    ctx.fillStyle = grad;
+                    ctx.beginPath(); ctx.arc(s.x, s.y, s.territory, 0, Math.PI * 2); ctx.fill();
+                    
+                    // Draw little structural web threads
+                    ctx.strokeStyle = s.team === 'black' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 100, 100, 0.15)';
+                    ctx.lineWidth = 1;
                     ctx.beginPath();
-                    ctx.arc(s.x, s.y, s.territory, 0, Math.PI * 2);
-                    ctx.fillStyle = s.team === 'black' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 0, 0, 0.05)';
-                    ctx.fill();
-                    ctx.strokeStyle = s.team === 'black' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 0, 0, 0.2)';
-                    ctx.lineWidth = 1; ctx.stroke();
+                    for(let i=0; i<8; i++) {
+                        let angle = (i * Math.PI/4) + (s.x % 1); // pseudo-random rotation
+                        ctx.moveTo(s.x, s.y);
+                        ctx.lineTo(s.x + Math.cos(angle)*s.territory, s.y + Math.sin(angle)*s.territory);
+                    }
+                    // Draw outer ring
+                    ctx.arc(s.x, s.y, s.territory * 0.7, 0, Math.PI*2);
+                    ctx.stroke();
                 }
             }
+            ctx.restore();
         });
+
+        // 2. Modify Spider Speed based on Silk!
+        const ogSpiderUpdate = Spider.prototype.update;
+        Spider.prototype.update = function(gameObj) {
+            
+            // Check if we are standing on friendly web!
+            let isOnFriendlyWeb = false;
+            let isOnEnemyWeb = false;
+            for(let s of gameObj.structures) {
+                if (s.territory > 0 && Math.hypot(s.x - this.x, s.y - this.y) <= s.territory) {
+                    if (s.team === this.team) isOnFriendlyWeb = true;
+                    else isOnEnemyWeb = true;
+                }
+            }
+
+            // Apply temporary Speed Modifier
+            const baseSpdTemp = this.baseSpeed;
+            if (isOnFriendlyWeb) this.baseSpeed *= 1.5;      // Zerg Creep: +50% speed!
+            else if (isOnEnemyWeb) this.baseSpeed *= 0.7;    // Sticky trap: -30% speed!
+            
+            ogSpiderUpdate.call(this, gameObj); // Run normal movement logic
+            
+            this.baseSpeed = baseSpdTemp; // Reset for next frame
+        };
+        
+        // Queen Speed Modifier
+        const ogQueenUpdate = Queen.prototype.update;
+        Queen.prototype.update = function(gameObj) {
+            let isOnFriendlyWeb = false;
+            for(let s of gameObj.structures) {
+                if (s.team === this.team && s.territory > 0 && Math.hypot(s.x - this.x, s.y - this.y) <= s.territory) isOnFriendlyWeb = true;
+            }
+            const baseSpdTemp = this.baseSpeed;
+            if (isOnFriendlyWeb) this.baseSpeed *= 1.5; 
+            
+            ogQueenUpdate.call(this, gameObj);
+            
+            this.baseSpeed = baseSpdTemp;
+        };
     }
-}
+};
 
 // --- UPDATED EXPANSION: CASCARONE-STYLE AUTO-TILING (NO SWIMMING, NO STRETCHING) ---
 const TerrainExpansion = {
@@ -794,7 +852,7 @@ class Queen extends Spider {
             const dx = this.commandTarget.x - this.x; const dy = this.commandTarget.y - this.y;
             
             const terrain = game.getTerrainAt(this.x, this.y); let tMod = 1.0;
-            if(terrain === 'water') tMod = 0.3; if(terrain === 'grass') tMod = 1.3; 
+            if(terrain === 'water') tMod = 0.05; if(terrain === 'grass') tMod = 1.3;
 
             let techSpeed = (game.techLevel[this.team] * 0.2); 
             if(this.isSlowed) techSpeed -= (this.baseSpeed / 2); 
@@ -836,7 +894,7 @@ const CombatAndHarvesterExpansion = {
             const currentDamage = this.damage + (techLvl * 5); 
             
             const terrain = game.getTerrainAt(this.x, this.y); let tMod = 1.0;
-            if(terrain === 'water') tMod = 0.3; if(terrain === 'grass') tMod = 1.3; 
+            if(terrain === 'water') tMod = 0.05; if(terrain === 'grass') tMod = 1.3;
             
             let currentSpeed = (this.baseSpeed + (techLvl * 0.15)) * tMod;
             if (this.isSlowed) currentSpeed *= 0.3; this.isSlowed = false; 
@@ -932,6 +990,114 @@ const CombatAndHarvesterExpansion = {
     }
 };
 
+const FogOfWarExpansion = {
+    patch: (game) => {
+        // 1. Calculate Vision and update the Mini-Canvas
+        const ogUpdate = Game.prototype.update;
+        Game.prototype.update = function() {
+            ogUpdate.call(this);
+            if (!this.mapGrid) return;
+
+            // Initialize the invisible Mini-Canvas for the fog
+            if (!this.fowCanvas) {
+                this.fowCanvas = document.createElement('canvas');
+                this.fowCanvas.width = this.mapGrid[0].length;
+                this.fowCanvas.height = this.mapGrid.length;
+                this.fowCtx = this.fowCanvas.getContext('2d');
+            }
+
+            if (this.tick % 5 === 0) {
+                // Reset active vision
+                for (let y = 0; y < this.mapGrid.length; y++) {
+                    for (let x = 0; x < this.mapGrid[y].length; x++) {
+                        this.mapGrid[y][x].visible = false; 
+                    }
+                }
+
+                // Helper to apply vision radius
+                const reveal = (worldX, worldY, radiusTiles) => {
+                    const tX = Math.floor(worldX / this.tileSize);
+                    const tY = Math.floor(worldY / this.tileSize);
+                    for (let y = tY - radiusTiles; y <= tY + radiusTiles; y++) {
+                        for (let x = tX - radiusTiles; x <= tX + radiusTiles; x++) {
+                            if (this.mapGrid[y] && this.mapGrid[y][x]) {
+                                if (Math.hypot(x - tX, y - tY) <= radiusTiles) {
+                                    this.mapGrid[y][x].visible = true;
+                                    this.mapGrid[y][x].discovered = true;
+                                }
+                            }
+                        }
+                    }
+                };
+
+                // Cast vision from all Black units
+                this.spiders.filter(s => s.team === 'black').forEach(s => reveal(s.x, s.y, 2));
+                this.queens.filter(q => q.team === 'black').forEach(q => reveal(q.x, q.y, 3));
+                this.structures.filter(s => s.team === 'black').forEach(s => {
+                    let r = s.type === 'nest' ? 4 : (s.type === 'pylon' ? 3 : 2);
+                    reveal(s.x, s.y, r);
+                });
+
+                // Paint the vision to the tiny mini-canvas!
+                this.fowCtx.clearRect(0, 0, this.fowCanvas.width, this.fowCanvas.height);
+                for (let y = 0; y < this.mapGrid.length; y++) {
+                    for (let x = 0; x < this.mapGrid[y].length; x++) {
+                        const tile = this.mapGrid[y][x];
+                        if (!tile.discovered) {
+                            this.fowCtx.fillStyle = 'rgba(0, 0, 0, 1.0)';
+                            this.fowCtx.fillRect(x, y, 1, 1); // 1 pixel = 1 tile!
+                        } else if (!tile.visible) {
+                            this.fowCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                            this.fowCtx.fillRect(x, y, 1, 1);
+                        }
+                    }
+                }
+            }
+        };
+
+        // 2. Hide enemy entities if they are inside the Fog
+        const applyFoWToClass = (ClassRef, hideIfInvisible, hideIfUndiscovered) => {
+            const ogDraw = ClassRef.prototype.draw;
+            ClassRef.prototype.draw = function(ctx) {
+                if (game.mapGrid) {
+                    const tX = Math.floor(this.x / game.tileSize); const tY = Math.floor(this.y / game.tileSize);
+                    const tile = game.mapGrid[tY] && game.mapGrid[tY][tX];
+                    if (tile) {
+                        if (hideIfUndiscovered && !tile.discovered) return;
+                        if (hideIfInvisible && !tile.visible && this.team !== 'black') return;
+                    }
+                }
+                ogDraw.call(this, ctx);
+            };
+        };
+        applyFoWToClass(Spider, true, false);
+        applyFoWToClass(Queen, true, false);
+        applyFoWToClass(Structure, true, false);
+        applyFoWToClass(CentipedeBoss, true, false);
+        applyFoWToClass(Aphid, true, false);
+        applyFoWToClass(GoldenBug, true, false);
+        applyFoWToClass(ResourceNode, false, true); 
+
+        // 3. Draw the BEAUTIFUL Blurred Fog Overlay
+        game.bus.on('uiDraw', (ctx) => {
+            if (!game.fowCanvas) return;
+            ctx.save();
+            
+            // This is the magic. It applies a massive blur to our mini-canvas!
+            ctx.filter = 'blur(60px)'; 
+            
+            ctx.drawImage(
+                game.fowCanvas, 
+                -game.camera.x, 
+                -game.camera.y, 
+                game.fowCanvas.width * game.tileSize, 
+                game.fowCanvas.height * game.tileSize
+            );
+            ctx.restore();
+        });
+    }
+};
+
 const MinimapExpansion = {
     init: (game) => {
         game.minimap = { size: 200, padding: 10 }; 
@@ -963,8 +1129,6 @@ const MinimapExpansion = {
 
         game.canvas.addEventListener('mousedown', e => { if (e.button === 0) checkMinimapClick(e.clientX, e.clientY); });
         window.addEventListener('mousemove', e => checkMinimapMove(e.clientX, e.clientY));
-        
-        // BUG FIX: Unconditionally end drag state anywhere on screen!
         window.addEventListener('mouseup', e => { if (e.button === 0) game.isMinimapDragging = false; });
         
         game.canvas.addEventListener('touchstart', e => { if(e.touches.length===1) checkMinimapClick(e.touches[0].clientX, e.touches[0].clientY); }, {passive: false});
@@ -979,28 +1143,55 @@ const MinimapExpansion = {
             const startY = game.canvas.height - size - pad - 90; 
             
             ctx.fillStyle = 'rgba(20, 10, 5, 0.8)'; ctx.fillRect(startX, startY, size, size);
-            ctx.strokeStyle = '#ff9d00'; ctx.lineWidth = 2; ctx.strokeRect(startX, startY, size, size);
-
+            
             const scaleX = size / game.world.width; const scaleY = size / game.world.height;
             
-            ctx.fillStyle = 'rgba(26, 78, 110, 0.5)'; 
-            ctx.fillRect(startX + (game.world.width/2)*scaleX - 2, startY, 4, size);
+            // 1. DRAW ACTUAL DYNAMIC TERRAIN (Rivers)
+            if (game.mapGrid) {
+                ctx.fillStyle = 'rgba(26, 78, 110, 0.7)';
+                for (let y = 0; y < game.mapGrid.length; y++) {
+                    for (let x = 0; x < game.mapGrid[y].length; x++) {
+                        if (game.mapGrid[y][x].type === 'water') {
+                            ctx.fillRect(startX + (x * game.tileSize * scaleX), startY + (y * game.tileSize * scaleY), (game.tileSize * scaleX)+0.5, (game.tileSize * scaleY)+0.5);
+                        }
+                    }
+                }
+            }
 
-            const drawDot = (ent, color, r) => { ctx.fillStyle = color; ctx.fillRect(startX + (ent.x * scaleX) - r, startY + (ent.y * scaleY) - r, r*2, r*2); };
+            // Helper: Hides dots if they are in the Fog of War
+            const drawDot = (ent, color, r, hideIfInvisible, hideIfUndiscovered) => { 
+                if (game.mapGrid) {
+                    const tX = Math.floor(ent.x / game.tileSize); const tY = Math.floor(ent.y / game.tileSize);
+                    const tile = game.mapGrid[tY] && game.mapGrid[tY][tX];
+                    if (tile) {
+                        if (hideIfUndiscovered && !tile.discovered) return;
+                        if (hideIfInvisible && !tile.visible && ent.team !== 'black') return; // Hide enemies in dark fog
+                    }
+                }
+                ctx.fillStyle = color; ctx.fillRect(startX + (ent.x * scaleX) - r, startY + (ent.y * scaleY) - r, r*2, r*2); 
+            };
 
-            game.resourceNodes.forEach(r => drawDot(r, r.type === 'pumpkin' ? '#ff7b00' : '#00aaff', 1.5));
-            game.structures.forEach(s => drawDot(s, s.team === 'black' ? '#ffffff' : '#ff4444', 3));
-            game.spiders.forEach(s => drawDot(s, s.team === 'black' ? '#aaaaaa' : '#aa0000', 1));
-            game.critters.forEach(c => drawDot(c, c.color || 'gold', 2));
-            game.bosses.forEach(b => drawDot(b, '#00ff00', 4)); 
+            // 2. DRAW ENTITIES
+            game.resourceNodes.forEach(r => drawDot(r, r.type === 'pumpkin' ? '#ff7b00' : '#00aaff', 1.5, false, true));
+            game.structures.forEach(s => drawDot(s, s.team === 'black' ? '#ffffff' : '#ff4444', 3, true, false));
+            game.spiders.forEach(s => drawDot(s, s.team === 'black' ? '#aaaaaa' : '#aa0000', 1, true, false));
+            game.critters.forEach(c => drawDot(c, c.color || 'gold', 2, true, false));
+            game.bosses.forEach(b => drawDot(b, '#00ff00', 4, true, false)); 
             game.queens.forEach(q => { 
-                drawDot(q, q.team === 'black' ? '#ffffff' : '#ff4444', 4); 
-                ctx.strokeStyle = 'gold'; ctx.lineWidth = 1; 
-                ctx.strokeRect(startX + (q.x * scaleX) - 5, startY + (q.y * scaleY) - 5, 10, 10); 
+                drawDot(q, q.team === 'black' ? '#ffffff' : '#ff4444', 4, true, false); 
             });
+
+            // 3. DRAW FOG OF WAR OVERLAY ON MINIMAP
+            if (game.fowCanvas) {
+                ctx.save();
+                ctx.filter = 'blur(4px)'; // A smaller blur for the small map
+                ctx.drawImage(game.fowCanvas, startX, startY, size, size);
+                ctx.restore();
+            }
             
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; ctx.lineWidth = 1; 
             ctx.strokeRect(startX + (game.camera.x * scaleX), startY + (game.camera.y * scaleY), game.canvas.width * scaleX, game.canvas.height * scaleY);
+            ctx.strokeStyle = '#ff9d00'; ctx.lineWidth = 2; ctx.strokeRect(startX, startY, size, size);
         });
     }
 };
@@ -1186,6 +1377,591 @@ const SaveLoadExpansion = {
     }
 };
 
+const AdvancedUnitControlExpansion = {
+    init: (game) => {
+        game.selectedUnits = []; 
+        game.dragBox = null;
+        game.controlGroups = { 1:[], 2:[], 3:[], 4:[], 5:[], 6:[], 7:[], 8:[], 9:[] };
+
+        // 1. Hide the old clumsy "Command" tool from the UI
+        setTimeout(() => {
+            const cmdBtn = document.querySelector('[data-tool="commandQueen"]');
+            if (cmdBtn) cmdBtn.style.display = 'none';
+        }, 500);
+
+        // 2. Keyboard Listeners (Escape & Control Groups)
+        window.addEventListener('keydown', e => { 
+            const key = e.key.toLowerCase();
+            
+            // ESCAPE: Deselect EVERYTHING and reset the tool pointer!
+            if (key === 'escape') { 
+                game.selectedUnits = []; 
+                game.selectedStructure = null; 
+                game.activeTool = 'select';
+                game.bus.emit('toolChanged', 'select');
+            } 
+            
+            // CONTROL GROUPS: 1-9
+            if (['1','2','3','4','5','6','7','8','9'].includes(key)) {
+                if (game.activeTool === 'select') {
+                    if (e.ctrlKey) {
+                        // SAVE GROUP (Ctrl + Num)
+                        game.controlGroups[key] = [...game.selectedUnits];
+                        game.bus.emit('playSound', 'spell');
+                    } else {
+                        // RECALL GROUP (Num)
+                        game.controlGroups[key] = game.controlGroups[key].filter(u => u.hp > 0);
+                        if (game.controlGroups[key].length > 0) {
+                            game.selectedUnits = [...game.controlGroups[key]];
+                            game.selectedStructure = null;
+                            game.bus.emit('playSound', 'harvest');
+                            
+                            // Double-tap camera jump logic
+                            let centerU = game.selectedUnits[0];
+                            game.camera.x = centerU.x - (game.canvas.width / 2);
+                            game.camera.y = centerU.y - (game.canvas.height / 2);
+                        }
+                    }
+                }
+            }
+        });
+
+        // 3. Mouse & Touch Setup
+        let startX, startY, isDraggingBox = false;
+        
+        // Listeners for drawing the Drag Box
+        game.canvas.addEventListener('mousedown', e => {
+            startX = e.clientX; startY = e.clientY;
+            
+            // ONLY start the drag box if SHIFT is held!
+            if (e.button === 0 && e.shiftKey) { 
+                isDraggingBox = true;
+                game.dragBox = { x: startX, y: startY, w: 0, h: 0 };
+            }
+        });
+        
+        window.addEventListener('mousemove', e => {
+            if (isDraggingBox && game.dragBox) {
+                game.dragBox.w = e.clientX - startX;
+                game.dragBox.h = e.clientY - startY;
+            }
+        });
+
+        const handleRTSClick = (e, clientX, clientY, targetElem) => {
+            const wasDraggingBox = isDraggingBox;
+            isDraggingBox = false;
+            
+            if (targetElem.closest && (targetElem.closest('#structureModal') || targetElem.closest('#mobileToolbar') || targetElem.closest('#rtsUI'))) {
+                game.dragBox = null; return;
+            }
+
+            const worldX = clientX + game.camera.x; 
+            const worldY = clientY + game.camera.y;
+            const isRightClick = e.button === 2;
+            const isLeftClick = e.button === 0;
+
+            if (isRightClick && game.selectedUnits.length > 0) {
+                // === MASS RIGHT CLICK COMMAND ===
+                let validUnits = game.selectedUnits.filter(u => u.team === 'black' && u.hp > 0);
+                if (validUnits.length > 0) {
+                    game.bus.emit('particles', {x: worldX, y: worldY, color: '#ffffff', count: 12});
+                    game.bus.emit('playSound', 'shoot');
+                    validUnits.forEach((u, i) => {
+                        let offsetX = (Math.random() - 0.5) * (validUnits.length * 8);
+                        let offsetY = (Math.random() - 0.5) * (validUnits.length * 8);
+                        u.commandTarget = { x: worldX + offsetX, y: worldY + offsetY };
+                        u.isManual = true; 
+                    });
+                }
+            } else if (isLeftClick) {
+                if (wasDraggingBox && game.dragBox && Math.hypot(game.dragBox.w, game.dragBox.h) > 10) {
+                    // === SHIFT + DRAG MARQUEE SELECTION ===
+                    let x1 = Math.min(startX, startX + game.dragBox.w) + game.camera.x;
+                    let x2 = Math.max(startX, startX + game.dragBox.w) + game.camera.x;
+                    let y1 = Math.min(startY, startY + game.dragBox.h) + game.camera.y;
+                    let y2 = Math.max(startY, startY + game.dragBox.h) + game.camera.y;
+                    
+                    game.selectedUnits = game.spiders.concat(game.queens).filter(u => 
+                        u.team === 'black' && u.x >= x1 && u.x <= x2 && u.y >= y1 && u.y <= y2
+                    );
+                    game.selectedStructure = null;
+                    if (game.selectedUnits.length > 0) game.bus.emit('playSound', 'harvest');
+                } else {
+                    // === SINGLE CLICK SELECTION ===
+                    
+                    // Increased sloppy-click tolerance from 5 pixels to 12 pixels!
+                    if (Math.hypot(clientX - startX, clientY - startY) > 12) {
+                        game.dragBox = null; return;
+                    }
+
+                    let clickedUnit = null; let clickedStruct = null;
+                    for (let u of game.spiders.concat(game.queens)) {
+                        if (Math.hypot(u.x - worldX, u.y - worldY) < (u.size + 15)) { clickedUnit = u; break; }
+                    }
+                    if (!clickedUnit) {
+                        for(let s of game.structures) {
+                            if (Math.hypot(s.x - worldX, s.y - worldY) < s.size) { clickedStruct = s; break; }
+                        }
+                    }
+
+                    if (clickedUnit) {
+                        // Bonus: If shift is held, ADD to selection instead of replacing!
+                        if (e.shiftKey) {
+                            if (!game.selectedUnits.includes(clickedUnit)) game.selectedUnits.push(clickedUnit);
+                        } else {
+                            game.selectedUnits = [clickedUnit];
+                        }
+                        game.selectedStructure = null;
+                        game.bus.emit('playSound', 'harvest');
+                    } else if (clickedStruct) {
+                        game.selectedStructure = clickedStruct;
+                        game.selectedUnits = [];
+                    } else {
+                        // Clicked empty ground -> Deselect
+                        game.selectedUnits = [];
+                        game.selectedStructure = null;
+                    }
+                }
+            }
+            game.dragBox = null; 
+        };
+
+        window.addEventListener('mouseup', e => handleRTSClick(e, e.clientX, e.clientY, e.target));
+        
+        // Touch Support (Single tap selects, swipe pans camera safely)
+        game.canvas.addEventListener('touchstart', e => { 
+            if(e.touches.length===1) { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }
+        }, {passive: false});
+        window.addEventListener('touchend', e => { 
+            if(e.changedTouches.length===1) handleRTSClick(e, e.changedTouches[0].clientX, e.changedTouches[0].clientY, e.target); 
+        });
+    },
+
+    patch: (game) => {
+        // Draw the Green UI Drag Box
+        game.bus.on('uiDraw', (ctx) => {
+            if (game.dragBox && Math.hypot(game.dragBox.w, game.dragBox.h) > 10) {
+                ctx.fillStyle = 'rgba(0, 255, 0, 0.2)'; ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 1;
+                ctx.fillRect(game.dragBox.x, game.dragBox.y, game.dragBox.w, game.dragBox.h);
+                ctx.strokeRect(game.dragBox.x, game.dragBox.y, game.dragBox.w, game.dragBox.h);
+            }
+        });
+
+        // Draw Selection Rings for ALL selected units
+        game.bus.on('preDraw', (ctx) => {
+            game.selectedUnits.forEach(u => {
+                if (u.hp > 0) {
+                    ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.lineDashOffset = -game.tick * 0.5;
+                    ctx.beginPath(); ctx.arc(u.x, u.y, u.size + 8, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+                }
+            });
+        });
+
+        // OVERRIDE NORMAL SPIDERS TO RESPECT MANUAL COMMANDS
+        const ogSpiderUpdate = Spider.prototype.update;
+        Spider.prototype.update = function(gameObj) {
+            if (this.isManual && this.commandTarget) {
+                const dx = this.commandTarget.x - this.x; const dy = this.commandTarget.y - this.y;
+                if (Math.hypot(dx, dy) > 15) {
+                    // Smooth Turning
+                    const targetAngle = Math.atan2(dy, dx);
+                    let diff = targetAngle - this.angle;
+                    while (diff > Math.PI) diff -= Math.PI * 2;
+                    while (diff < -Math.PI) diff += Math.PI * 2;
+                    this.angle += (diff * 0.15); 
+                    
+                    // Terrain Penalty
+                    const terrain = gameObj.getTerrainAt(this.x, this.y); 
+                    let tMod = (terrain === 'water') ? 0.05 : ((terrain === 'grass') ? 1.3 : 1.0);
+                    let speed = (this.baseSpeed + (gameObj.techLevel[this.team] * 0.15)) * tMod;
+                    
+                    this.x += Math.cos(this.angle) * speed; this.y += Math.sin(this.angle) * speed;
+                } else {
+                    this.commandTarget = null; // Reached destination, stand still (stay manual)
+                }
+            } else {
+                ogSpiderUpdate.call(this, gameObj); // Run normal harvesting/patrolling AI!
+            }
+        };
+
+        // Update Queen Rotation to match Spider Rotation (and support arrays)
+        const ogQueenUpdate = Queen.prototype.update;
+        Queen.prototype.update = function(gameObj) {
+            const prevAngle = this.angle || 0;
+            ogQueenUpdate.call(this, gameObj);
+            if (this.commandTarget) {
+                let targetAngle = Math.atan2(this.commandTarget.y - this.y, this.commandTarget.x - this.x);
+                let diff = targetAngle - prevAngle;
+                while (diff > Math.PI) diff -= Math.PI * 2; while (diff < -Math.PI) diff += Math.PI * 2;
+                this.angle = prevAngle + (diff * 0.10);
+            }
+        };
+        const ogQueenDraw = Queen.prototype.draw;
+        Queen.prototype.draw = function(ctx) {
+            const tempAngle = this.angle; this.angle -= (Math.PI / 2); ogQueenDraw.call(this, ctx); this.angle = tempAngle;
+        };
+    }
+};
+
+const ContextUIExpansion = {
+    init: (game) => {
+        // 1. Inject the CSS for the new Command Card
+        const style = document.createElement('style');
+        style.innerHTML = `
+            #rtsUI {
+                position: fixed; bottom: 0; left: 0; width: 100%; height: 140px;
+                background: linear-gradient(180deg, #1a1005 0%, #0a0500 100%);
+                border-top: 3px solid #ff9d00; display: flex; box-sizing: border-box;
+                font-family: 'Courier New', monospace; color: white; z-index: 2000;
+                box-shadow: 0 -5px 20px rgba(0,0,0,0.8); user-select: none;
+            }
+            #ui-portrait-container {
+                width: 140px; height: 100%; border-right: 2px solid #553311;
+                display: flex; align-items: center; justify-content: center; background: #000;
+            }
+            #ui-portrait { width: 90%; height: 90%; object-fit: contain; image-rendering: pixelated; }
+            #ui-info {
+                width: 200px; padding: 15px; border-right: 2px solid #553311;
+                display: flex; flex-direction: column; justify-content: flex-start;
+            }
+            #ui-info h2 { margin: 0 0 10px 0; font-size: 16px; color: #ff9d00; text-transform: uppercase;}
+            .ui-stat { font-size: 14px; color: #ccc; margin-bottom: 5px; }
+            #ui-hp-bar-bg { width: 100%; height: 10px; background: #333; margin-top: 5px; border: 1px solid #000; }
+            #ui-hp-bar-fill { width: 100%; height: 100%; background: #00ff00; transition: 0.2s width; }
+            
+            #ui-actions {
+                flex-grow: 1; padding: 10px; display: flex; flex-wrap: wrap; 
+                gap: 10px; align-content: flex-start; overflow-y: auto;
+            }
+            .cmd-btn {
+                width: 80px; height: 55px; background: #221100; border: 2px solid #ff9d00;
+                border-radius: 4px; color: white; display: flex; flex-direction: column;
+                align-items: center; justify-content: center; cursor: pointer; transition: 0.1s;
+            }
+            .cmd-btn:hover { background: #442200; transform: scale(1.05); }
+            .cmd-btn:active { transform: scale(0.95); }
+            .cmd-btn.active-tool { background: #ff9d00; color: #000; font-weight: bold; }
+            .cmd-icon { font-size: 20px; }
+            .cmd-text { font-size: 10px; margin-top: 2px; }
+            .cmd-cost { font-size: 10px; color: #ff5555; }
+        `;
+        document.head.appendChild(style);
+
+        // 2. Inject the HTML skeleton
+        const uiBase = document.createElement('div');
+        uiBase.id = 'rtsUI';
+        uiBase.innerHTML = `
+            <div id="ui-portrait-container"><img id="ui-portrait" src=""></div>
+            <div id="ui-info">
+                <h2 id="ui-name">Hive Mind</h2>
+                <div id="ui-stats-container"></div>
+            </div>
+            <div id="ui-actions"></div>
+        `;
+        document.body.appendChild(uiBase);
+
+        // 3. Define our commands and what they do
+        game.uiActions = {
+            'nest':   { icon: '🕸️', name: 'Nest', cost: '150🎃', type: 'tool', val: 'nest' },
+            'eggsac': { icon: '🥚', name: 'Sac', cost: '50🎃', type: 'tool', val: 'eggsac' },
+            'pylon':  { icon: '🗼', name: 'Pylon', cost: '25🎃', type: 'tool', val: 'pylon' },
+            'turret': { icon: '🔫', name: 'Turret', cost: '100🎃', type: 'tool', val: 'turret' },
+            'wall':   { icon: '🧱', name: 'Wall', cost: '25🎃', type: 'tool', val: 'wall' },
+            'strike': { icon: '☠️', name: 'Strike', cost: '50💧', type: 'tool', val: 'venomStrike' },
+            'trap':   { icon: '🕸️', name: 'Trap', cost: '25💧', type: 'tool', val: 'silkTrap' },
+            'harv':   { icon: '🕷️', name: 'Harvester', cost: '10🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'harvester'}) },
+            'sold':   { icon: '🐜', name: 'Soldier', cost: '25🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'soldier'}) },
+            'tech':   { icon: '🧬', name: 'Evolve', cost: '250🎃', type: 'instant', fn: (t) => { if(game.eco.black.pumpkins>=250){ game.eco.black.pumpkins-=250; game.techLevel.black++; game.bus.emit('playSound','spell');} } },
+            'cancel': { icon: '🛑', name: 'Stop', cost: '', type: 'instant', fn: () => { 
+                game.activeTool = 'select'; 
+                game.bus.emit('toolChanged', 'select');
+                if (game.selectedUnits) {
+                    game.selectedUnits.forEach(u => { 
+                        u.commandTarget = null; // Stop moving
+                        u.buildTarget = null;   // Stop Queen from building
+                    });
+                }
+                game.bus.emit('playSound', 'shoot'); 
+            }},
+            'auto':   { icon: '⚙️', name: 'Automate', cost: '', type: 'instant', fn: () => { 
+                game.selectedUnits.forEach(u => { u.isManual = false; u.commandTarget = null; u.target = null; }); 
+                game.bus.emit('playSound', 'spell'); 
+            }},
+        };
+
+        game.lastSelection = 'INIT'; // Force first draw
+    },
+
+    patch: (game) => {
+        // Intercept clicks on the action menu so it doesn't click the map behind it!
+        document.getElementById('rtsUI').addEventListener('mousedown', (e) => e.stopPropagation());
+        document.getElementById('rtsUI').addEventListener('touchstart', (e) => e.stopPropagation(), {passive: false});
+
+        // The UI Update Loop
+        const ogUpdate = Game.prototype.update;
+        Game.prototype.update = function() {
+            ogUpdate.call(this);
+
+            // Check our new selectedUnits array instead of the old single variable!
+            let currentSelection = null;
+            if (this.selectedUnits && this.selectedUnits.length > 0) {
+                currentSelection = this.selectedUnits.length === 1 ? this.selectedUnits[0] : 'swarm_group';
+            } else if (this.selectedStructure) {
+                currentSelection = this.selectedStructure;
+            }
+
+            // 1. REBUILD MENU ONLY IF SELECTION CHANGED
+            if (this.lastSelection !== currentSelection) {
+                this.lastSelection = currentSelection;
+                
+                const portrait = document.getElementById('ui-portrait');
+                const nameEl = document.getElementById('ui-name');
+                const actionsEl = document.getElementById('ui-actions');
+                
+                actionsEl.innerHTML = ''; // Clear buttons
+
+                // Helper to draw a button
+                const addButton = (cmdKey) => {
+                    const cmd = this.uiActions[cmdKey];
+                    const btn = document.createElement('div');
+                    btn.className = 'cmd-btn';
+                    btn.setAttribute('data-tool', cmd.type === 'tool' ? cmd.val : '');
+                    btn.innerHTML = `<div class="cmd-icon">${cmd.icon}</div><div class="cmd-text">${cmd.name}</div><div class="cmd-cost">${cmd.cost}</div>`;
+                    
+                    btn.onclick = () => {
+                        if (cmd.type === 'tool') {
+                            this.activeTool = cmd.val;
+                            this.bus.emit('toolChanged', cmd.val);
+                        } else if (cmd.type === 'instant') {
+                            cmd.fn(currentSelection);
+                        }
+                    };
+                    actionsEl.appendChild(btn);
+                };
+
+                // Clean up dead units from selection array
+                this.selectedUnits = this.selectedUnits.filter(u => u.hp > 0);
+
+                if (this.selectedUnits.length > 1) {
+                    // MULTI-UNIT SWARM SELECTED
+                    portrait.src = 'assets/black_spider.png';
+                    nameEl.innerText = `Swarm Group (${this.selectedUnits.length})`;
+                    addButton('auto'); addButton('cancel');
+                }
+                else if (this.selectedUnits.length === 1) {
+                    // SINGLE UNIT SELECTED
+                    let unit = this.selectedUnits[0];
+                    portrait.src = unit.sprite.src || '';
+                    if (unit instanceof Queen) {
+                        nameEl.innerText = "Swarm Queen";
+                        addButton('nest'); addButton('eggsac'); addButton('pylon'); 
+                        addButton('turret'); addButton('wall'); addButton('cancel');
+                    } else {
+                        nameEl.innerText = unit.role === 'soldier' ? "Soldier" : "Harvester";
+                        addButton('auto'); addButton('cancel');
+                    }
+                }
+                else if (this.selectedStructure) {
+                    // STRUCTURE SELECTED
+                    portrait.src = this.selectedStructure.sprite.src || '';
+                    nameEl.innerText = this.selectedStructure.type === 'nest' ? `Main Nest (Lv ${this.techLevel.black})` : this.selectedStructure.type.toUpperCase();
+                    if (this.selectedStructure.type === 'nest' && this.selectedStructure.team === 'black') {
+                        addButton('harv'); addButton('sold'); addButton('tech');
+                    }
+                } 
+                else {
+                    // GLOBAL STATE (Nothing Selected)
+                    portrait.src = 'assets/nest_black.png'; 
+                    nameEl.innerText = "Hive Mind";
+                    addButton('strike'); addButton('trap'); addButton('cancel');
+                }
+            }
+
+            // 2. CONTINUOUSLY UPDATE STATS (HP, Cargo, Active Tools)
+            const statsContainer = document.getElementById('ui-stats-container');
+            if (currentSelection && currentSelection.hp !== undefined) {
+                let max = currentSelection.maxHp;
+                if (currentSelection.team === 'black' && !(currentSelection instanceof Queen)) max += (this.techLevel.black * 20);
+                
+                let pct = Math.max(0, currentSelection.hp / max) * 100;
+                
+                let extraStats = '';
+                if (currentSelection.cargo && currentSelection.cargo.amount > 0) extraStats = `<div class="ui-stat">Cargo: ${currentSelection.cargo.amount} ${currentSelection.cargo.type}</div>`;
+                if (currentSelection.damage) extraStats += `<div class="ui-stat">DMG: ${currentSelection.damage + (this.techLevel[currentSelection.team] * 5 || 0)}</div>`;
+
+                statsContainer.innerHTML = `
+                    <div class="ui-stat">HP: ${Math.ceil(currentSelection.hp)} / ${max}</div>
+                    <div id="ui-hp-bar-bg"><div id="ui-hp-bar-fill" style="width: ${pct}%; background: ${pct > 50 ? '#00ff00' : (pct > 25 ? '#ffff00' : '#ff0000')}"></div></div>
+                    ${extraStats}
+                `;
+            } else {
+                statsContainer.innerHTML = `<div class="ui-stat">Select a unit or building to command the swarm.</div>`;
+            }
+
+            // 3. Highlight the currently active tool visually
+            document.querySelectorAll('.cmd-btn').forEach(b => {
+                if (b.getAttribute('data-tool') === this.activeTool) b.classList.add('active-tool');
+                else b.classList.remove('active-tool');
+            });
+        };
+    }
+};
+
+const ConstructionExpansion = {
+    init: (game) => {
+        // 1. Wipe out the old "Instant Global Build" event
+        game.bus.listeners['buildStructure'] = [];
+        
+        // 2. Create the new "Queen Walks to Build" event
+        game.bus.on('buildStructure', (data) => {
+            const queen = game.queens.find(q => q.team === data.team);
+            if (!queen) return; // Need a queen to build!
+            
+            const costs = { 'nest': 150, 'eggsac': 50, 'turret': 100, 'wall': 25, 'pylon': 25 };
+            if (game.eco[data.team].pumpkins < costs[data.type]) {
+                game.bus.emit('particles', {x: data.x, y: data.y, color: '#ff0000', count: 10});
+                return; // Not enough money!
+            }
+
+            // If she was building something else, abandon it
+            if (queen.activeConstruction) {
+                queen.activeConstruction.isPaused = true;
+                queen.activeConstruction = null;
+            }
+
+            // Tell the queen to walk there and build!
+            queen.buildTarget = { x: data.x, y: data.y, type: data.type, cost: costs[data.type] };
+            queen.commandTarget = { x: data.x, y: data.y }; 
+            game.bus.emit('particles', {x: data.x, y: data.y, color: '#ff9d00', count: 10});
+            game.bus.emit('playSound', 'shoot');
+        });
+    },
+
+    patch: (game) => {
+        // 3. Make the Queen Channel the building
+        const ogQueenUpdate = Queen.prototype.update;
+        Queen.prototype.update = function(gameObj) {
+            
+            // A. Are we actively channeling a building?
+            if (this.activeConstruction) {
+                // Did the player right-click us away?
+                if (this.commandTarget) {
+                    this.activeConstruction.isPaused = true;
+                    this.activeConstruction = null;
+                } 
+                // Are we still close enough to build?
+                else if (Math.hypot(this.activeConstruction.x - this.x, this.activeConstruction.y - this.y) <= 70) {
+                    
+                    // BUILD IT SLOWLY! (0.001 takes ~16 seconds!)
+                    this.activeConstruction.buildProgress += 0.001;
+                    this.activeConstruction.isPaused = false;
+                    
+                    // Channeling particle effect
+                    if (gameObj.tick % 15 === 0) {
+                        gameObj.bus.emit('particles', {x: this.activeConstruction.x, y: this.activeConstruction.y, color: '#ff9d00', count: 2});
+                    }
+                    
+                    // Finished Building!
+                    if (this.activeConstruction.buildProgress >= 1) {
+                        this.activeConstruction.isConstructing = false;
+                        this.activeConstruction.buildProgress = 1;
+                        this.activeConstruction.territory = this.activeConstruction.originalTerritory; // Restore territory web
+                        gameObj.bus.emit('particles', {x: this.activeConstruction.x, y: this.activeConstruction.y, color: '#ffffff', count: 40});
+                        gameObj.bus.emit('playSound', 'spell');
+                        this.activeConstruction = null;
+                    }
+                    return; // Skip normal movement while channeling!
+                } else {
+                    // Somehow got pushed away
+                    this.activeConstruction.isPaused = true;
+                    this.activeConstruction = null;
+                }
+            }
+
+            // B. Normal Movement
+            ogQueenUpdate.call(this, gameObj);
+
+            // C. Arriving to start a brand NEW building
+            if (this.buildTarget) {
+                // If commanded away before reaching the site, cancel the order entirely.
+                if (this.commandTarget) {
+                    const destDist = Math.hypot(this.commandTarget.x - this.buildTarget.x, this.commandTarget.y - this.buildTarget.y);
+                    if (destDist > 10) this.buildTarget = null;
+                }
+                
+                if (this.buildTarget) {
+                    const dist = Math.hypot(this.buildTarget.x - this.x, this.buildTarget.y - this.y);
+                    if (dist < 60) {
+                        if (gameObj.eco[this.team].pumpkins >= this.buildTarget.cost) {
+                            gameObj.eco[this.team].pumpkins -= this.buildTarget.cost;
+                            
+                            // Spawn the cocoon
+                            let s = new Structure(this.buildTarget.x, this.buildTarget.y, this.team, this.buildTarget.type);
+                            s.isConstructing = true;
+                            s.isPaused = false;
+                            s.buildProgress = 0;
+                            s.originalTerritory = s.territory;
+                            s.territory = 0; // No web while building
+                            gameObj.structures.push(s);
+                            
+                            this.activeConstruction = s; // Start channeling!
+                            gameObj.bus.emit('playSound', 'build');
+                        }
+                        this.buildTarget = null;
+                        this.commandTarget = null; // Stop moving
+                    }
+                }
+            }
+
+            // D. Auto-Resume paused buildings if standing idle nearby!
+            if (!this.activeConstruction && !this.commandTarget && !this.buildTarget) {
+                let unfinished = gameObj.structures.find(s => s.isConstructing && s.team === this.team && Math.hypot(s.x - this.x, s.y - this.y) < 60);
+                if (unfinished) {
+                    this.activeConstruction = unfinished; // Automatically start channeling it!
+                }
+            }
+        };
+
+        // 4. Freeze normal structure logic while building
+        const ogStructUpdate = Structure.prototype.update;
+        Structure.prototype.update = function(gameObj) {
+            if (this.isConstructing) return; // Do nothing, Queen handles progress!
+            ogStructUpdate.call(this, gameObj);
+        };
+
+        // 5. Draw the Dynamic Cocoon
+        const ogStructDraw = Structure.prototype.draw;
+        Structure.prototype.draw = function(ctx) {
+            if (this.isConstructing) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                
+                // Dark base (Pulses if active, still if paused)
+                const pulse = this.isPaused ? 0 : Math.sin(game.tick * 0.1) * 2;
+                ctx.fillStyle = '#221100';
+                ctx.beginPath(); ctx.arc(0, 0, (this.size * 0.7) + pulse, 0, Math.PI*2); ctx.fill();
+                
+                // Web lines (Spins if active, stops if paused)
+                ctx.strokeStyle = this.isPaused ? '#885500' : '#ff9d00';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([8, 8]);
+                ctx.lineDashOffset = this.isPaused ? 0 : -game.tick * 0.5;
+                ctx.beginPath(); ctx.arc(0, 0, this.size * 0.8, 0, Math.PI*2); ctx.stroke();
+                
+                // Progress Bar (Blue if active, Orange if paused)
+                const w = this.size * 1.5;
+                ctx.fillStyle = 'black'; ctx.fillRect(-w/2, -this.size - 15, w, 6);
+                ctx.fillStyle = this.isPaused ? '#ff5500' : '#00aaff'; 
+                ctx.fillRect(-w/2, -this.size - 14, w * this.buildProgress, 4);
+                
+                ctx.restore();
+            } else {
+                ogStructDraw.call(this, ctx); // Draw normal sprite once finished!
+            }
+        };
+    }
+};
+
 // ==========================================
 // BOOTSTRAP
 // ==========================================
@@ -1194,18 +1970,22 @@ window.onload = () => {
     
     // Core Game Systems
     game.expansions.load('TerrainGen', TerrainExpansion); 
-    game.expansions.load('DecorSystem', DecorExpansion); // NEW: CLUTTER SCATTERING
+    game.expansions.load('DecorSystem', DecorExpansion); 
     game.expansions.load('AdvancedBaseBuilder', AdvancedBaseExpansion); 
     game.expansions.load('QueenSystem', QueenExpansion); 
-
     game.expansions.load('CombatAndHarvesterAI', CombatAndHarvesterExpansion); 
     game.expansions.load('WebNetwork', WebNetworkExpansion); 
-    game.expansions.load('TerritoryControl', TerritoryExpansion); 
+    game.expansions.load('SilkNetwork', SilkNetworkExpansion);
     
     // UI EXPANSIONS
-    game.expansions.load('MobileUI', MobileUIExpansion); 
-    game.expansions.load('LairUI', LairUIExpansion); 
+    game.expansions.load('FogOfWar', FogOfWarExpansion); 
     game.expansions.load('MinimapUI', MinimapExpansion); 
+    
+    game.expansions.load('AdvancedUnitControl', AdvancedUnitControlExpansion);
+
+    game.expansions.load('ConstructionLogic', ConstructionExpansion);
+    
+    game.expansions.load('ContextUI', ContextUIExpansion);
     game.expansions.load('GameLoop', GameLoopExpansion); 
     game.expansions.load('SaveLoadManager', SaveLoadExpansion); 
     
