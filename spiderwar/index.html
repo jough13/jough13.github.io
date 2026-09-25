@@ -2,16 +2,68 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- Mobile optimization & prevents zooming which breaks RTS controls -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <!-- PWA & Mobile OS Theming -->
+    <meta name="theme-color" content="#120a05">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Command the Black Swarm in this spooky SimAnt and StarCraft inspired RTS.">
+    
     <title>Pumpkin Patch RTS</title>
+    
+    <!-- Quick Emoji Favicon (No extra network request needed!) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎃</text></svg>">
+    
+    <!-- Stylesheet -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+    <!-- 
+        BOOT SCREEN overlay. 
+        Serves 3 purposes: 
+        1. Hides the canvas while assets load.
+        2. Creates a spooky retro PC game vibe.
+        3. Forces a user click, which browsers REQUIRE before playing audio!
+    -->
+    <div id="bootScreen" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #120a05; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: opacity 0.5s ease;">
+        <h1 style="font-size: 3rem; text-shadow: 0 0 20px rgba(255,157,0,0.8), 2px 2px 0px #000; text-align: center; margin-bottom: 10px;">🎃 PUMPKIN PATCH 🕷️</h1>
+        <p style="font-size: 1.2rem; animation: pulse 2s infinite;">Click anywhere to awaken the Swarm...</p>
+        
+        <!-- Inline style just for the pulse animation so we don't need a CSS round trip -->
+        <style>
+            @keyframes pulse { 
+                0% { opacity: 0.5; } 
+                50% { opacity: 1; text-shadow: 0 0 10px #ff9d00; } 
+                100% { opacity: 0.5; } 
+            }
+        </style>
+    </div>
+
+    <!-- Main Game UI (Populated by ContextUIExpansion in JS) -->
     <div id="ui">
-        <!-- JS will populate this cleanly now! -->
         <div id="debug"></div>
     </div>
+
+    <!-- The actual game rendering layer -->
     <canvas id="gameCanvas"></canvas>
-    <script src="game.js"></script>
+
+    <!-- 
+        Using 'defer' ensures the HTML is fully parsed before the heavy JS engine runs. 
+        This prevents browser lock-ups during initialization.
+    -->
+    <script src="game.js" defer></script>
+
+    <!-- Tiny script to handle the Boot Screen fade-out -->
+    <script>
+        document.getElementById('bootScreen').addEventListener('click', function() {
+            this.style.opacity = '0';
+            this.style.pointerEvents = 'none';
+            setTimeout(() => this.remove(), 500); // Remove from DOM after fade
+        });
+    </script>
 </body>
 </html>
