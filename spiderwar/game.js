@@ -1,6 +1,12 @@
 // ==========================================
-// 1. CORE ARCHITECTURE
+// 1. CORE ARCHITECTURE & UTILITIES
 // ==========================================
+
+const MathUtils = {
+    // Squared distance is ~30% faster than Math.hypot because it avoids Square Roots
+    distSq: (x1, y1, x2, y2) => (x2 - x1) ** 2 + (y2 - y1) ** 2,
+    dist: (x1, y1, x2, y2) => Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+};
 
 class GameBus {
     constructor() { this.listeners = {}; }
@@ -15,6 +21,13 @@ class ExpansionManager {
         this.expansions[name] = expansion;
         if (expansion.init) expansion.init(this.game);
         if (expansion.patch) expansion.patch(this.game);
+    }
+    // Helper to safely wrap class methods without losing the original scope
+    patchClass(TargetClass, methodName, newMethod) {
+        const originalMethod = TargetClass.prototype[methodName];
+        TargetClass.prototype[methodName] = function(...args) {
+            return newMethod.call(this, originalMethod.bind(this), ...args);
+        };
     }
 }
 
@@ -112,12 +125,15 @@ class Projectile {
     update(game) {
         if(!this.target || this.target.hp <= 0) { this.active = false; return; }
         const dx = this.target.x - this.x; const dy = this.target.y - this.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist < 10) { 
+        const distSq = MathUtils.distSq(this.x, this.y, this.target.x, this.target.y);
+        if (distSq < 100) { // 10 squared
             this.target.hp -= this.damage; this.active = false; 
             game.bus.emit('particles', {x: this.target.x, y: this.target.y, color: this.team==='black'?'#aa00ff':'#ffaa00', count: 10});
         } 
-        else { this.x += (dx/dist) * this.speed; this.y += (dy/dist) * this.speed; }
+        else {
+            const dist = Math.sqrt(distSq);
+            this.x += (dx/dist) * this.speed; this.y += (dy/dist) * this.speed; 
+        }
     }
     draw(ctx) { ctx.fillStyle = this.team === 'black' ? '#aa00ff' : '#ffaa00'; ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, Math.PI*2); ctx.fill(); }
 }
@@ -134,12 +150,13 @@ class Game {
         this.world = { width: 6000, height: 6000 }; 
         this.camera = { x: 0, y: 0 }; this.tick = 0; 
         
-        this.spiders = []; this.structures = []; this.queens = []; 
-        this.projectiles = []; this.particles = []; this.spells = []; this.bosses = []; 
-        this.resourceNodes = []; this.critters = []; this.decor = []; 
+        // UNIFIED ENTITY SYSTEM
+        this.entities = [];
+        this.decor = []; 
         
         this.eco = { black: { pumpkins: 600, dew: 100 }, red: { pumpkins: 600, dew: 100 } }; 
-        this.pop = { black: 0, red: 0 }; this.maxPop = { black: 10, red: 10 };
+        this.pop = { black: 0, red: 0 }; 
+        this.maxPop = { black: 10, red: 10 };
         this.techLevel = { black: 0, red: 0 }; 
         
         this.activeTool = 'select'; this.gameState = 'playing'; this.selectedStructure = null; 
@@ -148,15 +165,25 @@ class Game {
         this.setupInputs(); requestAnimationFrame(() => this.loop());
     }
 
+    // Backwards compatibility getters for expansions
+    get spiders() { return this.entities.filter(e => e instanceof Spider && !(e instanceof Queen)); }
+    get queens() { return this.entities.filter(e => e instanceof Queen); }
+    get structures() { return this.entities.filter(e => e instanceof Structure); }
+    get resourceNodes() { return this.entities.filter(e => e instanceof ResourceNode); }
+    get projectiles() { return this.entities.filter(e => e instanceof Projectile); }
+    get critters() { return this.entities.filter(e => e.team === 'nature'); }
+    get bosses() { return this.entities.filter(e => e instanceof CentipedeBoss); }
+    get spells() { return this.entities.filter(e => e instanceof Spell); }
+    get particles() { return this.entities.filter(e => e instanceof Particle); }
+    
+    addEntity(entity) { this.entities.push(entity); }
+
     resize() { this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight; }
     
     getTerrainAt(x, y) { return 'dirt'; }
 
     checkTerritory(x, y, team) {
-        for(let s of this.structures) {
-            if(s.team === team && s.territory > 0 && Math.hypot(s.x - x, s.y - y) <= s.territory) return true;
-        }
-        return false;
+        return this.structures.some(s => s.team === team && s.territory > 0 && MathUtils.distSq(s.x, s.y, x, y) <= s.territory ** 2);
     }
 
     setupInputs() {
@@ -179,7 +206,7 @@ class Game {
         const moveInteraction = (x, y) => {
             if (isDragging && !this.isMinimapDragging) {
                 let dx = x - dragStartX; let dy = y - dragStartY;
-                if (Math.hypot(dx, dy) > 5) hasMoved = true; 
+                if (MathUtils.distSq(0, 0, dx, dy) > 25) hasMoved = true; 
                 if (hasMoved) { this.camera.x = camStartX - dx; this.camera.y = camStartY - dy; }
             }
         };
@@ -205,8 +232,7 @@ class Game {
                         if (!this.keys['shift']) { this.activeTool = 'select'; this.bus.emit('toolChanged', 'select'); }
                     }
                     else {
-                        let clickedStruct = null;
-                        for(let s of this.structures) { if (s.team === 'black' && Math.hypot(s.x - worldX, s.y - worldY) < s.size) { clickedStruct = s; break; } }
+                        let clickedStruct = this.structures.find(s => s.team === 'black' && MathUtils.distSq(s.x, s.y, worldX, worldY) < s.size ** 2);
                         this.selectedStructure = clickedStruct; 
                         if(clickedStruct) this.bus.emit('openModal', clickedStruct);
                         else this.bus.emit('closeModal'); 
@@ -227,7 +253,7 @@ class Game {
             const cost = data.role === 'soldier' ? 25 : 10;
             if (this.eco[data.team].pumpkins >= cost && this.pop[data.team] < this.maxPop[data.team]) {
                 this.eco[data.team].pumpkins -= cost; 
-                this.spiders.push(new Spider(data.x + (Math.random()-0.5)*50, data.y + (Math.random()-0.5)*50, data.team, data.role));
+                this.addEntity(new Spider(data.x + (Math.random()-0.5)*50, data.y + (Math.random()-0.5)*50, data.team, data.role));
                 this.bus.emit('playSound', 'harvest'); 
             }
         });
@@ -236,16 +262,16 @@ class Game {
             const costs = { 'nest': 150, 'eggsac': 50, 'turret': 100, 'wall': 25, 'pylon': 25 };
             if (!costs[data.type]) return; 
             
-            if (data.team === 'black' && this.structures.filter(s => s.team === 'black').length > 0) {
+            if (data.team === 'black' && this.structures.some(s => s.team === 'black')) {
                 if(!this.checkTerritory(data.x, data.y, data.team)) {
-                    game.bus.emit('particles', {x: data.x, y: data.y, color: '#ff0000', count: 10});
+                    this.bus.emit('particles', {x: data.x, y: data.y, color: '#ff0000', count: 10});
                     return; 
                 }
             }
 
             if (this.eco[data.team].pumpkins >= costs[data.type]) {
                 this.eco[data.team].pumpkins -= costs[data.type];
-                this.structures.push(new Structure(data.x, data.y, data.team, data.type));
+                this.addEntity(new Structure(data.x, data.y, data.team, data.type));
                 this.bus.emit('playSound', 'build');
             }
         });
@@ -263,32 +289,64 @@ class Game {
         this.camera.x = Math.max(0, Math.min(this.camera.x, this.world.width - this.canvas.width));
         this.camera.y = Math.max(0, Math.min(this.camera.y, this.world.height - this.canvas.height));
 
-        this.maxPop.black = 10 + (this.structures.filter(s => s.team === 'black' && s.type === 'eggsac').length * 10);
-        this.maxPop.red = 10 + (this.structures.filter(s => s.team === 'red' && s.type === 'eggsac').length * 10);
-        this.pop.black = this.spiders.filter(s => s.team === 'black').length;
-        this.pop.red = this.spiders.filter(s => s.team === 'red').length;
+        if (this.tick % 30 === 0) {
+            let blackEggs = 0, redEggs = 0, blackPop = 0, redPop = 0;
+            this.entities.forEach(e => {
+                if (e instanceof Structure && e.type === 'eggsac') {
+                    if (e.team === 'black') blackEggs++; else if (e.team === 'red') redEggs++;
+                }
+                if (e instanceof Spider && !(e instanceof Queen)) {
+                    if (e.team === 'black') blackPop++; else if (e.team === 'red') redPop++;
+                }
+            });
+            this.maxPop.black = 10 + (blackEggs * 10);
+            this.maxPop.red = 10 + (redEggs * 10);
+            this.pop.black = blackPop;
+            this.pop.red = redPop;
+        }
 
-        this.structures.forEach(s => s.update(this)); this.spiders.forEach(s => s.update(this));
-        this.queens.forEach(q => q.update(this)); this.projectiles.forEach(p => p.update(this));
-        this.critters.forEach(c => c.update(this)); this.bosses.forEach(b => b.update(this));
-        this.particles.forEach(p => p.update()); this.spells.forEach(s => s.update(this));
-        
-        if (this.selectedStructure && this.selectedStructure.hp <= 0) { this.selectedStructure = null; this.bus.emit('closeModal'); }
-        
-        this.spiders.filter(s => s.hp <= 0).forEach(s => { this.bus.emit('particles', {x: s.x, y: s.y, color: s.team, count: 30}); this.bus.emit('playSound', 'death'); });
-        this.structures.filter(s => s.hp <= 0).forEach(s => { this.bus.emit('particles', {x: s.x, y: s.y, color: '#888', count: 50}); this.bus.emit('playSound', 'death'); });
-        this.bosses.filter(b => b.hp <= 0).forEach(b => { this.bus.emit('particles', {x: b.x, y: b.y, color: '#00ff00', count: 100}); this.bus.emit('playSound', 'death'); });
-        this.critters.filter(c => c.hp <= 0).forEach(c => { this.bus.emit('particles', {x: c.x, y: c.y, color: c.color || 'gold', count: 20}); this.bus.emit('playSound', 'harvest'); });
+        // Fast Entity Processing
+        for (let i = this.entities.length - 1; i >= 0; i--) {
+            let e = this.entities[i];
+            
+            let dead = false;
+            if (e.hp !== undefined && e.hp <= 0) dead = true;
+            else if (e.resources !== undefined && e.resources <= 0) dead = true;
+            else if (e.active !== undefined && !e.active) dead = true;
+            else if (e.life !== undefined && e.life <= 0) dead = true;
 
-        this.resourceNodes = this.resourceNodes.filter(r => r.resources > 0);
-        this.spiders = this.spiders.filter(s => s.hp > 0);
-        this.queens = this.queens.filter(q => q.hp > 0);
-        this.structures = this.structures.filter(s => s.hp > 0);
-        this.projectiles = this.projectiles.filter(p => p.active);
-        this.critters = this.critters.filter(c => c.hp > 0);
-        this.particles = this.particles.filter(p => p.life > 0);
-        this.spells = this.spells.filter(s => s.life > 0);
-        this.bosses = this.bosses.filter(b => b.hp > 0);
+            if (dead) {
+                if (e instanceof Spider || e instanceof Structure || e instanceof CentipedeBoss || e.team === 'nature') {
+                    this.bus.emit('particles', {x: e.x, y: e.y, color: e.color || e.team || '#888', count: e instanceof CentipedeBoss ? 100 : 30});
+                    this.bus.emit('playSound', e.team === 'nature' ? 'harvest' : 'death');
+                }
+                if (this.selectedStructure === e) { this.selectedStructure = null; this.bus.emit('closeModal'); }
+                
+                this.entities[i] = this.entities[this.entities.length - 1];
+                this.entities.pop();
+                continue;
+            }
+            
+            if (e.update) e.update(this);
+        }
+    }
+
+    getNearestEnemy(x, y, team, maxDist) {
+        let nearest = null;
+        let minDistSq = maxDist * maxDist;
+        for (let i = 0; i < this.entities.length; i++) {
+            let e = this.entities[i];
+            if (!e.team || e.team === team || e.hp <= 0 || e instanceof Projectile) continue;
+            
+            let dSq = MathUtils.distSq(x, y, e.x, e.y);
+            if (e.type === 'wall' && dSq < (250*250)) dSq -= (100*100); 
+            
+            if (dSq < minDistSq) {
+                minDistSq = dSq;
+                nearest = e;
+            }
+        }
+        return nearest;
     }
 
     draw() {
@@ -297,8 +355,6 @@ class Game {
         
         this.bus.emit('preDraw', this.ctx); 
         this.bus.emit('territoryDraw', this.ctx); 
-        
-        this.spells.forEach(s => s.draw(this.ctx)); 
         this.bus.emit('atmosphereDraw', this.ctx);
 
         if(this.selectedStructure) {
@@ -307,10 +363,19 @@ class Game {
             this.ctx.stroke(); this.ctx.setLineDash([]);
         }
 
-        this.structures.forEach(s => s.draw(this.ctx)); this.resourceNodes.forEach(r => r.draw(this.ctx));
-        this.critters.forEach(c => c.draw(this.ctx)); this.spiders.forEach(s => s.draw(this.ctx));
-        this.queens.forEach(q => q.draw(this.ctx)); this.projectiles.forEach(p => p.draw(this.ctx));
-        this.bosses.forEach(b => b.draw(this.ctx)); this.particles.forEach(p => p.draw(this.ctx)); 
+        // Render Culling
+        const padding = 150;
+        const viewL = this.camera.x - padding;
+        const viewR = this.camera.x + this.canvas.width + padding;
+        const viewT = this.camera.y - padding;
+        const viewB = this.camera.y + this.canvas.height + padding;
+
+        for (let i = 0; i < this.entities.length; i++) {
+            let e = this.entities[i];
+            if (e.draw && e.x >= viewL && e.x <= viewR && e.y >= viewT && e.y <= viewB) {
+                e.draw(this.ctx);
+            }
+        }
         
         this.ctx.restore();
         this.bus.emit('uiDraw', this.ctx);
@@ -355,12 +420,11 @@ const SilkNetworkExpansion = {
             ctx.restore();
         });
 
-        const ogSpiderUpdate = Spider.prototype.update;
-        Spider.prototype.update = function(gameObj) {
+        game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
             let isOnFriendlyWeb = false;
             let isOnEnemyWeb = false;
             for(let s of gameObj.structures) {
-                if (s.territory > 0 && Math.hypot(s.x - this.x, s.y - this.y) <= s.territory) {
+                if (s.territory > 0 && MathUtils.distSq(s.x, s.y, this.x, this.y) <= s.territory**2) {
                     if (s.team === this.team) isOnFriendlyWeb = true;
                     else isOnEnemyWeb = true;
                 }
@@ -369,21 +433,20 @@ const SilkNetworkExpansion = {
             if (isOnFriendlyWeb) this.baseSpeed *= 1.5;      
             else if (isOnEnemyWeb) this.baseSpeed *= 0.7;    
             
-            ogSpiderUpdate.call(this, gameObj); 
+            original(gameObj); 
             this.baseSpeed = baseSpdTemp; 
-        };
+        });
         
-        const ogQueenUpdate = Queen.prototype.update;
-        Queen.prototype.update = function(gameObj) {
+        game.expansions.patchClass(Queen, 'update', function(original, gameObj) {
             let isOnFriendlyWeb = false;
             for(let s of gameObj.structures) {
-                if (s.team === this.team && s.territory > 0 && Math.hypot(s.x - this.x, s.y - this.y) <= s.territory) isOnFriendlyWeb = true;
+                if (s.team === this.team && s.territory > 0 && MathUtils.distSq(s.x, s.y, this.x, this.y) <= s.territory**2) isOnFriendlyWeb = true;
             }
             const baseSpdTemp = this.baseSpeed;
             if (isOnFriendlyWeb) this.baseSpeed *= 1.5; 
-            ogQueenUpdate.call(this, gameObj);
+            original(gameObj);
             this.baseSpeed = baseSpdTemp;
-        };
+        });
     }
 };
 
@@ -541,7 +604,7 @@ const DecorExpansion = {
                 const terrain = game.getTerrainAt(dx, dy);
                 
                 if(['water', 'grass', 'pebbles'].includes(terrain)) {
-                    game.decor.push({
+                    game.decor.push({ // Keeping decor static for raw rendering performance
                         x: dx, y: dy, type: terrain, 
                         sprite: game.decorSprites[terrain],
                         size: (Math.random() * 15) + 15 
@@ -549,6 +612,23 @@ const DecorExpansion = {
                 }
             }
         }, 500);
+    },
+    patch: (game) => {
+        game.bus.on('preDraw', (ctx) => {
+            const padding = 100;
+            const viewL = game.camera.x - padding;
+            const viewR = game.camera.x + game.canvas.width + padding;
+            const viewT = game.camera.y - padding;
+            const viewB = game.camera.y + game.canvas.height + padding;
+
+            game.decor.forEach(d => {
+                if (d.x >= viewL && d.x <= viewR && d.y >= viewT && d.y <= viewB) {
+                    if (d.sprite.complete && d.sprite.naturalHeight !== 0) {
+                        ctx.drawImage(d.sprite, d.x - d.size, d.y - d.size, d.size*2, d.size*2);
+                    }
+                }
+            });
+        });
     }
 };
 
@@ -566,23 +646,23 @@ const AdvancedBaseExpansion = {
             
             game.updateBitmasks();
 
-            game.structures.push(new Structure(bX, bY, 'black', 'nest')); 
-            game.structures.push(new Structure(bX + 80, bY, 'black', 'eggsac'));
-            game.structures.push(new Structure(rX, rY, 'red', 'nest')); 
-            game.structures.push(new Structure(rX - 80, rY, 'red', 'eggsac'));
+            game.addEntity(new Structure(bX, bY, 'black', 'nest')); 
+            game.addEntity(new Structure(bX + 80, bY, 'black', 'eggsac'));
+            game.addEntity(new Structure(rX, rY, 'red', 'nest')); 
+            game.addEntity(new Structure(rX - 80, rY, 'red', 'eggsac'));
             
             game.camera.x = Math.max(0, bX - (game.canvas.width / 2)); game.camera.y = Math.max(0, bY - (game.canvas.height / 2));
             
             for (let i = 0; i < 40; i++) {
                 let pX = 600 + Math.random() * (game.world.width - 1200); let pY = 600 + Math.random() * (game.world.height - 1200);
-                for (let p = 0; p < Math.floor(Math.random() * 6) + 5; p++) game.resourceNodes.push(new ResourceNode(pX + (Math.random() - 0.5) * 300, pY + (Math.random() - 0.5) * 300, 'pumpkin'));
+                for (let p = 0; p < Math.floor(Math.random() * 6) + 5; p++) game.addEntity(new ResourceNode(pX + (Math.random() - 0.5) * 300, pY + (Math.random() - 0.5) * 300, 'pumpkin'));
             }
-            for (let i = 0; i < 60; i++) { game.resourceNodes.push(new ResourceNode(Math.random() * game.world.width, Math.random() * game.world.height, 'dew')); }
+            for (let i = 0; i < 60; i++) { game.addEntity(new ResourceNode(Math.random() * game.world.width, Math.random() * game.world.height, 'dew')); }
             
-            for(let i=0; i<3; i++) game.critters.push(new GoldenBug(game.world.width/2 + (Math.random()-0.5)*1000, game.world.height/2 + (Math.random()-0.5)*1000));
+            for(let i=0; i<3; i++) game.addEntity(new GoldenBug(game.world.width/2 + (Math.random()-0.5)*1000, game.world.height/2 + (Math.random()-0.5)*1000));
             for(let i=0; i<30; i++) {
                 let ax = Math.random() * game.world.width; let ay = Math.random() * game.world.height;
-                if(game.getTerrainAt(ax, ay) === 'grass' || Math.random() > 0.8) game.critters.push(new Aphid(ax, ay));
+                if(game.getTerrainAt(ax, ay) === 'grass' || Math.random() > 0.8) game.addEntity(new Aphid(ax, ay));
             }
         }, 100);
     }
@@ -605,9 +685,8 @@ const GameLoopExpansion = {
         document.head.appendChild(style);
         const goModal = document.createElement('div'); goModal.id = 'gameOverModal'; document.body.appendChild(goModal);
 
-        const ogUpdate = Game.prototype.update;
-        Game.prototype.update = function() {
-            ogUpdate.call(this); 
+        game.expansions.patchClass(Game, 'update', function(original) {
+            original(); 
             if (this.queens.length > 0 && this.gameState === 'playing') {
                 const blackQueen = this.queens.find(q => q.team === 'black'); const redQueen = this.queens.find(q => q.team === 'red');
                 if (!blackQueen || blackQueen.hp <= 0) { 
@@ -625,7 +704,7 @@ const GameLoopExpansion = {
                     goModal.style.display = 'block';
                 }
             }
-        };
+        });
 
         game.bus.on('uiDraw', (ctx) => {
             if (game.gameState === 'playing') return;
@@ -659,7 +738,7 @@ class Aphid {
         if(Math.random() < 0.1) this.angle += (Math.random() - 0.5);
         this.x += Math.cos(this.angle) * this.speed; this.y += Math.sin(this.angle) * this.speed;
         this.x = Math.max(0, Math.min(this.x, game.world.width)); this.y = Math.max(0, Math.min(this.y, game.world.height));
-        if(this.hp <= 0) { game.resourceNodes.push(new ResourceNode(this.x, this.y, 'dew')); }
+        if(this.hp <= 0) { game.addEntity(new ResourceNode(this.x, this.y, 'dew')); }
     }
     draw(ctx) { ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.fillStyle = this.color; ctx.beginPath(); ctx.ellipse(0, 0, this.size, this.size-2, 0, 0, Math.PI*2); ctx.fill(); ctx.restore(); }
 }
@@ -670,7 +749,7 @@ class GoldenBug {
         if(Math.random() < 0.05) this.angle += (Math.random() - 0.5);
         this.x += Math.cos(this.angle) * this.speed; this.y += Math.sin(this.angle) * this.speed;
         this.x = Math.max(0, Math.min(this.x, game.world.width)); this.y = Math.max(0, Math.min(this.y, game.world.height));
-        if(this.hp <= 0) for(let i=0; i<5; i++) game.resourceNodes.push(new ResourceNode(this.x + (Math.random()-0.5)*100, this.y + (Math.random()-0.5)*100, 'pumpkin'));
+        if(this.hp <= 0) for(let i=0; i<5; i++) game.addEntity(new ResourceNode(this.x + (Math.random()-0.5)*100, this.y + (Math.random()-0.5)*100, 'pumpkin'));
     }
     draw(ctx) {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.fillStyle = '#ffd700'; 
@@ -701,7 +780,7 @@ class Queen extends Spider {
             if(this.isSlowed) techSpeed -= (this.baseSpeed / 2); 
             const currentSpeed = Math.max(0.1, (this.baseSpeed + techSpeed)) * tMod;
 
-            if (Math.hypot(dx, dy) > 10) { this.angle = Math.atan2(dy, dx); this.x += Math.cos(this.angle) * currentSpeed; this.y += Math.sin(this.angle) * currentSpeed; } 
+            if (MathUtils.distSq(0,0, dx, dy) > 100) { this.angle = Math.atan2(dy, dx); this.x += Math.cos(this.angle) * currentSpeed; this.y += Math.sin(this.angle) * currentSpeed; } 
             else this.commandTarget = null; 
         }
         this.isSlowed = false; 
@@ -718,14 +797,13 @@ class Queen extends Spider {
 
 const QueenExpansion = {
     init: (game) => {
-        // Repeatedly check until advanced base spawns
         const spawnInterval = setInterval(() => {
             if(game.queens.length > 0) return clearInterval(spawnInterval);
             const bNest = game.structures.find(s => s.team === 'black' && s.type === 'nest'); 
             const rNest = game.structures.find(s => s.team === 'red' && s.type === 'nest');
             if(bNest && rNest) {
-                game.queens.push(new Queen(bNest.x + 50, bNest.y + 50, 'black')); 
-                game.queens.push(new Queen(rNest.x - 50, rNest.y - 50, 'red'));
+                game.addEntity(new Queen(bNest.x + 50, bNest.y + 50, 'black')); 
+                game.addEntity(new Queen(rNest.x - 50, rNest.y - 50, 'red'));
                 clearInterval(spawnInterval);
             }
         }, 150);
@@ -738,46 +816,44 @@ const QueenExpansion = {
 
 const CombatAndHarvesterExpansion = {
     patch: (game) => {
-        Spider.prototype.update = function(game) {
-            const techLvl = game.techLevel[this.team] || 0; 
+        game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
+            const techLvl = gameObj.techLevel[this.team] || 0; 
             const currentDamage = this.damage + (techLvl * 5); 
             
-            const terrain = game.getTerrainAt(this.x, this.y); let tMod = 1.0;
+            const terrain = gameObj.getTerrainAt(this.x, this.y); let tMod = 1.0;
             if(terrain === 'water') tMod = 0.05; if(terrain === 'grass') tMod = 1.3;
             
             let currentSpeed = (this.baseSpeed + (techLvl * 0.15)) * tMod;
             if (this.isSlowed) currentSpeed *= 0.3; this.isSlowed = false; 
 
-            let allEnemies = game.spiders.concat(game.queens).concat(game.critters).concat(game.structures).concat(game.bosses).filter(e => e.team !== this.team && e.hp > 0);
-            let nearestEnemy = null; let minDist = 150 + (techLvl * 10);
-            for (let enemy of allEnemies) {
-                let d = Math.hypot(enemy.x - this.x, enemy.y - this.y);
-                if(enemy.type === 'wall' && d < 250) d -= 100; 
-                if (d < minDist) { minDist = d; nearestEnemy = enemy; }
-            }
+            // Fast Spatial Lookup instead of creating heavy filtered arrays!
+            const detectRadius = 150 + (techLvl * 10);
+            let nearestEnemy = gameObj.getNearestEnemy(this.x, this.y, this.team, detectRadius);
 
             if (nearestEnemy) {
                 this.state = 'combat'; this.angle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
                 const combatRange = nearestEnemy.size ? nearestEnemy.size + 15 : 20;
-                if (minDist > combatRange) { 
+                const distSq = MathUtils.distSq(this.x, this.y, nearestEnemy.x, nearestEnemy.y);
+                
+                if (distSq > combatRange * combatRange) { 
                     this.x += Math.cos(this.angle) * currentSpeed; this.y += Math.sin(this.angle) * currentSpeed;
                 } else {
                     this.cooldown--;
                     if (this.cooldown <= 0) {
                         nearestEnemy.hp -= currentDamage; this.cooldown = this.attackSpeed;
                         this.x -= Math.cos(this.angle) * 10; this.y -= Math.sin(this.angle) * 10; 
-                        game.bus.emit('particles', {x: nearestEnemy.x, y: nearestEnemy.y, color: this.team==='black'?'#aa00ff':'#ffaa00', count: 5}); 
-                        game.bus.emit('playSound', 'harvest');
+                        gameObj.bus.emit('particles', {x: nearestEnemy.x, y: nearestEnemy.y, color: this.team==='black'?'#aa00ff':'#ffaa00', count: 5}); 
+                        gameObj.bus.emit('playSound', 'harvest');
                     }
                 }
                 return; 
             }
 
             if (this.role === 'soldier') {
-                const myQueen = game.queens.find(q => q.team === this.team);
+                const myQueen = gameObj.queens.find(q => q.team === this.team);
                 if (myQueen) {
                     const dx = myQueen.x - this.x; const dy = myQueen.y - this.y;
-                    if (Math.hypot(dx, dy) > 80) { 
+                    if (MathUtils.distSq(0,0, dx, dy) > 6400) { // 80 squared
                         this.angle = Math.atan2(dy, dx);
                         this.x += Math.cos(this.angle) * currentSpeed; this.y += Math.sin(this.angle) * currentSpeed;
                     }
@@ -786,44 +862,52 @@ const CombatAndHarvesterExpansion = {
             }
 
             if (this.cargo.amount === 0) this.state = 'seeking_pumpkin'; else this.state = 'returning_home';
+            
             if (this.state === 'seeking_pumpkin') {
                 if (!this.target || this.target.resources <= 0) {
-                    if (game.resourceNodes.length > 0) {
-                        let closest = null; let minD = Infinity;
-                        for(let r of game.resourceNodes) { let d = Math.hypot(r.x - this.x, r.y - this.y); if(d < minD) { minD = d; closest = r; } }
-                        this.target = closest;
-                    } else this.target = null;
+                    let closest = null; let minD = Infinity;
+                    gameObj.resourceNodes.forEach(r => { 
+                        let dSq = MathUtils.distSq(r.x, r.y, this.x, this.y); 
+                        if(dSq < minD) { minD = dSq; closest = r; } 
+                    });
+                    this.target = closest;
                 }
             } else {
                 let closest = null; let minD = Infinity;
-                game.structures.filter(s => s.team === this.team && (s.type === 'nest' || s.type === 'pylon')).forEach(n => { let d = Math.hypot(n.x - this.x, n.y - this.y); if(d < minD) { minD = d; closest = n; } });
-                game.queens.filter(q => q.team === this.team).forEach(q => { let d = Math.hypot(q.x - this.x, q.y - this.y); if(d < minD) { minD = d; closest = q; } });
+                gameObj.structures.filter(s => s.team === this.team && (s.type === 'nest' || s.type === 'pylon')).forEach(n => { 
+                    let dSq = MathUtils.distSq(n.x, n.y, this.x, this.y); 
+                    if(dSq < minD) { minD = dSq; closest = n; } 
+                });
+                gameObj.queens.filter(q => q.team === this.team).forEach(q => { 
+                    let dSq = MathUtils.distSq(q.x, q.y, this.x, this.y); 
+                    if(dSq < minD) { minD = dSq; closest = q; } 
+                });
                 this.target = closest;
             }
 
             if (this.target) {
                 const dx = this.target.x - this.x; const dy = this.target.y - this.y;
-                const dist = Math.hypot(dx, dy); this.angle = Math.atan2(dy, dx);
+                const distSq = MathUtils.distSq(0,0, dx, dy); this.angle = Math.atan2(dy, dx);
                 const targetRadius = this.target.size ? this.target.size + 5 : 15;
-                if (dist > targetRadius) { 
+                if (distSq > targetRadius * targetRadius) { 
                     this.x += Math.cos(this.angle) * currentSpeed; this.y += Math.sin(this.angle) * currentSpeed;
                 } else {
                     if (this.state === 'seeking_pumpkin' && this.target.resources > 0) {
                         this.cargo.amount = 10; this.cargo.type = this.target.type; this.target.resources -= 10; this.target = null; 
-                        game.bus.emit('particles', {x: this.x, y: this.y, color: this.cargo.type === 'pumpkin' ? '#ff7b00' : '#00aaff', count: 5}); 
-                        game.bus.emit('playSound', 'harvest');
+                        gameObj.bus.emit('particles', {x: this.x, y: this.y, color: this.cargo.type === 'pumpkin' ? '#ff7b00' : '#00aaff', count: 5}); 
+                        gameObj.bus.emit('playSound', 'harvest');
                     } else if (this.state === 'returning_home') {
-                        if(this.cargo.type === 'pumpkin') game.eco[this.team].pumpkins += this.cargo.amount;
-                        else if(this.cargo.type === 'dew') game.eco[this.team].dew += this.cargo.amount;
+                        if(this.cargo.type === 'pumpkin') gameObj.eco[this.team].pumpkins += this.cargo.amount;
+                        else if(this.cargo.type === 'dew') gameObj.eco[this.team].dew += this.cargo.amount;
                         this.cargo.amount = 0; this.target = null;
                     }
                 }
             } else {
                 this.angle += (Math.random() - 0.5) * 0.5;
                 this.x += Math.cos(this.angle) * (currentSpeed * 0.5); this.y += Math.sin(this.angle) * (currentSpeed * 0.5);
-                this.x = Math.max(0, Math.min(this.x, game.world.width)); this.y = Math.max(0, Math.min(this.y, game.world.height));
+                this.x = Math.max(0, Math.min(this.x, gameObj.world.width)); this.y = Math.max(0, Math.min(this.y, gameObj.world.height));
             }
-        };
+        });
 
         const drawHealth = function(ctx) {
             if (this.hp !== undefined && this.hp < (this.maxHp + (game.techLevel[this.team] || 0) * 20)) {
@@ -833,15 +917,16 @@ const CombatAndHarvesterExpansion = {
                 ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - w/2, this.y - this.size - 10, w * (Math.max(0, this.hp) / max), 4);
             }
         };
-        const ogSpiderDraw = Spider.prototype.draw; Spider.prototype.draw = function(ctx) { ogSpiderDraw.call(this, ctx); drawHealth.call(this, ctx); };
-        const ogQueenDraw = Queen.prototype.draw; Queen.prototype.draw = function(ctx) { ogQueenDraw.call(this, ctx); drawHealth.call(this, ctx); };
-        const ogStructDraw = Structure.prototype.draw; Structure.prototype.draw = function(ctx) { ogStructDraw.call(this, ctx); drawHealth.call(this, ctx); };
+        
+        game.expansions.patchClass(Spider, 'draw', function(original, ctx) { original.call(this, ctx); drawHealth.call(this, ctx); });
+        game.expansions.patchClass(Queen, 'draw', function(original, ctx) { original.call(this, ctx); drawHealth.call(this, ctx); });
+        game.expansions.patchClass(Structure, 'draw', function(original, ctx) { original.call(this, ctx); drawHealth.call(this, ctx); });
     }
 };
 
 const MinimapExpansion = {
     init: (game) => {
-        game.minimap = { size: 200, padding: 10, offsetY: 150 }; // offsetY avoids ContextUI block
+        game.minimap = { size: 200, padding: 10, offsetY: 150 }; 
         game.isMinimapDragging = false;
         
         game.moveCameraFromMinimap = function(localX, localY) {
@@ -935,15 +1020,23 @@ const WebNetworkExpansion = {
     patch: (game) => {
         game.bus.on('preDraw', (ctx) => {
             ctx.lineWidth = 1;
-            for (let i = 0; i < game.spiders.length; i++) {
-                let s1 = game.spiders[i];
+            const spiders = game.spiders;
+            for (let i = 0; i < spiders.length; i++) {
+                let s1 = spiders[i];
                 if (s1.x < game.camera.x - 100 || s1.x > game.camera.x + game.canvas.width + 100 || s1.y < game.camera.y - 100 || s1.y > game.camera.y + game.canvas.height + 100) continue;
+                
                 game.structures.filter(s => s.team === s1.team).forEach(struct => {
-                    if (Math.hypot(struct.x - s1.x, struct.y - s1.y) < 150) { ctx.strokeStyle = s1.team === 'black' ? 'rgba(255,255,255,0.3)' : 'rgba(255, 100, 100, 0.3)'; ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(struct.x, struct.y); ctx.stroke(); }
+                    if (MathUtils.distSq(struct.x, struct.y, s1.x, s1.y) < 22500) { // 150 squared
+                        ctx.strokeStyle = s1.team === 'black' ? 'rgba(255,255,255,0.3)' : 'rgba(255, 100, 100, 0.3)'; 
+                        ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(struct.x, struct.y); ctx.stroke(); 
+                    }
                 });
-                for (let j = i + 1; j < game.spiders.length; j++) {
-                    let s2 = game.spiders[j];
-                    if (s1.team === s2.team && Math.hypot(s2.x - s1.x, s2.y - s1.y) < 80) { ctx.strokeStyle = s1.team === 'black' ? 'rgba(255,255,255,0.2)' : 'rgba(255, 100, 100, 0.2)'; ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y); ctx.stroke(); }
+                for (let j = i + 1; j < spiders.length; j++) {
+                    let s2 = spiders[j];
+                    if (s1.team === s2.team && MathUtils.distSq(s2.x, s2.y, s1.x, s1.y) < 6400) { // 80 squared
+                        ctx.strokeStyle = s1.team === 'black' ? 'rgba(255,255,255,0.2)' : 'rgba(255, 100, 100, 0.2)'; 
+                        ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y); ctx.stroke(); 
+                    }
                 }
             }
         });
@@ -966,7 +1059,7 @@ const ParticleExpansion = {
         game.bus.on('particles', (data) => {
             for(let i=0; i<data.count; i++) {
                 let c = data.color; if (c === 'black') c = '#5533aa'; if (c === 'red') c = '#ff2200';
-                game.particles.push(new Particle(data.x, data.y, c));
+                game.addEntity(new Particle(data.x, data.y, c));
             }
         });
     }
@@ -978,16 +1071,16 @@ const AtmosphereExpansion = {
             const cycle = Math.sin(game.tick / 1800); const darkness = Math.max(0, cycle * 0.6); 
             ctx.fillStyle = `rgba(5, 10, 35, ${darkness})`; ctx.fillRect(game.camera.x, game.camera.y, game.canvas.width, game.canvas.height);
         });
-        const ogStructDraw = Structure.prototype.draw; Structure.prototype.draw = function(ctx) {
+        game.expansions.patchClass(Structure, 'draw', function(original, ctx) {
             const cycle = Math.sin(game.tick / 1800);
             if (cycle > 0 && (this.type === 'nest' || this.type === 'turret') && !this.isConstructing) { ctx.shadowBlur = 30 * cycle; ctx.shadowColor = this.team === 'black' ? '#aa00ff' : '#ff3300'; }
-            ogStructDraw.call(this, ctx); ctx.shadowBlur = 0; 
-        };
-        const ogQueenDraw = Queen.prototype.draw; Queen.prototype.draw = function(ctx) {
+            original.call(this, ctx); ctx.shadowBlur = 0; 
+        });
+        game.expansions.patchClass(Queen, 'draw', function(original, ctx) {
             const cycle = Math.sin(game.tick / 1800);
             if (cycle > 0) { ctx.shadowBlur = 40 * cycle; ctx.shadowColor = this.team === 'black' ? '#ffffff' : '#ff0000'; }
-            ogQueenDraw.call(this, ctx); ctx.shadowBlur = 0;
-        };
+            original.call(this, ctx); ctx.shadowBlur = 0;
+        });
     }
 }
 
@@ -995,12 +1088,15 @@ class Spell {
     constructor(x, y, team, type) { this.x = x; this.y = y; this.team = team; this.type = type; this.life = 600; this.radius = type === 'venomStrike' ? 100 : 150; }
     update(game) {
         this.life--;
-        const allEnemies = game.spiders.concat(game.queens).concat(game.bosses).filter(e => e.team !== this.team);
-        for(let e of allEnemies) {
-            if(Math.hypot(e.x - this.x, e.y - this.y) < this.radius) {
-                if(this.type === 'venomStrike') {
-                    if (game.tick % 15 === 0) { e.hp -= 5; game.bus.emit('particles', {x: e.x, y: e.y, color: '#00ff00', count: 2}); }
-                } else if (this.type === 'silkTrap') { e.isSlowed = true; }
+        const radSq = this.radius * this.radius;
+        for(let i=0; i<game.entities.length; i++) {
+            let e = game.entities[i];
+            if(e.team && e.team !== this.team && (e instanceof Spider || e instanceof CentipedeBoss)) {
+                if(MathUtils.distSq(e.x, e.y, this.x, this.y) < radSq) {
+                    if(this.type === 'venomStrike') {
+                        if (game.tick % 15 === 0) { e.hp -= 5; game.bus.emit('particles', {x: e.x, y: e.y, color: '#00ff00', count: 2}); }
+                    } else if (this.type === 'silkTrap') { e.isSlowed = true; }
+                }
             }
         }
     }
@@ -1026,7 +1122,7 @@ const SpellExpansion = {
             const cost = data.type === 'venomStrike' ? 50 : 25; 
             if(game.eco[data.team].dew >= cost) {
                 game.eco[data.team].dew -= cost; 
-                game.spells.push(new Spell(data.x, data.y, data.team, data.type));
+                game.addEntity(new Spell(data.x, data.y, data.team, data.type));
                 game.bus.emit('particles', {x: data.x, y: data.y, color: data.type === 'venomStrike' ? '#00ff00' : '#ffffff', count: 100});
                 game.bus.emit('playSound', 'spell');
             }
@@ -1043,12 +1139,19 @@ class CentipedeBoss {
     }
     update(game) {
         this.history.unshift({x: this.x, y: this.y, angle: this.angle}); if(this.history.length > this.segmentCount * 5) this.history.pop(); 
-        let allTargets = game.spiders.concat(game.queens).concat(game.structures);
-        let nearest = null; let minDist = 800; 
-        for (let t of allTargets) { let d = Math.hypot(t.x - this.x, t.y - this.y); if (d < minDist) { minDist = d; nearest = t; } }
+        
+        let nearest = null; let minDistSq = 800 * 800; 
+        for (let i = 0; i < game.entities.length; i++) { 
+            let t = game.entities[i];
+            if (t instanceof Spider || t instanceof Structure) {
+                let dSq = MathUtils.distSq(t.x, t.y, this.x, this.y); 
+                if (dSq < minDistSq) { minDistSq = dSq; nearest = t; } 
+            }
+        }
+        
         if (nearest) {
             this.angle = Math.atan2(nearest.y - this.y, nearest.x - this.x);
-            if (minDist > 30) { this.x += Math.cos(this.angle) * this.speed; this.y += Math.sin(this.angle) * this.speed; } 
+            if (minDistSq > 900) { this.x += Math.cos(this.angle) * this.speed; this.y += Math.sin(this.angle) * this.speed; } 
             else { this.cooldown--; if(this.cooldown <= 0) { nearest.hp -= this.damage; this.cooldown = 20; game.bus.emit('particles', {x: nearest.x, y: nearest.y, color: '#00ff00', count: 10}); game.bus.emit('playSound', 'harvest'); } }
         } else {
             if(Math.random() < 0.05) this.angle += (Math.random() - 0.5);
@@ -1077,7 +1180,7 @@ class CentipedeBoss {
 const GodUnitExpansion = {
     init: (game) => {
         setTimeout(() => {
-            game.bosses.push(new CentipedeBoss(game.world.width/2, game.world.height/2));
+            game.addEntity(new CentipedeBoss(game.world.width/2, game.world.height/2));
             game.bus.emit('playSound', 'spell');
         }, 180000); 
     }
@@ -1101,11 +1204,14 @@ const SaveLoadExpansion = {
                 const data = localStorage.getItem('spiderRTS_saveData'); if(!data) return alert("No save found!");
                 const state = JSON.parse(data);
                 game.eco = state.eco; game.pop = state.pop; game.maxPop = state.maxPop; game.techLevel = state.techLevel; game.camera = state.camera; game.tick = state.tick || 0;
-                game.spiders = state.spiders.map(s => { let o = new Spider(s.x, s.y, s.team, s.role); o.hp = s.hp; o.cargo = s.cargo; return o; });
-                game.structures = state.structures.map(s => { let o = new Structure(s.x, s.y, s.team, s.type); o.hp = s.hp; return o; });
-                game.resourceNodes = state.resourceNodes.map(p => { let o = new ResourceNode(p.x, p.y, p.type); o.resources = p.resources; return o; });
-                game.queens = state.queens.map(q => { let o = new Queen(q.x, q.y, q.team); o.hp = q.hp; return o; });
-                game.projectiles = []; game.particles = []; game.spells = []; game.bosses = []; game.critters = []; alert("Game Loaded!");
+                
+                game.entities = []; 
+                state.spiders.forEach(s => { let o = new Spider(s.x, s.y, s.team, s.role); o.hp = s.hp; o.cargo = s.cargo; game.addEntity(o); });
+                state.structures.forEach(s => { let o = new Structure(s.x, s.y, s.team, s.type); o.hp = s.hp; game.addEntity(o); });
+                state.resourceNodes.forEach(p => { let o = new ResourceNode(p.x, p.y, p.type); o.resources = p.resources; game.addEntity(o); });
+                state.queens.forEach(q => { let o = new Queen(q.x, q.y, q.team); o.hp = q.hp; game.addEntity(o); });
+                
+                alert("Game Loaded!");
             }
         });
     }
@@ -1189,7 +1295,7 @@ const AdvancedUnitControlExpansion = {
                     });
                 }
             } else if (isLeftClick) {
-                if (wasDraggingBox && game.dragBox && Math.hypot(game.dragBox.w, game.dragBox.h) > 10) {
+                if (wasDraggingBox && game.dragBox && MathUtils.distSq(0,0, game.dragBox.w, game.dragBox.h) > 100) {
                     let x1 = Math.min(startX, startX + game.dragBox.w) + game.camera.x;
                     let x2 = Math.max(startX, startX + game.dragBox.w) + game.camera.x;
                     let y1 = Math.min(startY, startY + game.dragBox.h) + game.camera.y;
@@ -1201,17 +1307,19 @@ const AdvancedUnitControlExpansion = {
                     game.selectedStructure = null;
                     if (game.selectedUnits.length > 0) game.bus.emit('playSound', 'harvest');
                 } else {
-                    if (Math.hypot(clientX - startX, clientY - startY) > 12) {
+                    if (MathUtils.distSq(startX, startY, clientX, clientY) > 144) {
                         game.dragBox = null; return;
                     }
 
                     let clickedUnit = null; let clickedStruct = null;
-                    for (let u of game.spiders.concat(game.queens)) {
-                        if (Math.hypot(u.x - worldX, u.y - worldY) < (u.size + 15)) { clickedUnit = u; break; }
+                    const allSpiders = game.spiders.concat(game.queens);
+                    for (let i = 0; i < allSpiders.length; i++) {
+                        let u = allSpiders[i];
+                        if (MathUtils.distSq(u.x, u.y, worldX, worldY) < ((u.size + 15)**2)) { clickedUnit = u; break; }
                     }
                     if (!clickedUnit) {
                         for(let s of game.structures) {
-                            if (Math.hypot(s.x - worldX, s.y - worldY) < s.size) { clickedStruct = s; break; }
+                            if (MathUtils.distSq(s.x, s.y, worldX, worldY) < s.size**2) { clickedStruct = s; break; }
                         }
                     }
 
@@ -1247,7 +1355,7 @@ const AdvancedUnitControlExpansion = {
 
     patch: (game) => {
         game.bus.on('uiDraw', (ctx) => {
-            if (game.dragBox && Math.hypot(game.dragBox.w, game.dragBox.h) > 10) {
+            if (game.dragBox && MathUtils.distSq(0,0, game.dragBox.w, game.dragBox.h) > 100) {
                 ctx.fillStyle = 'rgba(0, 255, 0, 0.2)'; ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 1;
                 ctx.fillRect(game.dragBox.x, game.dragBox.y, game.dragBox.w, game.dragBox.h);
                 ctx.strokeRect(game.dragBox.x, game.dragBox.y, game.dragBox.w, game.dragBox.h);
@@ -1263,25 +1371,20 @@ const AdvancedUnitControlExpansion = {
             });
         });
 
-        const ogSpiderUpdate = Spider.prototype.update;
-        Spider.prototype.update = function(gameObj) {
+        game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
             if (this.isManual) {
                 const techLvl = gameObj.techLevel[this.team] || 0; 
                 const currentDamage = this.damage + (techLvl * 5); 
-                let allEnemies = gameObj.spiders.concat(gameObj.queens).concat(gameObj.critters).concat(gameObj.structures).concat(gameObj.bosses).filter(e => e.team !== this.team && e.hp > 0);
-                let nearestEnemy = null; let minDist = 150 + (techLvl * 10);
                 
-                for (let enemy of allEnemies) {
-                    let d = Math.hypot(enemy.x - this.x, enemy.y - this.y);
-                    if (enemy.type === 'wall' && d < 250) d -= 100; 
-                    if (d < minDist) { minDist = d; nearestEnemy = enemy; }
-                }
+                const detectRadius = 150 + (techLvl * 10);
+                let nearestEnemy = gameObj.getNearestEnemy(this.x, this.y, this.team, detectRadius);
 
                 if (nearestEnemy) {
                     this.state = 'combat'; this.angle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
                     const combatRange = nearestEnemy.size ? nearestEnemy.size + 15 : 20;
+                    const distSq = MathUtils.distSq(this.x, this.y, nearestEnemy.x, nearestEnemy.y);
                     
-                    if (minDist > combatRange) { 
+                    if (distSq > combatRange * combatRange) { 
                         this.x += Math.cos(this.angle) * this.baseSpeed; this.y += Math.sin(this.angle) * this.baseSpeed;
                     } else {
                         this.cooldown--;
@@ -1297,7 +1400,7 @@ const AdvancedUnitControlExpansion = {
 
                 if (this.commandTarget) {
                     const dx = this.commandTarget.x - this.x; const dy = this.commandTarget.y - this.y;
-                    if (Math.hypot(dx, dy) > 15) {
+                    if (MathUtils.distSq(0,0, dx, dy) > 225) { // 15 squared
                         const targetAngle = Math.atan2(dy, dx);
                         let diff = targetAngle - this.angle;
                         while (diff > Math.PI) diff -= Math.PI * 2;
@@ -1314,25 +1417,24 @@ const AdvancedUnitControlExpansion = {
                     }
                 }
             } else {
-                ogSpiderUpdate.call(this, gameObj); 
+                original.call(this, gameObj); 
             }
-        };
+        });
 
-        const ogQueenUpdate = Queen.prototype.update;
-        Queen.prototype.update = function(gameObj) {
+        game.expansions.patchClass(Queen, 'update', function(original, gameObj) {
             const prevAngle = this.angle || 0;
-            ogQueenUpdate.call(this, gameObj);
+            original.call(this, gameObj);
             if (this.commandTarget) {
                 let targetAngle = Math.atan2(this.commandTarget.y - this.y, this.commandTarget.x - this.x);
                 let diff = targetAngle - prevAngle;
                 while (diff > Math.PI) diff -= Math.PI * 2; while (diff < -Math.PI) diff += Math.PI * 2;
                 this.angle = prevAngle + (diff * 0.10);
             }
-        };
-        const ogQueenDraw = Queen.prototype.draw;
-        Queen.prototype.draw = function(ctx) {
-            const tempAngle = this.angle; this.angle -= (Math.PI / 2); ogQueenDraw.call(this, ctx); this.angle = tempAngle;
-        };
+        });
+        
+        game.expansions.patchClass(Queen, 'draw', function(original, ctx) {
+            const tempAngle = this.angle; this.angle -= (Math.PI / 2); original.call(this, ctx); this.angle = tempAngle;
+        });
     }
 };
 
@@ -1430,9 +1532,8 @@ const ContextUIExpansion = {
         document.getElementById('rtsUI').addEventListener('mousedown', (e) => e.stopPropagation());
         document.getElementById('rtsUI').addEventListener('touchstart', (e) => e.stopPropagation(), {passive: false});
 
-        const ogUpdate = Game.prototype.update;
-        Game.prototype.update = function() {
-            ogUpdate.call(this);
+        game.expansions.patchClass(Game, 'update', function(original) {
+            original.call(this);
 
             let currentSelection = null;
             if (this.selectedUnits && this.selectedUnits.length > 0) {
@@ -1512,20 +1613,20 @@ const ContextUIExpansion = {
                 if (currentSelection.cargo && currentSelection.cargo.amount > 0) extraStats = `<div class="ui-stat">Cargo: ${currentSelection.cargo.amount} ${currentSelection.cargo.type}</div>`;
                 if (currentSelection.damage) extraStats += `<div class="ui-stat">DMG: ${currentSelection.damage + (this.techLevel[currentSelection.team] * 5 || 0)}</div>`;
 
-                statsContainer.innerHTML = `
-                    <div class="ui-stat">HP: ${Math.ceil(currentSelection.hp)} / ${max}</div>
-                    <div id="ui-hp-bar-bg"><div id="ui-hp-bar-fill" style="width: ${pct}%; background: ${pct > 50 ? '#00ff00' : (pct > 25 ? '#ffff00' : '#ff0000')}"></div></div>
-                    ${extraStats}
-                `;
+                // PERFORMANCE: Only update DOM if the string actually changes!
+                const newHTML = `<div class="ui-stat">HP: ${Math.ceil(currentSelection.hp)} / ${max}</div><div id="ui-hp-bar-bg"><div id="ui-hp-bar-fill" style="width: ${pct}%; background: ${pct > 50 ? '#00ff00' : (pct > 25 ? '#ffff00' : '#ff0000')}"></div></div>${extraStats}`;
+                if (statsContainer.innerHTML !== newHTML) statsContainer.innerHTML = newHTML;
+                
             } else {
-                statsContainer.innerHTML = `<div class="ui-stat">Select a unit or building to command the swarm.</div>`;
+                const defaultMsg = `<div class="ui-stat">Select a unit or building to command the swarm.</div>`;
+                if (statsContainer.innerHTML !== defaultMsg) statsContainer.innerHTML = defaultMsg;
             }
 
             document.querySelectorAll('.cmd-btn').forEach(b => {
                 if (b.getAttribute('data-tool') === this.activeTool) b.classList.add('active-tool');
                 else b.classList.remove('active-tool');
             });
-        };
+        });
     }
 };
 
@@ -1556,15 +1657,14 @@ const ConstructionExpansion = {
     },
 
     patch: (game) => {
-        const ogQueenUpdate = Queen.prototype.update;
-        Queen.prototype.update = function(gameObj) {
+        game.expansions.patchClass(Queen, 'update', function(original, gameObj) {
             
             if (this.activeConstruction) {
                 if (this.commandTarget) {
                     this.activeConstruction.isPaused = true;
                     this.activeConstruction = null;
                 } 
-                else if (Math.hypot(this.activeConstruction.x - this.x, this.activeConstruction.y - this.y) <= 70) {
+                else if (MathUtils.distSq(this.activeConstruction.x, this.activeConstruction.y, this.x, this.y) <= 4900) { // 70 squared
                     this.activeConstruction.buildProgress += 0.001;
                     this.activeConstruction.isPaused = false;
                     
@@ -1587,17 +1687,17 @@ const ConstructionExpansion = {
                 }
             }
 
-            ogQueenUpdate.call(this, gameObj);
+            original.call(this, gameObj);
 
             if (this.buildTarget) {
                 if (this.commandTarget) {
-                    const destDist = Math.hypot(this.commandTarget.x - this.buildTarget.x, this.commandTarget.y - this.buildTarget.y);
-                    if (destDist > 10) this.buildTarget = null;
+                    const destDistSq = MathUtils.distSq(this.commandTarget.x, this.commandTarget.y, this.buildTarget.x, this.buildTarget.y);
+                    if (destDistSq > 100) this.buildTarget = null;
                 }
                 
                 if (this.buildTarget) {
-                    const dist = Math.hypot(this.buildTarget.x - this.x, this.buildTarget.y - this.y);
-                    if (dist < 60) {
+                    const distSq = MathUtils.distSq(this.buildTarget.x, this.buildTarget.y, this.x, this.y);
+                    if (distSq < 3600) { // 60 squared
                         if (gameObj.eco[this.team].pumpkins >= this.buildTarget.cost) {
                             gameObj.eco[this.team].pumpkins -= this.buildTarget.cost;
                             
@@ -1607,7 +1707,7 @@ const ConstructionExpansion = {
                             s.buildProgress = 0;
                             s.originalTerritory = s.territory;
                             s.territory = 0; 
-                            gameObj.structures.push(s);
+                            gameObj.addEntity(s);
                             
                             this.activeConstruction = s; 
                             gameObj.bus.emit('playSound', 'build');
@@ -1619,21 +1719,19 @@ const ConstructionExpansion = {
             }
 
             if (!this.activeConstruction && !this.commandTarget && !this.buildTarget) {
-                let unfinished = gameObj.structures.find(s => s.isConstructing && s.team === this.team && Math.hypot(s.x - this.x, s.y - this.y) < 60);
+                let unfinished = gameObj.structures.find(s => s.isConstructing && s.team === this.team && MathUtils.distSq(s.x, s.y, this.x, this.y) < 3600);
                 if (unfinished) {
                     this.activeConstruction = unfinished; 
                 }
             }
-        };
+        });
 
-        const ogStructUpdate = Structure.prototype.update;
-        Structure.prototype.update = function(gameObj) {
+        game.expansions.patchClass(Structure, 'update', function(original, gameObj) {
             if (this.isConstructing) return; 
-            ogStructUpdate.call(this, gameObj);
-        };
+            original.call(this, gameObj);
+        });
 
-        const ogStructDraw = Structure.prototype.draw;
-        Structure.prototype.draw = function(ctx) {
+        game.expansions.patchClass(Structure, 'draw', function(original, ctx) {
             if (this.isConstructing) {
                 ctx.save();
                 ctx.translate(this.x, this.y);
@@ -1655,17 +1753,16 @@ const ConstructionExpansion = {
                 
                 ctx.restore();
             } else {
-                ogStructDraw.call(this, ctx); 
+                original.call(this, ctx); 
             }
-        };
+        });
     }
 };
 
 const FogOfWarExpansion = {
     patch: (game) => {
-        const ogUpdate = Game.prototype.update;
-        Game.prototype.update = function() {
-            ogUpdate.call(this);
+        game.expansions.patchClass(Game, 'update', function(original) {
+            original.call(this);
             if (!this.mapGrid) return;
 
             if (!this.fowCanvas) {
@@ -1688,7 +1785,7 @@ const FogOfWarExpansion = {
                     for (let y = tY - radiusTiles; y <= tY + radiusTiles; y++) {
                         for (let x = tX - radiusTiles; x <= tX + radiusTiles; x++) {
                             if (this.mapGrid[y] && this.mapGrid[y][x]) {
-                                if (Math.hypot(x - tX, y - tY) <= radiusTiles) {
+                                if (MathUtils.distSq(x, y, tX, tY) <= radiusTiles * radiusTiles) {
                                     this.mapGrid[y][x].visible = true;
                                     this.mapGrid[y][x].discovered = true;
                                 }
@@ -1718,11 +1815,10 @@ const FogOfWarExpansion = {
                     }
                 }
             }
-        };
+        });
 
         const applyFoWToClass = (ClassRef, hideIfInvisible, hideIfUndiscovered) => {
-            const ogDraw = ClassRef.prototype.draw;
-            ClassRef.prototype.draw = function(ctx) {
+            game.expansions.patchClass(ClassRef, 'draw', function(original, ctx) {
                 if (game.mapGrid) {
                     const tX = Math.floor(this.x / game.tileSize); const tY = Math.floor(this.y / game.tileSize);
                     const tile = game.mapGrid[tY] && game.mapGrid[tY][tX];
@@ -1731,8 +1827,8 @@ const FogOfWarExpansion = {
                         if (hideIfInvisible && !tile.visible && this.team !== 'black') return;
                     }
                 }
-                ogDraw.call(this, ctx);
-            };
+                original.call(this, ctx);
+            });
         };
         
         applyFoWToClass(Spider, true, false);
