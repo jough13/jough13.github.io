@@ -124,13 +124,20 @@ export const ContextUIExpansion = {
                 transition: bottom 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
             }
             
-            #rtsUI.minimized { bottom: -180px; }
+            /* FIXED: Slides down 150px instead of 180px to leave the top border visible like a tab */
+            #rtsUI.minimized { bottom: -150px; }
 
             #ui-toggle-btn {
-                position: absolute; top: -30px; right: 20px; width: 45px; height: 30px;
-                background: rgba(10, 5, 0, 0.9); border: 2px solid #ff9d00; border-bottom: none; border-radius: 8px 8px 0 0;
+                position: absolute; 
+                top: -40px; /* Sticks out a bit further now */
+                right: 20px; 
+                width: 60px; /* Made slightly wider for easier clicking */
+                height: 40px; /* Made taller */
+                background: rgba(10, 5, 0, 0.95); 
+                border: 2px solid #ff9d00; border-bottom: none; border-radius: 8px 8px 0 0;
                 color: #ff9d00; display: flex; justify-content: center; align-items: center;
-                cursor: pointer; font-size: 16px; transition: background 0.2s, color 0.2s;
+                cursor: pointer; font-size: 20px; transition: background 0.2s, color 0.2s;
+                z-index: 2005; pointer-events: auto;
             }
             #ui-toggle-btn:hover { background: #ff9d00; color: #000; }
             
@@ -192,11 +199,8 @@ export const ContextUIExpansion = {
             'trap':   { icon: '🕸️', name: 'Trap', cost: '25💧', type: 'tool', val: 'silkTrap' },
             'harv':   { icon: '🕷️', name: 'Harvester', cost: '10🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'harvester'}) },
             'sold':   { icon: '🐜', name: 'Soldier', cost: '25🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'soldier'}) },
-            
-            // --- NEW UNITS ADDED HERE ---
             'spitter': { icon: '💦', name: 'Spitter', cost: '40🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'spitter'}) },
             'tank':    { icon: '🪲', name: 'Tarantula', cost: '75🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'tarantula'}) },
-            
             'tech':   { icon: '🧬', name: 'Evolve', cost: '250🎃', type: 'instant', fn: (t) => { if(game.eco.black.pumpkins>=250){ game.eco.black.pumpkins-=250; game.techLevel.black++; game.bus.emit('playSound','spell');} } },
             'cancel': { icon: '🛑', name: 'Stop', cost: '', type: 'instant', fn: () => { 
                 game.activeTool = 'select'; 
@@ -281,7 +285,6 @@ export const ContextUIExpansion = {
                         addButton('nest'); addButton('eggsac'); addButton('pylon'); 
                         addButton('turret'); addButton('wall'); addButton('cancel');
                     } else {
-                        // Dynamically update name for all types of spiders
                         nameEl.innerText = unit.role.charAt(0).toUpperCase() + unit.role.slice(1);
                         addButton('auto'); addButton('cancel');
                     }
@@ -291,7 +294,7 @@ export const ContextUIExpansion = {
                     nameEl.innerText = this.selectedStructure.type === 'nest' ? `Main Nest (Lv ${this.techLevel.black})` : this.selectedStructure.type.toUpperCase();
                     if (this.selectedStructure.type === 'nest' && this.selectedStructure.team === 'black') {
                         addButton('harv'); addButton('sold'); 
-                        addButton('spitter'); addButton('tank'); // --- ADDED NEW UNIT BUTTONS HERE ---
+                        addButton('spitter'); addButton('tank'); 
                         addButton('tech');
                     }
                 } 
