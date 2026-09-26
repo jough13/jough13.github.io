@@ -4,10 +4,10 @@ import { Queen } from './Queen.js';
 import { CentipedeBoss } from './Boss.js';
 import { Aphid, GoldenBug } from './Critters.js';
 
-// --- NEW IMPORTS ---
+// --- MECHANICS IMPORTS ---
 import { VenusFlytrap } from './Hazards.js';
 import { JackOLantern } from './ControlPoints.js';
-import { Corpse, ZombieSpider } from './Necromancy.js'; // Added Necromancy Classes
+import { Corpse, ZombieSpider } from './Necromancy.js'; 
 
 export const AtmosphereExpansion = {
     patch: (game) => {
@@ -107,9 +107,8 @@ export const FogOfWarExpansion = {
         applyFoWToClass(Aphid, true, false);
         applyFoWToClass(GoldenBug, true, false);
         
-        // --- ADDED NEW MECHANICS TO FOG OF WAR ---
         applyFoWToClass(VenusFlytrap, true, false); 
-        applyFoWToClass(Corpse, true, false); // Corpses are hidden in Fog of War
+        applyFoWToClass(Corpse, true, false); 
         applyFoWToClass(JackOLantern, false, true); 
         applyFoWToClass(ResourceNode, false, true); 
 
@@ -135,8 +134,11 @@ export const SaveLoadExpansion = {
                 const state = {
                     eco: game.eco, pop: game.pop, maxPop: game.maxPop, techLevel: game.techLevel, camera: game.camera, tick: game.tick,
                     
-                    // Added isZombie to the spider mapper
-                    spiders: game.spiders.map(s => ({x: s.x, y: s.y, team: s.team, role: s.role, hp: s.hp, cargo: s.cargo, isZombie: s.isZombie})),
+                    // Added cloak properties for the Widow
+                    spiders: game.spiders.map(s => ({
+                        x: s.x, y: s.y, team: s.team, role: s.role, hp: s.hp, cargo: s.cargo, 
+                        isZombie: s.isZombie, isCloaked: s.isCloaked, cloakCooldown: s.cloakCooldown
+                    })),
                     
                     structures: game.structures.map(s => ({
                         x: s.x, y: s.y, team: s.team, type: s.type, hp: s.hp,
@@ -149,8 +151,6 @@ export const SaveLoadExpansion = {
                     bosses: game.bosses.map(b => ({x: b.x, y: b.y, hp: b.hp})),
                     hazards: game.entities.filter(e => e instanceof VenusFlytrap).map(f => ({x: f.x, y: f.y, hp: f.hp, cooldown: f.cooldown})),
                     controlPoints: game.entities.filter(e => e instanceof JackOLantern).map(c => ({x: c.x, y: c.y, team: c.controllingTeam, prog: c.captureProgress})),
-                    
-                    // Added Corpses to the Save file
                     corpses: game.entities.filter(e => e instanceof Corpse).map(c => ({x: c.x, y: c.y, life: c.life}))
                 };
                 localStorage.setItem('spiderRTS_saveData', JSON.stringify(state)); alert("Game Saved!");
@@ -162,9 +162,23 @@ export const SaveLoadExpansion = {
                 
                 game.entities = []; 
                 
-                // Restoring Spiders and Zombie Spiders
+                // FIXED BUG: Hard-reconstructing special unit properties based on role.
+                // Normally this happens in the 'spawnSpider' listener, which doesn't trigger on Load!
                 state.spiders.forEach(s => { 
-                    let o = s.isZombie ? new ZombieSpider(s.x, s.y, s.team) : new Spider(s.x, s.y, s.team, s.role); 
+                    let o;
+                    if (s.isZombie) { 
+                        o = new ZombieSpider(s.x, s.y, s.team); 
+                    } else {
+                        o = new Spider(s.x, s.y, s.team, s.role);
+                        if (s.role === 'spitter') { o.maxHp = 75; o.damage = 25; o.attackSpeed = 45; o.range = 250; o.sprite.src = s.team === 'black' ? 'assets/spitter_black.png' : 'assets/spitter_red.png'; }
+                        if (s.role === 'tarantula') { o.maxHp = 400; o.damage = 45; o.attackSpeed = 40; o.size = 22; o.baseSpeed = 0.6; o.sprite.src = s.team === 'black' ? 'assets/tarantula_black.png' : 'assets/tarantula_red.png'; }
+                        if (s.role === 'widow') { 
+                            o.maxHp = 150; o.damage = 100; o.baseSpeed = 1.9; 
+                            o.isCloaked = s.isCloaked; o.cloakCooldown = s.cloakCooldown; 
+                            o.sprite.src = s.team === 'black' ? 'assets/widow_black.png' : 'assets/widow_red.png'; 
+                        }
+                        if (s.role === 'goliath') { o.maxHp = 1200; o.damage = 90; o.size = 38; o.baseSpeed = 0.4; o.sprite.src = s.team === 'black' ? 'assets/goliath_black.png' : 'assets/goliath_red.png'; }
+                    }
                     o.hp = s.hp; o.cargo = s.cargo; 
                     game.addEntity(o); 
                 });
@@ -207,8 +221,6 @@ export const SaveLoadExpansion = {
                         game.addEntity(o);
                     });
                 }
-                
-                // Restoring Corpses
                 if (state.corpses) {
                     state.corpses.forEach(c => {
                         let o = new Corpse(c.x, c.y);
