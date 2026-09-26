@@ -95,7 +95,14 @@ export const CombatAndHarvesterExpansion = {
                     this.x += Math.cos(this.angle) * currentSpeed; this.y += Math.sin(this.angle) * currentSpeed;
                 } else {
                     if (this.state === 'seeking_pumpkin' && this.target.resources > 0) {
-                        this.cargo.amount = 10; this.cargo.type = this.target.type; this.target.resources -= 10; this.target = null; 
+                        
+                        // FIXED BUG: Math.min() prevents the harvester from taking more resources than exist
+                        let amountGathered = Math.min(10, this.target.resources);
+                        this.cargo.amount = amountGathered; 
+                        this.cargo.type = this.target.type; 
+                        this.target.resources -= amountGathered; 
+                        this.target = null; 
+                        
                         gameObj.bus.emit('particles', {x: this.x, y: this.y, color: this.cargo.type === 'pumpkin' ? '#ff7b00' : '#00aaff', count: 5}); 
                         gameObj.bus.emit('playSound', 'harvest');
                     } else if (this.state === 'returning_home') {
