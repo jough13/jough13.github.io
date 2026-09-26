@@ -16,11 +16,12 @@ import { CombatAndHarvesterExpansion } from './expansions/CombatAI.js';
 import { SilkNetworkExpansion, WebNetworkExpansion } from './expansions/Networks.js';
 import { SpellExpansion } from './expansions/Spells.js';
 
-// --- NEW MECHANICS IMPORTS ---
+// --- MECHANICS IMPORTS ---
 import { SpecialUnitsExpansion } from './expansions/SpecialUnits.js';
 import { HazardsExpansion } from './expansions/Hazards.js';
 import { DayNightExpansion } from './expansions/DayNight.js';
 import { ControlPointsExpansion } from './expansions/ControlPoints.js';
+import { NecromancyExpansion } from './expansions/Necromancy.js'; // Added Necromancy
 
 import { AdvancedUnitControlExpansion, ConstructionExpansion } from './expansions/Controls.js';
 import { MinimapExpansion, ContextUIExpansion, GameLoopExpansion } from './expansions/UI.js';
@@ -42,11 +43,13 @@ window.onload = () => {
     game.expansions.load('WebNetwork', WebNetworkExpansion); 
     game.expansions.load('SilkNetwork', SilkNetworkExpansion);
 
-    // --- LOAD NEW MECHANICS ---
+    // --- LOAD MECHANICS ---
     game.expansions.load('SpecialUnits', SpecialUnitsExpansion);
     game.expansions.load('Hazards', HazardsExpansion);
     game.expansions.load('DayNight', DayNightExpansion);
     game.expansions.load('ControlPoints', ControlPointsExpansion);
+    game.expansions.load('CommanderSpells', SpellExpansion); 
+    game.expansions.load('Necromancy', NecromancyExpansion); // Loaded Necromancy
 
     // UI EXPANSIONS
     game.expansions.load('MinimapUI', MinimapExpansion); 
@@ -56,9 +59,8 @@ window.onload = () => {
     game.expansions.load('GameLoop', GameLoopExpansion); 
     game.expansions.load('SaveLoadManager', SaveLoadExpansion); 
 
-    // JUICE & SPELLS
+    // JUICE
     game.expansions.load('Atmosphere', AtmosphereExpansion); 
-    game.expansions.load('CommanderSpells', SpellExpansion); 
     
     // REQUIRED TO LOAD LAST (So it renders over everything else correctly)
     game.expansions.load('FogOfWar', FogOfWarExpansion);
