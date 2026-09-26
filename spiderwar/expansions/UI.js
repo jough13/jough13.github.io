@@ -116,7 +116,6 @@ export const ContextUIExpansion = {
                 border-image-slice: 32%; 
                 border-image-repeat: stretch; 
                 
-                /* LESS TRANSPARENT, MORE BLACK */
                 background-color: rgba(5, 2, 0, 0.75); 
                 backdrop-filter: blur(8px); 
                 -webkit-backdrop-filter: blur(8px); 
@@ -138,7 +137,6 @@ export const ContextUIExpansion = {
                 border-image-slice: 32%; 
                 border-image-repeat: stretch; 
                 
-                /* MUCH DARKER, ALMOST SOLID BLACK FOR READABILITY */
                 background-color: rgba(0, 0, 0, 0.90); 
                 backdrop-filter: blur(8px); 
                 -webkit-backdrop-filter: blur(8px); 
@@ -146,12 +144,38 @@ export const ContextUIExpansion = {
                 display: flex; box-sizing: border-box;
                 font-family: 'Courier New', monospace; color: white; z-index: 2000;
                 box-shadow: 0 -5px 20px rgba(0,0,0,0.8); user-select: none;
+                
+                /* Smooth sliding animation */
+                transition: bottom 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
             }
+            
+            /* Hidden state for the bottom panel */
+            #rtsUI.minimized {
+                bottom: -180px; 
+            }
+
+            /* --- TOGGLE MINIMIZE BUTTON --- */
+            #ui-toggle-btn {
+                position: absolute;
+                top: -30px; /* Sticks out above the frame */
+                right: 20px;
+                width: 45px;
+                height: 30px;
+                background: rgba(10, 5, 0, 0.9);
+                border: 2px solid #ff9d00;
+                border-bottom: none; /* Blends into the frame */
+                border-radius: 8px 8px 0 0;
+                color: #ff9d00;
+                display: flex; justify-content: center; align-items: center;
+                cursor: pointer; font-size: 16px;
+                transition: background 0.2s, color 0.2s;
+            }
+            #ui-toggle-btn:hover { background: #ff9d00; color: #000; }
             
             #ui-portrait-container {
                 width: 140px; height: 100%; border-right: 2px solid rgba(255, 157, 0, 0.3);
                 display: flex; align-items: center; justify-content: center; 
-                background: rgba(0, 0, 0, 0.6); /* Darkened the portrait backdrop */
+                background: rgba(0, 0, 0, 0.6);
             }
             #ui-portrait { width: 90%; height: 90%; object-fit: contain; image-rendering: pixelated; }
             #ui-info {
@@ -196,6 +220,7 @@ export const ContextUIExpansion = {
 
             <!-- BOTTOM BAR HTML -->
             <div id="rtsUI">
+                <div id="ui-toggle-btn" title="Toggle HUD">▼</div>
                 <div id="ui-portrait-container"><img id="ui-portrait" src=""></div>
                 <div id="ui-info">
                     <h2 id="ui-name">Hive Mind</h2>
@@ -205,6 +230,15 @@ export const ContextUIExpansion = {
             </div>
         `;
         document.body.appendChild(uiBase);
+
+        // --- NEW: Toggle Button Logic ---
+        const toggleBtn = document.getElementById('ui-toggle-btn');
+        const rtsUI = document.getElementById('rtsUI');
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevents clicking the map underneath
+            rtsUI.classList.toggle('minimized');
+            toggleBtn.innerText = rtsUI.classList.contains('minimized') ? '▲' : '▼';
+        });
 
         game.uiActions = {
             'nest':   { icon: '🕸️', name: 'Nest', cost: '150🎃', type: 'tool', val: 'nest' },
