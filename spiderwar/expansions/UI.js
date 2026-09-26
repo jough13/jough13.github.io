@@ -4,7 +4,6 @@ import { Queen } from './Queen.js';
 
 export const MinimapExpansion = {
     init: (game) => {
-        // INCREASED offsetY to 190 so it sits perfectly above the 180px bottom menu
         game.minimap = { size: 200, padding: 10, offsetY: 190 }; 
         game.isMinimapDragging = false;
         
@@ -48,7 +47,6 @@ export const MinimapExpansion = {
             const startX = game.canvas.width - size - pad; 
             const startY = game.canvas.height - size - pad - game.minimap.offsetY; 
             
-            // Adjusted background color to match the new HUD
             ctx.fillStyle = 'rgba(10, 5, 0, 0.6)'; ctx.fillRect(startX, startY, size, size);
             
             const scaleX = size / game.world.width; const scaleY = size / game.world.height;
@@ -90,11 +88,9 @@ export const MinimapExpansion = {
                 ctx.restore();
             }
             
-            // Camera viewport box
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; ctx.lineWidth = 1; 
             ctx.strokeRect(startX + (game.camera.x * scaleX), startY + (game.camera.y * scaleY), game.canvas.width * scaleX, game.canvas.height * scaleY);
             
-            // Thicker border to match the chunky pixel art UI
             ctx.strokeStyle = '#ff9d00'; ctx.lineWidth = 4; ctx.strokeRect(startX, startY, size, size);
         });
     }
@@ -104,22 +100,13 @@ export const ContextUIExpansion = {
     init: (game) => {
         const style = document.createElement('style');
         style.innerHTML = `
-            /* --- TOP RESOURCE FLOATING BOX --- */
             #topBar {
                 position: fixed; top: 10px; left: 10px;
                 padding: 0px 15px; 
                 display: flex; justify-content: center; align-items: center; gap: 30px;
-                
-                border-style: solid;
-                border-width: 24px; 
-                border-image-source: url('assets/ui_frame.png');
-                border-image-slice: 32%; 
-                border-image-repeat: stretch; 
-                
-                background-color: rgba(5, 2, 0, 0.75); 
-                backdrop-filter: blur(8px); 
-                -webkit-backdrop-filter: blur(8px); 
-
+                border-style: solid; border-width: 24px; 
+                border-image-source: url('assets/ui_frame.png'); border-image-slice: 32%; border-image-repeat: stretch; 
+                background-color: rgba(5, 2, 0, 0.75); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); 
                 font-family: 'Courier New', monospace; color: white; z-index: 2000;
                 box-shadow: 0 10px 30px rgba(0,0,0,0.8); user-select: none;
                 font-size: 16px; font-weight: bold; text-shadow: 1px 1px 0 #000;
@@ -127,78 +114,37 @@ export const ContextUIExpansion = {
             .res-item { display: flex; align-items: center; gap: 8px; }
             .res-value { color: #ff9d00; }
 
-            /* --- BOTTOM CONTEXT MENU --- */
             #rtsUI {
                 position: fixed; bottom: 0; left: 0; width: 100%; height: 180px;
-                
-                border-style: solid;
-                border-width: 32px; 
-                border-image-source: url('assets/ui_frame.png');
-                border-image-slice: 32%; 
-                border-image-repeat: stretch; 
-                
-                background-color: rgba(0, 0, 0, 0.90); 
-                backdrop-filter: blur(8px); 
-                -webkit-backdrop-filter: blur(8px); 
-                
-                display: flex; box-sizing: border-box;
-                font-family: 'Courier New', monospace; color: white; z-index: 2000;
+                border-style: solid; border-width: 32px; 
+                border-image-source: url('assets/ui_frame.png'); border-image-slice: 32%; border-image-repeat: stretch; 
+                background-color: rgba(0, 0, 0, 0.90); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); 
+                display: flex; box-sizing: border-box; font-family: 'Courier New', monospace; color: white; z-index: 2000;
                 box-shadow: 0 -5px 20px rgba(0,0,0,0.8); user-select: none;
-                
-                /* Smooth sliding animation */
                 transition: bottom 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
             }
             
-            /* Hidden state for the bottom panel */
-            #rtsUI.minimized {
-                bottom: -180px; 
-            }
+            #rtsUI.minimized { bottom: -180px; }
 
-            /* --- TOGGLE MINIMIZE BUTTON --- */
             #ui-toggle-btn {
-                position: absolute;
-                top: -30px; /* Sticks out above the frame */
-                right: 20px;
-                width: 45px;
-                height: 30px;
-                background: rgba(10, 5, 0, 0.9);
-                border: 2px solid #ff9d00;
-                border-bottom: none; /* Blends into the frame */
-                border-radius: 8px 8px 0 0;
-                color: #ff9d00;
-                display: flex; justify-content: center; align-items: center;
-                cursor: pointer; font-size: 16px;
-                transition: background 0.2s, color 0.2s;
+                position: absolute; top: -30px; right: 20px; width: 45px; height: 30px;
+                background: rgba(10, 5, 0, 0.9); border: 2px solid #ff9d00; border-bottom: none; border-radius: 8px 8px 0 0;
+                color: #ff9d00; display: flex; justify-content: center; align-items: center;
+                cursor: pointer; font-size: 16px; transition: background 0.2s, color 0.2s;
             }
             #ui-toggle-btn:hover { background: #ff9d00; color: #000; }
             
-            #ui-portrait-container {
-                width: 140px; height: 100%; border-right: 2px solid rgba(255, 157, 0, 0.3);
-                display: flex; align-items: center; justify-content: center; 
-                background: rgba(0, 0, 0, 0.6);
-            }
+            #ui-portrait-container { width: 140px; height: 100%; border-right: 2px solid rgba(255, 157, 0, 0.3); display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.6); }
             #ui-portrait { width: 90%; height: 90%; object-fit: contain; image-rendering: pixelated; }
-            #ui-info {
-                width: 200px; padding: 15px; border-right: 2px solid rgba(255, 157, 0, 0.3);
-                display: flex; flex-direction: column; justify-content: center;
-            }
+            #ui-info { width: 200px; padding: 15px; border-right: 2px solid rgba(255, 157, 0, 0.3); display: flex; flex-direction: column; justify-content: center; }
             #ui-info h2 { margin: 0 0 10px 0; font-size: 16px; color: #ff9d00; text-transform: uppercase;}
             .ui-stat { font-size: 14px; color: #ccc; margin-bottom: 5px; }
             #ui-hp-bar-bg { width: 100%; height: 10px; background: rgba(0,0,0,0.8); margin-top: 5px; border: 1px solid #000; }
             #ui-hp-bar-fill { width: 100%; height: 100%; background: #00ff00; transition: 0.2s width; }
             
             #ui-actions::-webkit-scrollbar { display: none; }
-            
-            #ui-actions {
-                flex-grow: 1; padding: 10px; display: flex; flex-wrap: wrap; 
-                gap: 10px; align-content: center; overflow-y: auto;
-                -ms-overflow-style: none; scrollbar-width: none; 
-            }
-            .cmd-btn {
-                width: 80px; height: 55px; background: rgba(34, 17, 0, 0.8); border: 2px solid #ff9d00;
-                border-radius: 4px; color: white; display: flex; flex-direction: column;
-                align-items: center; justify-content: center; cursor: pointer; transition: 0.1s;
-            }
+            #ui-actions { flex-grow: 1; padding: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-content: center; overflow-y: auto; -ms-overflow-style: none; scrollbar-width: none; }
+            .cmd-btn { width: 80px; height: 55px; background: rgba(34, 17, 0, 0.8); border: 2px solid #ff9d00; border-radius: 4px; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.1s; }
             .cmd-btn:hover { background: rgba(68, 34, 0, 0.9); transform: scale(1.05); }
             .cmd-btn:active { transform: scale(0.95); }
             .cmd-btn.active-tool { background: rgba(255, 157, 0, 0.9); color: #000; font-weight: bold; }
@@ -210,15 +156,12 @@ export const ContextUIExpansion = {
 
         const uiBase = document.createElement('div');
         uiBase.innerHTML = `
-            <!-- TOP BAR HTML -->
             <div id="topBar">
                 <div class="res-item" title="Pumpkins (Building Resource)">🎃 <span id="top-pumpkins" class="res-value">0</span></div>
                 <div class="res-item" title="Dew Drops (Magic Resource)">💧 <span id="top-dew" class="res-value">0</span></div>
                 <div class="res-item" title="Swarm Population">🕷️ <span id="top-pop" class="res-value">0/0</span></div>
                 <div class="res-item" title="Hive Tech Level">🧬 Tech: <span id="top-tech" class="res-value">0</span></div>
             </div>
-
-            <!-- BOTTOM BAR HTML -->
             <div id="rtsUI">
                 <div id="ui-toggle-btn" title="Toggle HUD">▼</div>
                 <div id="ui-portrait-container"><img id="ui-portrait" src=""></div>
@@ -231,11 +174,10 @@ export const ContextUIExpansion = {
         `;
         document.body.appendChild(uiBase);
 
-        // --- NEW: Toggle Button Logic ---
         const toggleBtn = document.getElementById('ui-toggle-btn');
         const rtsUI = document.getElementById('rtsUI');
         toggleBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevents clicking the map underneath
+            e.stopPropagation(); 
             rtsUI.classList.toggle('minimized');
             toggleBtn.innerText = rtsUI.classList.contains('minimized') ? '▲' : '▼';
         });
@@ -250,18 +192,19 @@ export const ContextUIExpansion = {
             'trap':   { icon: '🕸️', name: 'Trap', cost: '25💧', type: 'tool', val: 'silkTrap' },
             'harv':   { icon: '🕷️', name: 'Harvester', cost: '10🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'harvester'}) },
             'sold':   { icon: '🐜', name: 'Soldier', cost: '25🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'soldier'}) },
+            
+            // --- NEW UNITS ADDED HERE ---
+            'spitter': { icon: '💦', name: 'Spitter', cost: '40🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'spitter'}) },
+            'tank':    { icon: '🪲', name: 'Tarantula', cost: '75🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'tarantula'}) },
+            
             'tech':   { icon: '🧬', name: 'Evolve', cost: '250🎃', type: 'instant', fn: (t) => { if(game.eco.black.pumpkins>=250){ game.eco.black.pumpkins-=250; game.techLevel.black++; game.bus.emit('playSound','spell');} } },
             'cancel': { icon: '🛑', name: 'Stop', cost: '', type: 'instant', fn: () => { 
                 game.activeTool = 'select'; 
                 game.bus.emit('toolChanged', 'select');
                 if (game.selectedUnits) {
                     game.selectedUnits.forEach(u => { 
-                        u.commandTarget = null; 
-                        u.buildTarget = null;   
-                        if (u.activeConstruction) {
-                            u.activeConstruction.isPaused = true;
-                            u.activeConstruction = null;
-                        }
+                        u.commandTarget = null; u.buildTarget = null;   
+                        if (u.activeConstruction) { u.activeConstruction.isPaused = true; u.activeConstruction = null; }
                     });
                 }
                 game.bus.emit('playSound', 'shoot'); 
@@ -338,7 +281,8 @@ export const ContextUIExpansion = {
                         addButton('nest'); addButton('eggsac'); addButton('pylon'); 
                         addButton('turret'); addButton('wall'); addButton('cancel');
                     } else {
-                        nameEl.innerText = unit.role === 'soldier' ? "Soldier" : "Harvester";
+                        // Dynamically update name for all types of spiders
+                        nameEl.innerText = unit.role.charAt(0).toUpperCase() + unit.role.slice(1);
                         addButton('auto'); addButton('cancel');
                     }
                 }
@@ -346,7 +290,9 @@ export const ContextUIExpansion = {
                     portrait.src = this.selectedStructure.sprite.src || '';
                     nameEl.innerText = this.selectedStructure.type === 'nest' ? `Main Nest (Lv ${this.techLevel.black})` : this.selectedStructure.type.toUpperCase();
                     if (this.selectedStructure.type === 'nest' && this.selectedStructure.team === 'black') {
-                        addButton('harv'); addButton('sold'); addButton('tech');
+                        addButton('harv'); addButton('sold'); 
+                        addButton('spitter'); addButton('tank'); // --- ADDED NEW UNIT BUTTONS HERE ---
+                        addButton('tech');
                     }
                 } 
                 else {
