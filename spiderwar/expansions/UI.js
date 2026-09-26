@@ -100,10 +100,18 @@ export const ContextUIExpansion = {
         style.innerHTML = `
             #rtsUI {
                 position: fixed; bottom: 0; left: 0; width: 100%; height: 140px;
-                background: linear-gradient(180deg, #1a1005 0%, #0a0500 100%);
-                border-top: 3px solid #ff9d00; display: flex; box-sizing: border-box;
+                
+                /* 9-SLICE BORDER MAGIC */
+                border-style: solid;
+                border-width: 40px; /* How thick the border appears on screen. Tweak this! */
+                border-image-source: url('assets/ui_frame.png');
+                border-image-slice: 32% fill; /* Tells the browser the corners are ~32% of the image */
+                border-image-repeat: stretch; /* Stretches the straight bars between the corners */
+                
+                display: flex; box-sizing: border-box;
                 font-family: 'Courier New', monospace; color: white; z-index: 2000;
                 box-shadow: 0 -5px 20px rgba(0,0,0,0.8); user-select: none;
+                background-color: #0a0500;
             }
             #ui-portrait-container {
                 width: 140px; height: 100%; border-right: 2px solid #553311;
