@@ -165,7 +165,7 @@ export const ContextUIExpansion = {
             .cmd-btn.active-tool { background: rgba(255, 157, 0, 0.9); color: #000; font-weight: bold; }
             .cmd-icon { font-size: 20px; }
             .cmd-text { font-size: 10px; margin-top: 2px; }
-            .cmd-cost { font-size: 10px; color: #ff5555; font-weight: bold; }
+            .cmd-cost { font-size: 10px; color: #ff5555; font-weight: bold; letter-spacing: -0.5px; } /* Tightened letter spacing for dual costs */
         `;
         document.head.appendChild(style);
 
@@ -205,11 +205,16 @@ export const ContextUIExpansion = {
             'wall':   { icon: '🧱', name: 'Wall', cost: '25🎃', type: 'tool', val: 'wall' },
             'strike': { icon: '☠️', name: 'Strike', cost: '50💧', type: 'tool', val: 'venomStrike' },
             'trap':   { icon: '🕸️', name: 'Trap', cost: '25💧', type: 'tool', val: 'silkTrap' },
-            'raise':  { icon: '🧟', name: 'Raise', cost: '40💧', type: 'tool', val: 'reanimate' }, // Added Necromancy Spell
+            'raise':  { icon: '🧟', name: 'Raise', cost: '40💧', type: 'tool', val: 'reanimate' },
             'harv':   { icon: '🕷️', name: 'Harvester', cost: '10🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'harvester'}) },
             'sold':   { icon: '🐜', name: 'Soldier', cost: '25🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'soldier'}) },
             'spitter': { icon: '💦', name: 'Spitter', cost: '40🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'spitter'}) },
             'tank':    { icon: '🪲', name: 'Tarantula', cost: '75🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'tarantula'}) },
+            
+            // --- NEW TITAN BUTTONS ---
+            'widow':   { icon: '👻', name: 'Widow', cost: '150🎃50💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'widow'}) },
+            'goliath': { icon: '🔥', name: 'Goliath', cost: '400🎃150💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'goliath'}) },
+            
             'tech':   { icon: '🧬', name: 'Evolve', cost: '250🎃', type: 'instant', fn: (t) => { if(game.eco.black.pumpkins>=250){ game.eco.black.pumpkins-=250; game.techLevel.black++; game.bus.emit('playSound','spell');} } },
             'cancel': { icon: '🛑', name: 'Stop', cost: '', type: 'instant', fn: () => { 
                 game.activeTool = 'select'; 
@@ -307,6 +312,7 @@ export const ContextUIExpansion = {
                     if (this.selectedStructure.type === 'nest' && this.selectedStructure.team === 'black') {
                         addButton('harv'); addButton('sold'); 
                         addButton('spitter'); addButton('tank'); 
+                        addButton('widow'); addButton('goliath'); // --- ADDED TITANS HERE ---
                         addButton('tech');
                     }
                 } 
