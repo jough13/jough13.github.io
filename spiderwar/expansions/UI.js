@@ -81,6 +81,20 @@ export const MinimapExpansion = {
             game.bosses.forEach(b => drawDot(b, '#00ff00', 4, true, false)); 
             game.queens.forEach(q => { drawDot(q, q.team === 'black' ? '#ffffff' : '#ff4444', 4, true, false); });
 
+            // Control Points (Jack O' Lanterns) Minimap Dots
+            if (game.entities) {
+                game.entities.filter(e => e.captureProgress !== undefined).forEach(j => {
+                    let color = '#ffff00';
+                    if (j.controllingTeam === 'black') color = '#aa00ff';
+                    if (j.controllingTeam === 'red') color = '#ff0000';
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(startX + (j.x * scaleX), startY + (j.y * scaleY), 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+                });
+            }
+
             if (game.fowCanvas) {
                 ctx.save();
                 ctx.filter = 'blur(4px)'; 
@@ -124,17 +138,11 @@ export const ContextUIExpansion = {
                 transition: bottom 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
             }
             
-            /* FIXED: Slides down 150px instead of 180px to leave the top border visible like a tab */
             #rtsUI.minimized { bottom: -150px; }
 
             #ui-toggle-btn {
-                position: absolute; 
-                top: -40px; /* Sticks out a bit further now */
-                right: 20px; 
-                width: 60px; /* Made slightly wider for easier clicking */
-                height: 40px; /* Made taller */
-                background: rgba(10, 5, 0, 0.95); 
-                border: 2px solid #ff9d00; border-bottom: none; border-radius: 8px 8px 0 0;
+                position: absolute; top: -40px; right: 20px; width: 60px; height: 40px;
+                background: rgba(10, 5, 0, 0.95); border: 2px solid #ff9d00; border-bottom: none; border-radius: 8px 8px 0 0;
                 color: #ff9d00; display: flex; justify-content: center; align-items: center;
                 cursor: pointer; font-size: 20px; transition: background 0.2s, color 0.2s;
                 z-index: 2005; pointer-events: auto;
@@ -197,6 +205,7 @@ export const ContextUIExpansion = {
             'wall':   { icon: '🧱', name: 'Wall', cost: '25🎃', type: 'tool', val: 'wall' },
             'strike': { icon: '☠️', name: 'Strike', cost: '50💧', type: 'tool', val: 'venomStrike' },
             'trap':   { icon: '🕸️', name: 'Trap', cost: '25💧', type: 'tool', val: 'silkTrap' },
+            'raise':  { icon: '🧟', name: 'Raise', cost: '40💧', type: 'tool', val: 'reanimate' }, // Added Necromancy Spell
             'harv':   { icon: '🕷️', name: 'Harvester', cost: '10🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'harvester'}) },
             'sold':   { icon: '🐜', name: 'Soldier', cost: '25🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'soldier'}) },
             'spitter': { icon: '💦', name: 'Spitter', cost: '40🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'spitter'}) },
@@ -285,7 +294,10 @@ export const ContextUIExpansion = {
                         addButton('nest'); addButton('eggsac'); addButton('pylon'); 
                         addButton('turret'); addButton('wall'); addButton('cancel');
                     } else {
-                        nameEl.innerText = unit.role.charAt(0).toUpperCase() + unit.role.slice(1);
+                        // Prefix Zombie if applicable
+                        let roleName = unit.role.charAt(0).toUpperCase() + unit.role.slice(1);
+                        if (unit.isZombie) roleName = "Zombie " + roleName;
+                        nameEl.innerText = roleName;
                         addButton('auto'); addButton('cancel');
                     }
                 }
@@ -301,7 +313,7 @@ export const ContextUIExpansion = {
                 else {
                     portrait.src = 'assets/nest_black.png'; 
                     nameEl.innerText = "Hive Mind";
-                    addButton('strike'); addButton('trap'); addButton('cancel');
+                    addButton('strike'); addButton('trap'); addButton('raise'); addButton('cancel');
                 }
             }
 
