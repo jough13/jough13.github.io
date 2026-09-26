@@ -15,6 +15,12 @@ import { QueenExpansion } from './expansions/Queen.js';
 import { CombatAndHarvesterExpansion } from './expansions/CombatAI.js';
 import { SilkNetworkExpansion, WebNetworkExpansion } from './expansions/Networks.js';
 import { SpellExpansion } from './expansions/Spells.js';
+
+// --- NEW IMPORTS ---
+import { SpecialUnitsExpansion } from './expansions/SpecialUnits.js';
+import { HazardsExpansion } from './expansions/Hazards.js';
+import { DayNightExpansion } from './expansions/DayNight.js';
+
 import { AdvancedUnitControlExpansion, ConstructionExpansion } from './expansions/Controls.js';
 import { MinimapExpansion, ContextUIExpansion, GameLoopExpansion } from './expansions/UI.js';
 import { AtmosphereExpansion, FogOfWarExpansion, SaveLoadExpansion } from './expansions/Systems.js';
@@ -34,6 +40,11 @@ window.onload = () => {
     game.expansions.load('CombatAndHarvesterAI', CombatAndHarvesterExpansion); 
     game.expansions.load('WebNetwork', WebNetworkExpansion); 
     game.expansions.load('SilkNetwork', SilkNetworkExpansion);
+
+    // --- NEW MECHANICS ---
+    game.expansions.load('SpecialUnits', SpecialUnitsExpansion);
+    game.expansions.load('Hazards', HazardsExpansion);
+    game.expansions.load('DayNight', DayNightExpansion);
 
     // UI EXPANSIONS
     game.expansions.load('MinimapUI', MinimapExpansion); 
