@@ -262,7 +262,11 @@ export const ConstructionExpansion = {
     patch: (game) => {
         game.expansions.patchClass(Queen, 'update', function(original, gameObj) {
             if (this.activeConstruction) {
-                if (this.commandTarget) {
+                // FIXED BUG: Prevent Queen from trying to build destroyed/missing structures
+                if (this.activeConstruction.hp <= 0) {
+                    this.activeConstruction = null;
+                }
+                else if (this.commandTarget) {
                     this.activeConstruction.isPaused = true;
                     this.activeConstruction = null;
                 } 
