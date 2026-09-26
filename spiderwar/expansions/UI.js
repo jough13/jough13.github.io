@@ -98,14 +98,22 @@ export const ContextUIExpansion = {
     init: (game) => {
         const style = document.createElement('style');
         style.innerHTML = `
-            /* --- TOP RESOURCE BAR --- */
+            /* --- TOP RESOURCE FLOATING BOX --- */
             #topBar {
-                position: fixed; top: 0; left: 0; width: 100%; height: 40px;
-                background: linear-gradient(180deg, rgba(26, 16, 5, 0.95) 0%, rgba(10, 5, 0, 0.85) 100%);
-                border-bottom: 2px solid #ff9d00;
-                display: flex; justify-content: center; align-items: center; gap: 40px;
+                position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+                padding: 0px 15px; /* Gives the text room to breathe inside the frame */
+                display: flex; justify-content: center; align-items: center; gap: 30px;
+                
+                /* 9-SLICE BORDER MAGIC */
+                border-style: solid;
+                border-width: 24px; /* Slightly thinner than bottom bar to save screen space */
+                border-image-source: url('assets/ui_frame.png');
+                border-image-slice: 32% fill; 
+                border-image-repeat: stretch; 
+                background-color: #0a0500; /* Fallback */
+
                 font-family: 'Courier New', monospace; color: white; z-index: 2000;
-                box-shadow: 0 5px 20px rgba(0,0,0,0.8); user-select: none;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.8); user-select: none;
                 font-size: 16px; font-weight: bold; text-shadow: 1px 1px 0 #000;
             }
             .res-item { display: flex; align-items: center; gap: 8px; }
@@ -115,7 +123,6 @@ export const ContextUIExpansion = {
             #rtsUI {
                 position: fixed; bottom: 0; left: 0; width: 100%; height: 180px;
                 
-                /* 9-SLICE BORDER MAGIC */
                 border-style: solid;
                 border-width: 32px; 
                 border-image-source: url('assets/ui_frame.png');
@@ -229,7 +236,6 @@ export const ContextUIExpansion = {
             original.call(this);
 
             // --- UPDATE TOP RESOURCE BAR ---
-            // We update this every frame so the numbers accurately reflect your harvesting/spending
             document.getElementById('top-pumpkins').innerText = Math.floor(this.eco.black.pumpkins);
             document.getElementById('top-dew').innerText = Math.floor(this.eco.black.dew);
             document.getElementById('top-pop').innerText = `${this.pop.black}/${this.maxPop.black}`;
