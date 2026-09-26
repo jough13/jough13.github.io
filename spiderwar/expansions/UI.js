@@ -4,7 +4,8 @@ import { Queen } from './Queen.js';
 
 export const MinimapExpansion = {
     init: (game) => {
-        game.minimap = { size: 200, padding: 10, offsetY: 150 }; 
+        // INCREASED offsetY to 190 so it sits perfectly above the 180px bottom menu
+        game.minimap = { size: 200, padding: 10, offsetY: 190 }; 
         game.isMinimapDragging = false;
         
         game.moveCameraFromMinimap = function(localX, localY) {
@@ -39,6 +40,7 @@ export const MinimapExpansion = {
         window.addEventListener('touchmove', e => { if(e.touches.length===1) checkMinimapMove(e.touches[0].clientX, e.touches[0].clientY); }, {passive: false});
         window.addEventListener('touchend', e => { game.isMinimapDragging = false; });
     },
+    
     patch: (game) => {
         game.bus.on('uiDraw', (ctx) => {
             if(game.gameState !== 'playing') return;
@@ -46,7 +48,8 @@ export const MinimapExpansion = {
             const startX = game.canvas.width - size - pad; 
             const startY = game.canvas.height - size - pad - game.minimap.offsetY; 
             
-            ctx.fillStyle = 'rgba(20, 10, 5, 0.8)'; ctx.fillRect(startX, startY, size, size);
+            // Adjusted background color to match the new HUD
+            ctx.fillStyle = 'rgba(10, 5, 0, 0.6)'; ctx.fillRect(startX, startY, size, size);
             
             const scaleX = size / game.world.width; const scaleY = size / game.world.height;
             
@@ -87,9 +90,12 @@ export const MinimapExpansion = {
                 ctx.restore();
             }
             
+            // Camera viewport box
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; ctx.lineWidth = 1; 
             ctx.strokeRect(startX + (game.camera.x * scaleX), startY + (game.camera.y * scaleY), game.canvas.width * scaleX, game.canvas.height * scaleY);
-            ctx.strokeStyle = '#ff9d00'; ctx.lineWidth = 2; ctx.strokeRect(startX, startY, size, size);
+            
+            // Thicker border to match the chunky pixel art UI
+            ctx.strokeStyle = '#ff9d00'; ctx.lineWidth = 4; ctx.strokeRect(startX, startY, size, size);
         });
     }
 };
@@ -100,21 +106,20 @@ export const ContextUIExpansion = {
         style.innerHTML = `
             /* --- TOP RESOURCE FLOATING BOX --- */
             #topBar {
-                position: fixed; top: 10px; left: 10px; /* MOVED TO TOP LEFT */
+                position: fixed; top: 10px; left: 10px;
                 padding: 0px 15px; 
                 display: flex; justify-content: center; align-items: center; gap: 30px;
                 
-                /* 9-SLICE BORDER */
                 border-style: solid;
                 border-width: 24px; 
                 border-image-source: url('assets/ui_frame.png');
-                border-image-slice: 32%; /* Removed 'fill' so the CSS blur works */
+                border-image-slice: 32%; 
                 border-image-repeat: stretch; 
                 
-                /* TRANSLUCENT BLUR EFFECT */
-                background-color: rgba(10, 5, 0, 0.45); /* Semi-transparent dark brown */
-                backdrop-filter: blur(8px); /* The magic blur */
-                -webkit-backdrop-filter: blur(8px); /* Safari support */
+                /* LESS TRANSPARENT, MORE BLACK */
+                background-color: rgba(5, 2, 0, 0.75); 
+                backdrop-filter: blur(8px); 
+                -webkit-backdrop-filter: blur(8px); 
 
                 font-family: 'Courier New', monospace; color: white; z-index: 2000;
                 box-shadow: 0 10px 30px rgba(0,0,0,0.8); user-select: none;
@@ -127,15 +132,14 @@ export const ContextUIExpansion = {
             #rtsUI {
                 position: fixed; bottom: 0; left: 0; width: 100%; height: 180px;
                 
-                /* 9-SLICE BORDER */
                 border-style: solid;
                 border-width: 32px; 
                 border-image-source: url('assets/ui_frame.png');
-                border-image-slice: 32%; /* Removed 'fill' so the CSS blur works */
+                border-image-slice: 32%; 
                 border-image-repeat: stretch; 
                 
-                /* TRANSLUCENT BLUR EFFECT */
-                background-color: rgba(10, 5, 0, 0.45); /* Semi-transparent dark brown */
+                /* MUCH DARKER, ALMOST SOLID BLACK FOR READABILITY */
+                background-color: rgba(0, 0, 0, 0.90); 
                 backdrop-filter: blur(8px); 
                 -webkit-backdrop-filter: blur(8px); 
                 
@@ -144,10 +148,10 @@ export const ContextUIExpansion = {
                 box-shadow: 0 -5px 20px rgba(0,0,0,0.8); user-select: none;
             }
             
-            /* (Slightly adjust portrait box so it blends with the new blur) */
             #ui-portrait-container {
                 width: 140px; height: 100%; border-right: 2px solid rgba(255, 157, 0, 0.3);
-                display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3);
+                display: flex; align-items: center; justify-content: center; 
+                background: rgba(0, 0, 0, 0.6); /* Darkened the portrait backdrop */
             }
             #ui-portrait { width: 90%; height: 90%; object-fit: contain; image-rendering: pixelated; }
             #ui-info {
@@ -156,7 +160,7 @@ export const ContextUIExpansion = {
             }
             #ui-info h2 { margin: 0 0 10px 0; font-size: 16px; color: #ff9d00; text-transform: uppercase;}
             .ui-stat { font-size: 14px; color: #ccc; margin-bottom: 5px; }
-            #ui-hp-bar-bg { width: 100%; height: 10px; background: rgba(0,0,0,0.5); margin-top: 5px; border: 1px solid #000; }
+            #ui-hp-bar-bg { width: 100%; height: 10px; background: rgba(0,0,0,0.8); margin-top: 5px; border: 1px solid #000; }
             #ui-hp-bar-fill { width: 100%; height: 100%; background: #00ff00; transition: 0.2s width; }
             
             #ui-actions::-webkit-scrollbar { display: none; }
@@ -246,13 +250,11 @@ export const ContextUIExpansion = {
         game.expansions.patchClass(game.constructor, 'update', function(original) {
             original.call(this);
 
-            // --- UPDATE TOP RESOURCE BAR ---
             document.getElementById('top-pumpkins').innerText = Math.floor(this.eco.black.pumpkins);
             document.getElementById('top-dew').innerText = Math.floor(this.eco.black.dew);
             document.getElementById('top-pop').innerText = `${this.pop.black}/${this.maxPop.black}`;
             document.getElementById('top-tech').innerText = this.techLevel.black;
 
-            // --- UPDATE BOTTOM CONTEXT MENU ---
             if(this.selectedUnits) this.selectedUnits = this.selectedUnits.filter(u => u.hp > 0);
 
             let currentSelection = null;
