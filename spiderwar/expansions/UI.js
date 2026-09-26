@@ -100,17 +100,21 @@ export const ContextUIExpansion = {
         style.innerHTML = `
             /* --- TOP RESOURCE FLOATING BOX --- */
             #topBar {
-                position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
-                padding: 0px 15px; /* Gives the text room to breathe inside the frame */
+                position: fixed; top: 10px; left: 10px; /* MOVED TO TOP LEFT */
+                padding: 0px 15px; 
                 display: flex; justify-content: center; align-items: center; gap: 30px;
                 
-                /* 9-SLICE BORDER MAGIC */
+                /* 9-SLICE BORDER */
                 border-style: solid;
-                border-width: 24px; /* Slightly thinner than bottom bar to save screen space */
+                border-width: 24px; 
                 border-image-source: url('assets/ui_frame.png');
-                border-image-slice: 32% fill; 
+                border-image-slice: 32%; /* Removed 'fill' so the CSS blur works */
                 border-image-repeat: stretch; 
-                background-color: #0a0500; /* Fallback */
+                
+                /* TRANSLUCENT BLUR EFFECT */
+                background-color: rgba(10, 5, 0, 0.45); /* Semi-transparent dark brown */
+                backdrop-filter: blur(8px); /* The magic blur */
+                -webkit-backdrop-filter: blur(8px); /* Safari support */
 
                 font-family: 'Courier New', monospace; color: white; z-index: 2000;
                 box-shadow: 0 10px 30px rgba(0,0,0,0.8); user-select: none;
@@ -123,29 +127,36 @@ export const ContextUIExpansion = {
             #rtsUI {
                 position: fixed; bottom: 0; left: 0; width: 100%; height: 180px;
                 
+                /* 9-SLICE BORDER */
                 border-style: solid;
                 border-width: 32px; 
                 border-image-source: url('assets/ui_frame.png');
-                border-image-slice: 32% fill; 
+                border-image-slice: 32%; /* Removed 'fill' so the CSS blur works */
                 border-image-repeat: stretch; 
+                
+                /* TRANSLUCENT BLUR EFFECT */
+                background-color: rgba(10, 5, 0, 0.45); /* Semi-transparent dark brown */
+                backdrop-filter: blur(8px); 
+                -webkit-backdrop-filter: blur(8px); 
                 
                 display: flex; box-sizing: border-box;
                 font-family: 'Courier New', monospace; color: white; z-index: 2000;
                 box-shadow: 0 -5px 20px rgba(0,0,0,0.8); user-select: none;
-                background-color: #0a0500;
             }
+            
+            /* (Slightly adjust portrait box so it blends with the new blur) */
             #ui-portrait-container {
-                width: 140px; height: 100%; border-right: 2px solid #553311;
-                display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5);
+                width: 140px; height: 100%; border-right: 2px solid rgba(255, 157, 0, 0.3);
+                display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3);
             }
             #ui-portrait { width: 90%; height: 90%; object-fit: contain; image-rendering: pixelated; }
             #ui-info {
-                width: 200px; padding: 15px; border-right: 2px solid #553311;
+                width: 200px; padding: 15px; border-right: 2px solid rgba(255, 157, 0, 0.3);
                 display: flex; flex-direction: column; justify-content: center;
             }
             #ui-info h2 { margin: 0 0 10px 0; font-size: 16px; color: #ff9d00; text-transform: uppercase;}
             .ui-stat { font-size: 14px; color: #ccc; margin-bottom: 5px; }
-            #ui-hp-bar-bg { width: 100%; height: 10px; background: #333; margin-top: 5px; border: 1px solid #000; }
+            #ui-hp-bar-bg { width: 100%; height: 10px; background: rgba(0,0,0,0.5); margin-top: 5px; border: 1px solid #000; }
             #ui-hp-bar-fill { width: 100%; height: 100%; background: #00ff00; transition: 0.2s width; }
             
             #ui-actions::-webkit-scrollbar { display: none; }
@@ -156,16 +167,16 @@ export const ContextUIExpansion = {
                 -ms-overflow-style: none; scrollbar-width: none; 
             }
             .cmd-btn {
-                width: 80px; height: 55px; background: #221100; border: 2px solid #ff9d00;
+                width: 80px; height: 55px; background: rgba(34, 17, 0, 0.8); border: 2px solid #ff9d00;
                 border-radius: 4px; color: white; display: flex; flex-direction: column;
                 align-items: center; justify-content: center; cursor: pointer; transition: 0.1s;
             }
-            .cmd-btn:hover { background: #442200; transform: scale(1.05); }
+            .cmd-btn:hover { background: rgba(68, 34, 0, 0.9); transform: scale(1.05); }
             .cmd-btn:active { transform: scale(0.95); }
-            .cmd-btn.active-tool { background: #ff9d00; color: #000; font-weight: bold; }
+            .cmd-btn.active-tool { background: rgba(255, 157, 0, 0.9); color: #000; font-weight: bold; }
             .cmd-icon { font-size: 20px; }
             .cmd-text { font-size: 10px; margin-top: 2px; }
-            .cmd-cost { font-size: 10px; color: #ff5555; }
+            .cmd-cost { font-size: 10px; color: #ff5555; font-weight: bold; }
         `;
         document.head.appendChild(style);
 
