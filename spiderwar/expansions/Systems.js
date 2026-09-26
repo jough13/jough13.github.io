@@ -7,6 +7,7 @@ import { Aphid, GoldenBug } from './Critters.js';
 // --- NEW IMPORTS ---
 import { VenusFlytrap } from './Hazards.js';
 import { JackOLantern } from './ControlPoints.js';
+import { Corpse, ZombieSpider } from './Necromancy.js'; // Added Necromancy Classes
 
 export const AtmosphereExpansion = {
     patch: (game) => {
@@ -108,8 +109,8 @@ export const FogOfWarExpansion = {
         
         // --- ADDED NEW MECHANICS TO FOG OF WAR ---
         applyFoWToClass(VenusFlytrap, true, false); 
-        applyFoWToClass(JackOLantern, false, true); // Control Points remain visible once discovered, like resources!
-        
+        applyFoWToClass(Corpse, true, false); // Corpses are hidden in Fog of War
+        applyFoWToClass(JackOLantern, false, true); 
         applyFoWToClass(ResourceNode, false, true); 
 
         game.bus.on('postDraw', (ctx) => {
@@ -133,7 +134,10 @@ export const SaveLoadExpansion = {
             if (e.key.toLowerCase() === 'o') {
                 const state = {
                     eco: game.eco, pop: game.pop, maxPop: game.maxPop, techLevel: game.techLevel, camera: game.camera, tick: game.tick,
-                    spiders: game.spiders.map(s => ({x: s.x, y: s.y, team: s.team, role: s.role, hp: s.hp, cargo: s.cargo})),
+                    
+                    // Added isZombie to the spider mapper
+                    spiders: game.spiders.map(s => ({x: s.x, y: s.y, team: s.team, role: s.role, hp: s.hp, cargo: s.cargo, isZombie: s.isZombie})),
+                    
                     structures: game.structures.map(s => ({
                         x: s.x, y: s.y, team: s.team, type: s.type, hp: s.hp,
                         isConstructing: s.isConstructing, buildProgress: s.buildProgress,
@@ -143,10 +147,11 @@ export const SaveLoadExpansion = {
                     queens: game.queens.map(q => ({x: q.x, y: q.y, team: q.team, hp: q.hp})),
                     critters: game.critters.map(b => ({x: b.x, y: b.y, hp: b.hp, color: b.color, type: b.constructor.name})),
                     bosses: game.bosses.map(b => ({x: b.x, y: b.y, hp: b.hp})),
-
-                    // --- ADDED NEW MECHANICS TO SAVE FILE ---
                     hazards: game.entities.filter(e => e instanceof VenusFlytrap).map(f => ({x: f.x, y: f.y, hp: f.hp, cooldown: f.cooldown})),
-                    controlPoints: game.entities.filter(e => e instanceof JackOLantern).map(c => ({x: c.x, y: c.y, team: c.controllingTeam, prog: c.captureProgress}))
+                    controlPoints: game.entities.filter(e => e instanceof JackOLantern).map(c => ({x: c.x, y: c.y, team: c.controllingTeam, prog: c.captureProgress})),
+                    
+                    // Added Corpses to the Save file
+                    corpses: game.entities.filter(e => e instanceof Corpse).map(c => ({x: c.x, y: c.y, life: c.life}))
                 };
                 localStorage.setItem('spiderRTS_saveData', JSON.stringify(state)); alert("Game Saved!");
             }
@@ -156,7 +161,14 @@ export const SaveLoadExpansion = {
                 game.eco = state.eco; game.pop = state.pop; game.maxPop = state.maxPop; game.techLevel = state.techLevel; game.camera = state.camera; game.tick = state.tick || 0;
                 
                 game.entities = []; 
-                state.spiders.forEach(s => { let o = new Spider(s.x, s.y, s.team, s.role); o.hp = s.hp; o.cargo = s.cargo; game.addEntity(o); });
+                
+                // Restoring Spiders and Zombie Spiders
+                state.spiders.forEach(s => { 
+                    let o = s.isZombie ? new ZombieSpider(s.x, s.y, s.team) : new Spider(s.x, s.y, s.team, s.role); 
+                    o.hp = s.hp; o.cargo = s.cargo; 
+                    game.addEntity(o); 
+                });
+
                 state.structures.forEach(s => { 
                     let o = new Structure(s.x, s.y, s.team, s.type); 
                     o.hp = s.hp; o.isConstructing = s.isConstructing; o.buildProgress = s.buildProgress;
@@ -181,8 +193,6 @@ export const SaveLoadExpansion = {
                         game.addEntity(o);
                     });
                 }
-
-                // --- RESTORE NEW MECHANICS ---
                 if (state.hazards) {
                     state.hazards.forEach(h => {
                         let f = new VenusFlytrap(h.x, h.y);
@@ -190,11 +200,19 @@ export const SaveLoadExpansion = {
                         game.addEntity(f);
                     });
                 }
-                
                 if (state.controlPoints) {
                     state.controlPoints.forEach(c => {
                         let o = new JackOLantern(c.x, c.y);
                         o.controllingTeam = c.team; o.captureProgress = c.prog;
+                        game.addEntity(o);
+                    });
+                }
+                
+                // Restoring Corpses
+                if (state.corpses) {
+                    state.corpses.forEach(c => {
+                        let o = new Corpse(c.x, c.y);
+                        o.life = c.life;
                         game.addEntity(o);
                     });
                 }
