@@ -98,13 +98,26 @@ export const ContextUIExpansion = {
     init: (game) => {
         const style = document.createElement('style');
         style.innerHTML = `
+            /* --- TOP RESOURCE BAR --- */
+            #topBar {
+                position: fixed; top: 0; left: 0; width: 100%; height: 40px;
+                background: linear-gradient(180deg, rgba(26, 16, 5, 0.95) 0%, rgba(10, 5, 0, 0.85) 100%);
+                border-bottom: 2px solid #ff9d00;
+                display: flex; justify-content: center; align-items: center; gap: 40px;
+                font-family: 'Courier New', monospace; color: white; z-index: 2000;
+                box-shadow: 0 5px 20px rgba(0,0,0,0.8); user-select: none;
+                font-size: 16px; font-weight: bold; text-shadow: 1px 1px 0 #000;
+            }
+            .res-item { display: flex; align-items: center; gap: 8px; }
+            .res-value { color: #ff9d00; }
+
+            /* --- BOTTOM CONTEXT MENU --- */
             #rtsUI {
-                position: fixed; bottom: 0; left: 0; width: 100%; 
-                height: 180px; /* INCREASED HEIGHT to give buttons room to breathe */
+                position: fixed; bottom: 0; left: 0; width: 100%; height: 180px;
                 
                 /* 9-SLICE BORDER MAGIC */
                 border-style: solid;
-                border-width: 32px; /* You can adjust this to make the frame thicker/thinner */
+                border-width: 32px; 
                 border-image-source: url('assets/ui_frame.png');
                 border-image-slice: 32% fill; 
                 border-image-repeat: stretch; 
@@ -128,15 +141,12 @@ export const ContextUIExpansion = {
             #ui-hp-bar-bg { width: 100%; height: 10px; background: #333; margin-top: 5px; border: 1px solid #000; }
             #ui-hp-bar-fill { width: 100%; height: 100%; background: #00ff00; transition: 0.2s width; }
             
-            /* HIDES THE UGLY SCROLLBAR VISUALLY */
             #ui-actions::-webkit-scrollbar { display: none; }
             
             #ui-actions {
                 flex-grow: 1; padding: 10px; display: flex; flex-wrap: wrap; 
-                gap: 10px; align-content: center; /* Centers the buttons perfectly */
-                overflow-y: auto;
-                -ms-overflow-style: none; /* IE and Edge */
-                scrollbar-width: none; /* Firefox */
+                gap: 10px; align-content: center; overflow-y: auto;
+                -ms-overflow-style: none; scrollbar-width: none; 
             }
             .cmd-btn {
                 width: 80px; height: 55px; background: #221100; border: 2px solid #ff9d00;
@@ -153,14 +163,24 @@ export const ContextUIExpansion = {
         document.head.appendChild(style);
 
         const uiBase = document.createElement('div');
-        uiBase.id = 'rtsUI';
         uiBase.innerHTML = `
-            <div id="ui-portrait-container"><img id="ui-portrait" src=""></div>
-            <div id="ui-info">
-                <h2 id="ui-name">Hive Mind</h2>
-                <div id="ui-stats-container"></div>
+            <!-- TOP BAR HTML -->
+            <div id="topBar">
+                <div class="res-item" title="Pumpkins (Building Resource)">🎃 <span id="top-pumpkins" class="res-value">0</span></div>
+                <div class="res-item" title="Dew Drops (Magic Resource)">💧 <span id="top-dew" class="res-value">0</span></div>
+                <div class="res-item" title="Swarm Population">🕷️ <span id="top-pop" class="res-value">0/0</span></div>
+                <div class="res-item" title="Hive Tech Level">🧬 Tech: <span id="top-tech" class="res-value">0</span></div>
             </div>
-            <div id="ui-actions"></div>
+
+            <!-- BOTTOM BAR HTML -->
+            <div id="rtsUI">
+                <div id="ui-portrait-container"><img id="ui-portrait" src=""></div>
+                <div id="ui-info">
+                    <h2 id="ui-name">Hive Mind</h2>
+                    <div id="ui-stats-container"></div>
+                </div>
+                <div id="ui-actions"></div>
+            </div>
         `;
         document.body.appendChild(uiBase);
 
@@ -202,10 +222,20 @@ export const ContextUIExpansion = {
     patch: (game) => {
         document.getElementById('rtsUI').addEventListener('mousedown', (e) => e.stopPropagation());
         document.getElementById('rtsUI').addEventListener('touchstart', (e) => e.stopPropagation(), {passive: false});
+        document.getElementById('topBar').addEventListener('mousedown', (e) => e.stopPropagation());
+        document.getElementById('topBar').addEventListener('touchstart', (e) => e.stopPropagation(), {passive: false});
 
-        game.expansions.patchClass(Game, 'update', function(original) {
+        game.expansions.patchClass(game.constructor, 'update', function(original) {
             original.call(this);
 
+            // --- UPDATE TOP RESOURCE BAR ---
+            // We update this every frame so the numbers accurately reflect your harvesting/spending
+            document.getElementById('top-pumpkins').innerText = Math.floor(this.eco.black.pumpkins);
+            document.getElementById('top-dew').innerText = Math.floor(this.eco.black.dew);
+            document.getElementById('top-pop').innerText = `${this.pop.black}/${this.maxPop.black}`;
+            document.getElementById('top-tech').innerText = this.techLevel.black;
+
+            // --- UPDATE BOTTOM CONTEXT MENU ---
             if(this.selectedUnits) this.selectedUnits = this.selectedUnits.filter(u => u.hp > 0);
 
             let currentSelection = null;
