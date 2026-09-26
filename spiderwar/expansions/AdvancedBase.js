@@ -35,6 +35,7 @@ export const AdvancedBaseExpansion = {
                 if(game.getTerrainAt(ax, ay) === 'grass' || Math.random() > 0.8) game.addEntity(new Aphid(ax, ay));
             }
 
+            // RED TEAM AI: Unit Spawning Routine
             setInterval(() => {
                 if (game.gameState !== 'playing') return;
                 let redNests = game.structures.filter(s => s.team === 'red' && s.type === 'nest');
@@ -46,6 +47,28 @@ export const AdvancedBaseExpansion = {
                     });
                 }
             }, 4000);
+
+            // NEW RED TEAM AI: Base Expansion & Defense Routine
+            setInterval(() => {
+                if (game.gameState !== 'playing') return;
+                let redQueen = game.queens.find(q => q.team === 'red');
+                
+                // Only build if the Queen is currently idle
+                if (redQueen && !redQueen.activeConstruction) {
+                    const type = Math.random() > 0.7 ? 'nest' : (Math.random() > 0.5 ? 'turret' : 'wall');
+                    const costs = { 'nest': 150, 'turret': 100, 'wall': 25 };
+                    
+                    if (game.eco.red.pumpkins >= costs[type]) {
+                        // Offset the building placement randomly near the queen
+                        const bX = redQueen.x + (Math.random() - 0.5) * 300;
+                        const bY = redQueen.y + (Math.random() - 0.5) * 300;
+                        
+                        // Fake a player click to trigger the ConstructionExpansion logic for the Red team
+                        game.bus.emit('buildStructure', { x: bX, y: bY, team: 'red', type: type });
+                    }
+                }
+            }, 15000); // Tries to build every 15 seconds
+
         }, 100);
     }
 };
