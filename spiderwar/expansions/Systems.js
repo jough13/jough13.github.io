@@ -4,6 +4,9 @@ import { Queen } from './Queen.js';
 import { CentipedeBoss } from './Boss.js';
 import { Aphid, GoldenBug } from './Critters.js';
 
+// --- NEW IMPORT ---
+import { VenusFlytrap } from './Hazards.js';
+
 export const AtmosphereExpansion = {
     patch: (game) => {
         game.bus.on('atmosphereDraw', (ctx) => {
@@ -101,6 +104,7 @@ export const FogOfWarExpansion = {
         applyFoWToClass(CentipedeBoss, true, false);
         applyFoWToClass(Aphid, true, false);
         applyFoWToClass(GoldenBug, true, false);
+        applyFoWToClass(VenusFlytrap, true, false); // --- ADDED FLYTRAPS TO FOG OF WAR ---
         applyFoWToClass(ResourceNode, false, true); 
 
         game.bus.on('postDraw', (ctx) => {
@@ -133,9 +137,11 @@ export const SaveLoadExpansion = {
                     resourceNodes: game.resourceNodes.map(p => ({x: p.x, y: p.y, type: p.type, resources: p.resources})),
                     queens: game.queens.map(q => ({x: q.x, y: q.y, team: q.team, hp: q.hp})),
                     
-                    // FIXED BUG: Now saving Critters and Bosses accurately!
                     critters: game.critters.map(b => ({x: b.x, y: b.y, hp: b.hp, color: b.color, type: b.constructor.name})),
-                    bosses: game.bosses.map(b => ({x: b.x, y: b.y, hp: b.hp})) 
+                    bosses: game.bosses.map(b => ({x: b.x, y: b.y, hp: b.hp})),
+
+                    // --- ADDED HAZARDS TO SAVE FILE ---
+                    hazards: game.entities.filter(e => e instanceof VenusFlytrap).map(f => ({x: f.x, y: f.y, hp: f.hp, cooldown: f.cooldown}))
                 };
                 localStorage.setItem('spiderRTS_saveData', JSON.stringify(state)); alert("Game Saved!");
             }
@@ -156,7 +162,6 @@ export const SaveLoadExpansion = {
                 state.resourceNodes.forEach(p => { let o = new ResourceNode(p.x, p.y, p.type); o.resources = p.resources; game.addEntity(o); });
                 state.queens.forEach(q => { let o = new Queen(q.x, q.y, q.team); o.hp = q.hp; game.addEntity(o); });
                 
-                // FIXED BUG: Load Critters and Bosses back into the world
                 if (state.critters) {
                     state.critters.forEach(c => { 
                         let o = c.type === 'GoldenBug' ? new GoldenBug(c.x, c.y) : new Aphid(c.x, c.y);
@@ -169,6 +174,15 @@ export const SaveLoadExpansion = {
                         let o = new CentipedeBoss(b.x, b.y);
                         o.hp = b.hp;
                         game.addEntity(o);
+                    });
+                }
+
+                // --- RESTORE HAZARDS ---
+                if (state.hazards) {
+                    state.hazards.forEach(h => {
+                        let f = new VenusFlytrap(h.x, h.y);
+                        f.hp = h.hp; f.cooldown = h.cooldown;
+                        game.addEntity(f);
                     });
                 }
                 
