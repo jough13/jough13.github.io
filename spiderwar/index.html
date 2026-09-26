@@ -22,27 +22,6 @@
 </head>
 <body>
 
-    <!-- 
-        BOOT SCREEN overlay. 
-        Serves 3 purposes: 
-        1. Hides the canvas while assets load.
-        2. Creates a spooky retro PC game vibe.
-        3. Forces a user click, which browsers REQUIRE before playing audio!
-    -->
-    <div id="bootScreen" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #120a05; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: opacity 0.5s ease;">
-        <h1 style="font-size: 3rem; text-shadow: 0 0 20px rgba(255,157,0,0.8), 2px 2px 0px #000; text-align: center; margin-bottom: 10px;">🎃 PUMPKIN PATCH 🕷️</h1>
-        <p style="font-size: 1.2rem; animation: pulse 2s infinite;">Click anywhere to awaken the Swarm...</p>
-        
-        <!-- Inline style just for the pulse animation so we don't need a CSS round trip -->
-        <style>
-            @keyframes pulse { 
-                0% { opacity: 0.5; } 
-                50% { opacity: 1; text-shadow: 0 0 10px #ff9d00; } 
-                100% { opacity: 0.5; } 
-            }
-        </style>
-    </div>
-
     <!-- Main Game UI (Populated by ContextUIExpansion in JS) -->
     <div id="ui">
         <div id="debug"></div>
@@ -52,18 +31,10 @@
     <canvas id="gameCanvas"></canvas>
 
     <!-- 
-        Using 'defer' ensures the HTML is fully parsed before the heavy JS engine runs. 
-        This prevents browser lock-ups during initialization.
+        type="module" enables ES6 imports/exports for your expansion files.
+        (Modules are automatically deferred by the browser)
     -->
-    <script src="game.js" defer></script>
+    <script type="module" src="game.js"></script>
 
-    <!-- Tiny script to handle the Boot Screen fade-out -->
-    <script>
-        document.getElementById('bootScreen').addEventListener('click', function() {
-            this.style.opacity = '0';
-            this.style.pointerEvents = 'none';
-            setTimeout(() => this.remove(), 500); // Remove from DOM after fade
-        });
-    </script>
 </body>
 </html>
