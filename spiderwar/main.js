@@ -21,7 +21,8 @@ import { SpecialUnitsExpansion } from './expansions/SpecialUnits.js';
 import { HazardsExpansion } from './expansions/Hazards.js';
 import { DayNightExpansion } from './expansions/DayNight.js';
 import { ControlPointsExpansion } from './expansions/ControlPoints.js';
-import { NecromancyExpansion } from './expansions/Necromancy.js'; // Added Necromancy
+import { NecromancyExpansion } from './expansions/Necromancy.js'; 
+import { TitansExpansion } from './expansions/Titans.js'; // Added Titans
 
 import { AdvancedUnitControlExpansion, ConstructionExpansion } from './expansions/Controls.js';
 import { MinimapExpansion, ContextUIExpansion, GameLoopExpansion } from './expansions/UI.js';
@@ -49,7 +50,8 @@ window.onload = () => {
     game.expansions.load('DayNight', DayNightExpansion);
     game.expansions.load('ControlPoints', ControlPointsExpansion);
     game.expansions.load('CommanderSpells', SpellExpansion); 
-    game.expansions.load('Necromancy', NecromancyExpansion); // Loaded Necromancy
+    game.expansions.load('Necromancy', NecromancyExpansion); 
+    game.expansions.load('Titans', TitansExpansion); // Loaded Titans
 
     // UI EXPANSIONS
     game.expansions.load('MinimapUI', MinimapExpansion); 
