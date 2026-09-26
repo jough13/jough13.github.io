@@ -132,7 +132,10 @@ export const SaveLoadExpansion = {
                     })),
                     resourceNodes: game.resourceNodes.map(p => ({x: p.x, y: p.y, type: p.type, resources: p.resources})),
                     queens: game.queens.map(q => ({x: q.x, y: q.y, team: q.team, hp: q.hp})),
-                    critters: game.critters.map(b => ({x: b.x, y: b.y, hp: b.hp, color: b.color})) 
+                    
+                    // FIXED BUG: Now saving Critters and Bosses accurately!
+                    critters: game.critters.map(b => ({x: b.x, y: b.y, hp: b.hp, color: b.color, type: b.constructor.name})),
+                    bosses: game.bosses.map(b => ({x: b.x, y: b.y, hp: b.hp})) 
                 };
                 localStorage.setItem('spiderRTS_saveData', JSON.stringify(state)); alert("Game Saved!");
             }
@@ -152,6 +155,22 @@ export const SaveLoadExpansion = {
                 });
                 state.resourceNodes.forEach(p => { let o = new ResourceNode(p.x, p.y, p.type); o.resources = p.resources; game.addEntity(o); });
                 state.queens.forEach(q => { let o = new Queen(q.x, q.y, q.team); o.hp = q.hp; game.addEntity(o); });
+                
+                // FIXED BUG: Load Critters and Bosses back into the world
+                if (state.critters) {
+                    state.critters.forEach(c => { 
+                        let o = c.type === 'GoldenBug' ? new GoldenBug(c.x, c.y) : new Aphid(c.x, c.y);
+                        o.hp = c.hp; o.color = c.color;
+                        game.addEntity(o); 
+                    });
+                }
+                if (state.bosses) {
+                    state.bosses.forEach(b => {
+                        let o = new CentipedeBoss(b.x, b.y);
+                        o.hp = b.hp;
+                        game.addEntity(o);
+                    });
+                }
                 
                 alert("Game Loaded!");
             }
