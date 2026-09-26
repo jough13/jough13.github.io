@@ -16,10 +16,11 @@ import { CombatAndHarvesterExpansion } from './expansions/CombatAI.js';
 import { SilkNetworkExpansion, WebNetworkExpansion } from './expansions/Networks.js';
 import { SpellExpansion } from './expansions/Spells.js';
 
-// --- NEW IMPORTS ---
+// --- NEW MECHANICS IMPORTS ---
 import { SpecialUnitsExpansion } from './expansions/SpecialUnits.js';
 import { HazardsExpansion } from './expansions/Hazards.js';
 import { DayNightExpansion } from './expansions/DayNight.js';
+import { ControlPointsExpansion } from './expansions/ControlPoints.js';
 
 import { AdvancedUnitControlExpansion, ConstructionExpansion } from './expansions/Controls.js';
 import { MinimapExpansion, ContextUIExpansion, GameLoopExpansion } from './expansions/UI.js';
@@ -41,10 +42,11 @@ window.onload = () => {
     game.expansions.load('WebNetwork', WebNetworkExpansion); 
     game.expansions.load('SilkNetwork', SilkNetworkExpansion);
 
-    // --- NEW MECHANICS ---
+    // --- LOAD NEW MECHANICS ---
     game.expansions.load('SpecialUnits', SpecialUnitsExpansion);
     game.expansions.load('Hazards', HazardsExpansion);
     game.expansions.load('DayNight', DayNightExpansion);
+    game.expansions.load('ControlPoints', ControlPointsExpansion);
 
     // UI EXPANSIONS
     game.expansions.load('MinimapUI', MinimapExpansion); 
@@ -58,6 +60,6 @@ window.onload = () => {
     game.expansions.load('Atmosphere', AtmosphereExpansion); 
     game.expansions.load('CommanderSpells', SpellExpansion); 
     
-    // REQUIRED TO LOAD LAST
+    // REQUIRED TO LOAD LAST (So it renders over everything else correctly)
     game.expansions.load('FogOfWar', FogOfWarExpansion);
 };
