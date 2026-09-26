@@ -4,8 +4,9 @@ import { Queen } from './Queen.js';
 import { CentipedeBoss } from './Boss.js';
 import { Aphid, GoldenBug } from './Critters.js';
 
-// --- NEW IMPORT ---
+// --- NEW IMPORTS ---
 import { VenusFlytrap } from './Hazards.js';
+import { JackOLantern } from './ControlPoints.js';
 
 export const AtmosphereExpansion = {
     patch: (game) => {
@@ -104,7 +105,11 @@ export const FogOfWarExpansion = {
         applyFoWToClass(CentipedeBoss, true, false);
         applyFoWToClass(Aphid, true, false);
         applyFoWToClass(GoldenBug, true, false);
-        applyFoWToClass(VenusFlytrap, true, false); // --- ADDED FLYTRAPS TO FOG OF WAR ---
+        
+        // --- ADDED NEW MECHANICS TO FOG OF WAR ---
+        applyFoWToClass(VenusFlytrap, true, false); 
+        applyFoWToClass(JackOLantern, false, true); // Control Points remain visible once discovered, like resources!
+        
         applyFoWToClass(ResourceNode, false, true); 
 
         game.bus.on('postDraw', (ctx) => {
@@ -136,12 +141,12 @@ export const SaveLoadExpansion = {
                     })),
                     resourceNodes: game.resourceNodes.map(p => ({x: p.x, y: p.y, type: p.type, resources: p.resources})),
                     queens: game.queens.map(q => ({x: q.x, y: q.y, team: q.team, hp: q.hp})),
-                    
                     critters: game.critters.map(b => ({x: b.x, y: b.y, hp: b.hp, color: b.color, type: b.constructor.name})),
                     bosses: game.bosses.map(b => ({x: b.x, y: b.y, hp: b.hp})),
 
-                    // --- ADDED HAZARDS TO SAVE FILE ---
-                    hazards: game.entities.filter(e => e instanceof VenusFlytrap).map(f => ({x: f.x, y: f.y, hp: f.hp, cooldown: f.cooldown}))
+                    // --- ADDED NEW MECHANICS TO SAVE FILE ---
+                    hazards: game.entities.filter(e => e instanceof VenusFlytrap).map(f => ({x: f.x, y: f.y, hp: f.hp, cooldown: f.cooldown})),
+                    controlPoints: game.entities.filter(e => e instanceof JackOLantern).map(c => ({x: c.x, y: c.y, team: c.controllingTeam, prog: c.captureProgress}))
                 };
                 localStorage.setItem('spiderRTS_saveData', JSON.stringify(state)); alert("Game Saved!");
             }
@@ -177,12 +182,20 @@ export const SaveLoadExpansion = {
                     });
                 }
 
-                // --- RESTORE HAZARDS ---
+                // --- RESTORE NEW MECHANICS ---
                 if (state.hazards) {
                     state.hazards.forEach(h => {
                         let f = new VenusFlytrap(h.x, h.y);
                         f.hp = h.hp; f.cooldown = h.cooldown;
                         game.addEntity(f);
+                    });
+                }
+                
+                if (state.controlPoints) {
+                    state.controlPoints.forEach(c => {
+                        let o = new JackOLantern(c.x, c.y);
+                        o.controllingTeam = c.team; o.captureProgress = c.prog;
+                        game.addEntity(o);
                     });
                 }
                 
