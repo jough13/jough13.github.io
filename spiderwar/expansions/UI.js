@@ -99,14 +99,15 @@ export const ContextUIExpansion = {
         const style = document.createElement('style');
         style.innerHTML = `
             #rtsUI {
-                position: fixed; bottom: 0; left: 0; width: 100%; height: 140px;
+                position: fixed; bottom: 0; left: 0; width: 100%; 
+                height: 180px; /* INCREASED HEIGHT to give buttons room to breathe */
                 
                 /* 9-SLICE BORDER MAGIC */
                 border-style: solid;
-                border-width: 40px; /* How thick the border appears on screen. Tweak this! */
+                border-width: 32px; /* You can adjust this to make the frame thicker/thinner */
                 border-image-source: url('assets/ui_frame.png');
-                border-image-slice: 32% fill; /* Tells the browser the corners are ~32% of the image */
-                border-image-repeat: stretch; /* Stretches the straight bars between the corners */
+                border-image-slice: 32% fill; 
+                border-image-repeat: stretch; 
                 
                 display: flex; box-sizing: border-box;
                 font-family: 'Courier New', monospace; color: white; z-index: 2000;
@@ -115,21 +116,27 @@ export const ContextUIExpansion = {
             }
             #ui-portrait-container {
                 width: 140px; height: 100%; border-right: 2px solid #553311;
-                display: flex; align-items: center; justify-content: center; background: #000;
+                display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5);
             }
             #ui-portrait { width: 90%; height: 90%; object-fit: contain; image-rendering: pixelated; }
             #ui-info {
                 width: 200px; padding: 15px; border-right: 2px solid #553311;
-                display: flex; flex-direction: column; justify-content: flex-start;
+                display: flex; flex-direction: column; justify-content: center;
             }
             #ui-info h2 { margin: 0 0 10px 0; font-size: 16px; color: #ff9d00; text-transform: uppercase;}
             .ui-stat { font-size: 14px; color: #ccc; margin-bottom: 5px; }
             #ui-hp-bar-bg { width: 100%; height: 10px; background: #333; margin-top: 5px; border: 1px solid #000; }
             #ui-hp-bar-fill { width: 100%; height: 100%; background: #00ff00; transition: 0.2s width; }
             
+            /* HIDES THE UGLY SCROLLBAR VISUALLY */
+            #ui-actions::-webkit-scrollbar { display: none; }
+            
             #ui-actions {
                 flex-grow: 1; padding: 10px; display: flex; flex-wrap: wrap; 
-                gap: 10px; align-content: flex-start; overflow-y: auto;
+                gap: 10px; align-content: center; /* Centers the buttons perfectly */
+                overflow-y: auto;
+                -ms-overflow-style: none; /* IE and Edge */
+                scrollbar-width: none; /* Firefox */
             }
             .cmd-btn {
                 width: 80px; height: 55px; background: #221100; border: 2px solid #ff9d00;
