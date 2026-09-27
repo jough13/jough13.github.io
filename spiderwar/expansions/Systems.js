@@ -8,6 +8,9 @@ import { Aphid, GoldenBug } from './Critters.js';
 import { VenusFlytrap } from './Hazards.js';
 import { JackOLantern } from './ControlPoints.js';
 import { Corpse, ZombieSpider } from './Necromancy.js'; 
+import { EggTrap, Broodling } from './BroodAmbush.js'; 
+import { ExplosiveProjectile } from './Titans.js'; // Added from Titans
+import { MortarShell } from './Fortress.js';       // Added from Fortress
 
 export const AtmosphereExpansion = {
     patch: (game) => {
@@ -66,7 +69,8 @@ export const FogOfWarExpansion = {
                 this.spiders.filter(s => s.team === 'black').forEach(s => reveal(s.x, s.y, 2));
                 this.queens.filter(q => q.team === 'black').forEach(q => reveal(q.x, q.y, 3));
                 this.structures.filter(s => s.team === 'black').forEach(s => {
-                    let r = s.type === 'nest' ? 4 : (s.type === 'pylon' ? 3 : 2);
+                    // Mortars have massive sight range
+                    let r = s.type === 'nest' ? 4 : (s.type === 'mortar' ? 4 : (s.type === 'pylon' ? 3 : 2));
                     reveal(s.x, s.y, r);
                 });
 
@@ -106,11 +110,15 @@ export const FogOfWarExpansion = {
         applyFoWToClass(CentipedeBoss, true, false);
         applyFoWToClass(Aphid, true, false);
         applyFoWToClass(GoldenBug, true, false);
-        
         applyFoWToClass(VenusFlytrap, true, false); 
         applyFoWToClass(Corpse, true, false); 
         applyFoWToClass(JackOLantern, false, true); 
         applyFoWToClass(ResourceNode, false, true); 
+        applyFoWToClass(EggTrap, true, false);
+        
+        // --- ADDED NEW PROJECTILES TO FOG OF WAR ---
+        applyFoWToClass(ExplosiveProjectile, true, false);
+        applyFoWToClass(MortarShell, true, false);
 
         game.bus.on('postDraw', (ctx) => {
             if (!game.fowCanvas) return;
@@ -134,24 +142,27 @@ export const SaveLoadExpansion = {
                 const state = {
                     eco: game.eco, pop: game.pop, maxPop: game.maxPop, techLevel: game.techLevel, camera: game.camera, tick: game.tick,
                     
-                    // Added cloak properties for the Widow
                     spiders: game.spiders.map(s => ({
                         x: s.x, y: s.y, team: s.team, role: s.role, hp: s.hp, cargo: s.cargo, 
-                        isZombie: s.isZombie, isCloaked: s.isCloaked, cloakCooldown: s.cloakCooldown
+                        isZombie: s.isZombie, isCloaked: s.isCloaked, cloakCooldown: s.cloakCooldown,
+                        life: s.life
                     })),
                     
                     structures: game.structures.map(s => ({
                         x: s.x, y: s.y, team: s.team, type: s.type, hp: s.hp,
                         isConstructing: s.isConstructing, buildProgress: s.buildProgress,
-                        territory: s.territory, originalTerritory: s.originalTerritory
+                        territory: s.territory, originalTerritory: s.originalTerritory,
+                        cooldown: s.cooldown // Included cooldown to save Mortar & Turret reload times
                     })),
+                    
                     resourceNodes: game.resourceNodes.map(p => ({x: p.x, y: p.y, type: p.type, resources: p.resources})),
                     queens: game.queens.map(q => ({x: q.x, y: q.y, team: q.team, hp: q.hp})),
                     critters: game.critters.map(b => ({x: b.x, y: b.y, hp: b.hp, color: b.color, type: b.constructor.name})),
                     bosses: game.bosses.map(b => ({x: b.x, y: b.y, hp: b.hp})),
                     hazards: game.entities.filter(e => e instanceof VenusFlytrap).map(f => ({x: f.x, y: f.y, hp: f.hp, cooldown: f.cooldown})),
                     controlPoints: game.entities.filter(e => e instanceof JackOLantern).map(c => ({x: c.x, y: c.y, team: c.controllingTeam, prog: c.captureProgress})),
-                    corpses: game.entities.filter(e => e instanceof Corpse).map(c => ({x: c.x, y: c.y, life: c.life}))
+                    corpses: game.entities.filter(e => e instanceof Corpse).map(c => ({x: c.x, y: c.y, life: c.life})),
+                    eggTraps: game.entities.filter(e => e instanceof EggTrap).map(t => ({x: t.x, y: t.y, team: t.team, hp: t.hp}))
                 };
                 localStorage.setItem('spiderRTS_saveData', JSON.stringify(state)); alert("Game Saved!");
             }
@@ -162,12 +173,12 @@ export const SaveLoadExpansion = {
                 
                 game.entities = []; 
                 
-                // FIXED BUG: Hard-reconstructing special unit properties based on role.
-                // Normally this happens in the 'spawnSpider' listener, which doesn't trigger on Load!
                 state.spiders.forEach(s => { 
                     let o;
                     if (s.isZombie) { 
                         o = new ZombieSpider(s.x, s.y, s.team); 
+                    } else if (s.role === 'broodling') {
+                        o = new Broodling(s.x, s.y, s.team);
                     } else {
                         o = new Spider(s.x, s.y, s.team, s.role);
                         if (s.role === 'spitter') { o.maxHp = 75; o.damage = 25; o.attackSpeed = 45; o.range = 250; o.sprite.src = s.team === 'black' ? 'assets/spitter_black.png' : 'assets/spitter_red.png'; }
@@ -180,6 +191,7 @@ export const SaveLoadExpansion = {
                         if (s.role === 'goliath') { o.maxHp = 1200; o.damage = 90; o.size = 38; o.baseSpeed = 0.4; o.sprite.src = s.team === 'black' ? 'assets/goliath_black.png' : 'assets/goliath_red.png'; }
                     }
                     o.hp = s.hp; o.cargo = s.cargo; 
+                    if (s.life !== undefined) o.life = s.life; 
                     game.addEntity(o); 
                 });
 
@@ -187,9 +199,11 @@ export const SaveLoadExpansion = {
                     let o = new Structure(s.x, s.y, s.team, s.type); 
                     o.hp = s.hp; o.isConstructing = s.isConstructing; o.buildProgress = s.buildProgress;
                     o.territory = s.territory; o.originalTerritory = s.originalTerritory;
+                    if (s.cooldown !== undefined) o.cooldown = s.cooldown; // Restores Mortar/Turret cooldowns
                     if(o.isConstructing) o.isPaused = true;
                     game.addEntity(o); 
                 });
+                
                 state.resourceNodes.forEach(p => { let o = new ResourceNode(p.x, p.y, p.type); o.resources = p.resources; game.addEntity(o); });
                 state.queens.forEach(q => { let o = new Queen(q.x, q.y, q.team); o.hp = q.hp; game.addEntity(o); });
                 
@@ -225,6 +239,13 @@ export const SaveLoadExpansion = {
                     state.corpses.forEach(c => {
                         let o = new Corpse(c.x, c.y);
                         o.life = c.life;
+                        game.addEntity(o);
+                    });
+                }
+                if (state.eggTraps) {
+                    state.eggTraps.forEach(t => {
+                        let o = new EggTrap(t.x, t.y, t.team);
+                        o.hp = t.hp;
                         game.addEntity(o);
                     });
                 }
