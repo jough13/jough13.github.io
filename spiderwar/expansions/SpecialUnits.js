@@ -1,5 +1,5 @@
 // expansions/SpecialUnits.js
-import { Spider, Projectile, MathUtils, UNIT_DATA } from '../game.js';
+import { Spider, Projectile, MathUtils, UNIT_DATA, SPIDER_STATE } from '../game.js';
 
 // ==========================================
 // 1. CONFIGURATION & BALANCING
@@ -83,7 +83,7 @@ export const SpecialUnitsExpansion = {
 
                 // COMBAT OVERRIDE: Prioritize shooting over everything else!
                 if (nearestEnemy) {
-                    this.state = 'combat'; 
+                    this.state = SPIDER_STATE.COMBAT; 
                     this.angle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
                     const distSq = MathUtils.distSq(this.x, this.y, nearestEnemy.x, nearestEnemy.y);
                     
