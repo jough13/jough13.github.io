@@ -73,7 +73,8 @@ export const SplashScreenExpansion = {
         ui.id = 'preGameUI';
         ui.innerHTML = `
             <div id="introView">
-                <video id="introVideo" src="assets/intro.mp4" autoplay playsinline></video>
+                <!-- FIXED: Added 'muted' and 'loop' back so browsers allow it to autoplay! -->
+                <video id="introVideo" src="assets/intro.mp4" autoplay loop muted playsinline></video>
                 <div class="skip-hint">Click anywhere to skip...</div>
             </div>
 
@@ -108,6 +109,10 @@ export const SplashScreenExpansion = {
         const viewLoading = document.getElementById('loadingView');
         const introVideo = document.getElementById('introVideo');
 
+        // --- JS Fallback to force video play if autoplay is acting stubborn ---
+        // We catch the promise so it doesn't throw a red error in the console if the browser is being aggressive
+        introVideo.play().catch(e => console.log("Autoplay prevented by browser, waiting for user click."));
+
         // --- State ---
         const hasSaveData = localStorage.getItem('spiderRTS_saveData') !== null;
         if (hasSaveData) document.getElementById('btnLoadGame').disabled = false;
@@ -127,7 +132,7 @@ export const SplashScreenExpansion = {
 
         // 1. Intro Video Logic
         viewIntro.addEventListener('click', showMenu);
-        introVideo.addEventListener('ended', showMenu);
+        introVideo.addEventListener('ended', showMenu); // Added fallback if the video is short and doesn't loop
 
         // 2. Settings Logic
         document.getElementById('btnSettings').addEventListener('click', () => { viewSettings.style.display = 'flex'; });
