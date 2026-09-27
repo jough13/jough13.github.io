@@ -382,10 +382,20 @@ export const ConstructionExpansion = {
                 }
             }
 
-            // 3. Auto-resume nearby paused construction
+            // --- FIX B: ANTI-STUTTER IDLE TIMER ---
+            // 3. Auto-resume nearby paused construction ONLY if idle for 1.5 seconds
             if (!this.activeConstruction && !this.commandTarget && !this.buildTarget) {
-                let unfinished = gameObj.structures.find(s => s.isConstructing && s.team === this.team && MathUtils.distSq(s.x, s.y, this.x, this.y) < 3600);
-                if (unfinished) this.activeConstruction = unfinished; 
+                this.idleBuildTimer = (this.idleBuildTimer || 0) + 1;
+                
+                if (this.idleBuildTimer > 45) { // 45 frames = 1.5 seconds
+                    let unfinished = gameObj.structures.find(s => s.isConstructing && s.team === this.team && MathUtils.distSq(s.x, s.y, this.x, this.y) < 3600);
+                    if (unfinished) {
+                        this.activeConstruction = unfinished; 
+                        this.idleBuildTimer = 0; // Reset timer
+                    }
+                }
+            } else {
+                this.idleBuildTimer = 0; // Immediately reset the timer if she is given a command
             }
         });
 
