@@ -1,5 +1,5 @@
 // expansions/Controls.js
-import { MathUtils, Spider, Structure } from '../game.js';
+import { MathUtils, Spider, Structure, SPIDER_STATE } from '../game.js';
 import { Queen } from './Queen.js';
 
 export const AdvancedUnitControlExpansion = {
@@ -209,7 +209,8 @@ export const AdvancedUnitControlExpansion = {
                 let nearestEnemy = gameObj.getNearestEnemy(this.x, this.y, this.team, detectRadius);
 
                 if (nearestEnemy) {
-                    this.state = 'combat'; this.angle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
+                    this.state = SPIDER_STATE.COMBAT; 
+                    this.angle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
                     const combatRange = nearestEnemy.size ? nearestEnemy.size + 15 : 20;
                     const distSq = MathUtils.distSq(this.x, this.y, nearestEnemy.x, nearestEnemy.y);
                     
@@ -382,7 +383,6 @@ export const ConstructionExpansion = {
                 }
             }
 
-            // --- FIX B: ANTI-STUTTER IDLE TIMER ---
             // 3. Auto-resume nearby paused construction ONLY if idle for 1.5 seconds
             if (!this.activeConstruction && !this.commandTarget && !this.buildTarget) {
                 this.idleBuildTimer = (this.idleBuildTimer || 0) + 1;
