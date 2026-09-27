@@ -203,15 +203,18 @@ export const ContextUIExpansion = {
             'pylon':  { icon: '🗼', name: 'Pylon', cost: '25🎃', type: 'tool', val: 'pylon' },
             'turret': { icon: '🔫', name: 'Turret', cost: '100🎃', type: 'tool', val: 'turret' },
             'wall':   { icon: '🧱', name: 'Wall', cost: '25🎃', type: 'tool', val: 'wall' },
+            
+            // SPELLS
             'strike': { icon: '☠️', name: 'Strike', cost: '50💧', type: 'tool', val: 'venomStrike' },
             'trap':   { icon: '🕸️', name: 'Trap', cost: '25💧', type: 'tool', val: 'silkTrap' },
             'raise':  { icon: '🧟', name: 'Raise', cost: '40💧', type: 'tool', val: 'reanimate' },
+            'ambush': { icon: '🥚', name: 'Ambush', cost: '50💧', type: 'tool', val: 'ambush' }, // <-- BROOD AMBUSH
+            
+            // UNITS
             'harv':   { icon: '🕷️', name: 'Harvester', cost: '10🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'harvester'}) },
             'sold':   { icon: '🐜', name: 'Soldier', cost: '25🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'soldier'}) },
             'spitter': { icon: '💦', name: 'Spitter', cost: '40🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'spitter'}) },
             'tank':    { icon: '🪲', name: 'Tarantula', cost: '75🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'tarantula'}) },
-            
-            // --- NEW TITAN BUTTONS ---
             'widow':   { icon: '👻', name: 'Widow', cost: '150🎃50💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'widow'}) },
             'goliath': { icon: '🔥', name: 'Goliath', cost: '400🎃150💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'goliath'}) },
             
@@ -312,14 +315,16 @@ export const ContextUIExpansion = {
                     if (this.selectedStructure.type === 'nest' && this.selectedStructure.team === 'black') {
                         addButton('harv'); addButton('sold'); 
                         addButton('spitter'); addButton('tank'); 
-                        addButton('widow'); addButton('goliath'); // --- ADDED TITANS HERE ---
+                        addButton('widow'); addButton('goliath'); 
                         addButton('tech');
                     }
                 } 
                 else {
                     portrait.src = 'assets/nest_black.png'; 
                     nameEl.innerText = "Hive Mind";
-                    addButton('strike'); addButton('trap'); addButton('raise'); addButton('cancel');
+                    
+                    // --- ADDED AMBUSH TRAP TO COMMANDER PANEL ---
+                    addButton('strike'); addButton('trap'); addButton('raise'); addButton('ambush'); addButton('cancel');
                 }
             }
 
