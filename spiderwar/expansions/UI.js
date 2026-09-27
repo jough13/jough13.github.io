@@ -1,43 +1,103 @@
 // expansions/UI.js
-import { Game } from '../game.js';
+import { Game, MathUtils } from '../game.js';
 import { Queen } from './Queen.js';
 
+// ==========================================
+// 1. MINIMAP EXPANSION & HUD OVERLAY
+// ==========================================
 export const MinimapExpansion = {
     init: (game) => {
         game.minimap = { size: 200, padding: 10, offsetY: 190 }; 
         game.isMinimapDragging = false;
         
-        game.moveCameraFromMinimap = function(localX, localY) {
-            const pctX = Math.max(0, Math.min(localX / this.minimap.size, 1)); 
-            const pctY = Math.max(0, Math.min(localY / this.minimap.size, 1));
-            this.camera.x = (pctX * this.world.width) - (this.canvas.width / 2); 
-            this.camera.y = (pctY * this.world.height) - (this.canvas.height / 2);
+        // Convert Minimap click to World coordinates
+        const getMinimapWorldPos = (localX, localY) => {
+            const pctX = MathUtils.clamp(localX / game.minimap.size, 0, 1); 
+            const pctY = MathUtils.clamp(localY / game.minimap.size, 0, 1);
+            return {
+                x: pctX * game.world.width,
+                y: pctY * game.world.height
+            };
         };
-        
-        const checkMinimapClick = (clientX, clientY) => {
-            const mmX = game.canvas.width - game.minimap.size - game.minimap.padding; 
-            const mmY = game.canvas.height - game.minimap.size - game.minimap.padding - game.minimap.offsetY; 
-            if (clientX >= mmX && clientX <= mmX + game.minimap.size && clientY >= mmY && clientY <= mmY + game.minimap.size) {
-                game.isMinimapDragging = true; 
-                game.moveCameraFromMinimap(clientX - mmX, clientY - mmY);
+
+        // Center camera based on minimap click
+        const moveCamera = (localX, localY) => {
+            const pos = getMinimapWorldPos(localX, localY);
+            game.camera.x = MathUtils.clamp(pos.x - (game.canvas.width / 2), 0, game.world.width - game.canvas.width); 
+            game.camera.y = MathUtils.clamp(pos.y - (game.canvas.height / 2), 0, game.world.height - game.canvas.height);
+        };
+
+        // Issue a move command to the selected units via the minimap!
+        const commandUnits = (localX, localY) => {
+            let validUnits = game.selectedUnits ? game.selectedUnits.filter(u => u.team === 'black' && u.hp > 0) : [];
+            if (validUnits.length > 0) {
+                const pos = getMinimapWorldPos(localX, localY);
+                game.bus.emit('particles', {x: pos.x, y: pos.y, color: '#aa00ff', count: 20});
+                game.bus.emit('playSound', 'shoot');
+                
+                validUnits.forEach(u => {
+                    let offsetX = MathUtils.randomRange(-validUnits.length * 4, validUnits.length * 4);
+                    let offsetY = MathUtils.randomRange(-validUnits.length * 4, validUnits.length * 4);
+                    u.commandTarget = { x: pos.x + offsetX, y: pos.y + offsetY };
+                    u.isManual = true; 
+                });
             }
         };
 
-        const checkMinimapMove = (clientX, clientY) => {
+        // UI HACK: By creating an invisible DOM element named "mobileToolbar", Controls.js will naturally 
+        // ignore clicks inside this box, allowing us to safely intercept them for the minimap!
+        const overlay = document.createElement('div');
+        overlay.id = 'mobileToolbar'; 
+        overlay.style.cssText = `
+            position: fixed; bottom: 200px; right: 10px; 
+            width: 200px; height: 200px; z-index: 1999; 
+            cursor: crosshair; touch-action: none;
+        `;
+        document.body.appendChild(overlay);
+
+        // Input Listeners strictly bound to the minimap area
+        overlay.addEventListener('mousedown', e => {
+            const rect = overlay.getBoundingClientRect();
+            if (e.button === 0) {
+                game.isMinimapDragging = true;
+                moveCamera(e.clientX - rect.left, e.clientY - rect.top);
+            }
+        });
+
+        overlay.addEventListener('mousemove', e => {
             if (game.isMinimapDragging) {
-                const mmX = game.canvas.width - game.minimap.size - game.minimap.padding; 
-                const mmY = game.canvas.height - game.minimap.size - game.minimap.padding - game.minimap.offsetY;
-                game.moveCameraFromMinimap(clientX - mmX, clientY - mmY);
+                const rect = overlay.getBoundingClientRect();
+                moveCamera(e.clientX - rect.left, e.clientY - rect.top);
             }
-        };
+        });
 
-        game.canvas.addEventListener('mousedown', e => { if (e.button === 0) checkMinimapClick(e.clientX, e.clientY); });
-        window.addEventListener('mousemove', e => checkMinimapMove(e.clientX, e.clientY));
         window.addEventListener('mouseup', e => { if (e.button === 0) game.isMinimapDragging = false; });
-        
-        game.canvas.addEventListener('touchstart', e => { if(e.touches.length===1) checkMinimapClick(e.touches[0].clientX, e.touches[0].clientY); }, {passive: false});
-        window.addEventListener('touchmove', e => { if(e.touches.length===1) checkMinimapMove(e.touches[0].clientX, e.touches[0].clientY); }, {passive: false});
-        window.addEventListener('touchend', e => { game.isMinimapDragging = false; });
+
+        overlay.addEventListener('contextmenu', e => {
+            e.preventDefault(); // Stop standard browser menu
+            const rect = overlay.getBoundingClientRect();
+            commandUnits(e.clientX - rect.left, e.clientY - rect.top);
+        });
+
+        // Mobile Touch Support for Minimap
+        overlay.addEventListener('touchstart', e => { 
+            e.preventDefault();
+            if(e.touches.length === 1) {
+                const rect = overlay.getBoundingClientRect();
+                game.isMinimapDragging = true;
+                moveCamera(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+            }
+        }, {passive: false});
+
+        overlay.addEventListener('touchmove', e => { 
+            e.preventDefault();
+            if(game.isMinimapDragging && e.touches.length === 1) {
+                const rect = overlay.getBoundingClientRect();
+                moveCamera(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+            }
+        }, {passive: false});
+
+        overlay.addEventListener('touchend', e => { game.isMinimapDragging = false; });
     },
     
     patch: (game) => {
@@ -47,10 +107,14 @@ export const MinimapExpansion = {
             const startX = game.canvas.width - size - pad; 
             const startY = game.canvas.height - size - pad - game.minimap.offsetY; 
             
-            ctx.fillStyle = 'rgba(10, 5, 0, 0.6)'; ctx.fillRect(startX, startY, size, size);
+            // Base background
+            ctx.fillStyle = 'rgba(10, 5, 0, 0.8)'; 
+            ctx.fillRect(startX, startY, size, size);
             
-            const scaleX = size / game.world.width; const scaleY = size / game.world.height;
+            const scaleX = size / game.world.width; 
+            const scaleY = size / game.world.height;
             
+            // Draw Water
             if (game.mapGrid) {
                 ctx.fillStyle = 'rgba(26, 78, 110, 0.7)';
                 for (let y = 0; y < game.mapGrid.length; y++) {
@@ -62,16 +126,19 @@ export const MinimapExpansion = {
                 }
             }
 
+            // High-Performance Map Entity Drawing
             const drawDot = (ent, color, r, hideIfInvisible, hideIfUndiscovered) => { 
                 if (game.mapGrid) {
-                    const tX = Math.floor(ent.x / game.tileSize); const tY = Math.floor(ent.y / game.tileSize);
-                    const tile = game.mapGrid[tY] && game.mapGrid[tY][tX];
-                    if (tile) {
+                    const tX = Math.floor(ent.x / game.tileSize); 
+                    const tY = Math.floor(ent.y / game.tileSize);
+                    if (tY >= 0 && tY < game.mapGrid.length && tX >= 0 && tX < game.mapGrid[0].length) {
+                        const tile = game.mapGrid[tY][tX];
                         if (hideIfUndiscovered && !tile.discovered) return;
                         if (hideIfInvisible && !tile.visible && ent.team !== 'black') return; 
                     }
                 }
-                ctx.fillStyle = color; ctx.fillRect(startX + (ent.x * scaleX) - r, startY + (ent.y * scaleY) - r, r*2, r*2); 
+                ctx.fillStyle = color; 
+                ctx.fillRect(startX + (ent.x * scaleX) - r, startY + (ent.y * scaleY) - r, r*2, r*2); 
             };
 
             game.resourceNodes.forEach(r => drawDot(r, r.type === 'pumpkin' ? '#ff7b00' : '#00aaff', 1.5, false, true));
@@ -95,6 +162,7 @@ export const MinimapExpansion = {
                 });
             }
 
+            // Draw Fog of War Overlay
             if (game.fowCanvas) {
                 ctx.save();
                 ctx.filter = 'blur(4px)'; 
@@ -102,21 +170,31 @@ export const MinimapExpansion = {
                 ctx.restore();
             }
             
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; ctx.lineWidth = 1; 
-            ctx.strokeRect(startX + (game.camera.x * scaleX), startY + (game.camera.y * scaleY), game.canvas.width * scaleX, game.canvas.height * scaleY);
+            // Draw Camera Viewport Box
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; 
+            ctx.lineWidth = 1.5; 
+            ctx.strokeRect(
+                MathUtils.clamp(startX + (game.camera.x * scaleX), startX, startX + size), 
+                MathUtils.clamp(startY + (game.camera.y * scaleY), startY, startY + size), 
+                Math.min(game.canvas.width * scaleX, size - (game.camera.x * scaleX)), 
+                Math.min(game.canvas.height * scaleY, size - (game.camera.y * scaleY))
+            );
             
+            // Outer Frame
             ctx.strokeStyle = '#ff9d00'; ctx.lineWidth = 4; ctx.strokeRect(startX, startY, size, size);
         });
     }
 };
 
+// ==========================================
+// 2. COMMAND PANEL & HUD
+// ==========================================
 export const ContextUIExpansion = {
     init: (game) => {
         const style = document.createElement('style');
         style.innerHTML = `
             #topBar {
-                position: fixed; top: 10px; left: 10px;
-                padding: 0px 15px; 
+                position: fixed; top: 10px; left: 10px; padding: 0px 15px; 
                 display: flex; justify-content: center; align-items: center; gap: 30px;
                 border-style: solid; border-width: 24px; 
                 border-image-source: url('assets/ui_frame.png'); border-image-slice: 32%; border-image-repeat: stretch; 
@@ -132,7 +210,7 @@ export const ContextUIExpansion = {
                 position: fixed; bottom: 0; left: 0; width: 100%; height: 180px;
                 border-style: solid; border-width: 32px; 
                 border-image-source: url('assets/ui_frame.png'); border-image-slice: 32%; border-image-repeat: stretch; 
-                background-color: rgba(0, 0, 0, 0.90); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); 
+                background-color: rgba(0, 0, 0, 0.95); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); 
                 display: flex; box-sizing: border-box; font-family: 'Courier New', monospace; color: white; z-index: 2000;
                 box-shadow: 0 -5px 20px rgba(0,0,0,0.8); user-select: none;
                 transition: bottom 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -152,10 +230,11 @@ export const ContextUIExpansion = {
             #ui-portrait-container { width: 140px; height: 100%; border-right: 2px solid rgba(255, 157, 0, 0.3); display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.6); }
             #ui-portrait { width: 90%; height: 90%; object-fit: contain; image-rendering: pixelated; }
             #ui-info { width: 200px; padding: 15px; border-right: 2px solid rgba(255, 157, 0, 0.3); display: flex; flex-direction: column; justify-content: center; }
-            #ui-info h2 { margin: 0 0 10px 0; font-size: 16px; color: #ff9d00; text-transform: uppercase;}
+            #ui-info h2 { margin: 0 0 10px 0; font-size: 16px; color: #ff9d00; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
             .ui-stat { font-size: 14px; color: #ccc; margin-bottom: 5px; }
-            #ui-hp-bar-bg { width: 100%; height: 10px; background: rgba(0,0,0,0.8); margin-top: 5px; border: 1px solid #000; }
-            #ui-hp-bar-fill { width: 100%; height: 100%; background: #00ff00; transition: 0.2s width; }
+            
+            #ui-hp-bar-bg { width: 100%; height: 12px; background: rgba(0,0,0,0.8); margin-top: 5px; border: 1px solid #ff9d00; border-radius: 4px; overflow: hidden;}
+            #ui-hp-bar-fill { width: var(--hp-pct, 100%); height: 100%; background: #00ff00; transition: width 0.2s; }
             
             #ui-actions::-webkit-scrollbar { display: none; }
             #ui-actions { flex-grow: 1; padding: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-content: center; overflow-y: auto; -ms-overflow-style: none; scrollbar-width: none; }
@@ -165,7 +244,7 @@ export const ContextUIExpansion = {
             .cmd-btn.active-tool { background: rgba(255, 157, 0, 0.9); color: #000; font-weight: bold; }
             .cmd-icon { font-size: 20px; }
             .cmd-text { font-size: 10px; margin-top: 2px; }
-            .cmd-cost { font-size: 10px; color: #ff5555; font-weight: bold; letter-spacing: -0.5px; } /* Tightened letter spacing for dual costs */
+            .cmd-cost { font-size: 10px; color: #ff5555; font-weight: bold; letter-spacing: -0.5px; }
         `;
         document.head.appendChild(style);
 
@@ -181,7 +260,7 @@ export const ContextUIExpansion = {
                 <div id="ui-toggle-btn" title="Toggle HUD">▼</div>
                 <div id="ui-portrait-container"><img id="ui-portrait" src=""></div>
                 <div id="ui-info">
-                    <h2 id="ui-name">Hive Mind</h2>
+                    <h2 id="ui-name">Obsidian Hive</h2>
                     <div id="ui-stats-container"></div>
                 </div>
                 <div id="ui-actions"></div>
@@ -197,24 +276,21 @@ export const ContextUIExpansion = {
             toggleBtn.innerText = rtsUI.classList.contains('minimized') ? '▲' : '▼';
         });
 
+        // Master UI Buttons Dictionary
         game.uiActions = {
             'nest':   { icon: '🕸️', name: 'Nest', cost: '150🎃', type: 'tool', val: 'nest' },
             'eggsac': { icon: '🥚', name: 'Sac', cost: '50🎃', type: 'tool', val: 'eggsac' },
             'pylon':  { icon: '🗼', name: 'Pylon', cost: '25🎃', type: 'tool', val: 'pylon' },
             'turret': { icon: '🔫', name: 'Turret', cost: '100🎃', type: 'tool', val: 'turret' },
             'wall':   { icon: '🧱', name: 'Wall', cost: '25🎃', type: 'tool', val: 'wall' },
-
-            // --- FORTRESS STRUCTURES ---
             'mortar': { icon: '🌋', name: 'Mortar', cost: '200🎃50💧', type: 'tool', val: 'mortar' },
             'shrine': { icon: '⛲', name: 'Shrine', cost: '150🎃100💧', type: 'tool', val: 'shrine' },
             
-            // SPELLS
             'strike': { icon: '☠️', name: 'Strike', cost: '50💧', type: 'tool', val: 'venomStrike' },
             'trap':   { icon: '🕸️', name: 'Trap', cost: '25💧', type: 'tool', val: 'silkTrap' },
             'raise':  { icon: '🧟', name: 'Raise', cost: '40💧', type: 'tool', val: 'reanimate' },
-            'ambush': { icon: '🥚', name: 'Ambush', cost: '50💧', type: 'tool', val: 'ambush' }, // <-- BROOD AMBUSH
+            'ambush': { icon: '🥚', name: 'Ambush', cost: '50💧', type: 'tool', val: 'ambush' }, 
             
-            // UNITS
             'harv':   { icon: '🕷️', name: 'Harvester', cost: '10🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'harvester'}) },
             'sold':   { icon: '🐜', name: 'Soldier', cost: '25🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'soldier'}) },
             'spitter': { icon: '💦', name: 'Spitter', cost: '40🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'spitter'}) },
@@ -244,6 +320,7 @@ export const ContextUIExpansion = {
     },
 
     patch: (game) => {
+        // Prevent click bleed-through
         document.getElementById('rtsUI').addEventListener('mousedown', (e) => e.stopPropagation());
         document.getElementById('rtsUI').addEventListener('touchstart', (e) => e.stopPropagation(), {passive: false});
         document.getElementById('topBar').addEventListener('mousedown', (e) => e.stopPropagation());
@@ -252,6 +329,7 @@ export const ContextUIExpansion = {
         game.expansions.patchClass(game.constructor, 'update', function(original) {
             original.call(this);
 
+            // Update Top Bar
             document.getElementById('top-pumpkins').innerText = Math.floor(this.eco.black.pumpkins);
             document.getElementById('top-dew').innerText = Math.floor(this.eco.black.dew);
             document.getElementById('top-pop').innerText = `${this.pop.black}/${this.maxPop.black}`;
@@ -259,6 +337,7 @@ export const ContextUIExpansion = {
 
             if(this.selectedUnits) this.selectedUnits = this.selectedUnits.filter(u => u.hp > 0);
 
+            // Determine what is currently selected
             let currentSelection = null;
             if (this.selectedUnits && this.selectedUnits.length > 0) {
                 currentSelection = this.selectedUnits.length === 1 ? this.selectedUnits[0] : 'swarm_group';
@@ -266,6 +345,7 @@ export const ContextUIExpansion = {
                 currentSelection = this.selectedStructure;
             }
 
+            // REBUILD UI ONLY IF SELECTION CHANGED
             if (this.lastSelection !== currentSelection) {
                 this.lastSelection = currentSelection;
                 
@@ -295,20 +375,19 @@ export const ContextUIExpansion = {
 
                 if (this.selectedUnits && this.selectedUnits.length > 1) {
                     portrait.src = 'assets/black_spider.png';
-                    nameEl.innerText = `Swarm Group (${this.selectedUnits.length})`;
+                    nameEl.innerText = `Brood Swarm (${this.selectedUnits.length})`;
                     addButton('auto'); addButton('cancel');
                 }
                 else if (this.selectedUnits && this.selectedUnits.length === 1) {
                     let unit = this.selectedUnits[0];
                     portrait.src = unit.sprite.src || '';
                     if (unit instanceof Queen) {
-                        nameEl.innerText = "Swarm Queen";
+                        nameEl.innerText = "Obsidian Queen";
                         addButton('nest'); addButton('eggsac'); addButton('pylon'); 
                         addButton('turret'); addButton('wall'); 
                         addButton('mortar'); addButton('shrine');
                         addButton('cancel');
                     } else {
-                        // Prefix Zombie if applicable
                         let roleName = unit.role.charAt(0).toUpperCase() + unit.role.slice(1);
                         if (unit.isZombie) roleName = "Zombie " + roleName;
                         nameEl.innerText = roleName;
@@ -327,32 +406,50 @@ export const ContextUIExpansion = {
                 } 
                 else {
                     portrait.src = 'assets/nest_black.png'; 
-                    nameEl.innerText = "Hive Mind";
-                    
-                    // --- ADDED AMBUSH TRAP TO COMMANDER PANEL ---
+                    nameEl.innerText = "Obsidian Hive";
                     addButton('strike'); addButton('trap'); addButton('raise'); addButton('ambush'); addButton('cancel');
                 }
             }
 
+            // HP BAR UPDATE (Optimized)
             const statsContainer = document.getElementById('ui-stats-container');
             if (currentSelection && currentSelection.hp !== undefined) {
                 let max = currentSelection.maxHp;
                 if (currentSelection.team === 'black' && !(currentSelection instanceof Queen)) max += (this.techLevel.black * 20);
                 
                 let pct = Math.max(0, currentSelection.hp / max) * 100;
+                let barColor = pct > 50 ? '#00ff00' : (pct > 25 ? '#ffff00' : '#ff0000');
                 
                 let extraStats = '';
                 if (currentSelection.cargo && currentSelection.cargo.amount > 0) extraStats = `<div class="ui-stat">Cargo: ${currentSelection.cargo.amount} ${currentSelection.cargo.type}</div>`;
                 if (currentSelection.damage) extraStats += `<div class="ui-stat">DMG: ${currentSelection.damage + (this.techLevel[currentSelection.team] * 5 || 0)}</div>`;
 
-                const newHTML = `<div class="ui-stat">HP: ${Math.ceil(currentSelection.hp)} / ${max}</div><div id="ui-hp-bar-bg"><div id="ui-hp-bar-fill" style="width: ${pct}%; background: ${pct > 50 ? '#00ff00' : (pct > 25 ? '#ffff00' : '#ff0000')}"></div></div>${extraStats}`;
-                if (statsContainer.innerHTML !== newHTML) statsContainer.innerHTML = newHTML;
+                // Only inject HTML if structural text changed, otherwise just update the CSS var for massive performance gains
+                const newHTML = `
+                    <div class="ui-stat" id="ui-hp-text">HP: ${Math.ceil(currentSelection.hp)} / ${max}</div>
+                    <div id="ui-hp-bar-bg"><div id="ui-hp-bar-fill" style="background: ${barColor}; --hp-pct: ${pct}%"></div></div>
+                    ${extraStats}
+                `;
+                
+                // If it's just HP changing, update strictly via CSS Variables
+                if (statsContainer.innerHTML !== newHTML) {
+                    const fill = document.getElementById('ui-hp-bar-fill');
+                    const text = document.getElementById('ui-hp-text');
+                    if (fill && text) {
+                        fill.style.setProperty('--hp-pct', `${pct}%`);
+                        fill.style.background = barColor;
+                        text.innerText = `HP: ${Math.ceil(currentSelection.hp)} / ${max}`;
+                    } else {
+                        statsContainer.innerHTML = newHTML;
+                    }
+                }
                 
             } else {
                 const defaultMsg = `<div class="ui-stat">Select a unit or building to command the swarm.</div>`;
                 if (statsContainer.innerHTML !== defaultMsg) statsContainer.innerHTML = defaultMsg;
             }
 
+            // Sync Tool Highlights
             document.querySelectorAll('.cmd-btn').forEach(b => {
                 if (b.getAttribute('data-tool') === this.activeTool) b.classList.add('active-tool');
                 else b.classList.remove('active-tool');
@@ -361,6 +458,9 @@ export const ContextUIExpansion = {
     }
 };
 
+// ==========================================
+// 3. GAME OVER MODAL
+// ==========================================
 export const GameLoopExpansion = {
     patch: (game) => {
         const style = document.createElement('style');
@@ -371,7 +471,7 @@ export const GameLoopExpansion = {
                 padding: 40px; color: white; font-family: 'Courier New', monospace; text-align: center;
                 display: none; z-index: 9999; box-shadow: 0 0 50px rgba(0,0,0,1);
             }
-            #gameOverModal h1 { font-size: 40px; margin: 0 0 20px 0; }
+            #gameOverModal h1 { font-size: 40px; margin: 0 0 20px 0; text-transform: uppercase; }
             .restart-btn { background: #fff; color: #000; padding: 15px 30px; font-size: 20px; font-weight: bold; border: none; cursor: pointer; border-radius: 8px; margin-top: 20px; transition: 0.2s;}
             .restart-btn:hover { background: #ff9d00; transform: scale(1.05); }
         `;
@@ -380,20 +480,23 @@ export const GameLoopExpansion = {
 
         game.expansions.patchClass(Game, 'update', function(original) {
             original.call(this); 
+            
             if (this.queens.length > 0 && this.gameState === 'playing') {
-                const blackQueen = this.queens.find(q => q.team === 'black'); const redQueen = this.queens.find(q => q.team === 'red');
+                const blackQueen = this.queens.find(q => q.team === 'black'); 
+                const redQueen = this.queens.find(q => q.team === 'red');
+                
                 if (!blackQueen || blackQueen.hp <= 0) { 
                     this.gameState = 'lose'; 
                     const ui = document.getElementById('rtsUI'); if (ui) ui.style.display = 'none'; 
                     goModal.style.borderColor = '#ff0000';
-                    goModal.innerHTML = `<h1 style="color:#ff0000;">DEFEAT</h1><p>Your Queen has fallen to the Red Swarm.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
+                    goModal.innerHTML = `<h1 style="color:#ff0000; text-shadow: 0 0 10px #ff0000;">DEFEAT</h1><p>The Obsidian Queen has fallen to the Crimson Swarm.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
                     goModal.style.display = 'block';
                 } 
                 else if (!redQueen || redQueen.hp <= 0) { 
                     this.gameState = 'win'; 
                     const ui = document.getElementById('rtsUI'); if (ui) ui.style.display = 'none'; 
-                    goModal.style.borderColor = '#00ff00';
-                    goModal.innerHTML = `<h1 style="color:#00ff00;">VICTORY</h1><p>The Pumpkin Patch belongs to the Black Swarm.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
+                    goModal.style.borderColor = '#aa00ff';
+                    goModal.innerHTML = `<h1 style="color:#aa00ff; text-shadow: 0 0 10px #aa00ff;">VICTORY</h1><p>The Pumpkin Patch belongs to the Obsidian Brood.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
                     goModal.style.display = 'block';
                 }
             }
