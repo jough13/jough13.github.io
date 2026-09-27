@@ -1,32 +1,183 @@
 // expansions/Particles.js
+// ==========================================
+// THE OBSIDIAN BROOD PARTICLE ENGINE
+// ==========================================
 
-export class Particle {
-    constructor(x, y, color) {
-        this.x = x; this.y = y; this.color = color;
-        const angle = Math.random() * Math.PI * 2; const speed = Math.random() * 4 + 1;
-        this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
-        this.life = Math.random() * 30 + 15; this.maxLife = this.life; this.size = Math.random() * 3 + 2;
+// 1. CONFIGURATION
+const PARTICLE_CONFIG = {
+    maxParticles: 2000, // Hard limit to guarantee 60fps on mobile.
+    defaultFriction: 0.85,
+    splatterFriction: 0.60,
+    magicFloatSpeed: -1.5
+};
+
+// 2. THE RECYCLABLE PARTICLE
+// We use a single class that gets reused to prevent Garbage Collection stutter.
+class PooledParticle {
+    constructor() {
+        this.active = false;
+        this.x = 0; this.y = 0;
+        this.vx = 0; this.vy = 0;
+        this.color = '#fff';
+        this.life = 0; this.maxLife = 1;
+        this.size = 1; this.maxSize = 1;
+        this.type = 'standard';
     }
-    update() { this.x += this.vx; this.y += this.vy; this.vx *= 0.9; this.vy *= 0.9; this.life--; }
-    draw(ctx) { 
-        ctx.globalAlpha = Math.max(0, this.life / this.maxLife); 
-        ctx.fillStyle = this.color; 
-        ctx.beginPath(); 
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); 
-        ctx.fill(); 
-        ctx.globalAlpha = 1.0; 
+
+    // "Awakens" the particle from the pool
+    init(x, y, color, type) {
+        this.active = true;
+        this.x = x; this.y = y; 
+        this.color = color;
+        this.type = type || 'standard';
+        
+        const angle = Math.random() * Math.PI * 2; 
+        const speed = Math.random() * 4 + 1;
+        
+        this.vx = Math.cos(angle) * speed; 
+        this.vy = Math.sin(angle) * speed;
+        
+        // Type-specific overrides
+        if (this.type === 'splatter') {
+            this.life = Math.random() * 20 + 10;
+            this.vx *= 1.5; this.vy *= 1.5; // Fast initial burst
+        } else if (this.type === 'magic') {
+            this.life = Math.random() * 40 + 20;
+            this.vy = (Math.random() * -2) - 0.5; // Drift upwards
+            this.vx *= 0.5; // Less horizontal spread
+        } else {
+            this.life = Math.random() * 30 + 15;
+        }
+
+        this.maxLife = this.life; 
+        this.size = Math.random() * 4 + 2;
+        this.maxSize = this.size;
+    }
+
+    update() {
+        this.x += this.vx; 
+        this.y += this.vy; 
+        
+        if (this.type === 'splatter') {
+            this.vx *= PARTICLE_CONFIG.splatterFriction; 
+            this.vy *= PARTICLE_CONFIG.splatterFriction;
+        } else if (this.type === 'magic') {
+            // Magic floats up and ignores standard friction
+            this.vy = Math.min(this.vy, PARTICLE_CONFIG.magicFloatSpeed);
+        } else {
+            this.vx *= PARTICLE_CONFIG.defaultFriction; 
+            this.vy *= PARTICLE_CONFIG.defaultFriction; 
+        }
+
+        this.life--;
+        if (this.life <= 0) this.active = false;
+    }
+
+    draw(ctx) {
+        // PERFORMANCE: Shrinking rectangles are vastly faster to render than fading arcs.
+        // It also perfectly fits the 16-bit retro style!
+        const lifeRatio = this.life / this.maxLife;
+        
+        if (this.type === 'magic') {
+            // Magic particles shrink to a pinpoint
+            const currentSize = Math.max(0.5, this.maxSize * lifeRatio);
+            ctx.fillStyle = this.color; 
+            ctx.fillRect(this.x - currentSize/2, this.y - currentSize/2, currentSize, currentSize);
+        } else {
+            // Standard/Splatter fade out
+            ctx.globalAlpha = Math.max(0, lifeRatio); 
+            ctx.fillStyle = this.color; 
+            ctx.fillRect(this.x - this.size/2, this.y - this.size/2, this.size, this.size);
+            ctx.globalAlpha = 1.0; 
+        }
     }
 }
 
+// 3. THE RING-BUFFER OBJECT POOL
+class ParticleSystem {
+    constructor(maxCount) {
+        this.particles = new Array(maxCount);
+        for (let i = 0; i < maxCount; i++) {
+            this.particles[i] = new PooledParticle();
+        }
+        this.index = 0; // The write head
+    }
+
+    emit(x, y, color, count, type) {
+        for (let i = 0; i < count; i++) {
+            let p = this.particles[this.index];
+            
+            // Offset spawn point slightly to create a cloud instead of a single point
+            let offsetX = x + (Math.random() - 0.5) * 10;
+            let offsetY = y + (Math.random() - 0.5) * 10;
+            
+            p.init(offsetX, offsetY, color, type);
+            
+            // Advance the write head. If we hit the max, loop back to 0 and overwrite the oldest particles!
+            this.index = (this.index + 1) % this.particles.length;
+        }
+    }
+
+    update() {
+        for (let i = 0; i < this.particles.length; i++) {
+            if (this.particles[i].active) {
+                this.particles[i].update();
+            }
+        }
+    }
+
+    draw(ctx, viewL, viewR, viewT, viewB) {
+        for (let i = 0; i < this.particles.length; i++) {
+            let p = this.particles[i];
+            
+            // Strict Viewport Culling! Only draw particles actually on the screen.
+            if (p.active && p.x >= viewL && p.x <= viewR && p.y >= viewT && p.y <= viewB) {
+                p.draw(ctx);
+            }
+        }
+    }
+}
+
+// 4. THE EXPANSION HOOK
 export const ParticleExpansion = {
     init: (game) => {
+        game.particleSystem = new ParticleSystem(PARTICLE_CONFIG.maxParticles);
+
         game.bus.on('particles', (data) => {
-            for(let i=0; i<data.count; i++) {
-                let c = data.color; 
-                if (c === 'black') c = '#5533aa'; 
-                if (c === 'red') c = '#ff2200';
-                game.addEntity(new Particle(data.x, data.y, c));
+            let c = data.color; 
+            
+            // Lore/Faction Color Translation layer
+            if (c === 'black') c = '#aa00ff';       // Obsidian Brood Magic
+            else if (c === 'red') c = '#ff2200';    // Crimson Swarm Magic
+            else if (c === 'nature') c = '#00ff00'; // Neutral Bug Guts
+            
+            // Determine type based on source if not explicitly provided
+            let type = data.type || 'standard';
+            if (c === '#00ff00' || c === '#aaffaa') type = 'magic'; // Healing/Spells
+            if (c === '#ff0000') type = 'splatter'; // Blood
+            
+            game.particleSystem.emit(data.x, data.y, c, data.count, type);
+        });
+    },
+
+    patch: (game) => {
+        // Detach particle updates from the main entity array for immense performance gains
+        game.expansions.patchClass(game.constructor, 'update', function(original) {
+            original.call(this);
+            if (this.gameState === 'playing') {
+                this.particleSystem.update();
             }
+        });
+
+        // Draw particles on the top layer, but safely culled!
+        game.bus.on('postDraw', (ctx) => {
+            const padding = 50;
+            const viewL = game.camera.x - padding;
+            const viewR = game.camera.x + game.canvas.width + padding;
+            const viewT = game.camera.y - padding;
+            const viewB = game.camera.y + game.canvas.height + padding;
+
+            game.particleSystem.draw(ctx, viewL, viewR, viewT, viewB);
         });
     }
 }
