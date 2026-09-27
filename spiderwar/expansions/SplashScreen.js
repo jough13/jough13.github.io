@@ -29,6 +29,23 @@ export const SplashScreenExpansion = {
                 color: rgba(255, 255, 255, 0.6); background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 5px;
             }
 
+            /* The Overlay Text for Intro */
+            #splashText {
+                position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                z-index: 2; text-align: center;
+                font-family: 'Courier New', monospace; color: #ff9d00;
+                text-shadow: 0 0 15px rgba(255, 157, 0, 0.8), 3px 3px 0px #000;
+                pointer-events: none;
+            }
+            #splashText h1 { font-size: 6rem; margin: 0; letter-spacing: 4px; text-transform: uppercase; }
+            #splashText p { font-size: 1.5rem; margin-top: 20px; color: #ffffff; animation: splashPulse 1.5s infinite; }
+            
+            @keyframes splashPulse { 
+                0% { opacity: 0.2; } 
+                50% { opacity: 1; } 
+                100% { opacity: 0.2; } 
+            }
+
             /* --- MAIN MENU VIEW --- */
             #menuView {
                 position: relative; z-index: 10; display: none; flex-direction: column; align-items: center;
@@ -37,7 +54,7 @@ export const SplashScreenExpansion = {
                 box-shadow: 0 0 50px rgba(255, 157, 0, 0.2), inset 0 0 20px rgba(0,0,0,1);
                 backdrop-filter: blur(8px);
             }
-            #menuView h1 { font-size: 3rem; margin: 0 0 30px 0; text-shadow: 2px 2px 0px #000, 0 0 15px #ff9d00; text-align: center; }
+            #menuView h1 { font-size: 4rem; margin: 0 0 30px 0; text-shadow: 2px 2px 0px #000, 0 0 15px #ff9d00; text-align: center; }
             
             .menu-btn {
                 background: rgba(34, 17, 0, 0.9); border: 2px solid #ff9d00; color: white;
@@ -59,12 +76,10 @@ export const SplashScreenExpansion = {
             #loadingView {
                 position: relative; z-index: 10; display: none; flex-direction: column; align-items: center;
             }
-            .spinner { font-size: 4rem; animation: spin 2s linear infinite; margin-bottom: 20px; }
-            @keyframes spin { 100% { transform: rotate(360deg); } }
             
-            #loadBarContainer { width: 300px; height: 20px; border: 2px solid #ff9d00; background: #111; padding: 2px; }
+            #loadBarContainer { width: 400px; height: 30px; border: 3px solid #ff9d00; background: #111; padding: 3px; margin-bottom: 15px; box-shadow: 0 0 20px rgba(255, 157, 0, 0.3);}
             #loadBarFill { width: 0%; height: 100%; background: #ff9d00; transition: width 0.1s; }
-            #loadText { margin-top: 10px; color: #fff; font-weight: bold; }
+            #loadText { color: #fff; font-weight: bold; font-size: 1.2rem; letter-spacing: 2px; text-transform: uppercase;}
         `;
         document.head.appendChild(style);
 
@@ -73,13 +88,16 @@ export const SplashScreenExpansion = {
         ui.id = 'preGameUI';
         ui.innerHTML = `
             <div id="introView">
-                <!-- FIXED: Added 'muted' and 'loop' back so browsers allow it to autoplay! -->
                 <video id="introVideo" src="assets/intro.mp4" autoplay loop muted playsinline></video>
+                <div id="splashText">
+                    <h1>SpiderWars!</h1>
+                    <p>[ CLICK TO COMMAND THE SWARM ]</p>
+                </div>
                 <div class="skip-hint">Click anywhere to skip...</div>
             </div>
 
             <div id="menuView">
-                <h1>PUMPKIN PATCH RTS</h1>
+                <h1>SPIDERWARS!</h1>
                 <button class="menu-btn" id="btnNewGame">NEW GAME</button>
                 <button class="menu-btn" id="btnLoadGame" disabled>CONTINUE</button>
                 <button class="menu-btn" id="btnSettings">SETTINGS</button>
@@ -95,7 +113,6 @@ export const SplashScreenExpansion = {
             </div>
 
             <div id="loadingView">
-                <div class="spinner">🎃</div>
                 <div id="loadBarContainer"><div id="loadBarFill"></div></div>
                 <div id="loadText">Summoning Swarm... 0%</div>
             </div>
@@ -110,7 +127,6 @@ export const SplashScreenExpansion = {
         const introVideo = document.getElementById('introVideo');
 
         // --- JS Fallback to force video play if autoplay is acting stubborn ---
-        // We catch the promise so it doesn't throw a red error in the console if the browser is being aggressive
         introVideo.play().catch(e => console.log("Autoplay prevented by browser, waiting for user click."));
 
         // --- State ---
@@ -132,7 +148,7 @@ export const SplashScreenExpansion = {
 
         // 1. Intro Video Logic
         viewIntro.addEventListener('click', showMenu);
-        introVideo.addEventListener('ended', showMenu); // Added fallback if the video is short and doesn't loop
+        introVideo.addEventListener('ended', showMenu); 
 
         // 2. Settings Logic
         document.getElementById('btnSettings').addEventListener('click', () => { viewSettings.style.display = 'flex'; });
