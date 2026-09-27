@@ -312,6 +312,9 @@ export class Game {
 
         // Base Engine Handlers
         this.bus.on('spawnSpider', (data) => {
+            // Ignore roles that belong to expansions!
+            if (data.role !== 'harvester' && data.role !== 'soldier') return; 
+
             const cost = data.role === 'soldier' ? 25 : 10;
             if (this.eco[data.team].pumpkins >= cost && this.pop[data.team] < this.maxPop[data.team]) {
                 this.eco[data.team].pumpkins -= cost; 
