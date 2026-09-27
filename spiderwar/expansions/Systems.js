@@ -137,6 +137,102 @@ export const FogOfWarExpansion = {
 
 export const SaveLoadExpansion = {
     patch: (game) => {
+        
+        // Extracted Loading Logic so it can be called by the Keyboard OR the Main Menu
+        const performLoad = () => {
+            const data = localStorage.getItem('spiderRTS_saveData'); 
+            if(!data) return alert("No save found!");
+            
+            const state = JSON.parse(data);
+            game.eco = state.eco; game.pop = state.pop; game.maxPop = state.maxPop; 
+            game.techLevel = state.techLevel; game.camera = state.camera; game.tick = state.tick || 0;
+            
+            game.entities = []; 
+            
+            state.spiders.forEach(s => { 
+                let o;
+                if (s.isZombie) { 
+                    o = new ZombieSpider(s.x, s.y, s.team); 
+                } else if (s.role === 'broodling') {
+                    o = new Broodling(s.x, s.y, s.team);
+                } else {
+                    o = new Spider(s.x, s.y, s.team, s.role);
+                    if (s.role === 'spitter') { o.maxHp = 75; o.damage = 25; o.attackSpeed = 45; o.range = 250; o.sprite.src = s.team === 'black' ? 'assets/spitter_black.png' : 'assets/spitter_red.png'; }
+                    if (s.role === 'tarantula') { o.maxHp = 400; o.damage = 45; o.attackSpeed = 40; o.size = 22; o.baseSpeed = 0.6; o.sprite.src = s.team === 'black' ? 'assets/tarantula_black.png' : 'assets/tarantula_red.png'; }
+                    if (s.role === 'widow') { 
+                        o.maxHp = 150; o.damage = 100; o.baseSpeed = 1.9; 
+                        o.isCloaked = s.isCloaked; o.cloakCooldown = s.cloakCooldown; 
+                        o.sprite.src = s.team === 'black' ? 'assets/widow_black.png' : 'assets/widow_red.png'; 
+                    }
+                    if (s.role === 'goliath') { o.maxHp = 1200; o.damage = 90; o.size = 38; o.baseSpeed = 0.4; o.sprite.src = s.team === 'black' ? 'assets/goliath_black.png' : 'assets/goliath_red.png'; }
+                }
+                o.hp = s.hp; o.cargo = s.cargo; 
+                if (s.life !== undefined) o.life = s.life; 
+                game.addEntity(o); 
+            });
+
+            state.structures.forEach(s => { 
+                let o = new Structure(s.x, s.y, s.team, s.type); 
+                o.hp = s.hp; o.isConstructing = s.isConstructing; o.buildProgress = s.buildProgress;
+                o.territory = s.territory; o.originalTerritory = s.originalTerritory;
+                if (s.cooldown !== undefined) o.cooldown = s.cooldown;
+                if(o.isConstructing) o.isPaused = true;
+                game.addEntity(o); 
+            });
+            
+            state.resourceNodes.forEach(p => { let o = new ResourceNode(p.x, p.y, p.type); o.resources = p.resources; game.addEntity(o); });
+            state.queens.forEach(q => { let o = new Queen(q.x, q.y, q.team); o.hp = q.hp; game.addEntity(o); });
+            
+            if (state.critters) {
+                state.critters.forEach(c => { 
+                    let o = c.type === 'GoldenBug' ? new GoldenBug(c.x, c.y) : new Aphid(c.x, c.y);
+                    o.hp = c.hp; o.color = c.color;
+                    game.addEntity(o); 
+                });
+            }
+            if (state.bosses) {
+                state.bosses.forEach(b => {
+                    let o = new CentipedeBoss(b.x, b.y);
+                    o.hp = b.hp;
+                    game.addEntity(o);
+                });
+            }
+            if (state.hazards) {
+                state.hazards.forEach(h => {
+                    let f = new VenusFlytrap(h.x, h.y);
+                    f.hp = h.hp; f.cooldown = h.cooldown;
+                    game.addEntity(f);
+                });
+            }
+            if (state.controlPoints) {
+                state.controlPoints.forEach(c => {
+                    let o = new JackOLantern(c.x, c.y);
+                    o.controllingTeam = c.team; o.captureProgress = c.prog;
+                    game.addEntity(o);
+                });
+            }
+            if (state.corpses) {
+                state.corpses.forEach(c => {
+                    let o = new Corpse(c.x, c.y);
+                    o.life = c.life;
+                    game.addEntity(o);
+                });
+            }
+            if (state.eggTraps) {
+                state.eggTraps.forEach(t => {
+                    let o = new EggTrap(t.x, t.y, t.team);
+                    o.hp = t.hp;
+                    game.addEntity(o);
+                });
+            }
+            
+            console.log("Game Successfully Loaded!");
+        };
+
+        // Listen for the custom event fired by the Main Menu
+        game.bus.on('triggerLoadGame', performLoad);
+
+        // Keep keyboard shortcuts for rapid saving/loading during gameplay
         window.addEventListener('keydown', (e) => {
             if (e.key.toLowerCase() === 'o') {
                 const state = {
@@ -152,7 +248,7 @@ export const SaveLoadExpansion = {
                         x: s.x, y: s.y, team: s.team, type: s.type, hp: s.hp,
                         isConstructing: s.isConstructing, buildProgress: s.buildProgress,
                         territory: s.territory, originalTerritory: s.originalTerritory,
-                        cooldown: s.cooldown // Included cooldown to save Mortar & Turret reload times
+                        cooldown: s.cooldown
                     })),
                     
                     resourceNodes: game.resourceNodes.map(p => ({x: p.x, y: p.y, type: p.type, resources: p.resources})),
@@ -164,93 +260,14 @@ export const SaveLoadExpansion = {
                     corpses: game.entities.filter(e => e instanceof Corpse).map(c => ({x: c.x, y: c.y, life: c.life})),
                     eggTraps: game.entities.filter(e => e instanceof EggTrap).map(t => ({x: t.x, y: t.y, team: t.team, hp: t.hp}))
                 };
-                localStorage.setItem('spiderRTS_saveData', JSON.stringify(state)); alert("Game Saved!");
+                localStorage.setItem('spiderRTS_saveData', JSON.stringify(state)); 
+                
+                // Fancy in-game notification instead of a blocking alert
+                game.bus.emit('particles', {x: game.camera.x + game.canvas.width/2, y: game.camera.y + game.canvas.height/2, color: '#00ff00', count: 50});
+                console.log("Game Saved!");
             }
             if (e.key.toLowerCase() === 'p') {
-                const data = localStorage.getItem('spiderRTS_saveData'); if(!data) return alert("No save found!");
-                const state = JSON.parse(data);
-                game.eco = state.eco; game.pop = state.pop; game.maxPop = state.maxPop; game.techLevel = state.techLevel; game.camera = state.camera; game.tick = state.tick || 0;
-                
-                game.entities = []; 
-                
-                state.spiders.forEach(s => { 
-                    let o;
-                    if (s.isZombie) { 
-                        o = new ZombieSpider(s.x, s.y, s.team); 
-                    } else if (s.role === 'broodling') {
-                        o = new Broodling(s.x, s.y, s.team);
-                    } else {
-                        o = new Spider(s.x, s.y, s.team, s.role);
-                        if (s.role === 'spitter') { o.maxHp = 75; o.damage = 25; o.attackSpeed = 45; o.range = 250; o.sprite.src = s.team === 'black' ? 'assets/spitter_black.png' : 'assets/spitter_red.png'; }
-                        if (s.role === 'tarantula') { o.maxHp = 400; o.damage = 45; o.attackSpeed = 40; o.size = 22; o.baseSpeed = 0.6; o.sprite.src = s.team === 'black' ? 'assets/tarantula_black.png' : 'assets/tarantula_red.png'; }
-                        if (s.role === 'widow') { 
-                            o.maxHp = 150; o.damage = 100; o.baseSpeed = 1.9; 
-                            o.isCloaked = s.isCloaked; o.cloakCooldown = s.cloakCooldown; 
-                            o.sprite.src = s.team === 'black' ? 'assets/widow_black.png' : 'assets/widow_red.png'; 
-                        }
-                        if (s.role === 'goliath') { o.maxHp = 1200; o.damage = 90; o.size = 38; o.baseSpeed = 0.4; o.sprite.src = s.team === 'black' ? 'assets/goliath_black.png' : 'assets/goliath_red.png'; }
-                    }
-                    o.hp = s.hp; o.cargo = s.cargo; 
-                    if (s.life !== undefined) o.life = s.life; 
-                    game.addEntity(o); 
-                });
-
-                state.structures.forEach(s => { 
-                    let o = new Structure(s.x, s.y, s.team, s.type); 
-                    o.hp = s.hp; o.isConstructing = s.isConstructing; o.buildProgress = s.buildProgress;
-                    o.territory = s.territory; o.originalTerritory = s.originalTerritory;
-                    if (s.cooldown !== undefined) o.cooldown = s.cooldown; // Restores Mortar/Turret cooldowns
-                    if(o.isConstructing) o.isPaused = true;
-                    game.addEntity(o); 
-                });
-                
-                state.resourceNodes.forEach(p => { let o = new ResourceNode(p.x, p.y, p.type); o.resources = p.resources; game.addEntity(o); });
-                state.queens.forEach(q => { let o = new Queen(q.x, q.y, q.team); o.hp = q.hp; game.addEntity(o); });
-                
-                if (state.critters) {
-                    state.critters.forEach(c => { 
-                        let o = c.type === 'GoldenBug' ? new GoldenBug(c.x, c.y) : new Aphid(c.x, c.y);
-                        o.hp = c.hp; o.color = c.color;
-                        game.addEntity(o); 
-                    });
-                }
-                if (state.bosses) {
-                    state.bosses.forEach(b => {
-                        let o = new CentipedeBoss(b.x, b.y);
-                        o.hp = b.hp;
-                        game.addEntity(o);
-                    });
-                }
-                if (state.hazards) {
-                    state.hazards.forEach(h => {
-                        let f = new VenusFlytrap(h.x, h.y);
-                        f.hp = h.hp; f.cooldown = h.cooldown;
-                        game.addEntity(f);
-                    });
-                }
-                if (state.controlPoints) {
-                    state.controlPoints.forEach(c => {
-                        let o = new JackOLantern(c.x, c.y);
-                        o.controllingTeam = c.team; o.captureProgress = c.prog;
-                        game.addEntity(o);
-                    });
-                }
-                if (state.corpses) {
-                    state.corpses.forEach(c => {
-                        let o = new Corpse(c.x, c.y);
-                        o.life = c.life;
-                        game.addEntity(o);
-                    });
-                }
-                if (state.eggTraps) {
-                    state.eggTraps.forEach(t => {
-                        let o = new EggTrap(t.x, t.y, t.team);
-                        o.hp = t.hp;
-                        game.addEntity(o);
-                    });
-                }
-                
-                alert("Game Loaded!");
+                performLoad(); // Now re-uses the exact same logic!
             }
         });
     }
