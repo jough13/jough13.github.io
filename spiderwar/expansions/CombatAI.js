@@ -1,5 +1,5 @@
 // expansions/CombatAI.js
-import { MathUtils, Spider, Structure, Projectile } from '../game.js';
+import { MathUtils, Spider, Structure, Projectile, SPIDER_STATE } from '../game.js';
 import { Queen } from './Queen.js';
 
 export const CombatAndHarvesterExpansion = {
@@ -54,7 +54,7 @@ export const CombatAndHarvesterExpansion = {
             let nearestEnemy = gameObj.getNearestEnemy(this.x, this.y, this.team, detectRadius);
 
             if (nearestEnemy) {
-                this.state = 'combat'; 
+                this.state = SPIDER_STATE.COMBAT; 
                 this.angle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
                 
                 const combatRange = nearestEnemy.size ? nearestEnemy.size + 15 : 20;
@@ -92,7 +92,6 @@ export const CombatAndHarvesterExpansion = {
                     
                     if (MathUtils.distSq(0,0, dx, dy) > 6400) { // 80px orbit radius
                         // Add a slight randomization to the angle so soldiers fan out into a protective ring
-                        // rather than collapsing into a single pixel stack
                         this.angle = Math.atan2(dy, dx) + MathUtils.randomRange(-0.2, 0.2);
                         this.x += Math.cos(this.angle) * currentSpeed; 
                         this.y += Math.sin(this.angle) * currentSpeed;
@@ -103,17 +102,16 @@ export const CombatAndHarvesterExpansion = {
 
             // --- HARVESTER ECONOMY AI ---
             
-            // --- FIX B: GHOST NODE MEMORY LEAK ---
             // If our target was destroyed (Nests) or depleted (Pumpkins) by someone else, clear it!
             if (this.target && (
                 (this.target.hp !== undefined && this.target.hp <= 0) || 
                 (this.target.resources !== undefined && this.target.resources <= 0)
             )) {
-                this.target = null; // Instantly releases the dead object for the Garbage Collector
+                this.target = null; 
             }
 
-            if (this.cargo.amount === 0) this.state = 'seeking_pumpkin'; 
-            else this.state = 'returning_home';
+            if (this.cargo.amount === 0) this.state = SPIDER_STATE.SEEKING_RESOURCE; 
+            else this.state = SPIDER_STATE.RETURNING_HOME;
             
             // PERFORMANCE: Stagger target searches to prevent CPU lag spikes
             if (!this.target) {
@@ -124,7 +122,7 @@ export const CombatAndHarvesterExpansion = {
                     let closest = null; 
                     let minD = Infinity;
 
-                    if (this.state === 'seeking_pumpkin') {
+                    if (this.state === SPIDER_STATE.SEEKING_RESOURCE) {
                         // Find nearest Resource Node (that still has resources)
                         gameObj.resourceNodes.forEach(r => { 
                             if (r.resources > 0) {
@@ -163,7 +161,7 @@ export const CombatAndHarvesterExpansion = {
                     this.y += Math.sin(this.angle) * currentSpeed;
                 } else {
                     // Reached Target!
-                    if (this.state === 'seeking_pumpkin' && this.target.resources > 0) {
+                    if (this.state === SPIDER_STATE.SEEKING_RESOURCE && this.target.resources > 0) {
                         let amountGathered = Math.min(10, this.target.resources);
                         this.cargo.amount = amountGathered; 
                         this.cargo.type = this.target.type; 
@@ -175,7 +173,7 @@ export const CombatAndHarvesterExpansion = {
                         gameObj.bus.emit('particles', {x: this.x, y: this.y, color: resColor, count: 5}); 
                         gameObj.bus.emit('playSound', 'harvest');
                     } 
-                    else if (this.state === 'returning_home') {
+                    else if (this.state === SPIDER_STATE.RETURNING_HOME) {
                         if (this.cargo.type === 'pumpkin') gameObj.eco[this.team].pumpkins += this.cargo.amount;
                         else if (this.cargo.type === 'dew') gameObj.eco[this.team].dew += this.cargo.amount;
                         
