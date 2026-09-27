@@ -233,6 +233,8 @@ export const AdvancedUnitControlExpansion = {
     }
 };
 
+// REPLACE the ConstructionExpansion block in expansions/Controls.js with this:
+
 export const ConstructionExpansion = {
     init: (game) => {
         game.bus.listeners['buildStructure'] = [];
@@ -241,8 +243,15 @@ export const ConstructionExpansion = {
             const queen = game.queens.find(q => q.team === data.team);
             if (!queen) return; 
             
-            const costs = { 'nest': 150, 'eggsac': 50, 'turret': 100, 'wall': 25, 'pylon': 25 };
-            if (game.eco[data.team].pumpkins < costs[data.type]) {
+            // UPGRADED to support dual-resource costs!
+            const costs = { 
+                'nest': {p: 150, d: 0}, 'eggsac': {p: 50, d: 0}, 'pylon': {p: 25, d: 0}, 
+                'turret': {p: 100, d: 0}, 'wall': {p: 25, d: 0},
+                'mortar': {p: 200, d: 50}, 'shrine': {p: 150, d: 100} // --- NEW STRUCTURES ---
+            };
+            let cost = costs[data.type];
+            
+            if (game.eco[data.team].pumpkins < cost.p || game.eco[data.team].dew < cost.d) {
                 game.bus.emit('particles', {x: data.x, y: data.y, color: '#ff0000', count: 10});
                 return; 
             }
@@ -252,7 +261,7 @@ export const ConstructionExpansion = {
                 queen.activeConstruction = null;
             }
 
-            queen.buildTarget = { x: data.x, y: data.y, type: data.type, cost: costs[data.type] };
+            queen.buildTarget = { x: data.x, y: data.y, type: data.type, cost: cost };
             queen.commandTarget = { x: data.x, y: data.y }; 
             game.bus.emit('particles', {x: data.x, y: data.y, color: '#ff9d00', count: 10});
             game.bus.emit('playSound', 'shoot');
@@ -262,7 +271,6 @@ export const ConstructionExpansion = {
     patch: (game) => {
         game.expansions.patchClass(Queen, 'update', function(original, gameObj) {
             if (this.activeConstruction) {
-                // FIXED BUG: Prevent Queen from trying to build destroyed/missing structures
                 if (this.activeConstruction.hp <= 0) {
                     this.activeConstruction = null;
                 }
@@ -302,8 +310,11 @@ export const ConstructionExpansion = {
                 if (this.buildTarget) {
                     const distSq = MathUtils.distSq(this.buildTarget.x, this.buildTarget.y, this.x, this.y);
                     if (distSq < 3600) { 
-                        if (gameObj.eco[this.team].pumpkins >= this.buildTarget.cost) {
-                            gameObj.eco[this.team].pumpkins -= this.buildTarget.cost;
+                        // UPGRADED to deduct dual resources!
+                        if (gameObj.eco[this.team].pumpkins >= this.buildTarget.cost.p && gameObj.eco[this.team].dew >= this.buildTarget.cost.d) {
+                            gameObj.eco[this.team].pumpkins -= this.buildTarget.cost.p;
+                            gameObj.eco[this.team].dew -= this.buildTarget.cost.d;
+                            
                             let s = new Structure(this.buildTarget.x, this.buildTarget.y, this.team, this.buildTarget.type);
                             s.isConstructing = true;
                             s.isPaused = false;
