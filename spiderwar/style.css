@@ -1,4 +1,26 @@
 /* ==========================================
+   THEME VARIABLES (LORE & EXPANDABILITY)
+========================================== */
+:root {
+    /* Base Environment */
+    --color-void: #050200;
+    --color-dirt: #120a05;
+    --color-bone: #dfba96;
+    
+    /* Resources */
+    --color-pumpkin: #ff9d00;
+    --color-pumpkin-light: #ffb732;
+    --color-dew: #00aaff;
+    
+    /* Factions */
+    --color-obsidian: #aa00ff; /* Player magic */
+    --color-crimson: #ff0000;  /* Enemy magic */
+    
+    /* Typography */
+    --font-primary: 'Courier New', Courier, monospace;
+}
+
+/* ==========================================
    GLOBAL & RESET
 ========================================== */
 body, html {
@@ -6,14 +28,17 @@ body, html {
     padding: 0;
     width: 100%;
     height: 100%;
-    background-color: #120a05; /* Deeper, richer dirt brown */
+    background-color: var(--color-void); 
     overflow: hidden;
-    font-family: 'Courier New', Courier, monospace;
-    color: #ff9d00;
+    font-family: var(--font-primary);
+    color: var(--color-pumpkin);
     
     /* Prevent accidental text highlighting when drag-selecting units */
     user-select: none; 
     -webkit-user-select: none;
+    
+    /* Prevents the ugly blue flash when tapping UI on mobile iOS/Android */
+    -webkit-tap-highlight-color: transparent;
     
     /* RTS style targeting cursor */
     cursor: crosshair; 
@@ -22,7 +47,7 @@ body, html {
 /* ==========================================
    ATMOSPHERE (VIGNETTE)
 ========================================== */
-/* Adds a spooky shadowed edge to the entire screen without affecting performance */
+/* Adds a spooky shadowed edge to the entire screen */
 body::after {
     content: "";
     position: absolute;
@@ -31,8 +56,11 @@ body::after {
     width: 100%;
     height: 100%;
     pointer-events: none; /* Lets all clicks pass through to the canvas */
-    background: radial-gradient(circle, transparent 60%, rgba(5, 2, 0, 0.8) 100%);
+    background: radial-gradient(circle, transparent 60%, rgba(5, 2, 0, 0.85) 100%);
     z-index: 1000; /* Sits above the canvas, but below the UI */
+    
+    /* Hardware acceleration: Prevents massive repaints during rendering */
+    transform: translateZ(0);
 }
 
 /* ==========================================
@@ -42,22 +70,29 @@ body::after {
     display: block;
     width: 100%;
     height: 100%;
-    image-rendering: pixelated; /* Keeps pixel art crisp if you scale it */
+    
+    /* Keeps 16-bit pixel art crisp instead of blurry when scaled */
+    image-rendering: pixelated; 
+    image-rendering: crisp-edges;
+    
+    /* CRITICAL for mobile RTS: Prevents browser from trying to scroll the page when dragging */
+    touch-action: none; 
+    outline: none;
 }
 
 /* ==========================================
-   TOP-LEFT DEBUG / INFO UI
+   TYPOGRAPHY & LEGACY UI FALLBACKS
 ========================================== */
 #ui {
     position: absolute;
     top: 15px;
     left: 15px;
-    background: rgba(15, 7, 2, 0.85); /* Slightly darker, more opaque */
+    background: rgba(15, 7, 2, 0.85);
     padding: 15px 20px;
-    border: 1px solid #ff9d00;
+    border: 1px solid var(--color-pumpkin);
     border-radius: 6px;
     pointer-events: none; 
-    z-index: 2001; /* Ensure it stays above the vignette */
+    z-index: 2001; 
     
     /* Spooky glowing glassmorphism */
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.9), inset 0 0 15px rgba(255, 157, 0, 0.15);
@@ -77,34 +112,49 @@ h1 {
 p {
     margin: 0 0 10px 0;
     font-size: 0.9rem;
-    color: #dfba96; /* Pale, desaturated orange-bone color */
+    color: var(--color-bone);
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 1);
 }
 
 /* ==========================================
    CUSTOM SCROLLBARS (For JS-injected Menus)
 ========================================== */
-/* Ensures that when your unit action menus overflow, the scrollbar matches the theme */
+/* Ensures that when unit action menus overflow, the scrollbar matches the theme */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-    background: #1a1005;
+    background: rgba(26, 16, 5, 0.9);
     border-left: 1px solid #331a00;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #ff9d00;
+    background: var(--color-pumpkin);
     border-radius: 4px;
-    border: 1px solid #1a1005;
+    border: 1px solid rgba(26, 16, 5, 0.9);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #ffb732;
+    background: var(--color-pumpkin-light);
 }
 
 ::-webkit-scrollbar-corner {
-    background: #1a1005;
+    background: rgba(26, 16, 5, 0.9);
+}
+
+/* ==========================================
+   UTILITY CLASSES (For JS Expansions)
+========================================== */
+.text-obsidian { color: var(--color-obsidian) !important; text-shadow: 0 0 5px var(--color-obsidian); }
+.text-crimson { color: var(--color-crimson) !important; text-shadow: 0 0 5px var(--color-crimson); }
+
+.pulse-warning {
+    animation: warningPulse 1s infinite alternate;
+}
+
+@keyframes warningPulse {
+    from { box-shadow: inset 0 0 10px rgba(255, 0, 0, 0.2); border-color: var(--color-pumpkin); }
+    to { box-shadow: inset 0 0 30px rgba(255, 0, 0, 0.8); border-color: var(--color-crimson); }
 }
