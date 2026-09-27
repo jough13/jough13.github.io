@@ -203,6 +203,10 @@ export const ContextUIExpansion = {
             'pylon':  { icon: '🗼', name: 'Pylon', cost: '25🎃', type: 'tool', val: 'pylon' },
             'turret': { icon: '🔫', name: 'Turret', cost: '100🎃', type: 'tool', val: 'turret' },
             'wall':   { icon: '🧱', name: 'Wall', cost: '25🎃', type: 'tool', val: 'wall' },
+
+            // --- FORTRESS STRUCTURES ---
+            'mortar': { icon: '🌋', name: 'Mortar', cost: '200🎃50💧', type: 'tool', val: 'mortar' },
+            'shrine': { icon: '⛲', name: 'Shrine', cost: '150🎃100💧', type: 'tool', val: 'shrine' },
             
             // SPELLS
             'strike': { icon: '☠️', name: 'Strike', cost: '50💧', type: 'tool', val: 'venomStrike' },
@@ -300,7 +304,9 @@ export const ContextUIExpansion = {
                     if (unit instanceof Queen) {
                         nameEl.innerText = "Swarm Queen";
                         addButton('nest'); addButton('eggsac'); addButton('pylon'); 
-                        addButton('turret'); addButton('wall'); addButton('cancel');
+                        addButton('turret'); addButton('wall'); 
+                        addButton('mortar'); addButton('shrine');
+                        addButton('cancel');
                     } else {
                         // Prefix Zombie if applicable
                         let roleName = unit.role.charAt(0).toUpperCase() + unit.role.slice(1);
