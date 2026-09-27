@@ -1,9 +1,14 @@
 // main.js
 
-// 1. Import the core Game engine
+// ==========================================
+// 1. IMPORT CORE ENGINE
+// ==========================================
 import { Game } from './game.js';
 
-// 2. Import all Expansions
+// ==========================================
+// 2. IMPORT ALL EXPANSIONS
+// ==========================================
+// Base & Environment
 import { SplashScreenExpansion } from './expansions/SplashScreen.js';
 import { AudioExpansion } from './expansions/Audio.js';
 import { TerrainExpansion } from './expansions/Terrain.js';
@@ -11,63 +16,96 @@ import { DecorExpansion } from './expansions/Decor.js';
 import { ParticleExpansion } from './expansions/Particles.js';
 import { AdvancedBaseExpansion } from './expansions/AdvancedBase.js';
 import { GodUnitExpansion } from './expansions/Boss.js';
+
+// Core AI & Networks
 import { QueenExpansion } from './expansions/Queen.js';
 import { CombatAndHarvesterExpansion } from './expansions/CombatAI.js';
 import { SilkNetworkExpansion, WebNetworkExpansion } from './expansions/Networks.js';
-import { SpellExpansion } from './expansions/Spells.js';
 
-// --- MECHANICS IMPORTS ---
+// Mechanics & Units
+import { SpellExpansion } from './expansions/Spells.js';
 import { SpecialUnitsExpansion } from './expansions/SpecialUnits.js';
 import { HazardsExpansion } from './expansions/Hazards.js';
 import { DayNightExpansion } from './expansions/DayNight.js';
 import { ControlPointsExpansion } from './expansions/ControlPoints.js';
 import { NecromancyExpansion } from './expansions/Necromancy.js'; 
 import { TitansExpansion } from './expansions/Titans.js'; 
-import { BroodAmbushExpansion } from './expansions/BroodAmbush.js'; // Added Ambush
-import { FortressExpansion } from './expansions/Fortress.js';       // Added Fortress
+import { BroodAmbushExpansion } from './expansions/BroodAmbush.js'; 
+import { FortressExpansion } from './expansions/Fortress.js';       
 
+// Controls, UI, & Systems
 import { AdvancedUnitControlExpansion, ConstructionExpansion } from './expansions/Controls.js';
 import { MinimapExpansion, ContextUIExpansion, GameLoopExpansion } from './expansions/UI.js';
 import { AtmosphereExpansion, FogOfWarExpansion, SaveLoadExpansion } from './expansions/Systems.js';
 
-// 3. Boot the Game
-window.onload = () => {
+// ==========================================
+// 3. EXPANSION MANIFEST
+// ==========================================
+// This array defines the exact load order. 
+// Easy to toggle mechanics on/off for debugging or expansions!
+const expansionManifest = [
+    { name: 'SplashScreen',         module: SplashScreenExpansion },
+    { name: 'AudioSynth',           module: AudioExpansion },
+    { name: 'TerrainGen',           module: TerrainExpansion },
+    { name: 'DecorSystem',          module: DecorExpansion },
+    { name: 'ParticleEngine',       module: ParticleExpansion },
+    
+    { name: 'AdvancedBaseBuilder',  module: AdvancedBaseExpansion },
+    { name: 'CentipedeBoss',        module: GodUnitExpansion },
+    { name: 'QueenSystem',          module: QueenExpansion },
+    { name: 'CombatAndHarvesterAI', module: CombatAndHarvesterExpansion },
+    
+    { name: 'WebNetwork',           module: WebNetworkExpansion },
+    { name: 'SilkNetwork',          module: SilkNetworkExpansion },
+    
+    { name: 'SpecialUnits',         module: SpecialUnitsExpansion },
+    { name: 'Hazards',              module: HazardsExpansion },
+    { name: 'DayNight',             module: DayNightExpansion },
+    { name: 'ControlPoints',        module: ControlPointsExpansion },
+    { name: 'CommanderSpells',      module: SpellExpansion },
+    { name: 'Necromancy',           module: NecromancyExpansion },
+    { name: 'Titans',               module: TitansExpansion },
+    { name: 'BroodAmbush',          module: BroodAmbushExpansion },
+    { name: 'Fortress',             module: FortressExpansion },
+    
+    { name: 'MinimapUI',            module: MinimapExpansion },
+    { name: 'AdvancedUnitControl',  module: AdvancedUnitControlExpansion },
+    { name: 'ConstructionLogic',    module: ConstructionExpansion },
+    { name: 'ContextUI',            module: ContextUIExpansion },
+    { name: 'GameLoop',             module: GameLoopExpansion },
+    { name: 'SaveLoadManager',      module: SaveLoadExpansion },
+    
+    { name: 'Atmosphere',           module: AtmosphereExpansion },
+    
+    // MUST LOAD LAST: Renders over the top of all other entities
+    { name: 'FogOfWar',             module: FogOfWarExpansion }
+];
+
+// ==========================================
+// 4. BOOT SEQUENCE
+// ==========================================
+// Use DOMContentLoaded instead of window.onload so the engine boots 
+// instantly without waiting for heavy video/image assets to finish downloading.
+document.addEventListener('DOMContentLoaded', () => {
+    
+    // Developer Lore & Initialization Logs
+    console.log("%c🕸️ THE OBSIDIAN BROOD AWAKENS 🕸️", "color: #aa00ff; font-size: 18px; font-weight: bold; text-shadow: 1px 1px 0px #000;");
+    console.log("%cInitializing SpiderWars! Engine v1.0...", "color: #ff9d00; font-family: monospace;");
+
     const game = new Game();
-    
-    game.expansions.load('SplashScreen', SplashScreenExpansion); 
-    game.expansions.load('AudioSynth', AudioExpansion);
-    game.expansions.load('TerrainGen', TerrainExpansion); 
-    game.expansions.load('DecorSystem', DecorExpansion); 
-    game.expansions.load('ParticleEngine', ParticleExpansion);
-    game.expansions.load('AdvancedBaseBuilder', AdvancedBaseExpansion); 
-    game.expansions.load('CentipedeBoss', GodUnitExpansion);
-    game.expansions.load('QueenSystem', QueenExpansion); 
-    game.expansions.load('CombatAndHarvesterAI', CombatAndHarvesterExpansion); 
-    game.expansions.load('WebNetwork', WebNetworkExpansion); 
-    game.expansions.load('SilkNetwork', SilkNetworkExpansion);
+    let loadedCount = 0;
 
-    // --- LOAD MECHANICS ---
-    game.expansions.load('SpecialUnits', SpecialUnitsExpansion);
-    game.expansions.load('Hazards', HazardsExpansion);
-    game.expansions.load('DayNight', DayNightExpansion);
-    game.expansions.load('ControlPoints', ControlPointsExpansion);
-    game.expansions.load('CommanderSpells', SpellExpansion); 
-    game.expansions.load('Necromancy', NecromancyExpansion); 
-    game.expansions.load('Titans', TitansExpansion); 
-    game.expansions.load('BroodAmbush', BroodAmbushExpansion); // Loaded Ambush
-    game.expansions.load('Fortress', FortressExpansion);       // Loaded Fortress
+    // Robust loading loop
+    for (const exp of expansionManifest) {
+        try {
+            game.expansions.load(exp.name, exp.module);
+            loadedCount++;
+        } catch (error) {
+            console.error(`%c[Engine Error] Failed to load expansion: ${exp.name}`, "color: #ff0000; font-weight: bold;");
+            console.error(error);
+            // Engine continues loading other modules gracefully!
+        }
+    }
 
-    // UI EXPANSIONS
-    game.expansions.load('MinimapUI', MinimapExpansion); 
-    game.expansions.load('AdvancedUnitControl', AdvancedUnitControlExpansion);
-    game.expansions.load('ConstructionLogic', ConstructionExpansion);
-    game.expansions.load('ContextUI', ContextUIExpansion);
-    game.expansions.load('GameLoop', GameLoopExpansion); 
-    game.expansions.load('SaveLoadManager', SaveLoadExpansion); 
-
-    // JUICE
-    game.expansions.load('Atmosphere', AtmosphereExpansion); 
-    
-    // REQUIRED TO LOAD LAST (So it renders over everything else correctly)
-    game.expansions.load('FogOfWar', FogOfWarExpansion);
-};
+    console.log(`%c[Engine] Boot sequence complete. Loaded ${loadedCount}/${expansionManifest.length} Expansions successfully.`, "color: #00ff00; font-family: monospace;");
+});
