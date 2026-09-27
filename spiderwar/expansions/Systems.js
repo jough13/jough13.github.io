@@ -147,6 +147,33 @@ export const SaveLoadExpansion = {
             game.eco = state.eco; game.pop = state.pop; game.maxPop = state.maxPop; 
             game.techLevel = state.techLevel; game.camera = state.camera; game.tick = state.tick || 0;
             
+            // --- FIX A: RESTORE MAP GRID & FOG OF WAR ---
+            if (state.mapGrid) {
+                game.mapGrid = state.mapGrid;
+                // Force water bitmasks to recalculate their borders based on the loaded map
+                if (game.updateBitmasks) game.updateBitmasks();
+            }
+
+            // --- FIX A (Bonus): RESTORE DECOR ---
+            // Because loaded games skip Tick 1, we must rebuild the decor chunks manually
+            if (state.decor) {
+                game.decor = state.decor;
+                game.decorInitialized = true; // Prevent Tick 1 regeneration
+                game.decorChunks = {};
+                const CHUNK_SIZE = 500; // Defined in Decor.js
+                
+                game.decor.forEach(d => {
+                    // Re-link the raw Image element from the preloaded dictionary
+                    if (game.decorSprites && game.decorSprites[d.type]) {
+                        d.sprite = game.decorSprites[d.type];
+                    }
+                    // Re-assign to spatial hash chunk for rendering
+                    const chunkKey = `${Math.floor(d.x / CHUNK_SIZE)},${Math.floor(d.y / CHUNK_SIZE)}`;
+                    if (!game.decorChunks[chunkKey]) game.decorChunks[chunkKey] = [];
+                    game.decorChunks[chunkKey].push(d);
+                });
+            }
+
             game.entities = []; 
             
             state.spiders.forEach(s => { 
@@ -238,6 +265,17 @@ export const SaveLoadExpansion = {
                 const state = {
                     eco: game.eco, pop: game.pop, maxPop: game.maxPop, techLevel: game.techLevel, camera: game.camera, tick: game.tick,
                     
+                    // --- FIX A: SERIALIZE MAP GRID & DECOR ---
+                    mapGrid: game.mapGrid.map(row => row.map(tile => ({
+                        type: tile.type, sprite: tile.sprite, angle: tile.angle, 
+                        discovered: tile.discovered, visible: tile.visible
+                    }))),
+                    
+                    // We must map Decor to remove the raw Image Element (d.sprite), otherwise JSON.stringify crashes
+                    decor: game.decor ? game.decor.map(d => ({
+                        x: d.x, y: d.y, type: d.type, size: d.size, angle: d.angle, alpha: d.alpha
+                    })) : [],
+                    
                     spiders: game.spiders.map(s => ({
                         x: s.x, y: s.y, team: s.team, role: s.role, hp: s.hp, cargo: s.cargo, 
                         isZombie: s.isZombie, isCloaked: s.isCloaked, cloakCooldown: s.cloakCooldown,
@@ -267,7 +305,7 @@ export const SaveLoadExpansion = {
                 console.log("Game Saved!");
             }
             if (e.key.toLowerCase() === 'p') {
-                performLoad(); // Now re-uses the exact same logic!
+                performLoad();
             }
         });
     }
