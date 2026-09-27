@@ -22,7 +22,9 @@ import { HazardsExpansion } from './expansions/Hazards.js';
 import { DayNightExpansion } from './expansions/DayNight.js';
 import { ControlPointsExpansion } from './expansions/ControlPoints.js';
 import { NecromancyExpansion } from './expansions/Necromancy.js'; 
-import { TitansExpansion } from './expansions/Titans.js'; // Added Titans
+import { TitansExpansion } from './expansions/Titans.js'; 
+import { BroodAmbushExpansion } from './expansions/BroodAmbush.js'; // Added Ambush
+import { FortressExpansion } from './expansions/Fortress.js';       // Added Fortress
 
 import { AdvancedUnitControlExpansion, ConstructionExpansion } from './expansions/Controls.js';
 import { MinimapExpansion, ContextUIExpansion, GameLoopExpansion } from './expansions/UI.js';
@@ -51,7 +53,9 @@ window.onload = () => {
     game.expansions.load('ControlPoints', ControlPointsExpansion);
     game.expansions.load('CommanderSpells', SpellExpansion); 
     game.expansions.load('Necromancy', NecromancyExpansion); 
-    game.expansions.load('Titans', TitansExpansion); // Loaded Titans
+    game.expansions.load('Titans', TitansExpansion); 
+    game.expansions.load('BroodAmbush', BroodAmbushExpansion); // Loaded Ambush
+    game.expansions.load('Fortress', FortressExpansion);       // Loaded Fortress
 
     // UI EXPANSIONS
     game.expansions.load('MinimapUI', MinimapExpansion); 
