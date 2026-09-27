@@ -81,8 +81,8 @@ export class Spider {
         this.hp = stats.hp; this.maxHp = this.hp;
         this.damage = stats.damage; this.attackSpeed = stats.attackSpeed;
         
-        this.cooldown = 0; this.angle = 0; this.state = 'idle'; this.target = null; 
-        this.cargo = { amount: 0, type: null }; 
+        this.cooldown = 0; this.angle = 0; this.state = SPIDER_STATE.IDLE; this.target = null; 
+        this.cargo = { amount: 0, type: null };
         this.isCloaked = false; // Native stealth support
         
         this.sprite = new Image();
