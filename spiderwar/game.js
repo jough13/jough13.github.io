@@ -191,6 +191,9 @@ export class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas'); 
         this.ctx = this.canvas.getContext('2d', { alpha: false }); // alpha: false boosts render performance
+
+        this.ctx.imageSmoothingEnabled = false; 
+
         this.bus = new GameBus(); 
         this.expansions = new ExpansionManager(this);
         
@@ -372,8 +375,13 @@ export class Game {
             this.pop.red = redPop;
         }
 
-        // Entity update and cull loop (Reverse iteration for safe O(1) removal)
-        for (let i = this.entities.length - 1; i >= 0; i--) {
+        // ==========================================
+        // ENTITY UPDATE & CULL LOOP (Two-Pointer Compaction)
+        // ==========================================
+        let aliveCount = 0;
+        let originalLength = this.entities.length;
+
+        for (let i = 0; i < originalLength; i++) {
             let e = this.entities[i];
             
             let dead = false;
@@ -390,13 +398,25 @@ export class Game {
                 }
                 if (this.selectedStructure === e) { this.selectedStructure = null; this.bus.emit('closeModal'); }
                 
-                // O(1) Array Removal 
-                this.entities[i] = this.entities[this.entities.length - 1];
-                this.entities.pop();
-                continue;
+            } else {
+                if (e.update) e.update(this);
+                
+                // Keep the entity in the compacted array, preserving exact insertion order
+                this.entities[aliveCount] = e; 
+                aliveCount++;
             }
-            if (e.update) e.update(this);
         }
+
+        // Catch newly spawned entities! 
+        // (e.g. if a turret fired a projectile during the update loop above, it got pushed to the END of the array)
+        let spawnedCount = this.entities.length - originalLength;
+        for (let i = 0; i < spawnedCount; i++) {
+            this.entities[aliveCount] = this.entities[originalLength + i];
+            aliveCount++;
+        }
+
+        // Instantly chop off the dead garbage at the end of the array
+        this.entities.length = aliveCount;
     }
 
     // High performance targeting function
