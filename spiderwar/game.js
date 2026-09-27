@@ -48,6 +48,13 @@ export class ExpansionManager {
 // ==========================================
 
 // Data-driven design: Expansions can simply add to these dictionaries!
+export const SPIDER_STATE = {
+    IDLE: 0,
+    COMBAT: 1,
+    SEEKING_RESOURCE: 2,
+    RETURNING_HOME: 3
+};
+
 export const UNIT_DATA = {
     harvester: { size: 12, hp: 100, damage: 15, attackSpeed: 30, baseSpeedMin: 0.8, baseSpeedMax: 1.8 },
     soldier:   { size: 16, hp: 200, damage: 30, attackSpeed: 20, baseSpeedMin: 1.2, baseSpeedMax: 2.2 }
