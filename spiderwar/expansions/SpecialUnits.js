@@ -18,7 +18,6 @@ const SPECIAL_CONFIG = {
 export const SpecialUnitsExpansion = {
     init: (game) => {
         // 1. Inject stats into the core engine's data dictionary!
-        // This ensures the base Spider class initializes perfectly without messy overrides.
         UNIT_DATA['spitter'] = { 
             size: SPECIAL_CONFIG.spitter.size, hp: SPECIAL_CONFIG.spitter.hp, 
             damage: SPECIAL_CONFIG.spitter.damage, attackSpeed: SPECIAL_CONFIG.spitter.attackSpeed,
@@ -30,22 +29,16 @@ export const SpecialUnitsExpansion = {
             baseSpeedMin: SPECIAL_CONFIG.tarantula.baseSpeedMin, baseSpeedMax: SPECIAL_CONFIG.tarantula.baseSpeedMax
         };
 
-        // 2. Fix the Double-Spawn Bug!
-        // We clear the default 'spawnSpider' listener from game.js and replace it with a robust one
-        // that handles base units + special units. (Titans.js will append its own safely later).
-        game.bus.listeners['spawnSpider'] = [];
-        
+        // 2. Safely hook into the spawn system for ONLY our specific units
         game.bus.on('spawnSpider', (data) => {
             const costs = {
-                'harvester': 10,
-                'soldier': 25,
                 'spitter': SPECIAL_CONFIG.spitter.cost,
                 'tarantula': SPECIAL_CONFIG.tarantula.cost
             };
 
             let cost = costs[data.role];
             
-            // Only proceed if it's one of the 4 standard/special roles (Ignores Titans/Zombies)
+            // Only proceed if it is one of THIS expansion's units
             if (cost !== undefined) {
                 if (game.eco[data.team].pumpkins >= cost && game.pop[data.team] < game.maxPop[data.team]) {
                     game.eco[data.team].pumpkins -= cost;
