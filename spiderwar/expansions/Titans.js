@@ -47,7 +47,6 @@ export class ExplosiveProjectile {
             this.active = false; 
             game.bus.emit('playSound', 'death'); // Heavy explosion
             
-            // Faction magic colors
             const magicColor = this.team === 'black' ? '#aa00ff' : '#ff0000';
             game.bus.emit('particles', {x: this.target.x, y: this.target.y, color: magicColor, count: 40});
             game.bus.emit('particles', {x: this.target.x, y: this.target.y, color: '#ffaa00', count: 20, type: 'splatter'});
@@ -56,17 +55,23 @@ export class ExplosiveProjectile {
             for (let i = 0; i < game.entities.length; i++) {
                 let e = game.entities[i];
                 
-                if (!e.team || e.team === this.team || e.hp <= 0) continue;
+                // FIX A: Ignore dead units, allies, AND Nature units
+                if (!e.team || e.team === this.team || e.team === 'nature' || e.hp <= 0) continue;
                 
                 // Fast AABB check
                 if (Math.abs(this.x - e.x) > 100 || Math.abs(this.y - e.y) > 100) continue;
 
                 if (MathUtils.distSq(this.x, this.y, e.x, e.y) < TITAN_CONFIG.goliath.splashRadiusSq) { 
-                    e.hp -= this.damage;
+                    // FIX A: Full damage to units, 50% damage to buildings
+                    if (e instanceof Spider || e.constructor.name === 'CentipedeBoss') {
+                        e.hp -= this.damage;
+                    } else {
+                        e.hp -= (this.damage * 0.5); 
+                    }
                 }
             }
         } else {
-            // Homing movement (tracks moving targets)
+            // Homing movement
             const dist = Math.sqrt(distSq);
             this.x += (dx/dist) * this.speed; 
             this.y += (dy/dist) * this.speed; 
@@ -75,17 +80,11 @@ export class ExplosiveProjectile {
 
     draw(ctx) { 
         const magicColor = this.team === 'black' ? '#aa00ff' : '#ff0000';
-        
-        // Flaming magic pumpkin
         ctx.fillStyle = magicColor; 
-        ctx.beginPath(); 
-        ctx.arc(this.x, this.y, 8, 0, Math.PI*2); 
-        ctx.fill(); 
+        ctx.beginPath(); ctx.arc(this.x, this.y, 8, 0, Math.PI*2); ctx.fill(); 
         
         ctx.fillStyle = '#ffaa00'; 
-        ctx.beginPath(); 
-        ctx.arc(this.x, this.y, 4, 0, Math.PI*2); 
-        ctx.fill(); 
+        ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, Math.PI*2); ctx.fill(); 
     }
 }
 
