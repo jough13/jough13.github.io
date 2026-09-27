@@ -60,9 +60,15 @@ export class EggTrap {
             // Deal Splash Damage to EVERYTHING in the radius
             for (let i = 0; i < game.entities.length; i++) {
                 let e = game.entities[i];
-                if (e.team && e.team !== this.team && e.hp > 0) {
+                
+                // Ignore allies, dead, and Nature units
+                if (e.team && e.team !== this.team && e.team !== 'nature' && e.hp > 0) {
                     if (MathUtils.distSq(this.x, this.y, e.x, e.y) < triggerRadiusSq) {
-                        e.hp -= 40; // High explosive venom damage
+                        if (e instanceof Spider || e.constructor.name === 'CentipedeBoss') {
+                            e.hp -= 40; // High explosive venom damage to units
+                        } else {
+                            e.hp -= 20; // 50% damage to buildings
+                        }
                     }
                 }
             }
