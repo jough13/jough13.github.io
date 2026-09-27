@@ -102,11 +102,21 @@ export const CombatAndHarvesterExpansion = {
             }
 
             // --- HARVESTER ECONOMY AI ---
+            
+            // --- FIX B: GHOST NODE MEMORY LEAK ---
+            // If our target was destroyed (Nests) or depleted (Pumpkins) by someone else, clear it!
+            if (this.target && (
+                (this.target.hp !== undefined && this.target.hp <= 0) || 
+                (this.target.resources !== undefined && this.target.resources <= 0)
+            )) {
+                this.target = null; // Instantly releases the dead object for the Garbage Collector
+            }
+
             if (this.cargo.amount === 0) this.state = 'seeking_pumpkin'; 
             else this.state = 'returning_home';
             
             // PERFORMANCE: Stagger target searches to prevent CPU lag spikes
-            if (!this.target || (this.target.resources !== undefined && this.target.resources <= 0)) {
+            if (!this.target) {
                 this.searchDelay = (this.searchDelay || 0) - 1;
                 
                 if (this.searchDelay <= 0) {
@@ -115,18 +125,20 @@ export const CombatAndHarvesterExpansion = {
                     let minD = Infinity;
 
                     if (this.state === 'seeking_pumpkin') {
-                        // Find nearest Resource Node
+                        // Find nearest Resource Node (that still has resources)
                         gameObj.resourceNodes.forEach(r => { 
-                            let dSq = MathUtils.distSq(r.x, r.y, this.x, this.y); 
-                            if(dSq < minD) { minD = dSq; closest = r; } 
+                            if (r.resources > 0) {
+                                let dSq = MathUtils.distSq(r.x, r.y, this.x, this.y); 
+                                if(dSq < minD) { minD = dSq; closest = r; } 
+                            }
                         });
                     } else {
                         // Find nearest Dropoff Point (Nest, Pylon, or Queen)
-                        gameObj.structures.filter(s => s.team === this.team && (s.type === 'nest' || s.type === 'pylon')).forEach(n => { 
+                        gameObj.structures.filter(s => s.team === this.team && (s.type === 'nest' || s.type === 'pylon') && s.hp > 0 && !s.isConstructing).forEach(n => { 
                             let dSq = MathUtils.distSq(n.x, n.y, this.x, this.y); 
                             if(dSq < minD) { minD = dSq; closest = n; } 
                         });
-                        gameObj.queens.filter(q => q.team === this.team).forEach(q => { 
+                        gameObj.queens.filter(q => q.team === this.team && q.hp > 0).forEach(q => { 
                             let dSq = MathUtils.distSq(q.x, q.y, this.x, this.y); 
                             if(dSq < minD) { minD = dSq; closest = q; } 
                         });
