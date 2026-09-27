@@ -28,7 +28,6 @@ export class MortarShell {
         this.team = team;
         this.active = true;
         
-        // Performance: Pre-calculate flight time so we can Lerp instead of using Trig/Sqrt every frame!
         const totalDist = MathUtils.dist(startX, startY, targetX, targetY);
         const speed = 4.5;
         this.flightFrames = Math.max(1, totalDist / speed); 
@@ -40,11 +39,9 @@ export class MortarShell {
         let progress = this.currentFrame / this.flightFrames;
         
         if (progress >= 1.0) {
-            // Impact!
             this.active = false;
-            game.bus.emit('playSound', 'death'); // Heavy explosion sound
+            game.bus.emit('playSound', 'death'); 
             
-            // Lore-friendly magic colors
             const primaryColor = this.team === 'black' ? '#aa00ff' : '#ff0000';
             const secondaryColor = this.team === 'black' ? '#ffffff' : '#ffaa00';
             
@@ -54,15 +51,21 @@ export class MortarShell {
             // Splash Damage Calculation
             for (let i = 0; i < game.entities.length; i++) {
                 let e = game.entities[i];
-                // Fast early-exits
-                if (!e.team || e.team === this.team || e.hp <= 0) continue;
+                
+                // FIX A: Ignore dead units, allies, AND Nature units
+                if (!e.team || e.team === this.team || e.team === 'nature' || e.hp <= 0) continue;
                 
                 if (MathUtils.distSq(this.targetX, this.targetY, e.x, e.y) < FORTRESS_CONFIG.mortarSplashRadiusSq) {
-                    e.hp -= this.damage;
+                    // FIX A: Full damage to units, 50% damage to buildings
+                    // (Checking e.role is a quick way to identify spiders without needing new imports)
+                    if (e.role || e.constructor.name === 'CentipedeBoss') {
+                        e.hp -= this.damage;
+                    } else {
+                        e.hp -= (this.damage * 0.5);
+                    }
                 }
             }
         } else {
-            // High-performance Linear Interpolation movement
             this.x = MathUtils.lerp(this.startX, this.targetX, progress);
             this.y = MathUtils.lerp(this.startY, this.targetY, progress);
         }
@@ -70,27 +73,16 @@ export class MortarShell {
 
     draw(ctx) {
         let progress = this.currentFrame / this.flightFrames;
+        let z = Math.sin(progress * Math.PI) * 100; 
         
-        // Calculate artificial Z-axis (height) for a parabolic arc effect
-        let z = Math.sin(progress * Math.PI) * 100; // Peak height of 100px
-        
-        // Draw Shadow on the ground (shrinks as the shell goes higher)
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.beginPath(); 
-        ctx.arc(this.x, this.y, Math.max(2, 8 - (z / 20)), 0, Math.PI * 2); 
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(this.x, this.y, Math.max(2, 8 - (z / 20)), 0, Math.PI * 2); ctx.fill();
         
-        // Draw Shell in the air (Offset visually by -z)
         ctx.fillStyle = this.team === 'black' ? '#aa00ff' : '#ff5500';
-        ctx.beginPath(); 
-        ctx.arc(this.x, this.y - z, 10, 0, Math.PI * 2); 
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(this.x, this.y - z, 10, 0, Math.PI * 2); ctx.fill();
         
-        // Glowing core
         ctx.fillStyle = '#ffffff';
-        ctx.beginPath(); 
-        ctx.arc(this.x, this.y - z, 4, 0, Math.PI * 2); 
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(this.x, this.y - z, 4, 0, Math.PI * 2); ctx.fill();
     }
 }
 
