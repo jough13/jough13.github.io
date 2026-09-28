@@ -79,25 +79,59 @@ export const MinimapExpansion = {
             commandUnits(e.clientX - rect.left, e.clientY - rect.top);
         });
 
-        // Mobile Touch Support for Minimap
+        // Mobile Touch Support for Minimap (With Long-Press Command)
+        let touchTimer = null;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let longPressed = false;
+
         overlay.addEventListener('touchstart', e => { 
             e.preventDefault();
             if(e.touches.length === 1) {
                 const rect = overlay.getBoundingClientRect();
+                const localX = e.touches[0].clientX - rect.left;
+                const localY = e.touches[0].clientY - rect.top;
+                
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                longPressed = false;
+
+                // 1. Immediately pan the camera to the tapped location
                 game.isMinimapDragging = true;
-                moveCamera(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+                moveCamera(localX, localY);
+
+                // 2. Start a timer. If held still for 400ms, issue a unit command!
+                touchTimer = setTimeout(() => {
+                    longPressed = true;
+                    game.isMinimapDragging = false; // Stop camera dragging
+                    commandUnits(localX, localY);
+                    
+                    // Optional Haptic Feedback for mobile users
+                    if (navigator.vibrate) navigator.vibrate(50); 
+                }, 400); 
             }
         }, {passive: false});
 
         overlay.addEventListener('touchmove', e => { 
             e.preventDefault();
-            if(game.isMinimapDragging && e.touches.length === 1) {
-                const rect = overlay.getBoundingClientRect();
-                moveCamera(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+            if(e.touches.length === 1) {
+                // If the finger moves more than 10 pixels, cancel the long-press command timer
+                if (Math.abs(e.touches[0].clientX - touchStartX) > 10 || Math.abs(e.touches[0].clientY - touchStartY) > 10) {
+                    clearTimeout(touchTimer);
+                }
+                
+                // Only pan the camera if we haven't locked into a long-press command
+                if(game.isMinimapDragging && !longPressed) {
+                    const rect = overlay.getBoundingClientRect();
+                    moveCamera(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+                }
             }
         }, {passive: false});
 
-        overlay.addEventListener('touchend', e => { game.isMinimapDragging = false; });
+        overlay.addEventListener('touchend', e => { 
+            clearTimeout(touchTimer); // Always clean up the timer
+            game.isMinimapDragging = false; 
+        });
     },
     
     patch: (game) => {
