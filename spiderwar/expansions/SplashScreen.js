@@ -1,34 +1,7 @@
 // expansions/SplashScreen.js
 
 // ==========================================
-// 1. CONFIGURATION & ASSET MANIFEST
-// ==========================================
-// Easily expandable list of assets to ensure the engine never stutters mid-game.
-const ASSET_MANIFEST = [
-    // Base Units
-    'assets/soldier_black.png', 'assets/soldier_red.png', 'assets/black_spider.png', 'assets/red_spider.png',
-    // Special Units
-    'assets/spitter_black.png', 'assets/spitter_red.png', 'assets/tarantula_black.png', 'assets/tarantula_red.png',
-    // Titans
-    'assets/widow_black.png', 'assets/widow_red.png', 'assets/goliath_black.png', 'assets/goliath_red.png',
-    // Summons
-    'assets/broodling_black.png', 'assets/broodling_red.png', 'assets/zombie_black.png', 'assets/zombie_red.png',
-    // Structures
-    'assets/nest_black.png', 'assets/nest_red.png', 'assets/eggsac_black.png', 'assets/eggsac_red.png',
-    'assets/turret_black.png', 'assets/turret_red.png', 'assets/wall_black.png', 'assets/wall_red.png',
-    'assets/pylon_black.png', 'assets/pylon_red.png', 'assets/mortar_black.png', 'assets/mortar_red.png',
-    'assets/shrine_black.png', 'assets/shrine_red.png', 'assets/eggtrap_black.png', 'assets/eggtrap_red.png',
-    // Environment & Decor
-    'assets/pumpkin.png', 'assets/dewdrop.png', 'assets/corpse.png', 'assets/jackolantern.png',
-    'assets/flytrap_open.png', 'assets/flytrap_closed.png', 'assets/ui_frame.png', 
-    'assets/centipede_head.png', 'assets/centipede_body.png',
-    'assets/tile_dirt.png', 'assets/tile_vines.png', 'assets/tile_pebbles.png', 'assets/tile_grass.png',
-    'assets/water_straight.png', 'assets/water_corner.png', 'assets/water_end.png', 'assets/water_t.png', 'assets/water_cross.png',
-    'assets/clutter_water.png', 'assets/clutter_grass.png', 'assets/clutter_pebbles.png'
-];
-
-// ==========================================
-// 2. EXPANSION LOGIC
+// EXPANSION LOGIC
 // ==========================================
 export const SplashScreenExpansion = {
     init: (game) => {
@@ -202,10 +175,13 @@ export const SplashScreenExpansion = {
             localStorage.setItem('spiderRTS_skipIntro', e.target.checked);
         });
 
-        // --- 5. PRELOADING ENGINE ---
+        // --- 5. DYNAMIC PRELOADING ENGINE ---
         const startPreload = (isLoadGame) => {
             viewMenu.style.display = 'none';
             viewLoading.style.display = 'flex';
+            
+            // Extract the dynamic list from the Central Asset Manager
+            const manifest = Array.from(game.assets.queue);
             
             let loadedCount = 0;
             const barFill = document.getElementById('loadBarFill');
@@ -216,11 +192,11 @@ export const SplashScreenExpansion = {
                 
                 // PERFORMANCE: Batch DOM updates to prevent layout thrashing
                 requestAnimationFrame(() => {
-                    const pct = Math.floor((loadedCount / ASSET_MANIFEST.length) * 100);
+                    const pct = manifest.length > 0 ? Math.floor((loadedCount / manifest.length) * 100) : 100;
                     barFill.style.width = pct + '%';
                     loadText.innerText = `Awakening the Obsidian Brood... ${pct}%`;
 
-                    if (loadedCount === ASSET_MANIFEST.length) {
+                    if (loadedCount >= manifest.length) {
                         // Preloading Finished! Tiny delay so the player actually sees 100%
                         setTimeout(() => {
                             ui.style.opacity = '0';
@@ -238,12 +214,22 @@ export const SplashScreenExpansion = {
                 });
             };
 
-            // Instantiate image requests to force browser caching
-            ASSET_MANIFEST.forEach(src => {
+            // Safety catch: If an expansion didn't queue anything, instantly boot
+            if (manifest.length === 0) { 
+                checkComplete(); 
+                return; 
+            }
+
+            // Instantiate image requests and push them straight to the RAM cache
+            manifest.forEach(src => {
                 const img = new Image();
-                img.onload = checkComplete;
+                img.onload = () => {
+                    // STORE IN THE CENTRAL CACHE!
+                    game.assets.cache[src] = img;
+                    checkComplete();
+                };
                 img.onerror = () => {
-                    console.warn(`[Preloader] Missing asset: ${src}`);
+                    console.warn(`[AssetManager] Missing asset: ${src}`);
                     checkComplete(); // Prevent game from hanging if a single file is missing
                 };
                 img.src = src;
