@@ -1,23 +1,9 @@
 // expansions/Titans.js
 import { Spider, MathUtils, UNIT_DATA, SPIDER_STATE } from '../game.js';
 
-// ==========================================
-// 1. CONFIGURATION & BALANCING
-// ==========================================
 const TITAN_CONFIG = {
-    widow: { 
-        hp: 150, damage: 100, attackSpeed: 20, size: 16, 
-        baseSpeedMin: 1.8, baseSpeedMax: 2.1, // Hyper-fast assassin
-        costP: 150, costD: 50, 
-        decloakTime: 150 // 5 seconds of visibility after attacking
-    },
-    goliath: { 
-        hp: 1200, damage: 90, attackSpeed: 60, size: 38, 
-        baseSpeedMin: 0.3, baseSpeedMax: 0.5, // Slow, lumbering siege engine
-        costP: 400, costD: 150, 
-        range: 300, 
-        splashRadiusSq: 10000 // 100px splash radius
-    }
+    widow: { hp: 150, damage: 100, attackSpeed: 20, size: 16, baseSpeedMin: 1.8, baseSpeedMax: 2.1, costP: 150, costD: 50, decloakTime: 150 },
+    goliath: { hp: 1200, damage: 90, attackSpeed: 60, size: 38, baseSpeedMin: 0.3, baseSpeedMax: 0.5, costP: 400, costD: 150, range: 300, splashRadiusSq: 10000 }
 };
 
 // ==========================================
@@ -99,48 +85,36 @@ export class ExplosiveProjectile {
 // ==========================================
 export const TitansExpansion = {
     init: (game) => {
-        // 1. Inject base stats into the core engine dictionary!
-        UNIT_DATA['widow'] = { 
-            size: TITAN_CONFIG.widow.size, hp: TITAN_CONFIG.widow.hp, 
-            damage: TITAN_CONFIG.widow.damage, attackSpeed: TITAN_CONFIG.widow.attackSpeed,
-            baseSpeedMin: TITAN_CONFIG.widow.baseSpeedMin, baseSpeedMax: TITAN_CONFIG.widow.baseSpeedMax
-        };
-        UNIT_DATA['goliath'] = { 
-            size: TITAN_CONFIG.goliath.size, hp: TITAN_CONFIG.goliath.hp, 
-            damage: TITAN_CONFIG.goliath.damage, attackSpeed: TITAN_CONFIG.goliath.attackSpeed,
-            baseSpeedMin: TITAN_CONFIG.goliath.baseSpeedMin, baseSpeedMax: TITAN_CONFIG.goliath.baseSpeedMax
-        };
+        // --- 1. ASSET REGISTRY ---
+        game.assets.register('assets/widow_black.png');
+        game.assets.register('assets/widow_red.png');
+        game.assets.register('assets/goliath_black.png');
+        game.assets.register('assets/goliath_red.png');
 
-        // 2. Safely hook into the spawn system for multi-resource units
+        UNIT_DATA['widow'] = { size: TITAN_CONFIG.widow.size, hp: TITAN_CONFIG.widow.hp, damage: TITAN_CONFIG.widow.damage, attackSpeed: TITAN_CONFIG.widow.attackSpeed, baseSpeedMin: TITAN_CONFIG.widow.baseSpeedMin, baseSpeedMax: TITAN_CONFIG.widow.baseSpeedMax };
+        UNIT_DATA['goliath'] = { size: TITAN_CONFIG.goliath.size, hp: TITAN_CONFIG.goliath.hp, damage: TITAN_CONFIG.goliath.damage, attackSpeed: TITAN_CONFIG.goliath.attackSpeed, baseSpeedMin: TITAN_CONFIG.goliath.baseSpeedMin, baseSpeedMax: TITAN_CONFIG.goliath.baseSpeedMax };
+
         game.bus.on('spawnSpider', (data) => {
             let costP = 0, costD = 0;
-            
             if (data.role === 'widow') { costP = TITAN_CONFIG.widow.costP; costD = TITAN_CONFIG.widow.costD; }
             if (data.role === 'goliath') { costP = TITAN_CONFIG.goliath.costP; costD = TITAN_CONFIG.goliath.costD; }
             
             if (costP > 0) {
                 if (game.eco[data.team].pumpkins >= costP && game.eco[data.team].dew >= costD && game.pop[data.team] < game.maxPop[data.team]) {
+                    game.eco[data.team].pumpkins -= costP; game.eco[data.team].dew -= costD;
+                    let s = new Spider(data.x + MathUtils.randomRange(-30, 30), data.y + MathUtils.randomRange(-30, 30), data.team, data.role);
                     
-                    game.eco[data.team].pumpkins -= costP; 
-                    game.eco[data.team].dew -= costD;
-                    
-                    let s = new Spider(
-                        data.x + MathUtils.randomRange(-30, 30), 
-                        data.y + MathUtils.randomRange(-30, 30), 
-                        data.team, data.role
-                    );
-                    
-                    // Apply special mechanical traits
+                    // --- 2. INSTANT RAM CACHE RETRIEVAL ---
                     if (data.role === 'widow') {
-                        s.isCloaked = true; 
-                        s.cloakCooldown = 0;
-                        s.sprite.src = data.team === 'black' ? 'assets/widow_black.png' : 'assets/widow_red.png';
+                        s.isCloaked = true; s.cloakCooldown = 0;
+                        s.sprite = game.assets.get(data.team === 'black' ? 'assets/widow_black.png' : 'assets/widow_red.png');
                     }
                     if (data.role === 'goliath') {
                         s.range = TITAN_CONFIG.goliath.range;
-                        s.sprite.src = data.team === 'black' ? 'assets/goliath_black.png' : 'assets/goliath_red.png';
+                        s.sprite = game.assets.get(data.team === 'black' ? 'assets/goliath_black.png' : 'assets/goliath_red.png');
                     }
 
+                    s.imageLoaded = true; // Tell base engine it's ready immediately
                     game.addEntity(s);
                     game.bus.emit('playSound', 'spell');
                 }
