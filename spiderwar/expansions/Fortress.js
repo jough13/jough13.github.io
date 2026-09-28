@@ -52,12 +52,10 @@ export class MortarShell {
             for (let i = 0; i < game.entities.length; i++) {
                 let e = game.entities[i];
                 
-                // FIX A: Ignore dead units, allies, AND Nature units
-                if (!e.team || e.team === this.team || e.team === 'nature' || e.hp <= 0) continue;
+                // Added e.hp === undefined to prevent NaN corruption on projectiles/resources
+                if (!e.team || e.team === this.team || e.team === 'nature' || e.hp === undefined || e.hp <= 0) continue;
                 
                 if (MathUtils.distSq(this.targetX, this.targetY, e.x, e.y) < FORTRESS_CONFIG.mortarSplashRadiusSq) {
-                    // FIX A: Full damage to units, 50% damage to buildings
-                    // (Checking e.role is a quick way to identify spiders without needing new imports)
                     if (e.role || e.constructor.name === 'CentipedeBoss') {
                         e.hp -= this.damage;
                     } else {
