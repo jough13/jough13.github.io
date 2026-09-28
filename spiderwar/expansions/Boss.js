@@ -25,9 +25,15 @@ export class CentipedeBoss {
 
     update(game) {
         // 1. Manage Movement History (Fixed length array for performance)
-        this.history.unshift({ x: this.x, y: this.y, angle: this.angle }); 
-        if (this.history.length > this.historyLength) {
-            this.history.pop(); 
+        const lastPos = this.history[0];
+        
+        // Only record history if it's the first frame, OR if the boss has moved at least 5 pixels.
+        // (25 is 5 squared, avoiding the expensive Math.sqrt calculation)
+        if (!lastPos || MathUtils.distSq(this.x, this.y, lastPos.x, lastPos.y) >= 25) {
+            this.history.unshift({ x: this.x, y: this.y, angle: this.angle }); 
+            if (this.history.length > this.historyLength) {
+                this.history.pop(); 
+            }
         }
 
         // 2. Target Acquisition (Attack any spider or structure that isn't nature!)
