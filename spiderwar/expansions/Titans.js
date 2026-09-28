@@ -55,8 +55,8 @@ export class ExplosiveProjectile {
             for (let i = 0; i < game.entities.length; i++) {
                 let e = game.entities[i];
                 
-                // Ignore dead units, allies, AND Nature units
-                if (!e.team || e.team === this.team || e.team === 'nature' || e.hp <= 0) continue;
+                // Added e.hp === undefined check
+                if (!e.team || e.team === this.team || e.team === 'nature' || e.hp === undefined || e.hp <= 0) continue;
                 
                 // Fast AABB check
                 if (Math.abs(this.x - e.x) > 100 || Math.abs(this.y - e.y) > 100) continue;
