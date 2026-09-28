@@ -118,33 +118,47 @@ export const AdvancedBaseExpansion = {
 
             // Base Expansion Loop (Runs every ~15 seconds / 450 ticks)
             if (this.tick % 450 === 0) {
-                let redQueen = this.queens.find(q => q.team === 'red');
                 
-                // Only issue build orders if the Queen is alive and currently idle
-                if (redQueen && !redQueen.activeConstruction && !redQueen.buildTarget) {
+                // --- FIX: AI Tech Escalation ---
+                let upgradedTech = false;
+                // After 4 minutes (7200 ticks), the AI has a 50% chance to spend surplus pumpkins on Tech
+                if (this.tick > 7200 && this.eco.red.pumpkins >= 250 && Math.random() > 0.5) {
+                    this.eco.red.pumpkins -= 250;
+                    this.techLevel.red = (this.techLevel.red || 0) + 1;
+                    upgradedTech = true;
+                    console.log(`[AI Alert] Crimson Swarm evolved to Tech Level ${this.techLevel.red}!`);
+                }
+
+                // Only proceed to build structures if we didn't spend our cycle/resources upgrading tech
+                if (!upgradedTech) {
+                    let redQueen = this.queens.find(q => q.team === 'red');
                     
-                    // AI Escalation: Unlocks advanced structures as time goes on
-                    let availableBuildings = ['nest', 'eggsac', 'pylon', 'turret', 'wall'];
-                    if (this.tick > 5400) availableBuildings.push('mortar', 'shrine'); // ~3 minutes in
-                    
-                    const type = availableBuildings[MathUtils.randomInt(0, availableBuildings.length - 1)];
-                    
-                    // AI Cost check before committing (prevents spamming the event bus uselessly)
-                    const costs = { 
-                        'nest': {p: 150, d: 0}, 'eggsac': {p: 50, d: 0}, 'pylon': {p: 25, d: 0}, 
-                        'turret': {p: 100, d: 0}, 'wall': {p: 25, d: 0},
-                        'mortar': {p: 200, d: 50}, 'shrine': {p: 150, d: 100}
-                    };
-                    
-                    let cost = costs[type];
-                    
-                    if (this.eco.red.pumpkins >= cost.p && this.eco.red.dew >= cost.d) {
-                        // Offset the building placement randomly near the queen, but clamp it safely inside the map!
-                        const bX = MathUtils.clamp(redQueen.x + MathUtils.randomRange(-350, 350), 100, this.world.width - 100);
-                        const bY = MathUtils.clamp(redQueen.y + MathUtils.randomRange(-350, 350), 100, this.world.height - 100);
+                    // Only issue build orders if the Queen is alive and currently idle
+                    if (redQueen && !redQueen.activeConstruction && !redQueen.buildTarget) {
                         
-                        // Emit the build event exactly like a player clicking the UI
-                        this.bus.emit('buildStructure', { x: bX, y: bY, team: 'red', type: type });
+                        // AI Escalation: Unlocks advanced structures as time goes on
+                        let availableBuildings = ['nest', 'eggsac', 'pylon', 'turret', 'wall'];
+                        if (this.tick > 5400) availableBuildings.push('mortar', 'shrine'); // ~3 minutes in
+                        
+                        const type = availableBuildings[MathUtils.randomInt(0, availableBuildings.length - 1)];
+                        
+                        // AI Cost check before committing (prevents spamming the event bus uselessly)
+                        const costs = { 
+                            'nest': {p: 150, d: 0}, 'eggsac': {p: 50, d: 0}, 'pylon': {p: 25, d: 0}, 
+                            'turret': {p: 100, d: 0}, 'wall': {p: 25, d: 0},
+                            'mortar': {p: 200, d: 50}, 'shrine': {p: 150, d: 100}
+                        };
+                        
+                        let cost = costs[type];
+                        
+                        if (this.eco.red.pumpkins >= cost.p && this.eco.red.dew >= cost.d) {
+                            // Offset the building placement randomly near the queen, but clamp it safely inside the map!
+                            const bX = MathUtils.clamp(redQueen.x + MathUtils.randomRange(-350, 350), 100, this.world.width - 100);
+                            const bY = MathUtils.clamp(redQueen.y + MathUtils.randomRange(-350, 350), 100, this.world.height - 100);
+                            
+                            // Emit the build event exactly like a player clicking the UI
+                            this.bus.emit('buildStructure', { x: bX, y: bY, team: 'red', type: type });
+                        }
                     }
                 }
             }
