@@ -10,7 +10,7 @@ const DECOR_CONFIG = {
     grass:   { src: 'assets/clutter_grass.png',   count: 600, minSize: 10, maxSize: 25, minAlpha: 0.8, maxAlpha: 1.0 },
     pebbles: { src: 'assets/clutter_pebbles.png', count: 500, minSize: 8,  maxSize: 18, minAlpha: 0.7, maxAlpha: 1.0 },
     
-    // NEW LORE-THEMED CLUTTER
+    // LORE-THEMED CLUTTER
     dirt:    { src: 'assets/clutter_bones.png',   count: 200, minSize: 12, maxSize: 25, minAlpha: 0.5, maxAlpha: 0.8 }, // Scattered prey bones
     vines:   { src: 'assets/clutter_web.png',     count: 300, minSize: 20, maxSize: 40, minAlpha: 0.3, maxAlpha: 0.7 }  // Old sticky webs
 };
@@ -19,15 +19,13 @@ const CHUNK_SIZE = 500; // Size of spatial hash grids for rendering performance
 
 export const DecorExpansion = {
     init: (game) => {
-        game.decorSprites = {};
         game.decorChunks = {}; // Spatial Hash Map: "x,y" -> [decor array]
         game.decorInitialized = false;
 
-        // Pre-load all configured sprites
+        // --- 1. ASSET REGISTRY ---
+        // Register all configured sprites to the Splash Screen Preloader
         for (const [type, config] of Object.entries(DECOR_CONFIG)) {
-            const img = new Image();
-            img.src = config.src;
-            game.decorSprites[type] = img;
+            game.assets.register(config.src);
         }
     },
 
@@ -59,10 +57,12 @@ export const DecorExpansion = {
                                 x: dx, 
                                 y: dy, 
                                 type: type, 
-                                sprite: this.decorSprites[type],
                                 size: MathUtils.randomRange(config.minSize, config.maxSize),
                                 angle: Math.random() * Math.PI * 2, // Organic rotation
-                                alpha: MathUtils.randomRange(config.minAlpha, config.maxAlpha) // Organic transparency
+                                alpha: MathUtils.randomRange(config.minAlpha, config.maxAlpha), // Organic transparency
+                                
+                                // --- 2. INSTANT RAM CACHE RETRIEVAL ---
+                                sprite: this.assets.get(config.src)
                             };
 
                             // Assign to Spatial Hash Chunk
@@ -107,7 +107,8 @@ export const DecorExpansion = {
                         for (let i = 0; i < chunk.length; i++) {
                             let d = chunk[i];
                             
-                            if (d.sprite.complete && d.sprite.naturalHeight !== 0) {
+                            // Because these are pulled from RAM, they are instantly ready to draw
+                            if (d.sprite && d.sprite.complete && d.sprite.naturalHeight !== 0) {
                                 ctx.save();
                                 ctx.translate(d.x, d.y);
                                 ctx.rotate(d.angle);       // Apply organic rotation
