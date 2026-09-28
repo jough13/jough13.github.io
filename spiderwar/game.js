@@ -26,6 +26,24 @@ export class GameBus {
     }
 }
 
+// Decentralized Asset Registry (Pillar 4)
+export class AssetManager {
+    constructor() {
+        this.queue = new Set(); // A Set prevents duplicate files from being queued twice
+        this.cache = {};        // Stores the actual loaded Image() objects in RAM
+    }
+
+    // Called by Expansions during boot to tell the engine what they need
+    register(src) {
+        this.queue.add(src);
+    }
+
+    // Called by Units/Structures to get the image instantly from RAM
+    get(src) {
+        return this.cache[src];
+    }
+}
+
 export class ExpansionManager {
     constructor(game) { this.game = game; this.expansions = {}; }
     load(name, expansion) {
@@ -203,6 +221,19 @@ export class Game {
 
         this.bus = new GameBus(); 
         this.expansions = new ExpansionManager(this);
+        
+        // --- CENTRAL ASSET MANAGER INITIALIZATION ---
+        this.assets = new AssetManager();
+        
+        // Register Base Game Assets to the queue
+        const baseAssets = [
+            'assets/soldier_black.png', 'assets/soldier_red.png', 'assets/black_spider.png', 'assets/red_spider.png',
+            'assets/pumpkin.png', 'assets/dewdrop.png', 'assets/ui_frame.png',
+            'assets/nest_black.png', 'assets/nest_red.png', 'assets/eggsac_black.png', 'assets/eggsac_red.png',
+            'assets/turret_black.png', 'assets/turret_red.png', 'assets/wall_black.png', 'assets/wall_red.png',
+            'assets/pylon_black.png', 'assets/pylon_red.png'
+        ];
+        baseAssets.forEach(src => this.assets.register(src));
         
         this.world = { width: 6000, height: 6000 }; 
         this.camera = { x: 0, y: 0 }; this.tick = 0; 
