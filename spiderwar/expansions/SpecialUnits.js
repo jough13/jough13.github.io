@@ -1,63 +1,43 @@
 // expansions/SpecialUnits.js
 import { Spider, Projectile, MathUtils, UNIT_DATA, SPIDER_STATE } from '../game.js';
 
-// ==========================================
-// 1. CONFIGURATION & BALANCING
-// ==========================================
 const SPECIAL_CONFIG = {
-    spitter: { 
-        hp: 75, damage: 25, attackSpeed: 45, range: 250, size: 12, 
-        baseSpeedMin: 0.8, baseSpeedMax: 1.2, cost: 40 
-    },
-    tarantula: { 
-        hp: 400, damage: 45, attackSpeed: 40, size: 22, 
-        baseSpeedMin: 0.5, baseSpeedMax: 0.7, cost: 75 
-    }
+    spitter: { hp: 75, damage: 25, attackSpeed: 45, range: 250, size: 12, baseSpeedMin: 0.8, baseSpeedMax: 1.2, cost: 40 },
+    tarantula: { hp: 400, damage: 45, attackSpeed: 40, size: 22, baseSpeedMin: 0.5, baseSpeedMax: 0.7, cost: 75 }
 };
 
 export const SpecialUnitsExpansion = {
     init: (game) => {
-        // 1. Inject stats into the core engine's data dictionary!
-        UNIT_DATA['spitter'] = { 
-            size: SPECIAL_CONFIG.spitter.size, hp: SPECIAL_CONFIG.spitter.hp, 
-            damage: SPECIAL_CONFIG.spitter.damage, attackSpeed: SPECIAL_CONFIG.spitter.attackSpeed,
-            baseSpeedMin: SPECIAL_CONFIG.spitter.baseSpeedMin, baseSpeedMax: SPECIAL_CONFIG.spitter.baseSpeedMax
-        };
-        UNIT_DATA['tarantula'] = { 
-            size: SPECIAL_CONFIG.tarantula.size, hp: SPECIAL_CONFIG.tarantula.hp, 
-            damage: SPECIAL_CONFIG.tarantula.damage, attackSpeed: SPECIAL_CONFIG.tarantula.attackSpeed,
-            baseSpeedMin: SPECIAL_CONFIG.tarantula.baseSpeedMin, baseSpeedMax: SPECIAL_CONFIG.tarantula.baseSpeedMax
-        };
+        // --- 1. ASSET REGISTRY ---
+        game.assets.register('assets/spitter_black.png');
+        game.assets.register('assets/spitter_red.png');
+        game.assets.register('assets/tarantula_black.png');
+        game.assets.register('assets/tarantula_red.png');
 
-        // 2. Safely hook into the spawn system for ONLY our specific units
+        UNIT_DATA['spitter'] = { size: SPECIAL_CONFIG.spitter.size, hp: SPECIAL_CONFIG.spitter.hp, damage: SPECIAL_CONFIG.spitter.damage, attackSpeed: SPECIAL_CONFIG.spitter.attackSpeed, baseSpeedMin: SPECIAL_CONFIG.spitter.baseSpeedMin, baseSpeedMax: SPECIAL_CONFIG.spitter.baseSpeedMax };
+        UNIT_DATA['tarantula'] = { size: SPECIAL_CONFIG.tarantula.size, hp: SPECIAL_CONFIG.tarantula.hp, damage: SPECIAL_CONFIG.tarantula.damage, attackSpeed: SPECIAL_CONFIG.tarantula.attackSpeed, baseSpeedMin: SPECIAL_CONFIG.tarantula.baseSpeedMin, baseSpeedMax: SPECIAL_CONFIG.tarantula.baseSpeedMax };
+
         game.bus.on('spawnSpider', (data) => {
-            const costs = {
-                'spitter': SPECIAL_CONFIG.spitter.cost,
-                'tarantula': SPECIAL_CONFIG.tarantula.cost
-            };
-
+            const costs = { 'spitter': SPECIAL_CONFIG.spitter.cost, 'tarantula': SPECIAL_CONFIG.tarantula.cost };
             let cost = costs[data.role];
             
-            // Only proceed if it is one of THIS expansion's units
             if (cost !== undefined) {
                 if (game.eco[data.team].pumpkins >= cost && game.pop[data.team] < game.maxPop[data.team]) {
                     game.eco[data.team].pumpkins -= cost;
+                    let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
                     
-                    let s = new Spider(
-                        data.x + MathUtils.randomRange(-25, 25), 
-                        data.y + MathUtils.randomRange(-25, 25), 
-                        data.team, data.role
-                    );
+                    // --- 2. INSTANT RAM CACHE RETRIEVAL ---
+                    if (data.role === 'spitter') {
+                        s.sprite = game.assets.get(data.team === 'black' ? 'assets/spitter_black.png' : 'assets/spitter_red.png');
+                        s.range = SPECIAL_CONFIG.spitter.range;
+                    }
+                    if (data.role === 'tarantula') {
+                        s.sprite = game.assets.get(data.team === 'black' ? 'assets/tarantula_black.png' : 'assets/tarantula_red.png');
+                    }
                     
-                    // Assign lore-friendly sprites
-                    if (data.role === 'spitter') s.sprite.src = data.team === 'black' ? 'assets/spitter_black.png' : 'assets/spitter_red.png';
-                    if (data.role === 'tarantula') s.sprite.src = data.team === 'black' ? 'assets/tarantula_black.png' : 'assets/tarantula_red.png';
-                    
-                    // Assign range custom property for the Spitter
-                    if (data.role === 'spitter') s.range = SPECIAL_CONFIG.spitter.range;
-
+                    s.imageLoaded = true; // Tell base engine it's ready immediately
                     game.addEntity(s);
-                    game.bus.emit('playSound', 'harvest'); // Squishy spawn sound
+                    game.bus.emit('playSound', 'harvest'); 
                 }
             }
         });
