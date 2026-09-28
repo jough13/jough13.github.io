@@ -471,13 +471,25 @@ export class Game {
         const viewT = this.camera.y - padding;
         const viewB = this.camera.y + this.canvas.height + padding;
 
+        // --- Y-SORTING Z-INDEX ---
+        // 1. Gather only the entities that are currently visible on screen
+        let visibleEntities = [];
         for (let i = 0; i < this.entities.length; i++) {
             let e = this.entities[i];
             const renderSize = e.size || 0;
+            
             // Strict AABB Culling Check
             if (e.draw && e.x + renderSize >= viewL && e.x - renderSize <= viewR && e.y + renderSize >= viewT && e.y - renderSize <= viewB) {
-                e.draw(this.ctx);
+                visibleEntities.push(e);
             }
+        }
+
+        // 2. Sort them by Y-coordinate (Lower Y is drawn first, Higher Y is drawn on top)
+        visibleEntities.sort((a, b) => a.y - b.y);
+
+        // 3. Draw them in the correct perspective order
+        for (let i = 0; i < visibleEntities.length; i++) {
+            visibleEntities[i].draw(this.ctx);
         }
         
         this.bus.emit('postDraw', this.ctx);
