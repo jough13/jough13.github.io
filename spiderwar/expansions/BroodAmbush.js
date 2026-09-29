@@ -2,16 +2,32 @@
 import { MathUtils, Spider } from '../game.js';
 
 // ==========================================
-// 1. THE EGG TRAP MINE
+// 1. CONFIGURATION & BALANCING
+// ==========================================
+const AMBUSH_CONFIG = {
+    spellCost: 50,
+    trapHp: 50,
+    armingTimer: 30,              // 1-second incubation before it can detonate
+    triggerRadius: 80,            // 80px radius (used for fast AABB)
+    triggerRadiusSq: 6400,        // 80^2 for distance checks
+    explosionDamageUnit: 40,      // High explosive venom damage to units
+    explosionDamageStruct: 20,    // 50% damage to buildings
+    broodlingCount: 3,            // Number of babies hatched
+    broodlingLife: 600            // 20 seconds of life
+};
+
+// ==========================================
+// 2. THE EGG TRAP MINE
 // ==========================================
 export class EggTrap {
     constructor(x, y, team) {
         this.x = x; this.y = y; this.team = team;
-        this.hp = 50; this.maxHp = 50;
+        this.hp = AMBUSH_CONFIG.trapHp; 
+        this.maxHp = AMBUSH_CONFIG.trapHp;
         this.size = 14;
         
         this.isCloaked = true; // Leverages the stealth patch so enemies ignore it!
-        this.armingTimer = 30; // 1-second incubation before it can detonate
+        this.armingTimer = AMBUSH_CONFIG.armingTimer; 
         this.age = 0;          // Used for deterministic pulsing animations
         
         // Sprite will be pulled instantly from RAM cache on Tick 1 of its life
@@ -33,18 +49,21 @@ export class EggTrap {
         }
 
         let triggered = false;
-        const triggerRadiusSq = 6400; // 80px radius
         
         // 1. Scan for nearby enemies to trigger the detonation
         for (let i = 0; i < game.entities.length; i++) {
             let e = game.entities[i];
             
-            // Fast early exits: Exclude dead, allied, or non-targetable entities
-            if (!e.team || e.team === this.team || e.hp <= 0) continue;
+            // Fast early exits: Exclude dead, allied, un-targetable, or STEALTHED entities
+            if (!e.team || e.team === this.team || e.hp <= 0 || e.isCloaked) continue;
             
             // Only trigger on Units or Bosses (ignore buildings)
             if (e instanceof Spider || e.constructor.name === 'CentipedeBoss') {
-                if (MathUtils.distSq(this.x, this.y, e.x, e.y) < triggerRadiusSq) {
+                
+                // PERFORMANCE FIX: Fast AABB check to skip expensive math for distant units
+                if (Math.abs(this.x - e.x) > AMBUSH_CONFIG.triggerRadius || Math.abs(this.y - e.y) > AMBUSH_CONFIG.triggerRadius) continue;
+
+                if (MathUtils.distSq(this.x, this.y, e.x, e.y) < AMBUSH_CONFIG.triggerRadiusSq) {
                     triggered = true;
                     break; // Just one enemy is enough to set it off!
                 }
@@ -64,20 +83,24 @@ export class EggTrap {
             for (let i = 0; i < game.entities.length; i++) {
                 let e = game.entities[i];
                 
-                // FIX: Added e.hp !== undefined check
-                if (e.team && e.team !== this.team && e.team !== 'nature' && e.hp !== undefined && e.hp > 0) {
-                    if (MathUtils.distSq(this.x, this.y, e.x, e.y) < triggerRadiusSq) {
+                // BUG FIX: Removed `e.team !== 'nature'` so the CentipedeBoss ACTUALLY takes damage!
+                if (e.team && e.team !== this.team && e.hp !== undefined && e.hp > 0) {
+                    
+                    // PERFORMANCE FIX: Fast AABB check
+                    if (Math.abs(this.x - e.x) > AMBUSH_CONFIG.triggerRadius || Math.abs(this.y - e.y) > AMBUSH_CONFIG.triggerRadius) continue;
+
+                    if (MathUtils.distSq(this.x, this.y, e.x, e.y) < AMBUSH_CONFIG.triggerRadiusSq) {
                         if (e instanceof Spider || e.constructor.name === 'CentipedeBoss') {
-                            e.hp -= 40; // High explosive venom damage to units
+                            e.hp -= AMBUSH_CONFIG.explosionDamageUnit; 
                         } else {
-                            e.hp -= 20; // 50% damage to buildings
+                            e.hp -= AMBUSH_CONFIG.explosionDamageStruct; 
                         }
                     }
                 }
             }
             
-            // Hatch 3 angry Broodlings!
-            for (let i = 0; i < 3; i++) {
+            // Hatch angry Broodlings!
+            for (let i = 0; i < AMBUSH_CONFIG.broodlingCount; i++) {
                 let bx = this.x + MathUtils.randomRange(-30, 30);
                 let by = this.y + MathUtils.randomRange(-30, 30);
                 game.addEntity(new Broodling(bx, by, this.team));
@@ -86,7 +109,7 @@ export class EggTrap {
     }
 
     draw(ctx) {
-        // Tactical Stealth: Invisible to the enemy team
+        // Tactical Stealth: Invisible to the enemy team (The Red AI can't see this anyway, but if you add multiplayer, this hides it!)
         if (this.team !== 'black') return;
 
         ctx.save();
@@ -112,11 +135,11 @@ export class EggTrap {
 }
 
 // ==========================================
-// 2. THE BABY SWARMER UNIT
+// 3. THE BABY SWARMER UNIT
 // ==========================================
 export class Broodling extends Spider {
     constructor(x, y, team) {
-        super(x, y, team, 'soldier'); // Inherit aggressive soldier AI targeting
+        super(x, y, team, 'soldier'); // Inherit aggressive soldier AI targeting traits
         
         // Override base stats to be a hyper-fast, fragile swarmer
         this.role = 'broodling';
@@ -126,7 +149,7 @@ export class Broodling extends Spider {
         this.speed = this.baseSpeed;
         this.size = 7; 
         
-        this.life = 600; // Lives for 20 seconds before starving/expiring
+        this.life = AMBUSH_CONFIG.broodlingLife; 
         
         this.ramSpriteLoaded = false;
     }
@@ -164,7 +187,7 @@ export class Broodling extends Spider {
 }
 
 // ==========================================
-// 3. EXPANSION LOGIC
+// 4. EXPANSION LOGIC
 // ==========================================
 export const BroodAmbushExpansion = {
     init: (game) => {
@@ -176,9 +199,8 @@ export const BroodAmbushExpansion = {
 
         game.bus.on('castSpell', (data) => {
             if (data.type === 'ambush') {
-                const cost = 50;
-                if (game.eco[data.team].dew >= cost) {
-                    game.eco[data.team].dew -= cost;
+                if (game.eco[data.team].dew >= AMBUSH_CONFIG.spellCost) {
+                    game.eco[data.team].dew -= AMBUSH_CONFIG.spellCost;
                     
                     game.addEntity(new EggTrap(data.x, data.y, data.team));
                     
