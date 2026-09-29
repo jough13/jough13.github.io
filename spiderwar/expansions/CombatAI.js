@@ -50,6 +50,7 @@ export const CombatAndHarvesterExpansion = {
 
             // --- COMBAT OVERRIDE ---
             // If an enemy is within detection range, drop everything and fight!
+            // (Notice we don't use a trait here: all bugs in the swarm will bite back to defend themselves)
             const detectRadius = 150 + (techLvl * 10);
             let nearestEnemy = gameObj.getNearestEnemy(this.x, this.y, this.team, detectRadius);
 
@@ -83,8 +84,9 @@ export const CombatAndHarvesterExpansion = {
                 return; // End update (Combat overrides all other tasks)
             }
 
-            // --- SOLDIER ESCORT AI ---
-            if (this.role === 'soldier') {
+            // --- PILLAR 3: TRAIT-BASED ESCORT AI ---
+            // Replaced `if (this.role === 'soldier')`! Any bug with 'escort' will automatically guard the Queen.
+            if (this.hasTrait('escort')) {
                 const myQueen = gameObj.queens.find(q => q.team === this.team);
                 if (myQueen) {
                     const dx = myQueen.x - this.x; 
@@ -100,89 +102,92 @@ export const CombatAndHarvesterExpansion = {
                 return; 
             }
 
-            // --- HARVESTER ECONOMY AI ---
-            
-            // If our target was destroyed (Nests) or depleted (Pumpkins) by someone else, clear it!
-            if (this.target && (
-                (this.target.hp !== undefined && this.target.hp <= 0) || 
-                (this.target.resources !== undefined && this.target.resources <= 0)
-            )) {
-                this.target = null; 
-            }
-
-            if (this.cargo.amount === 0) this.state = SPIDER_STATE.SEEKING_RESOURCE; 
-            else this.state = SPIDER_STATE.RETURNING_HOME;
-            
-            // PERFORMANCE: Stagger target searches to prevent CPU lag spikes
-            if (!this.target) {
-                this.searchDelay = (this.searchDelay || 0) - 1;
-                
-                if (this.searchDelay <= 0) {
-                    this.searchDelay = MathUtils.randomInt(10, 20); // Wait 10-20 frames before searching again
-                    let closest = null; 
-                    let minD = Infinity;
-
-                    if (this.state === SPIDER_STATE.SEEKING_RESOURCE) {
-                        // Find nearest Resource Node (that still has resources)
-                        gameObj.resourceNodes.forEach(r => { 
-                            if (r.resources > 0) {
-                                let dSq = MathUtils.distSq(r.x, r.y, this.x, this.y); 
-                                if(dSq < minD) { minD = dSq; closest = r; } 
-                            }
-                        });
-                    } else {
-                        // Find nearest Dropoff Point (Nest, Pylon, or Queen)
-                        gameObj.structures.filter(s => s.team === this.team && (s.type === 'nest' || s.type === 'pylon') && s.hp > 0 && !s.isConstructing).forEach(n => { 
-                            let dSq = MathUtils.distSq(n.x, n.y, this.x, this.y); 
-                            if(dSq < minD) { minD = dSq; closest = n; } 
-                        });
-                        gameObj.queens.filter(q => q.team === this.team && q.hp > 0).forEach(q => { 
-                            let dSq = MathUtils.distSq(q.x, q.y, this.x, this.y); 
-                            if(dSq < minD) { minD = dSq; closest = q; } 
-                        });
-                    }
-                    this.target = closest;
-                } else {
-                    return; // Yield CPU if we are waiting for our search cycle
+            // --- PILLAR 3: TRAIT-BASED HARVESTER ECONOMY AI ---
+            // Now ONLY bugs with the 'gatherer' tag will attempt to mine pumpkins and dew!
+            if (this.hasTrait('gatherer')) {
+                // If our target was destroyed (Nests) or depleted (Pumpkins) by someone else, clear it!
+                if (this.target && (
+                    (this.target.hp !== undefined && this.target.hp <= 0) || 
+                    (this.target.resources !== undefined && this.target.resources <= 0)
+                )) {
+                    this.target = null; 
                 }
-            }
 
-            // Move towards target
-            if (this.target) {
-                const dx = this.target.x - this.x; 
-                const dy = this.target.y - this.y;
-                const distSq = MathUtils.distSq(0,0, dx, dy); 
+                if (this.cargo.amount === 0) this.state = SPIDER_STATE.SEEKING_RESOURCE; 
+                else this.state = SPIDER_STATE.RETURNING_HOME;
                 
-                this.angle = Math.atan2(dy, dx);
-                const targetRadius = this.target.size ? this.target.size + 5 : 15;
-                
-                if (distSq > targetRadius * targetRadius) { 
-                    this.x += Math.cos(this.angle) * currentSpeed; 
-                    this.y += Math.sin(this.angle) * currentSpeed;
-                } else {
-                    // Reached Target!
-                    if (this.state === SPIDER_STATE.SEEKING_RESOURCE && this.target.resources > 0) {
-                        let amountGathered = Math.min(10, this.target.resources);
-                        this.cargo.amount = amountGathered; 
-                        this.cargo.type = this.target.type; 
-                        
-                        this.target.resources -= amountGathered; 
-                        this.target = null; // Clear target to trigger return home
-                        
-                        const resColor = this.cargo.type === 'pumpkin' ? '#ff7b00' : '#00aaff';
-                        gameObj.bus.emit('particles', {x: this.x, y: this.y, color: resColor, count: 5}); 
-                        gameObj.bus.emit('playSound', 'harvest');
-                    } 
-                    else if (this.state === SPIDER_STATE.RETURNING_HOME) {
-                        if (this.cargo.type === 'pumpkin') gameObj.eco[this.team].pumpkins += this.cargo.amount;
-                        else if (this.cargo.type === 'dew') gameObj.eco[this.team].dew += this.cargo.amount;
-                        
-                        this.cargo.amount = 0; 
-                        this.target = null; // Clear target to trigger gathering
+                // PERFORMANCE: Stagger target searches to prevent CPU lag spikes
+                if (!this.target) {
+                    this.searchDelay = (this.searchDelay || 0) - 1;
+                    
+                    if (this.searchDelay <= 0) {
+                        this.searchDelay = MathUtils.randomInt(10, 20); // Wait 10-20 frames before searching again
+                        let closest = null; 
+                        let minD = Infinity;
+
+                        if (this.state === SPIDER_STATE.SEEKING_RESOURCE) {
+                            // Find nearest Resource Node (that still has resources)
+                            gameObj.resourceNodes.forEach(r => { 
+                                if (r.resources > 0) {
+                                    let dSq = MathUtils.distSq(r.x, r.y, this.x, this.y); 
+                                    if(dSq < minD) { minD = dSq; closest = r; } 
+                                }
+                            });
+                        } else {
+                            // Find nearest Dropoff Point (Nest, Pylon, or Queen)
+                            gameObj.structures.filter(s => s.team === this.team && (s.type === 'nest' || s.type === 'pylon') && s.hp > 0 && !s.isConstructing).forEach(n => { 
+                                let dSq = MathUtils.distSq(n.x, n.y, this.x, this.y); 
+                                if(dSq < minD) { minD = dSq; closest = n; } 
+                            });
+                            gameObj.queens.filter(q => q.team === this.team && q.hp > 0).forEach(q => { 
+                                let dSq = MathUtils.distSq(q.x, q.y, this.x, this.y); 
+                                if(dSq < minD) { minD = dSq; closest = q; } 
+                            });
+                        }
+                        this.target = closest;
+                    } else {
+                        return; // Yield CPU if we are waiting for our search cycle
+                    }
+                }
+
+                // Move towards target
+                if (this.target) {
+                    const dx = this.target.x - this.x; 
+                    const dy = this.target.y - this.y;
+                    const distSq = MathUtils.distSq(0,0, dx, dy); 
+                    
+                    this.angle = Math.atan2(dy, dx);
+                    const targetRadius = this.target.size ? this.target.size + 5 : 15;
+                    
+                    if (distSq > targetRadius * targetRadius) { 
+                        this.x += Math.cos(this.angle) * currentSpeed; 
+                        this.y += Math.sin(this.angle) * currentSpeed;
+                    } else {
+                        // Reached Target!
+                        if (this.state === SPIDER_STATE.SEEKING_RESOURCE && this.target.resources > 0) {
+                            let amountGathered = Math.min(10, this.target.resources);
+                            this.cargo.amount = amountGathered; 
+                            this.cargo.type = this.target.type; 
+                            
+                            this.target.resources -= amountGathered; 
+                            this.target = null; // Clear target to trigger return home
+                            
+                            const resColor = this.cargo.type === 'pumpkin' ? '#ff7b00' : '#00aaff';
+                            gameObj.bus.emit('particles', {x: this.x, y: this.y, color: resColor, count: 5}); 
+                            gameObj.bus.emit('playSound', 'harvest');
+                        } 
+                        else if (this.state === SPIDER_STATE.RETURNING_HOME) {
+                            if (this.cargo.type === 'pumpkin') gameObj.eco[this.team].pumpkins += this.cargo.amount;
+                            else if (this.cargo.type === 'dew') gameObj.eco[this.team].dew += this.cargo.amount;
+                            
+                            this.cargo.amount = 0; 
+                            this.target = null; // Clear target to trigger gathering
+                        }
                     }
                 }
             } else {
-                // Idle wandering if completely lost
+                // --- DEFAULT IDLE WANDERING ---
+                // Non-gatherers that have no enemies nearby and aren't escorting the queen will just gently patrol
                 this.angle += MathUtils.randomRange(-0.5, 0.5);
                 this.x += Math.cos(this.angle) * (currentSpeed * 0.5); 
                 this.y += Math.sin(this.angle) * (currentSpeed * 0.5);
