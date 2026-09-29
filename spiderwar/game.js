@@ -2,8 +2,10 @@
 // 1. CORE ARCHITECTURE & UTILITIES
 // ==========================================
 export const MathUtils = {
-    distSq: (x1, y1, x2, y2) => (x2 - x1) ** 2 + (y2 - y1) ** 2,
-    dist: (x1, y1, x2, y2) => Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2),
+    TWO_PI: Math.PI * 2, // Cached for massive rendering performance
+    // Optimized: Direct multiplication is vastly faster than the ** exponent operator in JS
+    distSq: (x1, y1, x2, y2) => { const dx = x2 - x1; const dy = y2 - y1; return (dx * dx) + (dy * dy); },
+    dist: (x1, y1, x2, y2) => { const dx = x2 - x1; const dy = y2 - y1; return Math.sqrt((dx * dx) + (dy * dy)); },
     clamp: (val, min, max) => Math.max(min, Math.min(max, val)),
     lerp: (start, end, amt) => (1 - amt) * start + amt * end,
     randomRange: (min, max) => Math.random() * (max - min) + min,
@@ -46,7 +48,9 @@ export class ExpansionManager {
     patchClass(TargetClass, methodName, newMethod) {
         const originalMethod = TargetClass.prototype[methodName];
         TargetClass.prototype[methodName] = function(...args) {
-            return newMethod.call(this, originalMethod.bind(this), ...args);
+            // GC LEAK FIX: Removed .bind(this) which created a new function in memory every frame.
+            // Raw method is safely passed down, expansions handle `.call(this)` natively!
+            return newMethod.call(this, originalMethod, ...args);
         };
     }
 }
@@ -63,7 +67,6 @@ export const SPIDER_STATE = {
 };
 
 // --- PILLAR 3: THE TRAIT DICTIONARY ---
-// Every unit now has an array of behavior tags!
 export const UNIT_DATA = {
     harvester: { size: 12, hp: 100, damage: 15, attackSpeed: 30, baseSpeedMin: 0.8, baseSpeedMax: 1.8, traits: ['gatherer'] },
     soldier:   { size: 16, hp: 200, damage: 30, attackSpeed: 20, baseSpeedMin: 1.2, baseSpeedMax: 2.2, traits: ['melee', 'escort'] }
@@ -89,8 +92,8 @@ export class Spider {
         this.hp = stats.hp; this.maxHp = this.hp;
         this.damage = stats.damage; this.attackSpeed = stats.attackSpeed;
         
-        // --- PILLAR 3: TRAIT ASSIGNMENT ---
-        this.traits = stats.traits || [];
+        // EXPANDABILITY: Cloned array protects the global config from accidental mutation
+        this.traits = stats.traits ? [...stats.traits] : [];
         
         this.cooldown = 0; this.angle = 0; this.state = SPIDER_STATE.IDLE; this.target = null; 
         this.cargo = { amount: 0, type: null };
@@ -103,7 +106,6 @@ export class Spider {
         this.imageLoaded = false; this.sprite.onload = () => { this.imageLoaded = true; };
     }
     
-    // --- PILLAR 3: HELPER FUNCTION ---
     hasTrait(traitName) {
         return this.traits.includes(traitName);
     }
@@ -113,15 +115,15 @@ export class Spider {
     draw(ctx) {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); 
         if (this.imageLoaded || (this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0)) { 
-            ctx.drawImage(this.sprite, -this.size, -this.size, this.size*2, this.size*2); 
+            ctx.drawImage(this.sprite, -this.size, -this.size, this.size * 2, this.size * 2); 
         } else {
-            ctx.fillStyle = this.team; ctx.beginPath(); ctx.arc(0, 0, this.size, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = this.team; ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
             ctx.fillStyle = 'white'; ctx.fillRect(this.size/2, -3, 4, 6);
-            if(this.role === 'soldier') { ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI*2); ctx.fill(); }
+            if(this.role === 'soldier') { ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(0, 0, 4, 0, MathUtils.TWO_PI); ctx.fill(); }
         }
         if (this.cargo.amount > 0) { 
             ctx.fillStyle = this.cargo.type === 'pumpkin' ? '#ff7b00' : '#00aaff'; 
-            ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill(); 
+            ctx.beginPath(); ctx.arc(0, 0, 5, 0, MathUtils.TWO_PI); ctx.fill(); 
         }
         ctx.restore();
     }
@@ -143,10 +145,10 @@ export class ResourceNode {
         const scale = Math.max(0.4, this.resources / maxRes); ctx.scale(scale, scale);
         
         if (this.imageLoaded) { 
-            ctx.drawImage(this.sprite, -this.size, -this.size, this.size*2, this.size*2); 
+            ctx.drawImage(this.sprite, -this.size, -this.size, this.size * 2, this.size * 2); 
         } else { 
             ctx.fillStyle = this.type === 'pumpkin' ? '#ff7b00' : '#00aaff'; 
-            ctx.beginPath(); ctx.arc(0, 0, this.size, 0, Math.PI * 2); ctx.fill(); 
+            ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill(); 
         }
         ctx.restore();
     }
@@ -169,13 +171,13 @@ export class Structure {
     update(game) {} 
     draw(ctx) {
         if(this.spriteLoaded) { 
-            ctx.drawImage(this.sprite, this.x - this.size, this.y - this.size, this.size*2, this.size*2); 
+            ctx.drawImage(this.sprite, this.x - this.size, this.y - this.size, this.size * 2, this.size * 2); 
         } else {
             ctx.fillStyle = this.team === 'black' ? '#222' : '#500';
-            if(this.type === 'nest') { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill(); }
-            else if(this.type === 'eggsac') { ctx.beginPath(); ctx.ellipse(this.x, this.y, this.size, this.size-10, 0, 0, Math.PI*2); ctx.fill(); }
-            else if(this.type === 'turret') { ctx.fillRect(this.x - this.size, this.y - this.size, this.size*2, this.size*2); ctx.fillStyle='purple'; ctx.beginPath(); ctx.arc(this.x, this.y, 8, 0, Math.PI*2); ctx.fill(); }
-            else if(this.type === 'wall') { ctx.fillRect(this.x - this.size, this.y - 10, this.size*2, 20); }
+            if(this.type === 'nest') { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, MathUtils.TWO_PI); ctx.fill(); }
+            else if(this.type === 'eggsac') { ctx.beginPath(); ctx.ellipse(this.x, this.y, this.size, this.size-10, 0, 0, MathUtils.TWO_PI); ctx.fill(); }
+            else if(this.type === 'turret') { ctx.fillRect(this.x - this.size, this.y - this.size, this.size * 2, this.size * 2); ctx.fillStyle='purple'; ctx.beginPath(); ctx.arc(this.x, this.y, 8, 0, MathUtils.TWO_PI); ctx.fill(); }
+            else if(this.type === 'wall') { ctx.fillRect(this.x - this.size, this.y - 10, this.size * 2, 20); }
             else if(this.type === 'pylon') { ctx.beginPath(); ctx.moveTo(this.x, this.y - this.size); ctx.lineTo(this.x - this.size, this.y + this.size); ctx.lineTo(this.x + this.size, this.y + this.size); ctx.fill(); }
             ctx.strokeStyle = this.team; ctx.lineWidth = 2; ctx.stroke();
         }
@@ -197,12 +199,14 @@ export class Projectile {
             game.bus.emit('particles', {x: this.target.x, y: this.target.y, color: this.team==='black'?'#aa00ff':'#ffaa00', count: 10});
         } else {
             const dist = Math.sqrt(distSq);
-            this.x += (dx/dist) * this.speed; this.y += (dy/dist) * this.speed; 
+            if (dist > 0) { // Safety to prevent NaN interpolation
+                this.x += (dx/dist) * this.speed; this.y += (dy/dist) * this.speed; 
+            }
         }
     }
     draw(ctx) { 
         ctx.fillStyle = this.team === 'black' ? '#aa00ff' : '#ffaa00'; 
-        ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, Math.PI*2); ctx.fill(); 
+        ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, MathUtils.TWO_PI); ctx.fill(); 
     }
 }
 
@@ -234,7 +238,7 @@ export class Game {
         
         this.entities = [];
         this.decor = []; 
-        this.spatialGrid = new Map(); // <--- PILLAR 1: High Performance Spatial Hash
+        this.spatialGrid = new Map(); 
         
         this.eco = { black: { pumpkins: 600, dew: 100 }, red: { pumpkins: 600, dew: 100 } }; 
         this.pop = { black: 0, red: 0 }; 
@@ -257,11 +261,18 @@ export class Game {
     get bosses() { return this.entities.filter(e => e.constructor.name === 'CentipedeBoss'); }
     
     addEntity(entity) { this.entities.push(entity); }
-    resize() { this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight; }
+    
+    resize() { 
+        this.canvas.width = window.innerWidth; 
+        this.canvas.height = window.innerHeight; 
+        // DOM REFOW FIX: Cache bounds once on resize so mousemove doesn't trigger layout thrashing
+        this.canvasRect = this.canvas.getBoundingClientRect();
+    }
+    
     getTerrainAt(x, y) { return 'dirt'; } 
 
     checkTerritory(x, y, team) {
-        return this.structures.some(s => s.team === team && s.territory > 0 && MathUtils.distSq(s.x, s.y, x, y) <= s.territory ** 2);
+        return this.structures.some(s => s.team === team && s.territory > 0 && MathUtils.distSq(s.x, s.y, x, y) <= (s.territory * s.territory));
     }
 
     setupInputs() {
@@ -279,7 +290,7 @@ export class Game {
         let isDragging = false; let dragStartX, dragStartY, camStartX, camStartY, hasMoved;
 
         const getCanvasPos = (clientX, clientY) => {
-            const rect = this.canvas.getBoundingClientRect();
+            const rect = this.canvasRect || this.canvas.getBoundingClientRect();
             return { x: clientX - rect.left, y: clientY - rect.top };
         };
 
@@ -320,7 +331,7 @@ export class Game {
                         if (!this.keys['shift']) { this.activeTool = 'select'; this.bus.emit('toolChanged', 'select'); }
                     }
                     else {
-                        let clickedStruct = this.structures.find(s => s.team === 'black' && MathUtils.distSq(s.x, s.y, worldX, worldY) < s.size ** 2);
+                        let clickedStruct = this.structures.find(s => s.team === 'black' && MathUtils.distSq(s.x, s.y, worldX, worldY) < (s.size * s.size));
                         this.selectedStructure = clickedStruct; 
                         if(clickedStruct) this.bus.emit('openModal', clickedStruct);
                         else this.bus.emit('closeModal'); 
@@ -340,7 +351,7 @@ export class Game {
         this.bus.on('spawnSpider', (data) => {
             if (data.role !== 'harvester' && data.role !== 'soldier') return; 
             const cost = data.role === 'soldier' ? 25 : 10;
-            if (this.eco[data.team].pumpkins >= cost && this.pop[data.team] < this.maxPop[data.team]) {
+            if (this.eco[data.team]?.pumpkins >= cost && this.pop[data.team] < this.maxPop[data.team]) {
                 this.eco[data.team].pumpkins -= cost; 
                 this.addEntity(new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role));
                 this.bus.emit('playSound', 'harvest'); 
@@ -358,7 +369,7 @@ export class Game {
                 }
             }
 
-            if (this.eco[data.team].pumpkins >= costs[data.type]) {
+            if (this.eco[data.team]?.pumpkins >= costs[data.type]) {
                 this.eco[data.team].pumpkins -= costs[data.type];
                 this.addEntity(new Structure(data.x, data.y, data.team, data.type));
                 this.bus.emit('playSound', 'build');
@@ -384,7 +395,7 @@ export class Game {
                 if (e instanceof Structure && e.type === 'eggsac') {
                     if (e.team === 'black') blackEggs++; else if (e.team === 'red') redEggs++;
                 }
-                if (e instanceof Spider && !e.hasTrait('queen')) { // Updated to use Trait system!
+                if (e instanceof Spider && !e.hasTrait('queen')) {
                     if (e.team === 'black') blackPop++; else if (e.team === 'red') redPop++;
                 }
             });
@@ -394,7 +405,6 @@ export class Game {
             this.pop.red = redPop;
         }
 
-        // --- PILLAR 1: CLEAR SPATIAL GRID ---
         this.spatialGrid.clear();
         const CELL_SIZE = 250;
 
@@ -423,11 +433,11 @@ export class Game {
                 aliveCount++;
                 
                 // --- PILLAR 1: POPULATE SPATIAL GRID ---
-                // Only put targetable things in the grid to save memory!
                 if (e.team) {
                     const cx = Math.floor(e.x / CELL_SIZE);
                     const cy = Math.floor(e.y / CELL_SIZE);
-                    const key = `${cx},${cy}`;
+                    // MASSIVE PERFORMANCE FIX: Using bitwise integers for grid map keys entirely eliminates string GC thrashing!
+                    const key = (cx << 16) | cy;
                     
                     let cell = this.spatialGrid.get(key);
                     if (!cell) { cell = []; this.spatialGrid.set(key, cell); }
@@ -444,11 +454,9 @@ export class Game {
         this.entities.length = aliveCount;
     }
 
-    // High performance targeting function using Spatial Hashing!
     getNearestEnemy(x, y, team, maxDist) {
         const CELL_SIZE = 250;
         
-        // Calculate exactly which grid cells touch our max detection radius
         const minCx = Math.floor((x - maxDist) / CELL_SIZE);
         const maxCx = Math.floor((x + maxDist) / CELL_SIZE);
         const minCy = Math.floor((y - maxDist) / CELL_SIZE);
@@ -457,23 +465,22 @@ export class Game {
         let nearest = null;
         let minDistSq = maxDist * maxDist;
 
-        // ONLY loop through the cells that are within our range!
         for (let cx = minCx; cx <= maxCx; cx++) {
             for (let cy = minCy; cy <= maxCy; cy++) {
                 
-                const cell = this.spatialGrid.get(`${cx},${cy}`);
-                if (!cell) continue; // Cell is empty, skip instantly!
+                // GC FIX: Same integer-based lookup matches the new populator above.
+                const key = (cx << 16) | cy;
+                const cell = this.spatialGrid.get(key);
+                if (!cell) continue; 
 
                 for (let i = 0; i < cell.length; i++) {
                     let e = cell[i];
                     
-                    // Early exits for performance! Also natively ignores stealthed/cloaked units!
                     if (!e.team || e.team === team || e.hp <= 0 || e.isCloaked || e instanceof Projectile) continue;
                     
                     let dSq = MathUtils.distSq(x, y, e.x, e.y);
                     
-                    // Enemies prioritize destroying walls if they block the path
-                    if (e.type === 'wall' && dSq < (250*250)) dSq = Math.max(0, dSq - 10000); 
+                    if (e.type === 'wall' && dSq < 62500) dSq = Math.max(0, dSq - 10000); 
                     
                     if (dSq < minDistSq) {
                         minDistSq = dSq;
@@ -495,7 +502,7 @@ export class Game {
 
         if(this.selectedStructure) {
             this.ctx.strokeStyle = '#ffffff'; this.ctx.lineWidth = 2; this.ctx.setLineDash([5, 5]);
-            this.ctx.beginPath(); this.ctx.arc(this.selectedStructure.x, this.selectedStructure.y, this.selectedStructure.size + 10, 0, Math.PI * 2);
+            this.ctx.beginPath(); this.ctx.arc(this.selectedStructure.x, this.selectedStructure.y, this.selectedStructure.size + 10, 0, MathUtils.TWO_PI);
             this.ctx.stroke(); this.ctx.setLineDash([]);
         }
 
