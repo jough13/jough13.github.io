@@ -2,6 +2,24 @@
 import { Structure, ResourceNode, MathUtils } from '../game.js';
 import { Aphid, GoldenBug } from './Critters.js';
 
+// ==========================================
+// 1. CONFIGURATION & AI BALANCING
+// ==========================================
+const AI_CONFIG = {
+    pad: 600,                 // Safe distance from map edges for base spawning
+    exclusionRadiusSq: 90000, // 300px squared exclusion zone for resource spawning around bases
+    
+    unitTickRate: 120,        // AI attempts to spawn a unit every ~4 seconds
+    buildTickRate: 450,       // AI attempts to expand base every ~15 seconds
+    
+    techUpgradeCost: 250,     // Cost for the AI to evolve its tech level
+    
+    // Escalation Timers (Ticks)
+    phase2Tick: 3600,         // ~2 minutes
+    phase3Tick: 5400,         // ~3 minutes
+    phase4Tick: 7200          // ~4 minutes
+};
+
 export const AdvancedBaseExpansion = {
     init: (game) => {
         game.basesInitialized = false;
@@ -15,34 +33,35 @@ export const AdvancedBaseExpansion = {
             if (this.gameState !== 'playing') return;
 
             // ==========================================
-            // 1. ONE-TIME BASE & MAP GENERATION (Tick 1)
+            // 2. ONE-TIME BASE & MAP GENERATION (Tick 1)
             // ==========================================
-            // We wait until tick 1 to guarantee TerrainGen has finished building the map grid
             if (this.tick === 1 && !this.basesInitialized) {
                 this.basesInitialized = true;
                 
                 console.log("%c[Lore] The Obsidian Brood and Crimson Swarm have awakened.", "color: #aa00ff; font-style: italic;");
 
-                const pad = 600; 
-                
                 // Player Spawn (Obsidian Brood - Top Left-ish)
-                const bX = pad + MathUtils.randomRange(0, 200); 
-                const bY = pad + MathUtils.randomRange(0, 200);
+                const bX = AI_CONFIG.pad + MathUtils.randomRange(0, 200); 
+                const bY = AI_CONFIG.pad + MathUtils.randomRange(0, 200);
                 
                 // Enemy Spawn (Crimson Swarm - Bottom Right-ish)
-                const rX = this.world.width - pad - MathUtils.randomRange(0, 200); 
-                const rY = this.world.height - pad - MathUtils.randomRange(0, 200);
+                const rX = this.world.width - AI_CONFIG.pad - MathUtils.randomRange(0, 200); 
+                const rY = this.world.height - AI_CONFIG.pad - MathUtils.randomRange(0, 200);
                 
-                // Clear the terrain directly under the spawn points so nests don't spawn in water
-                const tBX = Math.max(0, Math.floor(bX / this.tileSize)); 
-                const tBY = Math.max(0, Math.floor(bY / this.tileSize));
-                const tRX = Math.max(0, Math.floor(rX / this.tileSize)); 
-                const tRY = Math.max(0, Math.floor(rY / this.tileSize));
-                
-                if(this.mapGrid[tBY] && this.mapGrid[tBY][tBX]) this.mapGrid[tBY][tBX] = { type: 'dirt', sprite: 'dirt', angle: 0 };
-                if(this.mapGrid[tRY] && this.mapGrid[tRY][tRX]) this.mapGrid[tRY][tRX] = { type: 'dirt', sprite: 'dirt', angle: 0 };
-                
-                if (this.updateBitmasks) this.updateBitmasks();
+                // SAFETY FIX: Make independent of Terrain.js. 
+                // Only attempt to modify mapGrid if it actually exists!
+                if (this.mapGrid) {
+                    const tileSize = this.tileSize || 256;
+                    const tBX = Math.max(0, Math.floor(bX / tileSize)); 
+                    const tBY = Math.max(0, Math.floor(bY / tileSize));
+                    const tRX = Math.max(0, Math.floor(rX / tileSize)); 
+                    const tRY = Math.max(0, Math.floor(rY / tileSize));
+                    
+                    if(this.mapGrid[tBY] && this.mapGrid[tBY][tBX]) this.mapGrid[tBY][tBX] = { type: 'dirt', sprite: 'dirt', angle: 0 };
+                    if(this.mapGrid[tRY] && this.mapGrid[tRY][tRX]) this.mapGrid[tRY][tRX] = { type: 'dirt', sprite: 'dirt', angle: 0 };
+                    
+                    if (this.updateBitmasks) this.updateBitmasks();
+                }
 
                 // Spawn Base Structures
                 this.addEntity(new Structure(bX, bY, 'black', 'nest')); 
@@ -55,24 +74,42 @@ export const AdvancedBaseExpansion = {
                 this.camera.x = Math.max(0, bX - (this.canvas.width / 2)); 
                 this.camera.y = Math.max(0, bY - (this.canvas.height / 2));
                 
+                // GAMEPLAY POLISH: Helper to prevent resources from spawning directly on top of Nests
+                const isTooCloseToBase = (x, y) => {
+                    return MathUtils.distSq(x, y, bX, bY) < AI_CONFIG.exclusionRadiusSq || 
+                           MathUtils.distSq(x, y, rX, rY) < AI_CONFIG.exclusionRadiusSq;
+                };
+
                 // Scatter Pumpkin Patches
                 for (let i = 0; i < 40; i++) {
-                    let pX = 600 + Math.random() * (this.world.width - 1200); 
-                    let pY = 600 + Math.random() * (this.world.height - 1200);
-                    let clusterSize = MathUtils.randomInt(5, 10);
-                    
-                    for (let p = 0; p < clusterSize; p++) {
-                        this.addEntity(new ResourceNode(
-                            pX + MathUtils.randomRange(-150, 150), 
-                            pY + MathUtils.randomRange(-150, 150), 
-                            'pumpkin'
-                        ));
+                    let pX, pY, valid = false;
+                    for (let attempts = 0; attempts < 5 && !valid; attempts++) {
+                        pX = 600 + Math.random() * (this.world.width - 1200); 
+                        pY = 600 + Math.random() * (this.world.height - 1200);
+                        if (!isTooCloseToBase(pX, pY)) valid = true;
+                    }
+
+                    if (valid) {
+                        let clusterSize = MathUtils.randomInt(5, 10);
+                        for (let p = 0; p < clusterSize; p++) {
+                            this.addEntity(new ResourceNode(
+                                pX + MathUtils.randomRange(-150, 150), 
+                                pY + MathUtils.randomRange(-150, 150), 
+                                'pumpkin'
+                            ));
+                        }
                     }
                 }
                 
                 // Scatter Magic Dew
                 for (let i = 0; i < 60; i++) { 
-                    this.addEntity(new ResourceNode(Math.random() * this.world.width, Math.random() * this.world.height, 'dew')); 
+                    let dX, dY, valid = false;
+                    for (let attempts = 0; attempts < 5 && !valid; attempts++) {
+                        dX = Math.random() * this.world.width; 
+                        dY = Math.random() * this.world.height;
+                        if (!isTooCloseToBase(dX, dY)) valid = true;
+                    }
+                    if (valid) this.addEntity(new ResourceNode(dX, dY, 'dew')); 
                 }
                 
                 // Spawn Neutral Critters
@@ -91,11 +128,11 @@ export const AdvancedBaseExpansion = {
             }
 
             // ==========================================
-            // 2. CRIMSON SWARM AI: DYNAMIC ESCALATION
+            // 3. CRIMSON SWARM AI: DYNAMIC ESCALATION
             // ==========================================
             
-            // Unit Spawning Loop (Runs every ~4 seconds / 120 ticks)
-            if (this.tick % 120 === 0) {
+            // Unit Spawning Loop
+            if (this.tick % AI_CONFIG.unitTickRate === 0) {
                 let redNests = this.structures.filter(s => s.team === 'red' && s.type === 'nest');
                 
                 if (redNests.length > 0 && this.pop.red < this.maxPop.red) {
@@ -103,8 +140,8 @@ export const AdvancedBaseExpansion = {
                     
                     // AI Escalation: Unlocks advanced units as time goes on
                     let availableRoles = ['harvester', 'harvester', 'soldier']; // Weighted towards eco early
-                    if (this.tick > 3600) availableRoles.push('soldier', 'spitter'); // ~2 minutes in
-                    if (this.tick > 7200) availableRoles.push('tarantula', 'spitter'); // ~4 minutes in
+                    if (this.tick > AI_CONFIG.phase2Tick) availableRoles.push('soldier', 'spitter');
+                    if (this.tick > AI_CONFIG.phase4Tick) availableRoles.push('tarantula', 'spitter');
                     
                     let chosenRole = availableRoles[MathUtils.randomInt(0, availableRoles.length - 1)];
 
@@ -116,14 +153,14 @@ export const AdvancedBaseExpansion = {
                 }
             }
 
-            // Base Expansion Loop (Runs every ~15 seconds / 450 ticks)
-            if (this.tick % 450 === 0) {
+            // Base Expansion Loop
+            if (this.tick % AI_CONFIG.buildTickRate === 0) {
                 
-                // --- FIX: AI Tech Escalation ---
                 let upgradedTech = false;
-                // After 4 minutes (7200 ticks), the AI has a 50% chance to spend surplus pumpkins on Tech
-                if (this.tick > 7200 && this.eco.red.pumpkins >= 250 && Math.random() > 0.5) {
-                    this.eco.red.pumpkins -= 250;
+                
+                // After Phase 4, the AI has a 50% chance to spend surplus pumpkins on Tech
+                if (this.tick > AI_CONFIG.phase4Tick && this.eco.red.pumpkins >= AI_CONFIG.techUpgradeCost && Math.random() > 0.5) {
+                    this.eco.red.pumpkins -= AI_CONFIG.techUpgradeCost;
                     this.techLevel.red = (this.techLevel.red || 0) + 1;
                     upgradedTech = true;
                     console.log(`[AI Alert] Crimson Swarm evolved to Tech Level ${this.techLevel.red}!`);
@@ -138,11 +175,11 @@ export const AdvancedBaseExpansion = {
                         
                         // AI Escalation: Unlocks advanced structures as time goes on
                         let availableBuildings = ['nest', 'eggsac', 'pylon', 'turret', 'wall'];
-                        if (this.tick > 5400) availableBuildings.push('mortar', 'shrine'); // ~3 minutes in
+                        if (this.tick > AI_CONFIG.phase3Tick) availableBuildings.push('mortar', 'shrine');
                         
                         const type = availableBuildings[MathUtils.randomInt(0, availableBuildings.length - 1)];
                         
-                        // AI Cost check before committing (prevents spamming the event bus uselessly)
+                        // AI Cost check before committing
                         const costs = { 
                             'nest': {p: 150, d: 0}, 'eggsac': {p: 50, d: 0}, 'pylon': {p: 25, d: 0}, 
                             'turret': {p: 100, d: 0}, 'wall': {p: 25, d: 0},
@@ -152,12 +189,19 @@ export const AdvancedBaseExpansion = {
                         let cost = costs[type];
                         
                         if (this.eco.red.pumpkins >= cost.p && this.eco.red.dew >= cost.d) {
-                            // Offset the building placement randomly near the queen, but clamp it safely inside the map!
+                            
                             const bX = MathUtils.clamp(redQueen.x + MathUtils.randomRange(-350, 350), 100, this.world.width - 100);
                             const bY = MathUtils.clamp(redQueen.y + MathUtils.randomRange(-350, 350), 100, this.world.height - 100);
                             
-                            // Emit the build event exactly like a player clicking the UI
-                            this.bus.emit('buildStructure', { x: bX, y: bY, team: 'red', type: type });
+                            // AI SMART PLACEMENT FIX: Ensure the AI doesn't build perfectly on top of its own buildings!
+                            const isOverlapping = this.structures.some(s => 
+                                MathUtils.distSq(s.x, s.y, bX, bY) < ((s.size * 2) * (s.size * 2))
+                            );
+
+                            if (!isOverlapping) {
+                                // Emit the build event exactly like a player clicking the UI
+                                this.bus.emit('buildStructure', { x: bX, y: bY, team: 'red', type: type });
+                            }
                         }
                     }
                 }
