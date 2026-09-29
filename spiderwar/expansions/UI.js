@@ -458,24 +458,26 @@ export const ContextUIExpansion = {
                 if (currentSelection.cargo && currentSelection.cargo.amount > 0) extraStats = `<div class="ui-stat">Cargo: ${currentSelection.cargo.amount} ${currentSelection.cargo.type}</div>`;
                 if (currentSelection.damage) extraStats += `<div class="ui-stat">DMG: ${currentSelection.damage + (this.techLevel[currentSelection.team] * 5 || 0)}</div>`;
 
-                // Only inject HTML if structural text changed, otherwise just update the CSS var for massive performance gains
                 const newHTML = `
                     <div class="ui-stat" id="ui-hp-text">HP: ${Math.ceil(currentSelection.hp)} / ${max}</div>
                     <div id="ui-hp-bar-bg"><div id="ui-hp-bar-fill" style="background: ${barColor}; --hp-pct: ${pct}%"></div></div>
                     ${extraStats}
                 `;
                 
-                // If it's just HP changing, update strictly via CSS Variables
-                if (statsContainer.innerHTML !== newHTML) {
-                    const fill = document.getElementById('ui-hp-bar-fill');
-                    const text = document.getElementById('ui-hp-text');
-                    if (fill && text) {
-                        fill.style.setProperty('--hp-pct', `${pct}%`);
-                        fill.style.background = barColor;
-                        text.innerText = `HP: ${Math.ceil(currentSelection.hp)} / ${max}`;
-                    } else {
-                        statsContainer.innerHTML = newHTML;
-                    }
+                const fill = document.getElementById('ui-hp-bar-fill');
+                const text = document.getElementById('ui-hp-text');
+                
+                // --- CARGO TEXT UPDATE ---
+                // Check if the extraStats changed (like picking up cargo).
+                // If they are exactly the same, it's safe to just update the HP variables!
+                if (fill && text && statsContainer.dataset.extra === extraStats) {
+                    fill.style.setProperty('--hp-pct', `${pct}%`);
+                    fill.style.background = barColor;
+                    text.innerText = `HP: ${Math.ceil(currentSelection.hp)} / ${max}`;
+                } else {
+                    // Elements are missing, or extra stats changed. Rebuild HTML and save state!
+                    statsContainer.innerHTML = newHTML;
+                    statsContainer.dataset.extra = extraStats; 
                 }
                 
             } else {
