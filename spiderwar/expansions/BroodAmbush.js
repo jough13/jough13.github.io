@@ -14,13 +14,16 @@ export class EggTrap {
         this.armingTimer = 30; // 1-second incubation before it can detonate
         this.age = 0;          // Used for deterministic pulsing animations
         
-        this.spriteLoaded = false;
-        this.sprite = new Image();
-        this.sprite.onload = () => { this.spriteLoaded = true; };
-        this.sprite.src = team === 'black' ? 'assets/eggtrap_black.png' : 'assets/eggtrap_red.png';
+        // Sprite will be pulled instantly from RAM cache on Tick 1 of its life
+        this.sprite = null;
     }
 
     update(game) {
+        // --- ASSET MANAGER CACHE LINKING ---
+        if (!this.sprite) {
+            this.sprite = game.assets.get(this.team === 'black' ? 'assets/eggtrap_black.png' : 'assets/eggtrap_red.png');
+        }
+
         this.age++;
         
         // Trap cannot detonate while still incubating
@@ -61,8 +64,8 @@ export class EggTrap {
             for (let i = 0; i < game.entities.length; i++) {
                 let e = game.entities[i];
                 
-                // Ignore allies, dead, and Nature units
-                if (e.team && e.team !== this.team && e.team !== 'nature' && e.hp > 0) {
+                // FIX: Added e.hp !== undefined check
+                if (e.team && e.team !== this.team && e.team !== 'nature' && e.hp !== undefined && e.hp > 0) {
                     if (MathUtils.distSq(this.x, this.y, e.x, e.y) < triggerRadiusSq) {
                         if (e instanceof Spider || e.constructor.name === 'CentipedeBoss') {
                             e.hp -= 40; // High explosive venom damage to units
@@ -95,7 +98,7 @@ export class EggTrap {
         
         ctx.globalAlpha = 0.6; // Slightly ghosted so the player knows it's stealthed
 
-        if (this.spriteLoaded) {
+        if (this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) {
             ctx.drawImage(this.sprite, -this.size, -this.size, this.size*2, this.size*2);
         } else {
             // Fallback drawing if asset is missing
@@ -125,14 +128,18 @@ export class Broodling extends Spider {
         
         this.life = 600; // Lives for 20 seconds before starving/expiring
         
-        // Safe re-assignment of the sprite
-        this.imageLoaded = false;
-        this.sprite = new Image();
-        this.sprite.onload = () => { this.imageLoaded = true; };
-        this.sprite.src = team === 'black' ? 'assets/broodling_black.png' : 'assets/broodling_red.png';
+        this.ramSpriteLoaded = false;
     }
 
     update(game) {
+        // --- ASSET MANAGER CACHE LINKING ---
+        // Overrides the default Spider() constructor image safely
+        if (!this.ramSpriteLoaded) {
+            this.sprite = game.assets.get(this.team === 'black' ? 'assets/broodling_black.png' : 'assets/broodling_red.png');
+            this.imageLoaded = true; // Tell base class it's ready to draw
+            this.ramSpriteLoaded = true;
+        }
+
         this.life--;
         
         if (this.life <= 0) {
@@ -161,6 +168,12 @@ export class Broodling extends Spider {
 // ==========================================
 export const BroodAmbushExpansion = {
     init: (game) => {
+        // --- ASSET REGISTRY ---
+        game.assets.register('assets/eggtrap_black.png');
+        game.assets.register('assets/eggtrap_red.png');
+        game.assets.register('assets/broodling_black.png');
+        game.assets.register('assets/broodling_red.png');
+
         game.bus.on('castSpell', (data) => {
             if (data.type === 'ambush') {
                 const cost = 50;
