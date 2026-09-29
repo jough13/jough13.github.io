@@ -26,22 +26,13 @@ export class GameBus {
     }
 }
 
-// Decentralized Asset Registry (Pillar 4)
 export class AssetManager {
     constructor() {
-        this.queue = new Set(); // A Set prevents duplicate files from being queued twice
-        this.cache = {};        // Stores the actual loaded Image() objects in RAM
+        this.queue = new Set(); 
+        this.cache = {};        
     }
-
-    // Called by Expansions during boot to tell the engine what they need
-    register(src) {
-        this.queue.add(src);
-    }
-
-    // Called by Units/Structures to get the image instantly from RAM
-    get(src) {
-        return this.cache[src];
-    }
+    register(src) { this.queue.add(src); }
+    get(src) { return this.cache[src]; }
 }
 
 export class ExpansionManager {
@@ -52,7 +43,6 @@ export class ExpansionManager {
         if (expansion.init) expansion.init(this.game);
         if (expansion.patch) expansion.patch(this.game);
     }
-    // Deep-patches a class prototype so expansions can inject logic cleanly
     patchClass(TargetClass, methodName, newMethod) {
         const originalMethod = TargetClass.prototype[methodName];
         TargetClass.prototype[methodName] = function(...args) {
@@ -65,7 +55,6 @@ export class ExpansionManager {
 // 2. GAME ENTITIES & DATA DICTIONARIES
 // ==========================================
 
-// Data-driven design: Expansions can simply add to these dictionaries!
 export const SPIDER_STATE = {
     IDLE: 0,
     COMBAT: 1,
@@ -73,9 +62,11 @@ export const SPIDER_STATE = {
     RETURNING_HOME: 3
 };
 
+// --- PILLAR 3: THE TRAIT DICTIONARY ---
+// Every unit now has an array of behavior tags!
 export const UNIT_DATA = {
-    harvester: { size: 12, hp: 100, damage: 15, attackSpeed: 30, baseSpeedMin: 0.8, baseSpeedMax: 1.8 },
-    soldier:   { size: 16, hp: 200, damage: 30, attackSpeed: 20, baseSpeedMin: 1.2, baseSpeedMax: 2.2 }
+    harvester: { size: 12, hp: 100, damage: 15, attackSpeed: 30, baseSpeedMin: 0.8, baseSpeedMax: 1.8, traits: ['gatherer'] },
+    soldier:   { size: 16, hp: 200, damage: 30, attackSpeed: 20, baseSpeedMin: 1.2, baseSpeedMax: 2.2, traits: ['melee', 'escort'] }
 };
 
 export const STRUCTURE_DATA = {
@@ -90,7 +81,6 @@ export class Spider {
     constructor(x, y, team, role = 'harvester') {
         this.x = x; this.y = y; this.team = team; this.role = role;
         
-        // Load stats from dictionary (with fallback for expansions that assign stats manually later)
         const stats = UNIT_DATA[role] || UNIT_DATA['harvester'];
         
         this.size = stats.size;
@@ -99,29 +89,36 @@ export class Spider {
         this.hp = stats.hp; this.maxHp = this.hp;
         this.damage = stats.damage; this.attackSpeed = stats.attackSpeed;
         
+        // --- PILLAR 3: TRAIT ASSIGNMENT ---
+        this.traits = stats.traits || [];
+        
         this.cooldown = 0; this.angle = 0; this.state = SPIDER_STATE.IDLE; this.target = null; 
         this.cargo = { amount: 0, type: null };
-        this.isCloaked = false; // Native stealth support
+        this.isCloaked = false; 
         
         this.sprite = new Image();
-        // Fallback sprite assignment (Obsidian Brood = black, Crimson Swarm = red)
         if (role === 'soldier') this.sprite.src = team === 'black' ? 'assets/soldier_black.png' : 'assets/soldier_red.png';
         else this.sprite.src = team === 'black' ? 'assets/black_spider.png' : 'assets/red_spider.png';
         
         this.imageLoaded = false; this.sprite.onload = () => { this.imageLoaded = true; };
     }
+    
+    // --- PILLAR 3: HELPER FUNCTION ---
+    hasTrait(traitName) {
+        return this.traits.includes(traitName);
+    }
+    
     update(game) { }
+    
     draw(ctx) {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); 
-        if (this.imageLoaded) { 
+        if (this.imageLoaded || (this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0)) { 
             ctx.drawImage(this.sprite, -this.size, -this.size, this.size*2, this.size*2); 
         } else {
-            // Primitive drawing fallback
             ctx.fillStyle = this.team; ctx.beginPath(); ctx.arc(0, 0, this.size, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = 'white'; ctx.fillRect(this.size/2, -3, 4, 6);
             if(this.role === 'soldier') { ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI*2); ctx.fill(); }
         }
-        // Draw carried resources
         if (this.cargo.amount > 0) { 
             ctx.fillStyle = this.cargo.type === 'pumpkin' ? '#ff7b00' : '#00aaff'; 
             ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill(); 
@@ -191,7 +188,7 @@ export class Projectile {
         this.speed = 5; this.active = true;
     }
     update(game) {
-        if(!this.target || this.target.hp <= 0) { this.active = false; return; }
+        if(!this.target || this.target.hp === undefined || this.target.hp <= 0) { this.active = false; return; }
         const dx = this.target.x - this.x; const dy = this.target.y - this.y;
         const distSq = MathUtils.distSq(this.x, this.y, this.target.x, this.target.y);
         
@@ -215,17 +212,14 @@ export class Projectile {
 export class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas'); 
-        this.ctx = this.canvas.getContext('2d', { alpha: false }); // alpha: false boosts render performance
+        this.ctx = this.canvas.getContext('2d', { alpha: false }); 
 
         this.ctx.imageSmoothingEnabled = false; 
 
         this.bus = new GameBus(); 
         this.expansions = new ExpansionManager(this);
-        
-        // --- CENTRAL ASSET MANAGER INITIALIZATION ---
         this.assets = new AssetManager();
         
-        // Register Base Game Assets to the queue
         const baseAssets = [
             'assets/soldier_black.png', 'assets/soldier_red.png', 'assets/black_spider.png', 'assets/red_spider.png',
             'assets/pumpkin.png', 'assets/dewdrop.png', 'assets/ui_frame.png',
@@ -253,7 +247,6 @@ export class Game {
         requestAnimationFrame(() => this.loop());
     }
 
-    // Dynamic getters using class attributes. Extremely safe for expansions.
     get spiders() { return this.entities.filter(e => e.role && e.cargo !== undefined); }
     get queens() { return this.entities.filter(e => e.constructor.name === 'Queen'); }
     get structures() { return this.entities.filter(e => e instanceof Structure); }
@@ -264,7 +257,7 @@ export class Game {
     
     addEntity(entity) { this.entities.push(entity); }
     resize() { this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight; }
-    getTerrainAt(x, y) { return 'dirt'; } // Overwritten by TerrainExpansion
+    getTerrainAt(x, y) { return 'dirt'; } 
 
     checkTerritory(x, y, team) {
         return this.structures.some(s => s.team === team && s.territory > 0 && MathUtils.distSq(s.x, s.y, x, y) <= s.territory ** 2);
@@ -276,8 +269,6 @@ export class Game {
         window.addEventListener('keydown', e => {
             const k = e.key.toLowerCase(); this.keys[k] = true;
             if(k === 'escape') { this.activeTool = 'select'; this.bus.emit('toolChanged', 'select'); this.bus.emit('closeModal'); }
-            
-            // Debug/Cheat for Tech Upgrades
             if(k === 'u' && this.eco.black.pumpkins >= 250) { 
                 this.eco.black.pumpkins -= 250; this.techLevel.black++; this.bus.emit('playSound', 'spell');
             }
@@ -286,7 +277,6 @@ export class Game {
 
         let isDragging = false; let dragStartX, dragStartY, camStartX, camStartY, hasMoved;
 
-        // Bounding client rect ensures accurate clicks even if canvas is offset
         const getCanvasPos = (clientX, clientY) => {
             const rect = this.canvas.getBoundingClientRect();
             return { x: clientX - rect.left, y: clientY - rect.top };
@@ -310,8 +300,6 @@ export class Game {
         const endInteraction = (clientX, clientY, targetElem) => {
             if (isDragging) {
                 isDragging = false;
-                
-                // Prevent game clicks if interacting with UI modals
                 if(targetElem && targetElem.closest && (targetElem.closest('#structureModal') || targetElem.closest('#mobileToolbar') || targetElem.closest('#rtsUI') || targetElem.closest('#gameOverModal'))) return;
 
                 if (!hasMoved && !this.isMinimapDragging) {
@@ -327,12 +315,10 @@ export class Game {
                         this.activeTool = 'select'; this.bus.emit('toolChanged', 'select');
                     }
                     else if (['nest', 'eggsac', 'turret', 'wall', 'pylon'].includes(this.activeTool)) {
-                        // NOTE: Base game handles standard structures, Controls.js patches this to handle dual-resource costs later!
                         this.bus.emit('buildStructure', { x: worldX, y: worldY, team: 'black', type: this.activeTool });
                         if (!this.keys['shift']) { this.activeTool = 'select'; this.bus.emit('toolChanged', 'select'); }
                     }
                     else {
-                        // Select Structure
                         let clickedStruct = this.structures.find(s => s.team === 'black' && MathUtils.distSq(s.x, s.y, worldX, worldY) < s.size ** 2);
                         this.selectedStructure = clickedStruct; 
                         if(clickedStruct) this.bus.emit('openModal', clickedStruct);
@@ -342,7 +328,6 @@ export class Game {
             }
         };
 
-        // Event Listeners
         this.canvas.addEventListener('mousedown', (e) => { if(e.button === 0 && !e.shiftKey) startInteraction(e.clientX, e.clientY); });
         window.addEventListener('mousemove', (e) => { moveInteraction(e.clientX, e.clientY); });
         window.addEventListener('mouseup', (e) => { if(e.button === 0) endInteraction(e.clientX, e.clientY, e.target); });
@@ -351,11 +336,8 @@ export class Game {
         window.addEventListener('touchend', (e) => { if(e.changedTouches.length === 1) endInteraction(e.changedTouches[0].clientX, e.changedTouches[0].clientY, e.target); });
         this.canvas.addEventListener('contextmenu', e => e.preventDefault());
 
-        // Base Engine Handlers
         this.bus.on('spawnSpider', (data) => {
-            // Ignore roles that belong to expansions!
             if (data.role !== 'harvester' && data.role !== 'soldier') return; 
-
             const cost = data.role === 'soldier' ? 25 : 10;
             if (this.eco[data.team].pumpkins >= cost && this.pop[data.team] < this.maxPop[data.team]) {
                 this.eco[data.team].pumpkins -= cost; 
@@ -364,7 +346,6 @@ export class Game {
             }
         });
         
-        // Base structure builder (Note: Safely overwritten by ConstructionExpansion later)
         this.bus.on('buildStructure', (data) => {
             const costs = { 'nest': 150, 'eggsac': 50, 'turret': 100, 'wall': 25, 'pylon': 25 };
             if (!costs[data.type]) return; 
@@ -396,14 +377,13 @@ export class Game {
         this.camera.x = MathUtils.clamp(this.camera.x, 0, this.world.width - this.canvas.width);
         this.camera.y = MathUtils.clamp(this.camera.y, 0, this.world.height - this.canvas.height);
 
-        // Update populations every second
         if (this.tick % 30 === 0) {
             let blackEggs = 0, redEggs = 0, blackPop = 0, redPop = 0;
             this.entities.forEach(e => {
                 if (e instanceof Structure && e.type === 'eggsac') {
                     if (e.team === 'black') blackEggs++; else if (e.team === 'red') redEggs++;
                 }
-                if (e instanceof Spider && e.constructor.name !== 'Queen') {
+                if (e instanceof Spider && !e.hasTrait('queen')) { // Updated to use Trait system!
                     if (e.team === 'black') blackPop++; else if (e.team === 'red') redPop++;
                 }
             });
@@ -413,23 +393,19 @@ export class Game {
             this.pop.red = redPop;
         }
 
-        // ==========================================
-        // ENTITY UPDATE & CULL LOOP (Two-Pointer Compaction)
-        // ==========================================
         let aliveCount = 0;
         let originalLength = this.entities.length;
 
         for (let i = 0; i < originalLength; i++) {
             let e = this.entities[i];
-            
             let dead = false;
+            
             if (e.hp !== undefined && e.hp <= 0) dead = true;
             else if (e.resources !== undefined && e.resources <= 0) dead = true;
             else if (e.active !== undefined && !e.active) dead = true;
             else if (e.life !== undefined && e.life <= 0) dead = true;
 
             if (dead) {
-                // Death Effects
                 if (e instanceof Spider || e instanceof Structure || e.constructor.name === 'CentipedeBoss' || e.team === 'nature') {
                     this.bus.emit('particles', {x: e.x, y: e.y, color: e.color || e.team || '#888', count: e.constructor.name === 'CentipedeBoss' ? 100 : 30});
                     this.bus.emit('playSound', e.team === 'nature' ? 'harvest' : 'death');
@@ -438,38 +414,28 @@ export class Game {
                 
             } else {
                 if (e.update) e.update(this);
-                
-                // Keep the entity in the compacted array, preserving exact insertion order
                 this.entities[aliveCount] = e; 
                 aliveCount++;
             }
         }
 
-        // Catch newly spawned entities! 
-        // (e.g. if a turret fired a projectile during the update loop above, it got pushed to the END of the array)
         let spawnedCount = this.entities.length - originalLength;
         for (let i = 0; i < spawnedCount; i++) {
             this.entities[aliveCount] = this.entities[originalLength + i];
             aliveCount++;
         }
-
-        // Instantly chop off the dead garbage at the end of the array
         this.entities.length = aliveCount;
     }
 
-    // High performance targeting function
     getNearestEnemy(x, y, team, maxDist) {
         let nearest = null;
         let minDistSq = maxDist * maxDist;
         for (let i = 0; i < this.entities.length; i++) {
             let e = this.entities[i];
             
-            // Early exits for performance! Also natively ignores stealthed/cloaked units!
             if (!e.team || e.team === team || e.hp <= 0 || e.isCloaked || e instanceof Projectile) continue;
             
             let dSq = MathUtils.distSq(x, y, e.x, e.y);
-            
-            // Enemies prioritize destroying walls if they block the path
             if (e.type === 'wall' && dSq < (250*250)) dSq = Math.max(0, dSq - 10000); 
             
             if (dSq < minDistSq) {
@@ -488,37 +454,28 @@ export class Game {
         this.bus.emit('territoryDraw', this.ctx); 
         this.bus.emit('atmosphereDraw', this.ctx);
 
-        // Highlight selected building
         if(this.selectedStructure) {
             this.ctx.strokeStyle = '#ffffff'; this.ctx.lineWidth = 2; this.ctx.setLineDash([5, 5]);
             this.ctx.beginPath(); this.ctx.arc(this.selectedStructure.x, this.selectedStructure.y, this.selectedStructure.size + 10, 0, Math.PI * 2);
             this.ctx.stroke(); this.ctx.setLineDash([]);
         }
 
-        // Viewport culling bounds (Padding prevents visual popping)
         const padding = 150;
         const viewL = this.camera.x - padding;
         const viewR = this.camera.x + this.canvas.width + padding;
         const viewT = this.camera.y - padding;
         const viewB = this.camera.y + this.canvas.height + padding;
 
-        // --- Y-SORTING Z-INDEX ---
-        // 1. Gather only the entities that are currently visible on screen
         let visibleEntities = [];
         for (let i = 0; i < this.entities.length; i++) {
             let e = this.entities[i];
             const renderSize = e.size || 0;
-            
-            // Strict AABB Culling Check
             if (e.draw && e.x + renderSize >= viewL && e.x - renderSize <= viewR && e.y + renderSize >= viewT && e.y - renderSize <= viewB) {
                 visibleEntities.push(e);
             }
         }
 
-        // 2. Sort them by Y-coordinate (Lower Y is drawn first, Higher Y is drawn on top)
         visibleEntities.sort((a, b) => a.y - b.y);
-
-        // 3. Draw them in the correct perspective order
         for (let i = 0; i < visibleEntities.length; i++) {
             visibleEntities[i].draw(this.ctx);
         }
