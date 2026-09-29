@@ -41,7 +41,6 @@ export class ExplosiveProjectile {
             for (let i = 0; i < game.entities.length; i++) {
                 let e = game.entities[i];
                 
-                // Added e.hp === undefined check
                 if (!e.team || e.team === this.team || e.team === 'nature' || e.hp === undefined || e.hp <= 0) continue;
                 
                 // Fast AABB check
@@ -91,8 +90,20 @@ export const TitansExpansion = {
         game.assets.register('assets/goliath_black.png');
         game.assets.register('assets/goliath_red.png');
 
-        UNIT_DATA['widow'] = { size: TITAN_CONFIG.widow.size, hp: TITAN_CONFIG.widow.hp, damage: TITAN_CONFIG.widow.damage, attackSpeed: TITAN_CONFIG.widow.attackSpeed, baseSpeedMin: TITAN_CONFIG.widow.baseSpeedMin, baseSpeedMax: TITAN_CONFIG.widow.baseSpeedMax };
-        UNIT_DATA['goliath'] = { size: TITAN_CONFIG.goliath.size, hp: TITAN_CONFIG.goliath.hp, damage: TITAN_CONFIG.goliath.damage, attackSpeed: TITAN_CONFIG.goliath.attackSpeed, baseSpeedMin: TITAN_CONFIG.goliath.baseSpeedMin, baseSpeedMax: TITAN_CONFIG.goliath.baseSpeedMax };
+        // --- PILLAR 3: TRAIT ASSIGNMENT ---
+        UNIT_DATA['widow'] = { 
+            size: TITAN_CONFIG.widow.size, hp: TITAN_CONFIG.widow.hp, 
+            damage: TITAN_CONFIG.widow.damage, attackSpeed: TITAN_CONFIG.widow.attackSpeed, 
+            baseSpeedMin: TITAN_CONFIG.widow.baseSpeedMin, baseSpeedMax: TITAN_CONFIG.widow.baseSpeedMax,
+            traits: ['melee', 'stealth'] // Combines default melee AI with cloaking mechanics
+        };
+        
+        UNIT_DATA['goliath'] = { 
+            size: TITAN_CONFIG.goliath.size, hp: TITAN_CONFIG.goliath.hp, 
+            damage: TITAN_CONFIG.goliath.damage, attackSpeed: TITAN_CONFIG.goliath.attackSpeed, 
+            baseSpeedMin: TITAN_CONFIG.goliath.baseSpeedMin, baseSpeedMax: TITAN_CONFIG.goliath.baseSpeedMax,
+            traits: ['siege_attacker'] // Triggers the heavy explosive mortar AI
+        };
 
         game.bus.on('spawnSpider', (data) => {
             let costP = 0, costD = 0;
@@ -104,14 +115,16 @@ export const TitansExpansion = {
                     game.eco[data.team].pumpkins -= costP; game.eco[data.team].dew -= costD;
                     let s = new Spider(data.x + MathUtils.randomRange(-30, 30), data.y + MathUtils.randomRange(-30, 30), data.team, data.role);
                     
-                    // --- 2. INSTANT RAM CACHE RETRIEVAL ---
-                    if (data.role === 'widow') {
-                        s.isCloaked = true; s.cloakCooldown = 0;
-                        s.sprite = game.assets.get(data.team === 'black' ? 'assets/widow_black.png' : 'assets/widow_red.png');
+                    if (data.role === 'widow') s.sprite = game.assets.get(data.team === 'black' ? 'assets/widow_black.png' : 'assets/widow_red.png');
+                    if (data.role === 'goliath') s.sprite = game.assets.get(data.team === 'black' ? 'assets/goliath_black.png' : 'assets/goliath_red.png');
+
+                    // --- PILLAR 3: TRAIT INITIALIZATION ---
+                    if (s.hasTrait('stealth')) {
+                        s.isCloaked = true; 
+                        s.cloakCooldown = 0;
                     }
-                    if (data.role === 'goliath') {
+                    if (s.hasTrait('siege_attacker')) {
                         s.range = TITAN_CONFIG.goliath.range;
-                        s.sprite = game.assets.get(data.team === 'black' ? 'assets/goliath_black.png' : 'assets/goliath_red.png');
                     }
 
                     s.imageLoaded = true; // Tell base engine it's ready immediately
@@ -127,8 +140,8 @@ export const TitansExpansion = {
         // 3. AI & COMBAT LOGIC
         game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
             
-            // --- THE WIDOWMAKER (STEALTH ASSASSIN) ---
-            if (this.role === 'widow') {
+            // --- PILLAR 3: STEALTH TRAIT ---
+            if (this.hasTrait('stealth')) {
                 if (this.cloakCooldown > 0) {
                     this.cloakCooldown--;
                     // Visual re-cloaking effect
@@ -138,12 +151,10 @@ export const TitansExpansion = {
                     }
                 }
                 this.isCloaked = (this.cloakCooldown <= 0);
-
-                // Note: Widows fall back to standard melee AI (`original.call`) below!
             }
 
-            // --- THE PUMPKIN GOLIATH (SIEGE TITAN) ---
-            if (this.role === 'goliath') {
+            // --- PILLAR 3: SIEGE ATTACKER TRAIT ---
+            if (this.hasTrait('siege_attacker')) {
                 const techLvl = gameObj.techLevel[this.team] || 0; 
                 const currentDamage = this.damage + (techLvl * 5); 
                 
@@ -207,11 +218,11 @@ export const TitansExpansion = {
                 }
             }
 
-            // Fallback for Widows (Melee) and non-combat Goliaths
+            // Standard fallback AI for movement and melee (runs for Stealthed units when they aren't manually controlled)
             original.call(this, gameObj);
 
-            // POST-COMBAT TRIGGER: If a Widow strikes, strip her stealth!
-            if (this.role === 'widow' && this.cooldown === this.attackSpeed) {
+            // POST-COMBAT TRIGGER: Strip stealth if the unit just attacked!
+            if (this.hasTrait('stealth') && this.cooldown === this.attackSpeed) {
                 this.cloakCooldown = TITAN_CONFIG.widow.decloakTime; 
                 this.isCloaked = false;
             }
@@ -219,7 +230,7 @@ export const TitansExpansion = {
 
         // 4. RENDERING POLISH (Ghostly transparency for cloaked units)
         game.expansions.patchClass(Spider, 'draw', function(original, ctx) {
-            if (this.role === 'widow' && this.isCloaked) {
+            if (this.hasTrait('stealth') && this.isCloaked) {
                 ctx.globalAlpha = 0.35; // Highly transparent to the player
             }
             original.call(this, ctx);
