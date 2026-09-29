@@ -234,6 +234,7 @@ export class Game {
         
         this.entities = [];
         this.decor = []; 
+        this.spatialGrid = new Map(); // <--- PILLAR 1: High Performance Spatial Hash
         
         this.eco = { black: { pumpkins: 600, dew: 100 }, red: { pumpkins: 600, dew: 100 } }; 
         this.pop = { black: 0, red: 0 }; 
@@ -393,6 +394,10 @@ export class Game {
             this.pop.red = redPop;
         }
 
+        // --- PILLAR 1: CLEAR SPATIAL GRID ---
+        this.spatialGrid.clear();
+        const CELL_SIZE = 250;
+
         let aliveCount = 0;
         let originalLength = this.entities.length;
 
@@ -416,6 +421,18 @@ export class Game {
                 if (e.update) e.update(this);
                 this.entities[aliveCount] = e; 
                 aliveCount++;
+                
+                // --- PILLAR 1: POPULATE SPATIAL GRID ---
+                // Only put targetable things in the grid to save memory!
+                if (e.team) {
+                    const cx = Math.floor(e.x / CELL_SIZE);
+                    const cy = Math.floor(e.y / CELL_SIZE);
+                    const key = `${cx},${cy}`;
+                    
+                    let cell = this.spatialGrid.get(key);
+                    if (!cell) { cell = []; this.spatialGrid.set(key, cell); }
+                    cell.push(e);
+                }
             }
         }
 
@@ -427,20 +444,42 @@ export class Game {
         this.entities.length = aliveCount;
     }
 
+    // High performance targeting function using Spatial Hashing!
     getNearestEnemy(x, y, team, maxDist) {
+        const CELL_SIZE = 250;
+        
+        // Calculate exactly which grid cells touch our max detection radius
+        const minCx = Math.floor((x - maxDist) / CELL_SIZE);
+        const maxCx = Math.floor((x + maxDist) / CELL_SIZE);
+        const minCy = Math.floor((y - maxDist) / CELL_SIZE);
+        const maxCy = Math.floor((y + maxDist) / CELL_SIZE);
+
         let nearest = null;
         let minDistSq = maxDist * maxDist;
-        for (let i = 0; i < this.entities.length; i++) {
-            let e = this.entities[i];
-            
-            if (!e.team || e.team === team || e.hp <= 0 || e.isCloaked || e instanceof Projectile) continue;
-            
-            let dSq = MathUtils.distSq(x, y, e.x, e.y);
-            if (e.type === 'wall' && dSq < (250*250)) dSq = Math.max(0, dSq - 10000); 
-            
-            if (dSq < minDistSq) {
-                minDistSq = dSq;
-                nearest = e;
+
+        // ONLY loop through the cells that are within our range!
+        for (let cx = minCx; cx <= maxCx; cx++) {
+            for (let cy = minCy; cy <= maxCy; cy++) {
+                
+                const cell = this.spatialGrid.get(`${cx},${cy}`);
+                if (!cell) continue; // Cell is empty, skip instantly!
+
+                for (let i = 0; i < cell.length; i++) {
+                    let e = cell[i];
+                    
+                    // Early exits for performance! Also natively ignores stealthed/cloaked units!
+                    if (!e.team || e.team === team || e.hp <= 0 || e.isCloaked || e instanceof Projectile) continue;
+                    
+                    let dSq = MathUtils.distSq(x, y, e.x, e.y);
+                    
+                    // Enemies prioritize destroying walls if they block the path
+                    if (e.type === 'wall' && dSq < (250*250)) dSq = Math.max(0, dSq - 10000); 
+                    
+                    if (dSq < minDistSq) {
+                        minDistSq = dSq;
+                        nearest = e;
+                    }
+                }
             }
         }
         return nearest;
