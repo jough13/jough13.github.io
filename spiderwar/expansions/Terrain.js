@@ -25,59 +25,25 @@ const TERRAIN_CONFIG = {
 export const TerrainExpansion = {
     init: (game) => {
         game.tileSize = TERRAIN_CONFIG.tileSize; 
-        
-        // --- 1. ASSET LOADING ---
-        game.tiles = { 
-            dirt: new Image(), vines: new Image(), pebbles: new Image(), grass: new Image(),
-            water_straight: new Image(), water_corner: new Image(), 
-            water_end: new Image(), water_t: new Image(), water_cross: new Image()
-        };
-        
-        game.tiles.dirt.src = 'assets/tile_dirt.png'; 
-        game.tiles.vines.src = 'assets/tile_vines.png'; 
-        game.tiles.pebbles.src = 'assets/tile_pebbles.png'; 
-        game.tiles.grass.src = 'assets/tile_grass.png';
-        
-        game.tiles.water_straight.src = 'assets/water_straight.png'; 
-        game.tiles.water_corner.src = 'assets/water_corner.png';
-        game.tiles.water_end.src = 'assets/water_end.png'; 
-        game.tiles.water_t.src = 'assets/water_t.png';
-        game.tiles.water_cross.src = 'assets/water_cross.png';
-
-        // --- 2. TEXTURE BAKING ---
-        // Pre-renders smaller repeating textures onto full 256x256 canvases for massive render performance
         game.bakedTiles = {};
-        const bakeTile = (type) => {
-            const img = game.tiles[type];
-            if (!img.complete || img.naturalHeight === 0) return;
-            
-            const c = document.createElement('canvas');
-            c.width = game.tileSize; 
-            c.height = game.tileSize;
-            const ctx = c.getContext('2d');
-            
-            ctx.imageSmoothingEnabled = false; // Preserve 16-bit retro aesthetic
-
-            // If it's a micro-tile, repeat it across the canvas
-            if (img.width < game.tileSize && !type.startsWith('water_')) {
-                for (let y = 0; y < game.tileSize; y += img.height) {
-                    for (let x = 0; x < game.tileSize; x += img.width) { 
-                        ctx.drawImage(img, x, y); 
-                    }
-                }
-            } else {
-                ctx.drawImage(img, 0, 0, game.tileSize, game.tileSize);
-            }
-            game.bakedTiles[type] = c;
+        game.terrainBaked = false;
+        
+        // Dictionary linking tile names to their file paths
+        game.mapAssetsDict = {
+            dirt: 'assets/tile_dirt.png', vines: 'assets/tile_vines.png', 
+            pebbles: 'assets/tile_pebbles.png', grass: 'assets/tile_grass.png',
+            water_straight: 'assets/water_straight.png', water_corner: 'assets/water_corner.png', 
+            water_end: 'assets/water_end.png', water_t: 'assets/water_t.png', water_cross: 'assets/water_cross.png'
         };
 
-        // Fire baking when assets finish downloading
-        for (let key in game.tiles) {
-            if (game.tiles[key].complete) bakeTile(key);
-            else game.tiles[key].onload = () => bakeTile(key);
+        // --- 1. ASSET REGISTRY ---
+        // Push everything to the global loader queue
+        for (const src of Object.values(game.mapAssetsDict)) {
+            game.assets.register(src);
         }
         
-        // --- 3. MAP GENERATION ---
+        // --- 2. MAP GENERATION ---
+        // Map layout is generated purely as data strings right now, so it doesn't need the images yet!
         game.generateMap = function() {
             this.mapGrid = [];
             const cols = Math.ceil(this.world.width / this.tileSize); 
@@ -123,7 +89,7 @@ export const TerrainExpansion = {
                 }
             }
 
-            // --- 4. WATER AUTOTILING (BITMASKING) ---
+            // --- WATER AUTOTILING (BITMASKING) ---
             this.updateBitmasks = function() {
                 const bitMap = {
                     0:  {s: 'water_end',      a: 0},           
@@ -182,7 +148,45 @@ export const TerrainExpansion = {
     },
 
     patch: (game) => {
-        // --- 5. RENDER LOOP ---
+        // --- 3. TEXTURE BAKING (TICK 1) ---
+        // We do this on Tick 1 to absolutely guarantee the Splash Screen finished loading the assets into RAM
+        game.expansions.patchClass(game.constructor, 'update', function(original) {
+            original.call(this);
+
+            if (this.gameState === 'playing' && this.tick === 1 && !this.terrainBaked) {
+                this.terrainBaked = true;
+                this.tiles = {};
+
+                for (const [key, src] of Object.entries(this.mapAssetsDict)) {
+                    // Fetch directly from RAM Cache
+                    this.tiles[key] = this.assets.get(src);
+                    const img = this.tiles[key];
+                    
+                    if (img && img.complete && img.naturalHeight !== 0) {
+                        const c = document.createElement('canvas');
+                        c.width = this.tileSize; 
+                        c.height = this.tileSize;
+                        const ctx = c.getContext('2d');
+                        
+                        ctx.imageSmoothingEnabled = false; // Preserve 16-bit retro aesthetic
+
+                        // If it's a micro-tile, repeat it across the canvas
+                        if (img.width < this.tileSize && !key.startsWith('water_')) {
+                            for (let y = 0; y < this.tileSize; y += img.height) {
+                                for (let x = 0; x < this.tileSize; x += img.width) { 
+                                    ctx.drawImage(img, x, y); 
+                                }
+                            }
+                        } else {
+                            ctx.drawImage(img, 0, 0, this.tileSize, this.tileSize);
+                        }
+                        this.bakedTiles[key] = c; // Save the baked canvas
+                    }
+                }
+            }
+        });
+
+        // --- 4. RENDER LOOP ---
         game.bus.on('preDraw', (ctx) => {
             if (!game.mapGrid) return;
             
