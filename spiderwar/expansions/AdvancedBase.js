@@ -5,24 +5,39 @@ import { Aphid, GoldenBug } from './Critters.js';
 // ==========================================
 // 1. CONFIGURATION & AI BALANCING
 // ==========================================
-const AI_CONFIG = {
+
+// Global Map Setup Constants
+const MAP_CONFIG = {
     pad: 600,                 // Safe distance from map edges for base spawning
-    exclusionRadiusSq: 90000, // 300px squared exclusion zone for resource spawning around bases
-    
-    unitTickRate: 120,        // AI attempts to spawn a unit every ~4 seconds
-    buildTickRate: 450,       // AI attempts to expand base every ~15 seconds
-    
-    techUpgradeCost: 250,     // Cost for the AI to evolve its tech level
-    
-    // Escalation Timers (Ticks)
-    phase2Tick: 3600,         // ~2 minutes
-    phase3Tick: 5400,         // ~3 minutes
-    phase4Tick: 7200          // ~4 minutes
+    exclusionRadiusSq: 90000  // 300px squared exclusion zone for resource spawning around bases
+};
+
+// EXPANDABILITY: Difficulty profiles allow for easy main-menu integration!
+export const AI_PROFILES = {
+    easy: { 
+        unitTickRate: 180, buildTickRate: 600, techUpgradeCost: 350, 
+        phase2Tick: 5400, phase3Tick: 7200, phase4Tick: 10800 
+    },
+    normal: { 
+        unitTickRate: 120, buildTickRate: 450, techUpgradeCost: 250, 
+        phase2Tick: 3600, phase3Tick: 5400, phase4Tick: 7200 
+    },
+    hard: { 
+        unitTickRate: 80,  buildTickRate: 300, techUpgradeCost: 200, 
+        phase2Tick: 2400, phase3Tick: 3600, phase4Tick: 4800 
+    },
+    insane: { 
+        unitTickRate: 50,  buildTickRate: 200, techUpgradeCost: 150, 
+        phase2Tick: 1200, phase3Tick: 2400, phase4Tick: 3600 
+    }
 };
 
 export const AdvancedBaseExpansion = {
     init: (game) => {
         game.basesInitialized = false;
+        
+        // Default difficulty (can be changed by UI/Settings later)
+        if (!game.aiDifficulty) game.aiDifficulty = 'normal'; 
     },
 
     patch: (game) => {
@@ -32,21 +47,24 @@ export const AdvancedBaseExpansion = {
 
             if (this.gameState !== 'playing') return;
 
+            // Grab the active AI profile parameters
+            const ai = AI_PROFILES[this.aiDifficulty] || AI_PROFILES.normal;
+
             // ==========================================
             // 2. ONE-TIME BASE & MAP GENERATION (Tick 1)
             // ==========================================
             if (this.tick === 1 && !this.basesInitialized) {
                 this.basesInitialized = true;
                 
-                console.log("%c[Lore] The Obsidian Brood and Crimson Swarm have awakened.", "color: #aa00ff; font-style: italic;");
+                console.log(`%c[Lore] The Obsidian Brood and Crimson Swarm have awakened. (Difficulty: ${this.aiDifficulty.toUpperCase()})`, "color: #aa00ff; font-style: italic;");
 
                 // Player Spawn (Obsidian Brood - Top Left-ish)
-                const bX = AI_CONFIG.pad + MathUtils.randomRange(0, 200); 
-                const bY = AI_CONFIG.pad + MathUtils.randomRange(0, 200);
+                const bX = MAP_CONFIG.pad + MathUtils.randomRange(0, 200); 
+                const bY = MAP_CONFIG.pad + MathUtils.randomRange(0, 200);
                 
                 // Enemy Spawn (Crimson Swarm - Bottom Right-ish)
-                const rX = this.world.width - AI_CONFIG.pad - MathUtils.randomRange(0, 200); 
-                const rY = this.world.height - AI_CONFIG.pad - MathUtils.randomRange(0, 200);
+                const rX = this.world.width - MAP_CONFIG.pad - MathUtils.randomRange(0, 200); 
+                const rY = this.world.height - MAP_CONFIG.pad - MathUtils.randomRange(0, 200);
                 
                 // SAFETY FIX: Make independent of Terrain.js. 
                 // Only attempt to modify mapGrid if it actually exists!
@@ -76,8 +94,8 @@ export const AdvancedBaseExpansion = {
                 
                 // GAMEPLAY POLISH: Helper to prevent resources from spawning directly on top of Nests
                 const isTooCloseToBase = (x, y) => {
-                    return MathUtils.distSq(x, y, bX, bY) < AI_CONFIG.exclusionRadiusSq || 
-                           MathUtils.distSq(x, y, rX, rY) < AI_CONFIG.exclusionRadiusSq;
+                    return MathUtils.distSq(x, y, bX, bY) < MAP_CONFIG.exclusionRadiusSq || 
+                           MathUtils.distSq(x, y, rX, rY) < MAP_CONFIG.exclusionRadiusSq;
                 };
 
                 // Scatter Pumpkin Patches
@@ -132,16 +150,23 @@ export const AdvancedBaseExpansion = {
             // ==========================================
             
             // Unit Spawning Loop
-            if (this.tick % AI_CONFIG.unitTickRate === 0) {
-                let redNests = this.structures.filter(s => s.team === 'red' && s.type === 'nest');
+            if (this.tick % ai.unitTickRate === 0) {
+                
+                // PERFORMANCE FIX: Native loop instead of .filter() to prevent GC thrashing
+                let redNests = [];
+                for (let i = 0; i < this.structures.length; i++) {
+                    if (this.structures[i].team === 'red' && this.structures[i].type === 'nest') {
+                        redNests.push(this.structures[i]);
+                    }
+                }
                 
                 if (redNests.length > 0 && this.pop.red < this.maxPop.red) {
                     let nest = redNests[MathUtils.randomInt(0, redNests.length - 1)];
                     
                     // AI Escalation: Unlocks advanced units as time goes on
                     let availableRoles = ['harvester', 'harvester', 'soldier']; // Weighted towards eco early
-                    if (this.tick > AI_CONFIG.phase2Tick) availableRoles.push('soldier', 'spitter');
-                    if (this.tick > AI_CONFIG.phase4Tick) availableRoles.push('tarantula', 'spitter');
+                    if (this.tick > ai.phase2Tick) availableRoles.push('soldier', 'spitter');
+                    if (this.tick > ai.phase4Tick) availableRoles.push('tarantula', 'spitter');
                     
                     let chosenRole = availableRoles[MathUtils.randomInt(0, availableRoles.length - 1)];
 
@@ -154,13 +179,13 @@ export const AdvancedBaseExpansion = {
             }
 
             // Base Expansion Loop
-            if (this.tick % AI_CONFIG.buildTickRate === 0) {
+            if (this.tick % ai.buildTickRate === 0) {
                 
                 let upgradedTech = false;
                 
-                // After Phase 4, the AI has a 50% chance to spend surplus pumpkins on Tech
-                if (this.tick > AI_CONFIG.phase4Tick && this.eco.red.pumpkins >= AI_CONFIG.techUpgradeCost && Math.random() > 0.5) {
-                    this.eco.red.pumpkins -= AI_CONFIG.techUpgradeCost;
+                // After Phase 4, the AI has a chance to spend surplus pumpkins on Tech
+                if (this.tick > ai.phase4Tick && this.eco.red.pumpkins >= ai.techUpgradeCost && Math.random() > 0.5) {
+                    this.eco.red.pumpkins -= ai.techUpgradeCost;
                     this.techLevel.red = (this.techLevel.red || 0) + 1;
                     upgradedTech = true;
                     console.log(`[AI Alert] Crimson Swarm evolved to Tech Level ${this.techLevel.red}!`);
@@ -171,11 +196,11 @@ export const AdvancedBaseExpansion = {
                     let redQueen = this.queens.find(q => q.team === 'red');
                     
                     // Only issue build orders if the Queen is alive and currently idle
-                    if (redQueen && !redQueen.activeConstruction && !redQueen.buildTarget) {
+                    if (redQueen && redQueen.hp > 0 && !redQueen.activeConstruction && !redQueen.buildTarget) {
                         
                         // AI Escalation: Unlocks advanced structures as time goes on
                         let availableBuildings = ['nest', 'eggsac', 'pylon', 'turret', 'wall'];
-                        if (this.tick > AI_CONFIG.phase3Tick) availableBuildings.push('mortar', 'shrine');
+                        if (this.tick > ai.phase3Tick) availableBuildings.push('mortar', 'shrine');
                         
                         const type = availableBuildings[MathUtils.randomInt(0, availableBuildings.length - 1)];
                         
