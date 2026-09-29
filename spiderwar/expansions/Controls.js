@@ -178,17 +178,23 @@ export const AdvancedUnitControlExpansion = {
     },
 
     patch: (game) => {
-        // Render UI layer (Drag selection box)
-        game.bus.on('uiDraw', (ctx) => {
-            if (game.dragBox && MathUtils.distSq(0,0, game.dragBox.w, game.dragBox.h) > 100) {
-                ctx.fillStyle = 'rgba(0, 255, 0, 0.2)'; ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 1;
-                ctx.fillRect(game.dragBox.x, game.dragBox.y, game.dragBox.w, game.dragBox.h);
-                ctx.strokeRect(game.dragBox.x, game.dragBox.y, game.dragBox.w, game.dragBox.h);
+        // --- Prevent Memory Leaks in Control Groups ---
+        // Periodically sweeps control groups to remove dead units, allowing the JS Garbage Collector to free their RAM.
+        game.expansions.patchClass(game.constructor, 'update', function(original) {
+            original.call(this);
+            
+            // Run the sweep once every 60 frames (2 seconds)
+            if (this.gameState === 'playing' && this.tick % 60 === 0 && this.controlGroups) {
+                for (let i = 1; i <= 9; i++) {
+                    if (this.controlGroups[i] && this.controlGroups[i].length > 0) {
+                        this.controlGroups[i] = this.controlGroups[i].filter(u => u.hp > 0);
+                    }
+                }
             }
         });
 
-        // Render Selection Rings under units
-        game.bus.on('preDraw', (ctx) => {
+        // Render UI layer (Drag selection box)
+        game.bus.on('uiDraw', (ctx) => {
             if (!game.selectedUnits) return;
             game.selectedUnits.forEach(u => {
                 if (u.hp > 0) {
@@ -200,6 +206,15 @@ export const AdvancedUnitControlExpansion = {
 
         // Override standard AI if the unit is being manually controlled
         game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
+            
+            // --- Yield to Ranged & Siege Units ---
+            // If the unit has custom ranged manual logic (defined in SpecialUnits.js or Titans.js), 
+            // pass execution down the chain and exit so we don't force a melee attack!
+            if (this.isManual && (this.hasTrait('ranged_attacker') || this.hasTrait('siege_attacker'))) {
+                original.call(this, gameObj);
+                return;
+            }
+
             if (this.isManual) {
                 const techLvl = gameObj.techLevel[this.team] || 0; 
                 const currentDamage = this.damage + (techLvl * 5); 
@@ -252,7 +267,7 @@ export const AdvancedUnitControlExpansion = {
                     }
                 }
             } else {
-                original.call(this, gameObj); // Not manual, run standard AI (CombatAI.js)
+                original.call(this, gameObj); // Not manual, run standard AI
             }
         });
 
