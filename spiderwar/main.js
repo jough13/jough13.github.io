@@ -93,11 +93,23 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log("%cInitializing SpiderWars! Engine v1.0...", "color: #ff9d00; font-family: monospace;");
 
     const game = new Game();
+    
+    // EXPANDABILITY: Expose engine to global scope for easy DevTools debugging and external Modding
+    window.SpiderWarsEngine = game;
+
     let loadedCount = 0;
 
+    // EXPANDABILITY: Combine internal manifest with any externally injected mods via script tags
+    const externalMods = window.SpiderWarsMods || [];
+    const fullManifest = [...expansionManifest, ...externalMods];
+
     // Robust loading loop
-    for (const exp of expansionManifest) {
+    for (const exp of fullManifest) {
         try {
+            // SAFETY FIX: Prevent the engine from crashing blindly if a module import failed/typo'd
+            if (!exp.module) {
+                throw new Error("Module is undefined. Check your import paths at the top of main.js!");
+            }
             game.expansions.load(exp.name, exp.module);
             loadedCount++;
         } catch (error) {
@@ -107,5 +119,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    console.log(`%c[Engine] Boot sequence complete. Loaded ${loadedCount}/${expansionManifest.length} Expansions successfully.`, "color: #00ff00; font-family: monospace;");
+    console.log(`%c[Engine] Boot sequence complete. Loaded ${loadedCount}/${fullManifest.length} Expansions successfully.`, "color: #00ff00; font-family: monospace;");
 });
