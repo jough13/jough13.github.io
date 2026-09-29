@@ -302,6 +302,16 @@ export const ConstructionExpansion = {
             const queen = game.queens.find(q => q.team === data.team);
             if (!queen) return; 
             
+            // --- RESTORE TERRITORY CHECK ---
+            // Ensure the player is only building inside their own Web Network!
+            if (data.team === 'black' && game.structures.some(s => s.team === 'black')) {
+                if (!game.checkTerritory(data.x, data.y, data.team)) {
+                    // Flash red particles to indicate invalid placement
+                    game.bus.emit('particles', {x: data.x, y: data.y, color: '#ff0000', count: 10});
+                    return; 
+                }
+            }
+
             const costs = { 
                 'nest': {p: 150, d: 0}, 'eggsac': {p: 50, d: 0}, 'pylon': {p: 25, d: 0}, 
                 'turret': {p: 100, d: 0}, 'wall': {p: 25, d: 0},
