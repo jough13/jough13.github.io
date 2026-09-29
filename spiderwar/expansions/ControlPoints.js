@@ -14,13 +14,16 @@ export class JackOLantern {
         this.captureProgress = 0; // 0 to 100
         this.age = 0; // Deterministic animation timer
         
-        this.spriteLoaded = false;
-        this.sprite = new Image();
-        this.sprite.onload = () => { this.spriteLoaded = true; };
-        this.sprite.src = 'assets/jackolantern.png';
+        // Sprite will be pulled instantly from RAM cache on Tick 1 of its life
+        this.sprite = null;
     }
 
     update(game) {
+        // --- ASSET MANAGER CACHE LINKING ---
+        if (!this.sprite) {
+            this.sprite = game.assets.get('assets/jackolantern.png');
+        }
+
         this.age++;
 
         // 1. Calculate structural dominance inside the capture radius
@@ -97,7 +100,7 @@ export class JackOLantern {
         ctx.setLineDash([]); // Reset for other draw calls
 
         // 2. Draw the Jack-O'-Lantern
-        if (this.spriteLoaded) {
+        if (this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) {
             ctx.drawImage(this.sprite, -this.size, -this.size, this.size*2, this.size*2);
         } else {
             // Fallback Drawing
@@ -136,6 +139,9 @@ export class JackOLantern {
 export const ControlPointsExpansion = {
     init: (game) => {
         game.controlPointsSpawned = false;
+        
+        // --- ASSET REGISTRY ---
+        game.assets.register('assets/jackolantern.png');
     },
     
     patch: (game) => {
