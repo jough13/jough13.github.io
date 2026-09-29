@@ -18,6 +18,11 @@
     
     /* Typography */
     --font-primary: 'Courier New', Courier, monospace;
+
+    /* Standardized Layering (Z-Index) */
+    --z-vignette: 1000;
+    --z-ui-base: 2000;
+    --z-modal: 9999;
 }
 
 /* ==========================================
@@ -32,6 +37,9 @@ body, html {
     overflow: hidden;
     font-family: var(--font-primary);
     color: var(--color-pumpkin);
+    
+    /* CRITICAL MOBILE FIX: Prevents "Pull to refresh" and elastic bounce effects when panning camera */
+    overscroll-behavior: none;
     
     /* Prevent accidental text highlighting when drag-selecting units */
     user-select: none; 
@@ -57,10 +65,11 @@ body::after {
     height: 100%;
     pointer-events: none; /* Lets all clicks pass through to the canvas */
     background: radial-gradient(circle, transparent 60%, rgba(5, 2, 0, 0.85) 100%);
-    z-index: 1000; /* Sits above the canvas, but below the UI */
+    z-index: var(--z-vignette); /* Sits above the canvas, but below the UI */
     
-    /* Hardware acceleration: Prevents massive repaints during rendering */
+    /* Hardware acceleration: Explicitly tells GPU to composite this layer separately */
     transform: translateZ(0);
+    will-change: transform;
 }
 
 /* ==========================================
@@ -71,9 +80,11 @@ body::after {
     width: 100%;
     height: 100%;
     
-    /* Keeps 16-bit pixel art crisp instead of blurry when scaled */
-    image-rendering: pixelated; 
-    image-rendering: crisp-edges;
+    /* Cross-browser support: Keeps 16-bit pixel art crisp instead of blurry when scaled */
+    image-rendering: -moz-crisp-edges;         /* Firefox */
+    image-rendering: -webkit-optimize-contrast;/* Safari/Old Chrome */
+    image-rendering: crisp-edges;              /* Standard */
+    image-rendering: pixelated;                /* Standard */
     
     /* CRITICAL for mobile RTS: Prevents browser from trying to scroll the page when dragging */
     touch-action: none; 
@@ -92,7 +103,7 @@ body::after {
     border: 1px solid var(--color-pumpkin);
     border-radius: 6px;
     pointer-events: none; 
-    z-index: 2001; 
+    z-index: var(--z-ui-base); 
     
     /* Spooky glowing glassmorphism */
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.9), inset 0 0 15px rgba(255, 157, 0, 0.15);
@@ -119,7 +130,14 @@ p {
 /* ==========================================
    CUSTOM SCROLLBARS (For JS-injected Menus)
 ========================================== */
-/* Ensures that when unit action menus overflow, the scrollbar matches the theme */
+
+/* Modern scrollbar support for Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-pumpkin) rgba(26, 16, 5, 0.9);
+}
+
+/* Webkit scrollbar support for Chrome/Safari/Edge */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
