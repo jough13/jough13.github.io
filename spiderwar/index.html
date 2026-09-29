@@ -20,8 +20,13 @@
     <meta property="og:title" content="SpiderWars!">
     <meta property="og:description" content="Command the Obsidian Brood against the Crimson Swarm in this retro 16-bit RTS.">
     <meta property="og:type" content="website">
+    
+    <!-- Twitter/Discord Rich Embed Cards -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="SpiderWars!">
+    <meta name="twitter:description" content="Command the Obsidian Brood against the Crimson Swarm in this retro 16-bit RTS.">
 
-    <!-- Dynamic SVG Favicon (Updated to a Spider to match the new title) -->
+    <!-- Dynamic SVG Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕷️</text></svg>">
     
     <!-- Performance: Preload critical assets before rendering blocks -->
@@ -30,9 +35,16 @@
 
     <!-- Stylesheets -->
     <link rel="stylesheet" href="style.css">
+
+    <!-- EXPANDABILITY: Global Modding API Initialization -->
+    <script>
+        // Any external JS mods loaded in this HTML file can push their modules into this array.
+        // main.js will automatically detect and append them to the boot sequence!
+        window.SpiderWarsMods = [];
+    </script>
 </head>
-<!-- Inline styles prevent the dreaded "white flash" while loading on slow connections -->
-<body style="background-color: #050200; overflow: hidden; margin: 0; padding: 0;">
+<!-- Inline styles prevent the dreaded "white flash" and mobile scroll-stutter while loading on slow connections -->
+<body style="background-color: #050200; overflow: hidden; margin: 0; padding: 0; touch-action: none;">
 
     <!-- Fallback for players with JavaScript disabled -->
     <noscript>
@@ -44,9 +56,9 @@
 
     <!-- 
         The actual game rendering layer.
-        Added aria-labels for screen readers and hardcoded right-click prevention.
+        Added aria-labels for screen readers, tabindex for focus, and hardcoded right-click prevention.
     -->
-    <canvas id="gameCanvas" aria-label="SpiderWars Game Area" role="application" oncontextmenu="return false;"></canvas>
+    <canvas id="gameCanvas" aria-label="SpiderWars Game Area" role="application" tabindex="0" oncontextmenu="return false;" style="touch-action: none; outline: none;"></canvas>
 
     <!-- Game Engine & Modular Expansions (Type 'module' allows top-level imports) -->
     <script type="module" src="main.js"></script>
