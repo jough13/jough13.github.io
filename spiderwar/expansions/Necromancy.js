@@ -31,13 +31,16 @@ export class Corpse {
         // Random rotation so the battlefield looks like an organic mess of casualties
         this.angle = Math.random() * Math.PI * 2;
         
-        this.spriteLoaded = false;
-        this.sprite = new Image(); 
-        this.sprite.onload = () => { this.spriteLoaded = true; };
-        this.sprite.src = 'assets/corpse.png';
+        // Sprite will be pulled instantly from RAM cache on Tick 1 of its life
+        this.sprite = null;
     }
 
     update(game) {
+        // --- ASSET MANAGER CACHE LINKING ---
+        if (!this.sprite) {
+            this.sprite = game.assets.get('assets/corpse.png');
+        }
+
         this.life--;
         if (this.life <= 0) this.hp = 0; // Natural decay triggers engine cleanup
     }
@@ -50,7 +53,7 @@ export class Corpse {
         // Fade out into the dirt during the last 10 seconds of decay
         ctx.globalAlpha = Math.min(1, this.life / 300); 
         
-        if (this.spriteLoaded) {
+        if (this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) {
             ctx.drawImage(this.sprite, -this.size, -this.size, this.size*2, this.size*2);
         } else {
             // Fallback drawing: A creepy wrapped web cocoon
@@ -80,10 +83,18 @@ export class ZombieSpider extends Spider {
         this.baseSpeed = NECRO_CONFIG.zombieSpeed; 
         this.speed = this.baseSpeed;
 
-        this.sprite.src = team === 'black' ? 'assets/zombie_black.png' : 'assets/zombie_red.png';
+        this.ramSpriteLoaded = false;
     }
 
     update(game) {
+        // --- ASSET MANAGER CACHE LINKING ---
+        // Overrides the default Spider() constructor image safely
+        if (!this.ramSpriteLoaded) {
+            this.sprite = game.assets.get(this.team === 'black' ? 'assets/zombie_black.png' : 'assets/zombie_red.png');
+            this.imageLoaded = true; // Tell base class it's ready to draw
+            this.ramSpriteLoaded = true;
+        }
+
         // Necrotic Rot: Zombies constantly take damage until they fall apart
         this.hp -= NECRO_CONFIG.zombieDecayRate; 
         super.update(game);
@@ -141,6 +152,11 @@ class ReanimateAOE {
 // ==========================================
 export const NecromancyExpansion = {
     init: (game) => {
+        // --- ASSET REGISTRY ---
+        game.assets.register('assets/corpse.png');
+        game.assets.register('assets/zombie_black.png');
+        game.assets.register('assets/zombie_red.png');
+
         // Handle UI spell cast
         game.bus.on('castSpell', (data) => {
             if (data.type === 'reanimate') {
