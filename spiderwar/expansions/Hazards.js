@@ -26,18 +26,18 @@ export class VenusFlytrap {
         
         this.age = Math.random() * 100; // Offset animation so they don't all breathe in sync
         
-        this.spriteOpenLoaded = false;
-        this.spriteOpen = new Image(); 
-        this.spriteOpen.onload = () => { this.spriteOpenLoaded = true; };
-        this.spriteOpen.src = 'assets/flytrap_open.png';
-        
-        this.spriteClosedLoaded = false;
-        this.spriteClosed = new Image(); 
-        this.spriteClosed.onload = () => { this.spriteClosedLoaded = true; };
-        this.spriteClosed.src = 'assets/flytrap_closed.png';
+        // Sprites will be pulled instantly from RAM cache on Tick 1 of its life
+        this.spriteOpen = null;
+        this.spriteClosed = null;
     }
 
     update(game) {
+        // --- ASSET MANAGER CACHE LINKING ---
+        if (!this.spriteOpen) {
+            this.spriteOpen = game.assets.get('assets/flytrap_open.png');
+            this.spriteClosed = game.assets.get('assets/flytrap_closed.png');
+        }
+
         this.age++;
 
         // 1. Digestion / Sleep Phase
@@ -88,9 +88,8 @@ export class VenusFlytrap {
 
         const isOpen = this.cooldown === 0;
         const activeSprite = isOpen ? this.spriteOpen : this.spriteClosed;
-        const isLoaded = isOpen ? this.spriteOpenLoaded : this.spriteClosedLoaded;
 
-        if (isLoaded) {
+        if (activeSprite && activeSprite.complete && activeSprite.naturalHeight !== 0) {
             ctx.drawImage(activeSprite, -this.size, -this.size, this.size*2, this.size*2);
         } else {
             // Fallback drawing if sprites are missing
@@ -122,6 +121,10 @@ export class VenusFlytrap {
 export const HazardsExpansion = {
     init: (game) => {
         game.hazardsSpawned = false;
+        
+        // --- ASSET REGISTRY ---
+        game.assets.register('assets/flytrap_open.png');
+        game.assets.register('assets/flytrap_closed.png');
     },
 
     patch: (game) => {
