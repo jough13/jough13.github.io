@@ -1,6 +1,9 @@
 // expansions/Boss.js
 import { MathUtils, Spider, Structure, ResourceNode } from '../game.js';
 
+// ==========================================
+// 1. THE BOSS ENTITY
+// ==========================================
 export class CentipedeBoss {
     constructor(x, y) {
         this.x = x; this.y = y; 
@@ -16,19 +19,24 @@ export class CentipedeBoss {
         
         this.cooldown = 0;
         
-        this.headSprite = new Image(); 
-        this.headSprite.src = 'assets/centipede_head.png';
-        
-        this.bodySprite = new Image(); 
-        this.bodySprite.src = 'assets/centipede_body.png';
+        // Sprites will be pulled instantly from RAM cache on Tick 1 of its life
+        this.headSprite = null; 
+        this.bodySprite = null; 
     }
 
     update(game) {
+        // --- ASSET MANAGER CACHE LINKING ---
+        // Grab the sprites from the engine's RAM cache the first frame it updates.
+        // This is a great trick that ensures Save/Loaded bosses automatically get their sprites back!
+        if (!this.headSprite) {
+            this.headSprite = game.assets.get('assets/centipede_head.png');
+            this.bodySprite = game.assets.get('assets/centipede_body.png');
+        }
+
         // 1. Manage Movement History (Fixed length array for performance)
         const lastPos = this.history[0];
         
-        // Only record history if it's the first frame, OR if the boss has moved at least 5 pixels.
-        // (25 is 5 squared, avoiding the expensive Math.sqrt calculation)
+        // ACCORDION BUG FIX: Only record history if it's the first frame, OR if the boss has moved at least 5 pixels.
         if (!lastPos || MathUtils.distSq(this.x, this.y, lastPos.x, lastPos.y) >= 25) {
             this.history.unshift({ x: this.x, y: this.y, angle: this.angle }); 
             if (this.history.length > this.historyLength) {
@@ -111,7 +119,7 @@ export class CentipedeBoss {
                 ctx.translate(pos.x, pos.y); 
                 ctx.rotate(pos.angle);
                 
-                if (this.bodySprite.complete && this.bodySprite.naturalHeight !== 0) { 
+                if (this.bodySprite && this.bodySprite.complete && this.bodySprite.naturalHeight !== 0) { 
                     ctx.drawImage(this.bodySprite, -15, -15, 30, 30); 
                 } else { 
                     ctx.fillStyle = i % 2 === 0 ? '#113311' : '#225522'; 
@@ -126,7 +134,7 @@ export class CentipedeBoss {
         ctx.translate(this.x, this.y); 
         ctx.rotate(this.angle);
         
-        if (this.headSprite.complete && this.headSprite.naturalHeight !== 0) { 
+        if (this.headSprite && this.headSprite.complete && this.headSprite.naturalHeight !== 0) { 
             ctx.drawImage(this.headSprite, -20, -20, 40, 40); 
         } else { 
             ctx.fillStyle = '#052205'; 
@@ -146,8 +154,16 @@ export class CentipedeBoss {
     }
 }
 
+// ==========================================
+// 2. EXPANSION LOGIC
+// ==========================================
 export const GodUnitExpansion = {
     init: (game) => {
+        // --- ASSET REGISTRY ---
+        // Register the boss sprites so the Splash Screen loads them into RAM
+        game.assets.register('assets/centipede_head.png');
+        game.assets.register('assets/centipede_body.png');
+
         // Add a global UI hook for Boss Warnings!
         game.bus.on('bossWarning', (msg) => {
             const warningEl = document.createElement('div');
