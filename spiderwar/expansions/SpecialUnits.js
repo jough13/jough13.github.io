@@ -14,8 +14,20 @@ export const SpecialUnitsExpansion = {
         game.assets.register('assets/tarantula_black.png');
         game.assets.register('assets/tarantula_red.png');
 
-        UNIT_DATA['spitter'] = { size: SPECIAL_CONFIG.spitter.size, hp: SPECIAL_CONFIG.spitter.hp, damage: SPECIAL_CONFIG.spitter.damage, attackSpeed: SPECIAL_CONFIG.spitter.attackSpeed, baseSpeedMin: SPECIAL_CONFIG.spitter.baseSpeedMin, baseSpeedMax: SPECIAL_CONFIG.spitter.baseSpeedMax };
-        UNIT_DATA['tarantula'] = { size: SPECIAL_CONFIG.tarantula.size, hp: SPECIAL_CONFIG.tarantula.hp, damage: SPECIAL_CONFIG.tarantula.damage, attackSpeed: SPECIAL_CONFIG.tarantula.attackSpeed, baseSpeedMin: SPECIAL_CONFIG.tarantula.baseSpeedMin, baseSpeedMax: SPECIAL_CONFIG.tarantula.baseSpeedMax };
+        // --- PILLAR 3: TRAIT ASSIGNMENT ---
+        UNIT_DATA['spitter'] = { 
+            size: SPECIAL_CONFIG.spitter.size, hp: SPECIAL_CONFIG.spitter.hp, 
+            damage: SPECIAL_CONFIG.spitter.damage, attackSpeed: SPECIAL_CONFIG.spitter.attackSpeed, 
+            baseSpeedMin: SPECIAL_CONFIG.spitter.baseSpeedMin, baseSpeedMax: SPECIAL_CONFIG.spitter.baseSpeedMax,
+            traits: ['ranged_attacker', 'escort'] // Automatically guards the queen when idle!
+        };
+        
+        UNIT_DATA['tarantula'] = { 
+            size: SPECIAL_CONFIG.tarantula.size, hp: SPECIAL_CONFIG.tarantula.hp, 
+            damage: SPECIAL_CONFIG.tarantula.damage, attackSpeed: SPECIAL_CONFIG.tarantula.attackSpeed, 
+            baseSpeedMin: SPECIAL_CONFIG.tarantula.baseSpeedMin, baseSpeedMax: SPECIAL_CONFIG.tarantula.baseSpeedMax,
+            traits: ['melee', 'escort'] // Heavy melee guard
+        };
 
         game.bus.on('spawnSpider', (data) => {
             const costs = { 'spitter': SPECIAL_CONFIG.spitter.cost, 'tarantula': SPECIAL_CONFIG.tarantula.cost };
@@ -29,7 +41,7 @@ export const SpecialUnitsExpansion = {
                     // --- 2. INSTANT RAM CACHE RETRIEVAL ---
                     if (data.role === 'spitter') {
                         s.sprite = game.assets.get(data.team === 'black' ? 'assets/spitter_black.png' : 'assets/spitter_red.png');
-                        s.range = SPECIAL_CONFIG.spitter.range;
+                        s.range = SPECIAL_CONFIG.spitter.range; // Specific stat for ranged units
                     }
                     if (data.role === 'tarantula') {
                         s.sprite = game.assets.get(data.team === 'black' ? 'assets/tarantula_black.png' : 'assets/tarantula_red.png');
@@ -44,10 +56,11 @@ export const SpecialUnitsExpansion = {
     },
 
     patch: (game) => {
-        // 3. Ranged Combat AI for Spitters
+        // 3. Ranged Combat AI for any unit with the 'ranged_attacker' trait!
         game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
             
-            if (this.role === 'spitter') {
+            // --- PILLAR 3: TRAIT-BASED AI CHECK ---
+            if (this.hasTrait('ranged_attacker')) {
                 const techLvl = gameObj.techLevel[this.team] || 0; 
                 const currentDamage = this.damage + (techLvl * 5); 
                 
@@ -58,7 +71,7 @@ export const SpecialUnitsExpansion = {
                 if (this.isSlowed) currentSpeed *= 0.3;
                 this.isSlowed = false; // Reset trap debuff
 
-                const detectRadius = this.range + 50 + (techLvl * 10);
+                const detectRadius = (this.range || 200) + 50 + (techLvl * 10);
                 let nearestEnemy = gameObj.getNearestEnemy(this.x, this.y, this.team, detectRadius);
 
                 // COMBAT OVERRIDE: Prioritize shooting over everything else!
@@ -67,7 +80,10 @@ export const SpecialUnitsExpansion = {
                     this.angle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
                     const distSq = MathUtils.distSq(this.x, this.y, nearestEnemy.x, nearestEnemy.y);
                     
-                    if (distSq > this.range * this.range) {
+                    // Fallback to 200 range if the unit forgot to define it
+                    const effectiveRange = this.range || 200;
+
+                    if (distSq > effectiveRange * effectiveRange) {
                         // Chase until in range
                         this.x += Math.cos(this.angle) * currentSpeed; 
                         this.y += Math.sin(this.angle) * currentSpeed;
@@ -89,7 +105,7 @@ export const SpecialUnitsExpansion = {
                 }
 
                 // MANUAL MOVEMENT OVERRIDE: 
-                // If the spitter has no enemies in range, but is under player command, move there!
+                // If the ranged unit has no enemies in range, but is under player command, move there!
                 if (this.isManual && this.commandTarget) {
                     const dx = this.commandTarget.x - this.x; 
                     const dy = this.commandTarget.y - this.y;
@@ -112,7 +128,7 @@ export const SpecialUnitsExpansion = {
                 }
             }
             
-            // Tarantulas (heavy melee) and non-combat Spitters safely fall back to the standard AI
+            // All non-ranged combat units safely fall back to the standard AI (which now handles Escort/Gatherer traits!)
             original.call(this, gameObj);
         });
     }
