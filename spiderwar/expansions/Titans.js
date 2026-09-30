@@ -1,10 +1,25 @@
 // expansions/Titans.js
 import { Spider, MathUtils, UNIT_DATA, SPIDER_STATE } from '../game.js';
 
+// ==========================================
+// 1. CONFIGURATION & BALANCING
+// ==========================================
 const TITAN_CONFIG = {
-    widow: { hp: 150, damage: 100, attackSpeed: 20, size: 16, baseSpeedMin: 1.8, baseSpeedMax: 2.1, costP: 150, costD: 50, decloakTime: 150 },
-    goliath: { hp: 1200, damage: 90, attackSpeed: 60, size: 38, baseSpeedMin: 0.3, baseSpeedMax: 0.5, costP: 400, costD: 150, range: 300, splashRadiusSq: 10000 }
+    widow: { 
+        hp: 150, damage: 100, attackSpeed: 20, size: 16, 
+        baseSpeedMin: 1.8, baseSpeedMax: 2.1, costP: 150, costD: 50, 
+        decloakTime: 150 
+    },
+    goliath: { 
+        hp: 1200, damage: 90, attackSpeed: 60, size: 38, 
+        baseSpeedMin: 0.3, baseSpeedMax: 0.5, costP: 400, costD: 150, 
+        range: 300, rangeSq: 90000,                  // Pre-calculated for fast MathUtils.distSq
+        splashRadius: 100, splashRadiusSq: 10000,    // Pre-calculated for fast AABB math
+        projSpeed: 3.5 
+    }
 };
+
+const TWO_PI = Math.PI * 2;
 
 // ==========================================
 // 2. GOLIATH SIEGE PROJECTILE
@@ -15,12 +30,13 @@ export class ExplosiveProjectile {
         this.target = target; 
         this.damage = damage; 
         this.team = team;
-        this.speed = 3.5; 
+        this.speed = TITAN_CONFIG.goliath.projSpeed; 
         this.active = true;
     }
 
     update(game) {
-        if(!this.target || this.target.hp <= 0) { 
+        // SAFETY FIX: Undefined HP check to prevent targeting ghosts, spells, or particles
+        if(!this.target || this.target.hp === undefined || this.target.hp <= 0) { 
             this.active = false; 
             return; 
         }
@@ -37,16 +53,19 @@ export class ExplosiveProjectile {
             game.bus.emit('particles', {x: this.target.x, y: this.target.y, color: magicColor, count: 40});
             game.bus.emit('particles', {x: this.target.x, y: this.target.y, color: '#ffaa00', count: 20, type: 'splatter'});
             
-            // Splash Damage Calculation (with high-performance early exits)
+            // Splash Damage Calculation
+            const splashRad = TITAN_CONFIG.goliath.splashRadius;
+            const splashRadSq = TITAN_CONFIG.goliath.splashRadiusSq;
+
             for (let i = 0; i < game.entities.length; i++) {
                 let e = game.entities[i];
                 
                 if (!e.team || e.team === this.team || e.team === 'nature' || e.hp === undefined || e.hp <= 0) continue;
                 
-                // Fast AABB check
-                if (Math.abs(this.x - e.x) > 100 || Math.abs(this.y - e.y) > 100) continue;
+                // PERFORMANCE FIX: Fast AABB check using config values
+                if (Math.abs(this.x - e.x) > splashRad || Math.abs(this.y - e.y) > splashRad) continue;
 
-                if (MathUtils.distSq(this.x, this.y, e.x, e.y) < TITAN_CONFIG.goliath.splashRadiusSq) { 
+                if (MathUtils.distSq(this.x, this.y, e.x, e.y) < splashRadSq) { 
                     // Full damage to units, 50% damage to buildings
                     if (e instanceof Spider || e.constructor.name === 'CentipedeBoss') {
                         e.hp -= this.damage;
@@ -58,8 +77,11 @@ export class ExplosiveProjectile {
         } else {
             // Homing movement (tracks moving targets)
             const dist = Math.sqrt(distSq);
-            this.x += (dx/dist) * this.speed; 
-            this.y += (dy/dist) * this.speed; 
+            // SAFETY FIX: Ensure distance > 0 to prevent NaN interpolation
+            if (dist > 0) {
+                this.x += (dx/dist) * this.speed; 
+                this.y += (dy/dist) * this.speed; 
+            }
         }
     }
 
@@ -69,12 +91,12 @@ export class ExplosiveProjectile {
         // Flaming magic pumpkin
         ctx.fillStyle = magicColor; 
         ctx.beginPath(); 
-        ctx.arc(this.x, this.y, 8, 0, Math.PI*2); 
+        ctx.arc(this.x, this.y, 8, 0, TWO_PI); 
         ctx.fill(); 
         
         ctx.fillStyle = '#ffaa00'; 
         ctx.beginPath(); 
-        ctx.arc(this.x, this.y, 4, 0, Math.PI*2); 
+        ctx.arc(this.x, this.y, 4, 0, TWO_PI); 
         ctx.fill(); 
     }
 }
@@ -106,13 +128,15 @@ export const TitansExpansion = {
         };
 
         game.bus.on('spawnSpider', (data) => {
-            let costP = 0, costD = 0;
-            if (data.role === 'widow') { costP = TITAN_CONFIG.widow.costP; costD = TITAN_CONFIG.widow.costD; }
-            if (data.role === 'goliath') { costP = TITAN_CONFIG.goliath.costP; costD = TITAN_CONFIG.goliath.costD; }
+            // PERFORMANCE FIX: Pull directly from config instead of recreating variables in memory every spawn
+            const config = TITAN_CONFIG[data.role];
             
-            if (costP > 0) {
-                if (game.eco[data.team].pumpkins >= costP && game.eco[data.team].dew >= costD && game.pop[data.team] < game.maxPop[data.team]) {
-                    game.eco[data.team].pumpkins -= costP; game.eco[data.team].dew -= costD;
+            if (config && config.costP !== undefined) {
+                // SAFETY FIX: Optional chaining on game.eco[data.team]
+                if (game.eco[data.team]?.pumpkins >= config.costP && game.eco[data.team]?.dew >= config.costD && game.pop[data.team] < game.maxPop[data.team]) {
+                    game.eco[data.team].pumpkins -= config.costP; 
+                    game.eco[data.team].dew -= config.costD;
+                    
                     let s = new Spider(data.x + MathUtils.randomRange(-30, 30), data.y + MathUtils.randomRange(-30, 30), data.team, data.role);
                     
                     if (data.role === 'widow') s.sprite = game.assets.get(data.team === 'black' ? 'assets/widow_black.png' : 'assets/widow_red.png');
@@ -124,7 +148,8 @@ export const TitansExpansion = {
                         s.cloakCooldown = 0;
                     }
                     if (s.hasTrait('siege_attacker')) {
-                        s.range = TITAN_CONFIG.goliath.range;
+                        s.range = config.range;
+                        s.rangeSq = config.rangeSq; // Cache squared range
                     }
 
                     s.imageLoaded = true; // Tell base engine it's ready immediately
@@ -174,7 +199,10 @@ export const TitansExpansion = {
                     this.angle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
                     const distSq = MathUtils.distSq(this.x, this.y, nearestEnemy.x, nearestEnemy.y);
                     
-                    if (distSq > this.range * this.range) {
+                    // PERFORMANCE FIX: Use pre-cached squared range to skip multiplication
+                    const effectiveRangeSq = this.rangeSq || 90000;
+
+                    if (distSq > effectiveRangeSq) {
                         // Chase until in range
                         this.x += Math.cos(this.angle) * currentSpeed; 
                         this.y += Math.sin(this.angle) * currentSpeed;
@@ -203,14 +231,20 @@ export const TitansExpansion = {
                     if (MathUtils.distSq(0, 0, dx, dy) > 225) { 
                         const targetAngle = Math.atan2(dy, dx);
                         
-                        // Smooth, lumbering rotation
+                        // Smooth, lumbering rotation (Using optimized TWO_PI)
                         let diff = targetAngle - this.angle;
-                        while (diff > Math.PI) diff -= Math.PI * 2;
-                        while (diff < -Math.PI) diff += Math.PI * 2;
+                        while (diff > Math.PI) diff -= TWO_PI;
+                        while (diff < -Math.PI) diff += TWO_PI;
                         this.angle += (diff * 0.05); 
                         
                         this.x += Math.cos(this.angle) * currentSpeed; 
                         this.y += Math.sin(this.angle) * currentSpeed;
+                        
+                        // SAFETY FIX: Clamp manual movement so they don't wander off the map!
+                        const bnd = this.size * 2;
+                        this.x = MathUtils.clamp(this.x, bnd, gameObj.world.width - bnd);
+                        this.y = MathUtils.clamp(this.y, bnd, gameObj.world.height - bnd);
+                        
                     } else {
                         this.commandTarget = null; // Target reached
                     }
