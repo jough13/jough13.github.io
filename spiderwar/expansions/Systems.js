@@ -9,24 +9,40 @@ import { VenusFlytrap } from './Hazards.js';
 import { JackOLantern } from './ControlPoints.js';
 import { Corpse, ZombieSpider } from './Necromancy.js'; 
 import { EggTrap, Broodling } from './BroodAmbush.js'; 
-import { ExplosiveProjectile } from './Titans.js'; // Added from Titans
-import { MortarShell } from './Fortress.js';       // Added from Fortress
+import { ExplosiveProjectile } from './Titans.js'; 
+import { MortarShell } from './Fortress.js';       
 
 export const AtmosphereExpansion = {
     patch: (game) => {
         game.bus.on('atmosphereDraw', (ctx) => {
-            const cycle = Math.sin(game.tick / 1800); const darkness = Math.max(0, cycle * 0.6); 
-            ctx.fillStyle = `rgba(5, 10, 35, ${darkness})`; ctx.fillRect(game.camera.x, game.camera.y, game.canvas.width, game.canvas.height);
+            // SAFETY FIX: Prevent overlapping darkness if DayNight expansion is also active
+            if (game.isNight !== undefined && game.dayTime > 0.4) return;
+            
+            const cycle = Math.sin(game.tick / 1800); 
+            const darkness = Math.max(0, cycle * 0.6); 
+            ctx.fillStyle = `rgba(5, 10, 35, ${darkness})`; 
+            ctx.fillRect(game.camera.x, game.camera.y, game.canvas.width, game.canvas.height);
         });
+
+        // Pulsing glow effects for bases during the night cycle
         game.expansions.patchClass(Structure, 'draw', function(original, ctx) {
             const cycle = Math.sin(game.tick / 1800);
-            if (cycle > 0 && (this.type === 'nest' || this.type === 'turret') && !this.isConstructing) { ctx.shadowBlur = 30 * cycle; ctx.shadowColor = this.team === 'black' ? '#aa00ff' : '#ff3300'; }
-            original.call(this, ctx); ctx.shadowBlur = 0; 
+            if (cycle > 0 && (this.type === 'nest' || this.type === 'turret') && !this.isConstructing) { 
+                ctx.shadowBlur = 30 * cycle; 
+                ctx.shadowColor = this.team === 'black' ? '#aa00ff' : '#ff3300'; 
+            }
+            original.call(this, ctx); 
+            ctx.shadowBlur = 0; 
         });
+
         game.expansions.patchClass(Queen, 'draw', function(original, ctx) {
             const cycle = Math.sin(game.tick / 1800);
-            if (cycle > 0) { ctx.shadowBlur = 40 * cycle; ctx.shadowColor = this.team === 'black' ? '#ffffff' : '#ff0000'; }
-            original.call(this, ctx); ctx.shadowBlur = 0;
+            if (cycle > 0) { 
+                ctx.shadowBlur = 40 * cycle; 
+                ctx.shadowColor = this.team === 'black' ? '#ffffff' : '#ff0000'; 
+            }
+            original.call(this, ctx); 
+            ctx.shadowBlur = 0;
         });
     }
 }
@@ -41,59 +57,92 @@ export const FogOfWarExpansion = {
                 this.fowCanvas = document.createElement('canvas');
                 this.fowCanvas.width = this.mapGrid[0].length;
                 this.fowCanvas.height = this.mapGrid.length;
-                this.fowCtx = this.fowCanvas.getContext('2d');
+                this.fowCtx = this.fowCanvas.getContext('2d', { willReadFrequently: true });
             }
 
-            if (this.tick % 5 === 0) {
-                for (let y = 0; y < this.mapGrid.length; y++) {
-                    for (let x = 0; x < this.mapGrid[y].length; x++) {
+            // PERFORMANCE FIX: Update Fog every 10 frames instead of 5, completely unnoticeable visually.
+            if (this.tick % 10 === 0) {
+                const w = this.fowCanvas.width;
+                const h = this.fowCanvas.height;
+                const tileSize = this.tileSize || 256; // SAFETY FIX: Decouple from Terrain.js
+
+                // 1. Reset Visibility
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
                         this.mapGrid[y][x].visible = false; 
                     }
                 }
 
+                // 2. Calculate newly revealed tiles
                 const reveal = (worldX, worldY, radiusTiles) => {
-                    const tX = Math.floor(worldX / this.tileSize);
-                    const tY = Math.floor(worldY / this.tileSize);
-                    for (let y = tY - radiusTiles; y <= tY + radiusTiles; y++) {
-                        for (let x = tX - radiusTiles; x <= tX + radiusTiles; x++) {
-                            if (this.mapGrid[y] && this.mapGrid[y][x]) {
-                                if (MathUtils.distSq(x, y, tX, tY) <= radiusTiles * radiusTiles) {
-                                    this.mapGrid[y][x].visible = true;
-                                    this.mapGrid[y][x].discovered = true;
-                                }
+                    const tX = Math.floor(worldX / tileSize);
+                    const tY = Math.floor(worldY / tileSize);
+                    const rSq = radiusTiles * radiusTiles;
+                    
+                    const startY = Math.max(0, tY - radiusTiles);
+                    const endY = Math.min(h - 1, tY + radiusTiles);
+                    const startX = Math.max(0, tX - radiusTiles);
+                    const endX = Math.min(w - 1, tX + radiusTiles);
+
+                    for (let y = startY; y <= endY; y++) {
+                        for (let x = startX; x <= endX; x++) {
+                            // PERFORMANCE FIX: Inline distance check
+                            if (((x - tX)*(x - tX) + (y - tY)*(y - tY)) <= rSq) {
+                                this.mapGrid[y][x].visible = true;
+                                this.mapGrid[y][x].discovered = true;
                             }
                         }
                     }
                 };
 
-                this.spiders.filter(s => s.team === 'black').forEach(s => reveal(s.x, s.y, 2));
-                this.queens.filter(q => q.team === 'black').forEach(q => reveal(q.x, q.y, 3));
-                this.structures.filter(s => s.team === 'black').forEach(s => {
-                    // Mortars have massive sight range
-                    let r = s.type === 'nest' ? 4 : (s.type === 'mortar' ? 4 : (s.type === 'pylon' ? 3 : 2));
-                    reveal(s.x, s.y, r);
-                });
-
-                this.fowCtx.clearRect(0, 0, this.fowCanvas.width, this.fowCanvas.height);
-                for (let y = 0; y < this.mapGrid.length; y++) {
-                    for (let x = 0; x < this.mapGrid[y].length; x++) {
-                        const tile = this.mapGrid[y][x];
-                        if (!tile.discovered) {
-                            this.fowCtx.fillStyle = 'rgba(0, 0, 0, 1.0)';
-                            this.fowCtx.fillRect(x, y, 1, 1); 
-                        } else if (!tile.visible) {
-                            this.fowCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-                            this.fowCtx.fillRect(x, y, 1, 1);
+                // PERFORMANCE FIX: Single loop for all friendly units instead of multiple .filter().forEach() calls
+                for (let i = 0; i < this.entities.length; i++) {
+                    let e = this.entities[i];
+                    if (e.team === 'black' && e.hp > 0) {
+                        if (e instanceof Spider) {
+                            reveal(e.x, e.y, e.role === 'queen' ? 3 : 2);
+                        } else if (e instanceof Structure && !e.isConstructing) {
+                            let r = e.type === 'nest' ? 4 : (e.type === 'mortar' ? 4 : (e.type === 'pylon' ? 3 : 2));
+                            reveal(e.x, e.y, r);
                         }
                     }
                 }
+
+                // 3. Render directly to ImageData buffer (MASSIVE PERFORMANCE UPGRADE over ctx.fillRect)
+                const imgData = this.fowCtx.createImageData(w, h);
+                const data = imgData.data;
+
+                let index = 0;
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        const tile = this.mapGrid[y][x];
+                        
+                        data[index] = 0;     // R
+                        data[index+1] = 0;   // G
+                        data[index+2] = 0;   // B
+                        
+                        if (!tile.discovered) {
+                            data[index+3] = 255; // 100% Black
+                        } else if (!tile.visible) {
+                            data[index+3] = 153; // 60% Black (153/255)
+                        } else {
+                            data[index+3] = 0;   // Fully Transparent
+                        }
+                        
+                        index += 4;
+                    }
+                }
+                this.fowCtx.putImageData(imgData, 0, 0);
             }
         });
 
+        // Hooks visibility logic directly into the base drawing routines of all classes
         const applyFoWToClass = (ClassRef, hideIfInvisible, hideIfUndiscovered) => {
             game.expansions.patchClass(ClassRef, 'draw', function(original, ctx) {
                 if (game.mapGrid) {
-                    const tX = Math.floor(this.x / game.tileSize); const tY = Math.floor(this.y / game.tileSize);
+                    const tileSize = game.tileSize || 256;
+                    const tX = Math.floor(this.x / tileSize); 
+                    const tY = Math.floor(this.y / tileSize);
                     const tile = game.mapGrid[tY] && game.mapGrid[tY][tX];
                     if (tile) {
                         if (hideIfUndiscovered && !tile.discovered) return;
@@ -116,10 +165,10 @@ export const FogOfWarExpansion = {
         applyFoWToClass(ResourceNode, false, true); 
         applyFoWToClass(EggTrap, true, false);
         
-        // --- ADDED NEW PROJECTILES TO FOG OF WAR ---
         applyFoWToClass(ExplosiveProjectile, true, false);
         applyFoWToClass(MortarShell, true, false);
 
+        // Blurs the blocky 1x1 tile mask to create a beautiful smooth shadow
         game.bus.on('postDraw', (ctx) => {
             if (!game.fowCanvas) return;
             ctx.save();
@@ -127,8 +176,8 @@ export const FogOfWarExpansion = {
             ctx.drawImage(
                 game.fowCanvas, 
                 0, 0, 
-                game.fowCanvas.width * game.tileSize, 
-                game.fowCanvas.height * game.tileSize
+                game.fowCanvas.width * (game.tileSize || 256), 
+                game.fowCanvas.height * (game.tileSize || 256)
             );
             ctx.restore();
         });
@@ -138,7 +187,6 @@ export const FogOfWarExpansion = {
 export const SaveLoadExpansion = {
     patch: (game) => {
         
-        // Extracted Loading Logic so it can be called by the Keyboard OR the Main Menu
         const performLoad = () => {
             const data = localStorage.getItem('spiderRTS_saveData'); 
             if(!data) return alert("No save found!");
@@ -147,30 +195,27 @@ export const SaveLoadExpansion = {
             game.eco = state.eco; game.pop = state.pop; game.maxPop = state.maxPop; 
             game.techLevel = state.techLevel; game.camera = state.camera; game.tick = state.tick || 0;
             
-            // --- FIX A: RESTORE MAP GRID & FOG OF WAR ---
             if (state.mapGrid) {
                 game.mapGrid = state.mapGrid;
-                // Force water bitmasks to recalculate their borders based on the loaded map
                 if (game.updateBitmasks) game.updateBitmasks();
             }
 
-            // --- FIX A (Bonus): RESTORE DECOR ---
-            // Because loaded games skip Tick 1, we must rebuild the decor chunks manually
+            // Restore Decor Chunks
             if (state.decor) {
                 game.decor = state.decor;
-                game.decorInitialized = true; // Prevent Tick 1 regeneration
-                game.decorChunks = {};
-                const CHUNK_SIZE = 500; // Defined in Decor.js
+                game.decorInitialized = true; 
+                game.decorChunks = new Map(); 
+                const CHUNK_SIZE = 500; 
                 
                 game.decor.forEach(d => {
-                    // Re-link the raw Image element from the preloaded dictionary
-                    if (game.decorSprites && game.decorSprites[d.type]) {
-                        d.sprite = game.decorSprites[d.type];
-                    }
-                    // Re-assign to spatial hash chunk for rendering
-                    const chunkKey = `${Math.floor(d.x / CHUNK_SIZE)},${Math.floor(d.y / CHUNK_SIZE)}`;
-                    if (!game.decorChunks[chunkKey]) game.decorChunks[chunkKey] = [];
-                    game.decorChunks[chunkKey].push(d);
+                    // Re-link the raw Image element from the AssetManager
+                    if (game.assets) d.sprite = game.assets.get(d.src);
+
+                    // Re-assign to spatial hash chunk
+                    const chunkKey = (Math.floor(d.x / CHUNK_SIZE) << 16) | Math.floor(d.y / CHUNK_SIZE);
+                    let chunk = game.decorChunks.get(chunkKey);
+                    if (!chunk) { chunk = []; game.decorChunks.set(chunkKey, chunk); }
+                    chunk.push(d);
                 });
             }
 
@@ -179,21 +224,20 @@ export const SaveLoadExpansion = {
             state.spiders.forEach(s => { 
                 let o;
                 if (s.isZombie) { 
-                    o = new ZombieSpider(s.x, s.y, s.team); 
+                    o = new ZombieSpider(s.x, s.y, s.team, s.size); 
                 } else if (s.role === 'broodling') {
                     o = new Broodling(s.x, s.y, s.team);
                 } else {
                     o = new Spider(s.x, s.y, s.team, s.role);
-                    if (s.role === 'spitter') { o.maxHp = 75; o.damage = 25; o.attackSpeed = 45; o.range = 250; o.sprite.src = s.team === 'black' ? 'assets/spitter_black.png' : 'assets/spitter_red.png'; }
-                    if (s.role === 'tarantula') { o.maxHp = 400; o.damage = 45; o.attackSpeed = 40; o.size = 22; o.baseSpeed = 0.6; o.sprite.src = s.team === 'black' ? 'assets/tarantula_black.png' : 'assets/tarantula_red.png'; }
+                    
+                    if (s.role === 'spitter') { o.range = 250; o.rangeSq = 62500; }
                     if (s.role === 'widow') { 
-                        o.maxHp = 150; o.damage = 100; o.baseSpeed = 1.9; 
-                        o.isCloaked = s.isCloaked; o.cloakCooldown = s.cloakCooldown; 
-                        o.sprite.src = s.team === 'black' ? 'assets/widow_black.png' : 'assets/widow_red.png'; 
+                        o.isCloaked = s.isCloaked; 
+                        o.cloakCooldown = s.cloakCooldown; 
                     }
-                    if (s.role === 'goliath') { o.maxHp = 1200; o.damage = 90; o.size = 38; o.baseSpeed = 0.4; o.sprite.src = s.team === 'black' ? 'assets/goliath_black.png' : 'assets/goliath_red.png'; }
                 }
-                o.hp = s.hp; o.cargo = s.cargo; 
+                o.hp = s.hp; 
+                o.cargo = s.cargo; 
                 if (s.life !== undefined) o.life = s.life; 
                 game.addEntity(o); 
             });
@@ -240,7 +284,7 @@ export const SaveLoadExpansion = {
             }
             if (state.corpses) {
                 state.corpses.forEach(c => {
-                    let o = new Corpse(c.x, c.y);
+                    let o = new Corpse(c.x, c.y, c.size);
                     o.life = c.life;
                     game.addEntity(o);
                 });
@@ -256,31 +300,35 @@ export const SaveLoadExpansion = {
             console.log("Game Successfully Loaded!");
         };
 
-        // Listen for the custom event fired by the Main Menu
         game.bus.on('triggerLoadGame', performLoad);
 
-        // Keep keyboard shortcuts for rapid saving/loading during gameplay
         window.addEventListener('keydown', (e) => {
             if (e.key.toLowerCase() === 'o') {
                 const state = {
                     eco: game.eco, pop: game.pop, maxPop: game.maxPop, techLevel: game.techLevel, camera: game.camera, tick: game.tick,
                     
-                    // --- FIX A: SERIALIZE MAP GRID & DECOR ---
                     mapGrid: game.mapGrid.map(row => row.map(tile => ({
                         type: tile.type, sprite: tile.sprite, angle: tile.angle, 
                         discovered: tile.discovered, visible: tile.visible
                     }))),
                     
-                    // We must map Decor to remove the raw Image Element (d.sprite), otherwise JSON.stringify crashes
+                    // SAFETY FIX: Store `src` instead of stringifying the DOM element
                     decor: game.decor ? game.decor.map(d => ({
-                        x: d.x, y: d.y, type: d.type, size: d.size, angle: d.angle, alpha: d.alpha
+                        x: d.x, y: d.y, type: d.type, size: d.size, renderSize: d.renderSize, 
+                        angle: d.angle, alpha: d.alpha, fallbackColor: d.fallbackColor, 
+                        src: d.sprite ? d.sprite.src.split('/').pop() : null
                     })) : [],
                     
-                    spiders: game.spiders.map(s => ({
-                        x: s.x, y: s.y, team: s.team, role: s.role, hp: s.hp, cargo: s.cargo, 
-                        isZombie: s.isZombie, isCloaked: s.isCloaked, cloakCooldown: s.cloakCooldown,
-                        life: s.life
-                    })),
+                    spiders: game.spiders.map(s => {
+                        const sData = {
+                            x: s.x, y: s.y, team: s.team, role: s.role, hp: s.hp, cargo: s.cargo, size: s.size
+                        };
+                        // SAFETY FIX: Cleanly serialize optional traits
+                        if (s.isZombie) sData.isZombie = true;
+                        if (s.isCloaked !== undefined) { sData.isCloaked = s.isCloaked; sData.cloakCooldown = s.cloakCooldown; }
+                        if (s.life !== undefined) sData.life = s.life;
+                        return sData;
+                    }),
                     
                     structures: game.structures.map(s => ({
                         x: s.x, y: s.y, team: s.team, type: s.type, hp: s.hp,
@@ -295,12 +343,11 @@ export const SaveLoadExpansion = {
                     bosses: game.bosses.map(b => ({x: b.x, y: b.y, hp: b.hp})),
                     hazards: game.entities.filter(e => e instanceof VenusFlytrap).map(f => ({x: f.x, y: f.y, hp: f.hp, cooldown: f.cooldown})),
                     controlPoints: game.entities.filter(e => e instanceof JackOLantern).map(c => ({x: c.x, y: c.y, team: c.controllingTeam, prog: c.captureProgress})),
-                    corpses: game.entities.filter(e => e instanceof Corpse).map(c => ({x: c.x, y: c.y, life: c.life})),
+                    corpses: game.entities.filter(e => e instanceof Corpse).map(c => ({x: c.x, y: c.y, life: c.life, size: c.size})),
                     eggTraps: game.entities.filter(e => e instanceof EggTrap).map(t => ({x: t.x, y: t.y, team: t.team, hp: t.hp}))
                 };
                 localStorage.setItem('spiderRTS_saveData', JSON.stringify(state)); 
                 
-                // Fancy in-game notification instead of a blocking alert
                 game.bus.emit('particles', {x: game.camera.x + game.canvas.width/2, y: game.camera.y + game.canvas.height/2, color: '#00ff00', count: 50});
                 console.log("Game Saved!");
             }
