@@ -8,9 +8,16 @@ import { Queen } from './Queen.js';
 const NETWORK_CONFIG = {
     friendlySpeedBuff: 1.5,  // +50% speed on friendly silk
     enemySpeedDebuff: 0.7,   // -30% speed on enemy silk
-    spiderLinkDistSq: 6400,  // 80px connection radius between spiders
-    structLinkDistSq: 22500  // 150px connection radius to structures
+    
+    spiderLinkDist: 80,      // Pre-calculated for fast AABB math
+    spiderLinkDistSq: 6400,  // 80px squared
+    
+    structLinkDist: 150,     // Pre-calculated for fast AABB math
+    structLinkDistSq: 22500  // 150px squared
 };
+
+const TWO_PI = Math.PI * 2;
+const PI_OVER_4 = Math.PI / 4; // Used for geometric web drawing
 
 // ==========================================
 // 2. SILK TERRITORY (The "Creep")
@@ -20,6 +27,8 @@ export const SilkNetworkExpansion = {
         
         // --- VISUALS: Draw the glowing territory on the ground ---
         game.bus.on('territoryDraw', (ctx) => {
+            if (!game.structures) return;
+
             ctx.save();
             ctx.globalCompositeOperation = 'screen'; 
             
@@ -52,7 +61,7 @@ export const SilkNetworkExpansion = {
                     
                     ctx.fillStyle = grad;
                     ctx.beginPath(); 
-                    ctx.arc(s.x, s.y, s.territory, 0, Math.PI * 2); 
+                    ctx.arc(s.x, s.y, s.territory, 0, TWO_PI); 
                     ctx.fill();
                     
                     ctx.strokeStyle = s.team === 'black' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 100, 100, 0.15)';
@@ -62,13 +71,13 @@ export const SilkNetworkExpansion = {
                     // Draw 8-point geometric web lines
                     for (let j = 0; j < 8; j++) {
                         // Using s.x as a static offset seed so the web lines don't rotate or jitter
-                        let angle = (j * Math.PI / 4) + (s.x % 1); 
+                        let angle = (j * PI_OVER_4) + (s.x % 1); 
                         ctx.moveTo(s.x, s.y);
                         ctx.lineTo(s.x + Math.cos(angle) * s.territory, s.y + Math.sin(angle) * s.territory);
                     }
                     
                     // Inner geometric ring
-                    ctx.arc(s.x, s.y, s.territory * 0.7, 0, Math.PI * 2);
+                    ctx.arc(s.x, s.y, s.territory * 0.7, 0, TWO_PI);
                     ctx.stroke();
                 }
             }
@@ -102,7 +111,6 @@ export const SilkNetworkExpansion = {
             if (isOnFriendlyWeb) this.baseSpeed *= NETWORK_CONFIG.friendlySpeedBuff;      
             else if (isOnEnemyWeb) this.baseSpeed *= NETWORK_CONFIG.enemySpeedDebuff;    
             
-            // FIXED: Safely call the original update with correct context
             original.call(this, gameObj); 
             
             this.baseSpeed = baseSpdTemp; 
@@ -115,6 +123,7 @@ export const SilkNetworkExpansion = {
             for (let i = 0; i < gameObj.structures.length; i++) {
                 let s = gameObj.structures[i];
                 if (s.team === this.team && s.territory > 0 && s.hp > 0 && !s.isConstructing) {
+                    
                     // Fast AABB check
                     if (Math.abs(this.x - s.x) > s.territory || Math.abs(this.y - s.y) > s.territory) continue;
                     
@@ -128,7 +137,6 @@ export const SilkNetworkExpansion = {
             const baseSpdTemp = this.baseSpeed;
             if (isOnFriendlyWeb) this.baseSpeed *= NETWORK_CONFIG.friendlySpeedBuff; 
             
-            // FIXED: Safely call the original update
             original.call(this, gameObj);
             
             this.baseSpeed = baseSpdTemp;
@@ -142,6 +150,8 @@ export const SilkNetworkExpansion = {
 export const WebNetworkExpansion = {
     patch: (game) => {
         game.bus.on('preDraw', (ctx) => {
+            if (!game.spiders || !game.structures) return;
+
             ctx.lineWidth = 1;
             
             // Viewport Culling Bounds (+150px padding to account for link distance)
@@ -152,25 +162,39 @@ export const WebNetworkExpansion = {
             const viewB = game.camera.y + game.canvas.height + padding;
 
             // MASSIVE PERFORMANCE BOOST: Pre-filter spiders that are actually on/near the screen.
-            // This reduces the O(N^2) loop below from 10,000+ calculations to just a few dozen!
-            const visibleSpiders = game.spiders.filter(s => 
-                s.hp > 0 && s.x >= viewL && s.x <= viewR && s.y >= viewT && s.y <= viewB
-            );
+            // Using a raw loop instead of .filter() to prevent GC thrashing.
+            const visibleSpiders = [];
+            for (let i = 0; i < game.spiders.length; i++) {
+                let s = game.spiders[i];
+                if (s.hp > 0 && s.x >= viewL && s.x <= viewR && s.y >= viewT && s.y <= viewB) {
+                    visibleSpiders.push(s);
+                }
+            }
+
+            // PERFORMANCE FIX: Pre-filter structures ONCE outside the spider loop
+            const aliveStructs = [];
+            for (let i = 0; i < game.structures.length; i++) {
+                if (game.structures[i].hp > 0) aliveStructs.push(game.structures[i]);
+            }
+
+            const structDist = NETWORK_CONFIG.structLinkDist;
+            const spiderDist = NETWORK_CONFIG.spiderLinkDist;
 
             for (let i = 0; i < visibleSpiders.length; i++) {
                 let s1 = visibleSpiders[i];
                 
                 // 1. Draw Links to nearby Friendly Structures
-                let myStructs = game.structures.filter(s => s.team === s1.team && s.hp > 0);
-                for (let k = 0; k < myStructs.length; k++) {
-                    let struct = myStructs[k];
+                for (let k = 0; k < aliveStructs.length; k++) {
+                    let struct = aliveStructs[k];
                     
-                    // Fast AABB check before distSq
-                    if (Math.abs(s1.x - struct.x) > 150 || Math.abs(s1.y - struct.y) > 150) continue;
-                    
-                    if (MathUtils.distSq(struct.x, struct.y, s1.x, s1.y) < NETWORK_CONFIG.structLinkDistSq) {
-                        ctx.strokeStyle = s1.team === 'black' ? 'rgba(255,255,255,0.3)' : 'rgba(255, 100, 100, 0.3)'; 
-                        ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(struct.x, struct.y); ctx.stroke(); 
+                    if (struct.team === s1.team) {
+                        // Fast AABB check before distSq
+                        if (Math.abs(s1.x - struct.x) > structDist || Math.abs(s1.y - struct.y) > structDist) continue;
+                        
+                        if (MathUtils.distSq(struct.x, struct.y, s1.x, s1.y) < NETWORK_CONFIG.structLinkDistSq) {
+                            ctx.strokeStyle = s1.team === 'black' ? 'rgba(255,255,255,0.3)' : 'rgba(255, 100, 100, 0.3)'; 
+                            ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(struct.x, struct.y); ctx.stroke(); 
+                        }
                     }
                 }
                 
@@ -180,7 +204,7 @@ export const WebNetworkExpansion = {
                     
                     if (s1.team === s2.team) {
                         // Fast AABB check before distSq
-                        if (Math.abs(s1.x - s2.x) > 80 || Math.abs(s1.y - s2.y) > 80) continue;
+                        if (Math.abs(s1.x - s2.x) > spiderDist || Math.abs(s1.y - s2.y) > spiderDist) continue;
 
                         if (MathUtils.distSq(s2.x, s2.y, s1.x, s1.y) < NETWORK_CONFIG.spiderLinkDistSq) { 
                             ctx.strokeStyle = s1.team === 'black' ? 'rgba(255,255,255,0.2)' : 'rgba(255, 100, 100, 0.2)'; 
