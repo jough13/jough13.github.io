@@ -19,6 +19,30 @@ const TERRAIN_CONFIG = {
     waterFallback: '#1a4e6e'
 };
 
+// PERFORMANCE FIX: Pre-calculate Math constants to prevent division at runtime
+const PI = Math.PI;
+const HALF_PI = Math.PI / 2;
+
+// PERFORMANCE FIX: Extracted from the function so it doesn't allocate memory every update
+const WATER_BITMASK = {
+    0:  {s: 'water_end',      a: 0},           
+    1:  {s: 'water_end',      a: 0},        
+    2:  {s: 'water_end',      a: HALF_PI},   
+    4:  {s: 'water_end',      a: PI},  
+    8:  {s: 'water_end',      a: -HALF_PI},  
+    5:  {s: 'water_straight', a: 0},   
+    10: {s: 'water_straight', a: HALF_PI}, 
+    3:  {s: 'water_corner',   a: 0}, 
+    6:  {s: 'water_corner',   a: HALF_PI}, 
+    12: {s: 'water_corner',   a: PI}, 
+    9:  {s: 'water_corner',   a: -HALF_PI}, 
+    7:  {s: 'water_t',        a: 0},        
+    14: {s: 'water_t',        a: HALF_PI},    
+    13: {s: 'water_t',        a: PI},   
+    11: {s: 'water_t',        a: -HALF_PI},   
+    15: {s: 'water_cross',    a: 0}      
+};
+
 // ==========================================
 // 2. EXPANSION LOGIC
 // ==========================================
@@ -43,15 +67,17 @@ export const TerrainExpansion = {
         }
         
         // --- 2. MAP GENERATION ---
-        // Map layout is generated purely as data strings right now, so it doesn't need the images yet!
         game.generateMap = function() {
-            this.mapGrid = [];
             const cols = Math.ceil(this.world.width / this.tileSize); 
             const rows = Math.ceil(this.world.height / this.tileSize);
             
+            // PERFORMANCE FIX: Pre-allocate array sizes to prevent dynamic resizing memory spikes
+            this.mapGrid = new Array(rows);
+            
             // Generate Base Terrain
             for (let y = 0; y < rows; y++) {
-                let row = [];
+                this.mapGrid[y] = new Array(cols);
+                
                 for (let x = 0; x < cols; x++) { 
                     
                     // Select biome based on weighted probabilities
@@ -67,11 +93,10 @@ export const TerrainExpansion = {
                     }
 
                     // Visual Polish: Randomly rotate base tiles (0, 90, 180, 270 deg) to hide repeating grid patterns!
-                    const randomRotation = MathUtils.randomInt(0, 3) * (Math.PI / 2);
+                    const randomRotation = MathUtils.randomInt(0, 3) * HALF_PI;
                     
-                    row.push({ type: type, sprite: type, angle: randomRotation });
+                    this.mapGrid[y][x] = { type: type, sprite: type, angle: randomRotation };
                 }
-                this.mapGrid.push(row);
             }
             
             // Generate Organic River
@@ -91,43 +116,28 @@ export const TerrainExpansion = {
 
             // --- WATER AUTOTILING (BITMASKING) ---
             this.updateBitmasks = function() {
-                const bitMap = {
-                    0:  {s: 'water_end',      a: 0},           
-                    1:  {s: 'water_end',      a: 0},        
-                    2:  {s: 'water_end',      a: Math.PI/2},   
-                    4:  {s: 'water_end',      a: Math.PI},  
-                    8:  {s: 'water_end',      a: -Math.PI/2},  
-                    5:  {s: 'water_straight', a: 0},   
-                    10: {s: 'water_straight', a: Math.PI/2}, 
-                    3:  {s: 'water_corner',   a: 0}, 
-                    6:  {s: 'water_corner',   a: Math.PI/2}, 
-                    12: {s: 'water_corner',   a: Math.PI}, 
-                    9:  {s: 'water_corner',   a: -Math.PI/2}, 
-                    7:  {s: 'water_t',        a: 0},        
-                    14: {s: 'water_t',        a: Math.PI/2},    
-                    13: {s: 'water_t',        a: Math.PI},   
-                    11: {s: 'water_t',        a: -Math.PI/2},   
-                    15: {s: 'water_cross',    a: 0}      
-                };
+                const mapRows = this.mapGrid.length;
+                const mapCols = this.mapGrid[0].length;
 
                 // Helper: safely checks for water, treating map boundaries as water to make rivers flow off-screen
                 const isWater = (gx, gy) => {
-                    if (gy < 0 || gy >= rows || gx < 0 || gx >= cols) return true; 
+                    if (gy < 0 || gy >= mapRows || gx < 0 || gx >= mapCols) return true; 
                     return this.mapGrid[gy][gx].type === 'water';
                 };
 
-                for (let y = 0; y < rows; y++) {
-                    for (let x = 0; x < cols; x++) {
+                for (let y = 0; y < mapRows; y++) {
+                    for (let x = 0; x < mapCols; x++) {
                         if (this.mapGrid[y][x].type === 'water') {
                             let mask = 0;
-                            // Check North, East, South, West
-                            if (isWater(x, y - 1)) mask += 1;
-                            if (isWater(x + 1, y)) mask += 2;
-                            if (isWater(x, y + 1)) mask += 4;
-                            if (isWater(x - 1, y)) mask += 8;
+                            // Bitwise assignment for maximum speed
+                            if (isWater(x, y - 1)) mask |= 1; // North
+                            if (isWater(x + 1, y)) mask |= 2; // East
+                            if (isWater(x, y + 1)) mask |= 4; // South
+                            if (isWater(x - 1, y)) mask |= 8; // West
 
-                            this.mapGrid[y][x].sprite = bitMap[mask].s;
-                            this.mapGrid[y][x].angle = bitMap[mask].a;
+                            const tileData = WATER_BITMASK[mask];
+                            this.mapGrid[y][x].sprite = tileData.s;
+                            this.mapGrid[y][x].angle = tileData.a;
                         }
                     }
                 }
@@ -163,24 +173,28 @@ export const TerrainExpansion = {
                     const img = this.tiles[key];
                     
                     if (img && img.complete && img.naturalHeight !== 0) {
-                        const c = document.createElement('canvas');
-                        c.width = this.tileSize; 
-                        c.height = this.tileSize;
-                        const ctx = c.getContext('2d');
                         
-                        ctx.imageSmoothingEnabled = false; // Preserve 16-bit retro aesthetic
+                        // CRITICAL SAFETY FIX: Prevent infinite loops if an image asset is corrupted!
+                        if (img.width > 0 && img.height > 0) {
+                            const c = document.createElement('canvas');
+                            c.width = this.tileSize; 
+                            c.height = this.tileSize;
+                            const ctx = c.getContext('2d');
+                            
+                            ctx.imageSmoothingEnabled = false; // Preserve 16-bit retro aesthetic
 
-                        // If it's a micro-tile, repeat it across the canvas
-                        if (img.width < this.tileSize && !key.startsWith('water_')) {
-                            for (let y = 0; y < this.tileSize; y += img.height) {
-                                for (let x = 0; x < this.tileSize; x += img.width) { 
-                                    ctx.drawImage(img, x, y); 
+                            // If it's a micro-tile, repeat it across the canvas
+                            if (img.width < this.tileSize && !key.startsWith('water_')) {
+                                for (let y = 0; y < this.tileSize; y += img.height) {
+                                    for (let x = 0; x < this.tileSize; x += img.width) { 
+                                        ctx.drawImage(img, x, y); 
+                                    }
                                 }
+                            } else {
+                                ctx.drawImage(img, 0, 0, this.tileSize, this.tileSize);
                             }
-                        } else {
-                            ctx.drawImage(img, 0, 0, this.tileSize, this.tileSize);
+                            this.bakedTiles[key] = c; // Save the baked canvas
                         }
-                        this.bakedTiles[key] = c; // Save the baked canvas
                     }
                 }
             }
@@ -198,6 +212,10 @@ export const TerrainExpansion = {
             const endRow = Math.min(game.mapGrid.length - 1, startRow + Math.ceil(game.canvas.height / game.tileSize) + 1);
             
             const halfSize = game.tileSize / 2;
+            
+            // PERFORMANCE FIX: Cache these lookups outside the loop!
+            const dirtTile = game.bakedTiles['dirt'];
+            const fallbackDirtColor = TERRAIN_CONFIG.biomes.dirt.fallback;
 
             for (let y = startRow; y <= endRow; y++) {
                 for (let x = startCol; x <= endCol; x++) {
@@ -207,10 +225,10 @@ export const TerrainExpansion = {
                     const drawY = y * game.tileSize;
 
                     // 1. Draw solid dirt foundation to prevent 1px gap tearing between tiles
-                    if (game.bakedTiles['dirt']) { 
-                        ctx.drawImage(game.bakedTiles['dirt'], drawX, drawY); 
+                    if (dirtTile) { 
+                        ctx.drawImage(dirtTile, drawX, drawY); 
                     } else { 
-                        ctx.fillStyle = TERRAIN_CONFIG.biomes.dirt.fallback; 
+                        ctx.fillStyle = fallbackDirtColor; 
                         ctx.fillRect(drawX, drawY, game.tileSize, game.tileSize); 
                     }
 
