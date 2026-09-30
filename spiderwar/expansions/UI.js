@@ -578,8 +578,9 @@ export const GameLoopExpansion = {
         }
 
         game.expansions.patchClass(Game, 'update', function(original) {
-            original.call(this); 
             
+            // FIX: Evaluate Win/Loss BEFORE calling the original engine loop!
+            // This ensures we can read the Queen's HP before she is deleted from RAM.
             if (this.gameState === 'playing') {
                 
                 // PERFORMANCE FIX: Loop through entities to find Queens without allocating arrays
@@ -612,6 +613,9 @@ export const GameLoopExpansion = {
                     }
                 }
             }
+
+            // NOW call the original engine logic so the game can cull the dead queen body cleanly
+            original.call(this); 
         });
 
         game.bus.on('uiDraw', (ctx) => {
