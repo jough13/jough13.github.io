@@ -10,8 +10,14 @@ const QUEEN_CONFIG = {
     speed: 0.8,
     size: 28,
     attackSpeed: 30, // Swings once per second
-    aggroRadius: 200 // Will defend herself if enemies get this close
+    aggroRadius: 200, // Will defend herself if enemies get this close
+    
+    // Crimson Swarm AI Triggers
+    aiAttackTick: 9000, // ~5 mins (When she decides to lead the charge)
+    aiAttackPop: 40     // If her swarm gets this big, she attacks early
 };
+
+const TWO_PI = Math.PI * 2;
 
 // ==========================================
 // 2. THE QUEEN ENTITY
@@ -31,10 +37,18 @@ export class Queen extends Spider {
         this.thinkTimer = 0; // Used for Red AI throttling
         this.age = 0;        // Used for deterministic drawing animations
 
-        this.sprite.src = team === 'black' ? 'assets/queen_black.png' : 'assets/queen_red.png';
+        this.ramSpriteLoaded = false; // Prevents reloading the image outside of RAM cache
     }
 
     update(game) {
+        // --- ASSET MANAGER CACHE LINKING ---
+        // Instantly grabs the preloaded sprite from RAM instead of making the browser resolve a path
+        if (!this.ramSpriteLoaded && game.assets) {
+            this.sprite = game.assets.get(this.team === 'black' ? 'assets/queen_black.png' : 'assets/queen_red.png');
+            this.imageLoaded = true; // Tell base class it's ready to draw
+            this.ramSpriteLoaded = true;
+        }
+
         this.age++;
 
         // 1. Self-Defense Combat Check (Queens hit hard!)
@@ -73,20 +87,33 @@ export class Queen extends Spider {
                 this.thinkTimer = 60; // Think once every 2 seconds
                 
                 // Tactical Evaluation: Don't charge the player immediately!
-                // Wait until late game (Tick 9000 = ~5 mins) OR we have a massive army
-                if (game.tick > 9000 || game.pop.red >= 40) {
-                    // Lead the final assault!
-                    const bNests = game.structures.filter(s => s.team === 'black' && s.type === 'nest');
-                    if (bNests.length > 0) {
-                        this.commandTarget = { x: bNests[0].x, y: bNests[0].y };
+                // Wait until late game OR we have a massive army
+                if (game.tick > QUEEN_CONFIG.aiAttackTick || game.pop.red >= QUEEN_CONFIG.aiAttackPop) {
+                    
+                    // Lead the final assault! (PERFORMANCE FIX: No .filter allocation)
+                    let targetNest = null;
+                    for (let i = 0; i < game.structures.length; i++) {
+                        let s = game.structures[i];
+                        if (s.team === 'black' && s.type === 'nest' && s.hp > 0) {
+                            targetNest = s; break;
+                        }
                     }
+                    if (targetNest) this.commandTarget = { x: targetNest.x, y: targetNest.y };
+                    
                 } else {
-                    // Defend own base (Patrol around the Red Nest)
-                    const rNests = game.structures.filter(s => s.team === 'red' && s.type === 'nest');
-                    if (rNests.length > 0) {
+                    
+                    // Defend own base - Patrol around the Red Nest (PERFORMANCE FIX: No .filter allocation)
+                    let homeNest = null;
+                    for (let i = 0; i < game.structures.length; i++) {
+                        let s = game.structures[i];
+                        if (s.team === 'red' && s.type === 'nest' && s.hp > 0) {
+                            homeNest = s; break;
+                        }
+                    }
+                    if (homeNest) {
                         this.commandTarget = { 
-                            x: rNests[0].x + MathUtils.randomRange(-150, 150), 
-                            y: rNests[0].y + MathUtils.randomRange(-150, 150) 
+                            x: homeNest.x + MathUtils.randomRange(-150, 150), 
+                            y: homeNest.y + MathUtils.randomRange(-150, 150) 
                         };
                     }
                 }
@@ -148,7 +175,7 @@ export class Queen extends Spider {
             // Target Reticle
             ctx.setLineDash([]); 
             ctx.beginPath(); 
-            ctx.arc(this.commandTarget.x, this.commandTarget.y, 10, 0, Math.PI * 2); 
+            ctx.arc(this.commandTarget.x, this.commandTarget.y, 10, 0, TWO_PI); 
             ctx.stroke();
             
             ctx.restore();
@@ -163,10 +190,21 @@ export const QueenExpansion = {
     init: (game) => {
         game.queensSpawned = false;
         
+        // --- ASSET REGISTRY ---
+        game.assets.register('assets/queen_black.png');
+        game.assets.register('assets/queen_red.png');
+
         // Hook for UI/Control Commands
         game.bus.on('commandQueen', (data) => {
-            const queen = game.queens.find(q => q.team === data.team);
-            if (queen) queen.commandTarget = { x: data.x, y: data.y };
+            // PERFORMANCE FIX: Loop instead of .find()
+            let targetQueen = null;
+            for (let i = 0; i < game.queens.length; i++) {
+                if (game.queens[i].team === data.team) {
+                    targetQueen = game.queens[i];
+                    break;
+                }
+            }
+            if (targetQueen) targetQueen.commandTarget = { x: data.x, y: data.y };
         });
     },
 
@@ -178,8 +216,16 @@ export const QueenExpansion = {
             if (this.gameState === 'playing' && this.tick === 2 && !this.queensSpawned) {
                 this.queensSpawned = true;
                 
-                const bNest = this.structures.find(s => s.team === 'black' && s.type === 'nest'); 
-                const rNest = this.structures.find(s => s.team === 'red' && s.type === 'nest');
+                // PERFORMANCE FIX: Loop instead of multiple .find() calls
+                let bNest = null;
+                let rNest = null;
+                for (let i = 0; i < this.structures.length; i++) {
+                    let s = this.structures[i];
+                    if (s.type === 'nest') {
+                        if (s.team === 'black' && !bNest) bNest = s;
+                        else if (s.team === 'red' && !rNest) rNest = s;
+                    }
+                }
                 
                 if (bNest && rNest) {
                     this.addEntity(new Queen(bNest.x + 80, bNest.y + 80, 'black')); 
