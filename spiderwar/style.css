@@ -12,9 +12,11 @@
     --color-pumpkin-light: #ffb732;
     --color-dew: #00aaff;
     
-    /* Factions */
+    /* Factions & Magic */
     --color-obsidian: #aa00ff; /* Player magic */
     --color-crimson: #ff0000;  /* Enemy magic */
+    --color-nature: #00ff00;   /* Acid/Healing magic */
+    --color-neutral: #ffff00;  /* Control points/Gold */
     
     /* Typography */
     --font-primary: 'Courier New', Courier, monospace;
@@ -44,12 +46,35 @@ body, html {
     /* Prevent accidental text highlighting when drag-selecting units */
     user-select: none; 
     -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
     
     /* Prevents the ugly blue flash when tapping UI on mobile iOS/Android */
     -webkit-tap-highlight-color: transparent;
     
     /* RTS style targeting cursor */
     cursor: crosshair; 
+}
+
+/* Prevent accidental image dragging in the HTML UI layer (Portraits, Icons) */
+img {
+    -webkit-user-drag: none;
+    user-select: none;
+}
+
+/* Lore-friendly text selection for any future text inputs (e.g. Save Game Naming) */
+::selection {
+    background: var(--color-obsidian);
+    color: #ffffff;
+}
+
+/* Accessibility: Maintain focus outlines for keyboard users, but hide for mouse clicks */
+:focus:not(:focus-visible) {
+    outline: none;
+}
+:focus-visible {
+    outline: 2px solid var(--color-pumpkin);
+    outline-offset: 2px;
 }
 
 /* ==========================================
@@ -59,17 +84,13 @@ body, html {
 body::after {
     content: "";
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0; /* Modern replacement for top:0, left:0, width:100%, height:100% */
     pointer-events: none; /* Lets all clicks pass through to the canvas */
     background: radial-gradient(circle, transparent 60%, rgba(5, 2, 0, 0.85) 100%);
     z-index: var(--z-vignette); /* Sits above the canvas, but below the UI */
     
     /* Hardware acceleration: Explicitly tells GPU to composite this layer separately */
     transform: translateZ(0);
-    will-change: transform;
 }
 
 /* ==========================================
