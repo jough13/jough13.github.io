@@ -2,11 +2,33 @@
 import { MathUtils, Spider, Structure, SPIDER_STATE } from '../game.js';
 import { Queen } from './Queen.js';
 
+// ==========================================
+// 1. CONFIGURATION & TUNING
+// ==========================================
+const CONTROLS_CONFIG = {
+    doubleClickMs: 300,        // Max time between clicks to trigger "Select All of Type"
+    dragBoxThresholdSq: 100,   // Minimum pixels dragged to count as a box vs a single click
+    clickHitboxPadding: 15,    // Extra pixels around a unit to make it easier to click on mobile
+    
+    buildRangeSq: 4900,        // 70px squared - How close Queen must be to build
+    buildResumeRangeSq: 3600,  // 60px squared - How close Queen must be to auto-resume paused building
+    buildSpeed: 0.001,         // Takes ~1000 ticks (30s) to build
+    autoResumeDelay: 45        // 1.5 seconds of idling before auto-resuming a paused build
+};
+
+const TWO_PI = Math.PI * 2;
+
+// ==========================================
+// 2. ADVANCED UNIT CONTROL EXPANSION
+// ==========================================
 export const AdvancedUnitControlExpansion = {
     init: (game) => {
         game.selectedUnits = []; 
         game.dragBox = null;
         game.controlGroups = { 1:[], 2:[], 3:[], 4:[], 5:[], 6:[], 7:[], 8:[], 9:[] };
+
+        let lastClickTime = 0;
+        let lastClickedUnit = null;
 
         // 1. Keyboard Shortcuts (Control Groups & Cancel)
         window.addEventListener('keydown', e => { 
@@ -22,19 +44,25 @@ export const AdvancedUnitControlExpansion = {
             if (['1','2','3','4','5','6','7','8','9'].includes(key)) {
                 if (game.activeTool === 'select') {
                     if (e.ctrlKey) {
-                        // Assign Control Group
+                        // Assign Control Group (Shallow copy array)
                         game.controlGroups[key] = [...game.selectedUnits];
                         game.bus.emit('playSound', 'spell');
                     } else {
                         // Recall Control Group
-                        game.controlGroups[key] = game.controlGroups[key].filter(u => u.hp > 0); // Purge dead units
-                        if (game.controlGroups[key].length > 0) {
-                            game.selectedUnits = [...game.controlGroups[key]];
+                        // PERFORMANCE FIX: Native loop instead of .filter to purge dead units
+                        let aliveGroup = [];
+                        for (let i = 0; i < game.controlGroups[key].length; i++) {
+                            if (game.controlGroups[key][i].hp > 0) aliveGroup.push(game.controlGroups[key][i]);
+                        }
+                        game.controlGroups[key] = aliveGroup;
+                        
+                        if (aliveGroup.length > 0) {
+                            game.selectedUnits = [...aliveGroup];
                             game.selectedStructure = null;
                             game.bus.emit('playSound', 'harvest');
                             
                             // Center camera on the group leader
-                            let centerU = game.selectedUnits[0];
+                            let centerU = aliveGroup[0];
                             game.camera.x = MathUtils.clamp(centerU.x - (game.canvas.width / 2), 0, game.world.width - game.canvas.width);
                             game.camera.y = MathUtils.clamp(centerU.y - (game.canvas.height / 2), 0, game.world.height - game.canvas.height);
                         }
@@ -73,7 +101,7 @@ export const AdvancedUnitControlExpansion = {
             isDraggingBox = false;
             
             // Prevent interaction if clicking on UI elements
-            if (targetElem && targetElem.closest && (targetElem.closest('#structureModal') || targetElem.closest('#rtsUI'))) {
+            if (targetElem && targetElem.closest && (targetElem.closest('#structureModal') || targetElem.closest('#rtsUI') || targetElem.closest('#preGameUI'))) {
                 game.dragBox = null; return;
             }
 
@@ -87,15 +115,30 @@ export const AdvancedUnitControlExpansion = {
             let clickedStruct = null;
             
             // Identify what was clicked (unless we just finished a large drag-box selection)
-            if (!wasDraggingBox || (game.dragBox && MathUtils.distSq(0,0, game.dragBox.w, game.dragBox.h) <= 100)) {
-                const allSpiders = game.spiders.concat(game.queens);
-                for (let i = 0; i < allSpiders.length; i++) {
-                    let u = allSpiders[i];
-                    if (MathUtils.distSq(u.x, u.y, worldX, worldY) < ((u.size + 15)**2)) { clickedUnit = u; break; }
-                }
-                if (!clickedUnit) {
-                    for(let s of game.structures) {
-                        if (MathUtils.distSq(s.x, s.y, worldX, worldY) < s.size**2) { clickedStruct = s; break; }
+            if (!wasDraggingBox || (game.dragBox && MathUtils.distSq(0,0, game.dragBox.w, game.dragBox.h) <= CONTROLS_CONFIG.dragBoxThresholdSq)) {
+                
+                // PERFORMANCE FIX: Loop through game.entities directly to prevent `.concat()` array allocation GC lag
+                for (let i = 0; i < game.entities.length; i++) {
+                    let u = game.entities[i];
+                    
+                    if (u.team === 'black' && u.hp > 0) {
+                        // Check Units (Spiders/Queens)
+                        if (u.role || u instanceof Queen) {
+                            const clickRadius = u.size + CONTROLS_CONFIG.clickHitboxPadding;
+                            // Fast AABB check before MathUtils.distSq
+                            if (Math.abs(u.x - worldX) > clickRadius || Math.abs(u.y - worldY) > clickRadius) continue;
+                            
+                            if (MathUtils.distSq(u.x, u.y, worldX, worldY) < (clickRadius * clickRadius)) { 
+                                clickedUnit = u; break; 
+                            }
+                        }
+                        // Check Structures
+                        else if (u instanceof Structure) {
+                            if (Math.abs(u.x - worldX) > u.size || Math.abs(u.y - worldY) > u.size) continue;
+                            if (MathUtils.distSq(u.x, u.y, worldX, worldY) < (u.size * u.size)) { 
+                                clickedStruct = u; break; 
+                            }
+                        }
                     }
                 }
             }
@@ -107,33 +150,47 @@ export const AdvancedUnitControlExpansion = {
 
             // EXECUTE COMMAND: Move Units
             if (isMoveCommand && game.selectedUnits.length > 0) {
-                let validUnits = game.selectedUnits.filter(u => u.team === 'black' && u.hp > 0);
-                if (validUnits.length > 0) {
+                let validCount = 0;
+                for (let i = 0; i < game.selectedUnits.length; i++) {
+                    if (game.selectedUnits[i].team === 'black' && game.selectedUnits[i].hp > 0) validCount++;
+                }
+                
+                if (validCount > 0) {
                     game.bus.emit('particles', {x: worldX, y: worldY, color: '#ffffff', count: 12});
                     game.bus.emit('playSound', 'shoot');
                     
-                    validUnits.forEach((u, i) => {
-                        // Disperse units slightly around the target coordinate so they don't form a single-pixel black hole
-                        let offsetX = MathUtils.randomRange(-validUnits.length * 4, validUnits.length * 4);
-                        let offsetY = MathUtils.randomRange(-validUnits.length * 4, validUnits.length * 4);
-                        u.commandTarget = { x: worldX + offsetX, y: worldY + offsetY };
-                        u.isManual = true; 
-                    });
+                    for (let i = 0; i < game.selectedUnits.length; i++) {
+                        let u = game.selectedUnits[i];
+                        if (u.team === 'black' && u.hp > 0) {
+                            // Disperse units slightly around the target coordinate so they don't form a single-pixel black hole
+                            let offsetX = MathUtils.randomRange(-validCount * 4, validCount * 4);
+                            let offsetY = MathUtils.randomRange(-validCount * 4, validCount * 4);
+                            u.commandTarget = { x: worldX + offsetX, y: worldY + offsetY };
+                            u.isManual = true; 
+                        }
+                    }
                 }
             } 
             // EXECUTE COMMAND: Select Units/Buildings
             else if (isLeftClick && !isMoveCommand) {
                 
                 // Finish Drag Selection
-                if (wasDraggingBox && game.dragBox && MathUtils.distSq(0,0, game.dragBox.w, game.dragBox.h) > 100) {
+                if (wasDraggingBox && game.dragBox && MathUtils.distSq(0,0, game.dragBox.w, game.dragBox.h) > CONTROLS_CONFIG.dragBoxThresholdSq) {
                     let x1 = Math.min(startX, startX + game.dragBox.w) + game.camera.x;
                     let x2 = Math.max(startX, startX + game.dragBox.w) + game.camera.x;
                     let y1 = Math.min(startY, startY + game.dragBox.h) + game.camera.y;
                     let y2 = Math.max(startY, startY + game.dragBox.h) + game.camera.y;
                     
-                    game.selectedUnits = game.spiders.concat(game.queens).filter(u => 
-                        u.team === 'black' && u.x >= x1 && u.x <= x2 && u.y >= y1 && u.y <= y2
-                    );
+                    game.selectedUnits = [];
+                    // PERFORMANCE FIX: Loop game.entities instead of multiple filter/concat allocations
+                    for (let i = 0; i < game.entities.length; i++) {
+                        let u = game.entities[i];
+                        if (u.team === 'black' && u.hp > 0 && (u.role || u instanceof Queen)) {
+                            if (u.x >= x1 && u.x <= x2 && u.y >= y1 && u.y <= y2) {
+                                game.selectedUnits.push(u);
+                            }
+                        }
+                    }
                     game.selectedStructure = null;
                     if (game.selectedUnits.length > 0) game.bus.emit('playSound', 'harvest');
                 } 
@@ -145,13 +202,40 @@ export const AdvancedUnitControlExpansion = {
                     }
 
                     if (clickedUnit) {
-                        if (e.shiftKey) {
-                            if (!game.selectedUnits.includes(clickedUnit)) game.selectedUnits.push(clickedUnit);
-                        } else {
-                            game.selectedUnits = [clickedUnit];
+                        const now = Date.now();
+                        
+                        // RTS POLISH: Double-Click to select all units of the same type!
+                        if (now - lastClickTime < CONTROLS_CONFIG.doubleClickMs && lastClickedUnit === clickedUnit) {
+                            
+                            const viewL = game.camera.x; const viewR = game.camera.x + game.canvas.width;
+                            const viewT = game.camera.y; const viewB = game.camera.y + game.canvas.height;
+                            
+                            game.selectedUnits = [];
+                            for (let i = 0; i < game.entities.length; i++) {
+                                let u = game.entities[i];
+                                if (u.team === 'black' && u.hp > 0 && u.role === clickedUnit.role) {
+                                    // Only select units currently visible on screen
+                                    if (u.x >= viewL && u.x <= viewR && u.y >= viewT && u.y <= viewB) {
+                                        game.selectedUnits.push(u);
+                                    }
+                                }
+                            }
+                            game.bus.emit('playSound', 'spell');
+                        } 
+                        // Standard Shift-Click or Single Click
+                        else {
+                            if (e.shiftKey) {
+                                if (!game.selectedUnits.includes(clickedUnit)) game.selectedUnits.push(clickedUnit);
+                            } else {
+                                game.selectedUnits = [clickedUnit];
+                            }
+                            game.bus.emit('playSound', 'harvest');
                         }
+                        
+                        lastClickTime = now;
+                        lastClickedUnit = clickedUnit;
                         game.selectedStructure = null;
-                        game.bus.emit('playSound', 'harvest');
+                        
                     } else if (clickedStruct) {
                         game.selectedStructure = clickedStruct;
                         game.selectedUnits = [];
@@ -187,27 +271,38 @@ export const AdvancedUnitControlExpansion = {
             if (this.gameState === 'playing' && this.tick % 60 === 0 && this.controlGroups) {
                 for (let i = 1; i <= 9; i++) {
                     if (this.controlGroups[i] && this.controlGroups[i].length > 0) {
-                        this.controlGroups[i] = this.controlGroups[i].filter(u => u.hp > 0);
+                        let aliveGroup = [];
+                        for (let k = 0; k < this.controlGroups[i].length; k++) {
+                            if (this.controlGroups[i][k].hp > 0) aliveGroup.push(this.controlGroups[i][k]);
+                        }
+                        this.controlGroups[i] = aliveGroup;
                     }
                 }
             }
         });
 
-        // Render UI layer (Drag selection box)
+        // Render UI layer (Drag selection box & Unit Highlights)
         game.bus.on('uiDraw', (ctx) => {
             if (!game.selectedUnits) return;
-            game.selectedUnits.forEach(u => {
+            
+            // Optimize by precalculating the dash offset once per frame
+            const dashOffset = -game.tick * 0.5;
+            
+            for (let i = 0; i < game.selectedUnits.length; i++) {
+                let u = game.selectedUnits[i];
                 if (u.hp > 0) {
-                    ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.lineDashOffset = -game.tick * 0.5;
-                    ctx.beginPath(); ctx.arc(u.x, u.y, u.size + 8, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+                    ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 2; 
+                    ctx.setLineDash([4, 4]); ctx.lineDashOffset = dashOffset;
+                    ctx.beginPath(); ctx.arc(u.x, u.y, u.size + 8, 0, TWO_PI); ctx.stroke(); 
                 }
-            });
+            }
+            ctx.setLineDash([]);
         });
 
         // Override standard AI if the unit is being manually controlled
         game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
             
-            // --- Yield to Ranged & Siege Units ---
+            // --- FIX 1: Yield to Ranged & Siege Units ---
             // If the unit has custom ranged manual logic (defined in SpecialUnits.js or Titans.js), 
             // pass execution down the chain and exit so we don't force a melee attack!
             if (this.isManual && (this.hasTrait('ranged_attacker') || this.hasTrait('siege_attacker'))) {
@@ -278,8 +373,8 @@ export const AdvancedUnitControlExpansion = {
             if (this.commandTarget) {
                 let targetAngle = Math.atan2(this.commandTarget.y - this.y, this.commandTarget.x - this.x);
                 let diff = targetAngle - prevAngle;
-                while (diff > Math.PI) diff -= Math.PI * 2; 
-                while (diff < -Math.PI) diff += Math.PI * 2;
+                while (diff > Math.PI) diff -= TWO_PI; 
+                while (diff < -Math.PI) diff += TWO_PI;
                 this.angle = prevAngle + (diff * 0.10);
             }
         });
@@ -292,20 +387,30 @@ export const AdvancedUnitControlExpansion = {
 };
 
 // ==========================================
-// CONSTRUCTION LOGIC & DUAL-COST SUPPORT
+// 3. CONSTRUCTION LOGIC & DUAL-COST SUPPORT
 // ==========================================
 export const ConstructionExpansion = {
     init: (game) => {
         game.bus.listeners['buildStructure'] = []; // Clear base game listener
         
         game.bus.on('buildStructure', (data) => {
-            const queen = game.queens.find(q => q.team === data.team);
+            
+            // PERFORMANCE FIX: Find Queen safely without generating array garbage
+            let queen = null;
+            for (let i = 0; i < game.queens.length; i++) {
+                if (game.queens[i].team === data.team) { queen = game.queens[i]; break; }
+            }
             if (!queen) return; 
             
-            // --- RESTORE TERRITORY CHECK ---
+            // --- FIX 2: RESTORE TERRITORY CHECK ---
             // Ensure the player is only building inside their own Web Network!
-            if (data.team === 'black' && game.structures.some(s => s.team === 'black')) {
-                if (!game.checkTerritory(data.x, data.y, data.team)) {
+            if (data.team === 'black') {
+                let hasBase = false;
+                for (let i = 0; i < game.structures.length; i++) {
+                    if (game.structures[i].team === 'black') { hasBase = true; break; }
+                }
+                
+                if (hasBase && !game.checkTerritory(data.x, data.y, data.team)) {
                     // Flash red particles to indicate invalid placement
                     game.bus.emit('particles', {x: data.x, y: data.y, color: '#ff0000', count: 10});
                     return; 
@@ -320,7 +425,7 @@ export const ConstructionExpansion = {
             let cost = costs[data.type];
             
             // Verify player can afford it
-            if (game.eco[data.team].pumpkins < cost.p || game.eco[data.team].dew < cost.d) {
+            if (!cost || game.eco[data.team].pumpkins < cost.p || game.eco[data.team].dew < cost.d) {
                 game.bus.emit('particles', {x: data.x, y: data.y, color: '#ff0000', count: 10});
                 return; 
             }
@@ -350,9 +455,9 @@ export const ConstructionExpansion = {
                     this.activeConstruction.isPaused = true;
                     this.activeConstruction = null; // Ordered to move away
                 } 
-                else if (MathUtils.distSq(this.activeConstruction.x, this.activeConstruction.y, this.x, this.y) <= 4900) { 
-                    // Within 70px build range
-                    this.activeConstruction.buildProgress += 0.001; // Takes 1000 ticks (~30s) to build
+                else if (MathUtils.distSq(this.activeConstruction.x, this.activeConstruction.y, this.x, this.y) <= CONTROLS_CONFIG.buildRangeSq) { 
+                    
+                    this.activeConstruction.buildProgress += CONTROLS_CONFIG.buildSpeed;
                     this.activeConstruction.isPaused = false;
                     
                     if (gameObj.tick % 15 === 0) gameObj.bus.emit('particles', {x: this.activeConstruction.x, y: this.activeConstruction.y, color: '#ff9d00', count: 2});
@@ -384,7 +489,7 @@ export const ConstructionExpansion = {
                 
                 if (this.buildTarget) {
                     const distSq = MathUtils.distSq(this.buildTarget.x, this.buildTarget.y, this.x, this.y);
-                    if (distSq < 3600) { // Reached destination
+                    if (distSq < CONTROLS_CONFIG.buildResumeRangeSq) { // Reached destination
                         
                         // Deduct Dual Resources
                         if (gameObj.eco[this.team].pumpkins >= this.buildTarget.cost.p && gameObj.eco[this.team].dew >= this.buildTarget.cost.d) {
@@ -408,19 +513,27 @@ export const ConstructionExpansion = {
                 }
             }
 
-            // 3. Auto-resume nearby paused construction ONLY if idle for 1.5 seconds
+            // 3. Auto-resume nearby paused construction ONLY if idle
             if (!this.activeConstruction && !this.commandTarget && !this.buildTarget) {
                 this.idleBuildTimer = (this.idleBuildTimer || 0) + 1;
                 
-                if (this.idleBuildTimer > 45) { // 45 frames = 1.5 seconds
-                    let unfinished = gameObj.structures.find(s => s.isConstructing && s.team === this.team && MathUtils.distSq(s.x, s.y, this.x, this.y) < 3600);
+                if (this.idleBuildTimer > CONTROLS_CONFIG.autoResumeDelay) {
+                    // PERFORMANCE FIX: Replaced .find with raw for-loop to stop memory thrashing
+                    let unfinished = null;
+                    for (let i = 0; i < gameObj.structures.length; i++) {
+                        let s = gameObj.structures[i];
+                        if (s.isConstructing && s.team === this.team && MathUtils.distSq(s.x, s.y, this.x, this.y) < CONTROLS_CONFIG.buildResumeRangeSq) {
+                            unfinished = s; break;
+                        }
+                    }
+                    
                     if (unfinished) {
                         this.activeConstruction = unfinished; 
-                        this.idleBuildTimer = 0; // Reset timer
+                        this.idleBuildTimer = 0; 
                     }
                 }
             } else {
-                this.idleBuildTimer = 0; // Immediately reset the timer if she is given a command
+                this.idleBuildTimer = 0; 
             }
         });
 
@@ -441,14 +554,14 @@ export const ConstructionExpansion = {
                 
                 // Base
                 ctx.fillStyle = '#221100';
-                ctx.beginPath(); ctx.arc(0, 0, (this.size * 0.7) + pulse, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(0, 0, (this.size * 0.7) + pulse, 0, TWO_PI); ctx.fill();
                 
                 // Magic construction ring
                 ctx.strokeStyle = this.isPaused ? '#885500' : '#ff9d00';
                 ctx.lineWidth = 2;
                 ctx.setLineDash([8, 8]);
                 ctx.lineDashOffset = this.isPaused ? 0 : -game.tick * 0.5;
-                ctx.beginPath(); ctx.arc(0, 0, this.size * 0.8, 0, Math.PI*2); ctx.stroke();
+                ctx.beginPath(); ctx.arc(0, 0, this.size * 0.8, 0, TWO_PI); ctx.stroke();
                 
                 // Build Progress Bar
                 const w = this.size * 1.5;
