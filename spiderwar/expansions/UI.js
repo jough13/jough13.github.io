@@ -226,17 +226,8 @@ export const MinimapExpansion = {
                 else if (ent.constructor.name === 'CentipedeBoss') {
                     drawDot(ent, UI_CONFIG.colors.boss, 4, true, false);
                 } 
-                else if (ent.captureProgress !== undefined) { // JackOLanterns
-                    let cColor = '#ffff00';
-                    if (ent.controllingTeam === 'black') cColor = '#aa00ff';
-                    if (ent.controllingTeam === 'red') cColor = '#ff0000';
-                    
-                    ctx.fillStyle = cColor;
-                    ctx.beginPath();
-                    ctx.arc(startX + (ent.x * scaleX), startY + (ent.y * scaleY), 5, 0, TWO_PI);
-                    ctx.fill();
-                    ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
-                }
+                
+                // DELETED: The JackOLantern block that used to be right here!
             }
 
             // Draw Fog of War Overlay
