@@ -8,9 +8,12 @@ const HAZARD_CONFIG = {
     flytrapCount: 30,
     flytrapDamage: 200,      // Massive damage, instantly kills most basic units
     flytrapCooldown: 300,    // 10 seconds of "digestion" sleep
+    flytrapRadius: 50,       // Pre-calculated for fast AABB math
     flytrapRadiusSq: 2500,   // 50px trigger radius
     flytrapHp: 300           // Tough enough to require a small squad to clear
 };
+
+const TWO_PI = Math.PI * 2;
 
 // ==========================================
 // 2. THE VENUS FLYTRAP ENTITY
@@ -52,13 +55,19 @@ export class VenusFlytrap {
         }
         
         // 2. Ambush / Hunting Phase
+        const radius = HAZARD_CONFIG.flytrapRadius;
+        
         for (let i = 0; i < game.entities.length; i++) {
             let e = game.entities[i];
             
-            // Fast early exits: Ignore dead, nature team, and non-spider entities
-            if (e.hp <= 0 || !e.team || e.team === 'nature') continue;
+            // Fast early exits: Ignore dead, un-targetable, nature team, and non-spider entities
+            if (!e.team || e.team === 'nature' || e.hp === undefined || e.hp <= 0) continue;
             
             if (e instanceof Spider) { 
+                
+                // PERFORMANCE FIX: Fast AABB check skips expensive circle math for distant bugs
+                if (Math.abs(this.x - e.x) > radius || Math.abs(this.y - e.y) > radius) continue;
+
                 if (MathUtils.distSq(this.x, this.y, e.x, e.y) < HAZARD_CONFIG.flytrapRadiusSq) { 
                     
                     e.hp -= HAZARD_CONFIG.flytrapDamage; // CHOMP!
@@ -94,10 +103,10 @@ export class VenusFlytrap {
         } else {
             // Fallback drawing if sprites are missing
             ctx.fillStyle = isOpen ? '#55ff55' : '#335533';
-            ctx.beginPath(); ctx.arc(0, 0, this.size, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(0, 0, this.size, 0, TWO_PI); ctx.fill();
             if (isOpen) { 
                 ctx.fillStyle = 'red'; 
-                ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill(); 
+                ctx.beginPath(); ctx.arc(0, 0, 8, 0, TWO_PI); ctx.fill(); 
             }
         }
         ctx.restore();
@@ -105,12 +114,15 @@ export class VenusFlytrap {
         // Standard Universal Health Bar (Only draw if damaged)
         if (this.hp < this.maxHp && this.hp > 0) {
             const w = this.size * 1.5;
+            // SAFETY FIX: Prevent negative width rendering if HP drops below zero before cleanup
+            const pct = Math.max(0, this.hp) / this.maxHp;
+            
             ctx.fillStyle = 'black'; 
             ctx.fillRect(this.x - w/2 - 1, this.y - this.size - 11, w + 2, 6);
             ctx.fillStyle = 'red'; 
             ctx.fillRect(this.x - w/2, this.y - this.size - 10, w, 4);
             ctx.fillStyle = '#00ff00'; 
-            ctx.fillRect(this.x - w/2, this.y - this.size - 10, w * (this.hp / this.maxHp), 4);
+            ctx.fillRect(this.x - w/2, this.y - this.size - 10, w * pct, 4);
         }
     }
 }
