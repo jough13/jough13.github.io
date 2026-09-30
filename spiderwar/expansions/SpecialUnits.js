@@ -1,10 +1,22 @@
 // expansions/SpecialUnits.js
 import { Spider, Projectile, MathUtils, UNIT_DATA, SPIDER_STATE } from '../game.js';
 
+// ==========================================
+// 1. CONFIGURATION & BALANCING
+// ==========================================
 const SPECIAL_CONFIG = {
-    spitter: { hp: 75, damage: 25, attackSpeed: 45, range: 250, size: 12, baseSpeedMin: 0.8, baseSpeedMax: 1.2, cost: 40 },
-    tarantula: { hp: 400, damage: 45, attackSpeed: 40, size: 22, baseSpeedMin: 0.5, baseSpeedMax: 0.7, cost: 75 }
+    spitter: { 
+        hp: 75, damage: 25, attackSpeed: 45, size: 12, 
+        baseSpeedMin: 0.8, baseSpeedMax: 1.2, cost: 40,
+        range: 250, rangeSq: 62500 // Pre-calculated for fast MathUtils.distSq comparisons
+    },
+    tarantula: { 
+        hp: 400, damage: 45, attackSpeed: 40, size: 22, 
+        baseSpeedMin: 0.5, baseSpeedMax: 0.7, cost: 75 
+    }
 };
+
+const TWO_PI = Math.PI * 2;
 
 export const SpecialUnitsExpansion = {
     init: (game) => {
@@ -30,20 +42,22 @@ export const SpecialUnitsExpansion = {
         };
 
         game.bus.on('spawnSpider', (data) => {
-            const costs = { 'spitter': SPECIAL_CONFIG.spitter.cost, 'tarantula': SPECIAL_CONFIG.tarantula.cost };
-            let cost = costs[data.role];
+            // PERFORMANCE FIX: Pull directly from config instead of recreating an object in memory every spawn
+            const config = SPECIAL_CONFIG[data.role];
             
-            if (cost !== undefined) {
-                if (game.eco[data.team].pumpkins >= cost && game.pop[data.team] < game.maxPop[data.team]) {
-                    game.eco[data.team].pumpkins -= cost;
+            if (config && config.cost !== undefined) {
+                // SAFETY FIX: Optional chaining on game.eco[data.team]
+                if (game.eco[data.team]?.pumpkins >= config.cost && game.pop[data.team] < game.maxPop[data.team]) {
+                    game.eco[data.team].pumpkins -= config.cost;
+                    
                     let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
                     
                     // --- 2. INSTANT RAM CACHE RETRIEVAL ---
                     if (data.role === 'spitter') {
                         s.sprite = game.assets.get(data.team === 'black' ? 'assets/spitter_black.png' : 'assets/spitter_red.png');
-                        s.range = SPECIAL_CONFIG.spitter.range; // Specific stat for ranged units
-                    }
-                    if (data.role === 'tarantula') {
+                        s.range = config.range; 
+                        s.rangeSq = config.rangeSq; // PERFORMANCE FIX: Cache squared range for AABB math
+                    } else if (data.role === 'tarantula') {
                         s.sprite = game.assets.get(data.team === 'black' ? 'assets/tarantula_black.png' : 'assets/tarantula_red.png');
                     }
                     
@@ -80,10 +94,10 @@ export const SpecialUnitsExpansion = {
                     this.angle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
                     const distSq = MathUtils.distSq(this.x, this.y, nearestEnemy.x, nearestEnemy.y);
                     
-                    // Fallback to 200 range if the unit forgot to define it
-                    const effectiveRange = this.range || 200;
+                    // PERFORMANCE FIX: Use pre-cached squared range to skip multiplication
+                    const effectiveRangeSq = this.rangeSq || 40000;
 
-                    if (distSq > effectiveRange * effectiveRange) {
+                    if (distSq > effectiveRangeSq) {
                         // Chase until in range
                         this.x += Math.cos(this.angle) * currentSpeed; 
                         this.y += Math.sin(this.angle) * currentSpeed;
@@ -113,14 +127,20 @@ export const SpecialUnitsExpansion = {
                     if (MathUtils.distSq(0, 0, dx, dy) > 225) { 
                         const targetAngle = Math.atan2(dy, dx);
                         
-                        // Smooth rotation
+                        // Smooth rotation (Using optimized TWO_PI)
                         let diff = targetAngle - this.angle;
-                        while (diff > Math.PI) diff -= Math.PI * 2;
-                        while (diff < -Math.PI) diff += Math.PI * 2;
+                        while (diff > Math.PI) diff -= TWO_PI;
+                        while (diff < -Math.PI) diff += TWO_PI;
                         this.angle += (diff * 0.15); 
                         
                         this.x += Math.cos(this.angle) * currentSpeed; 
                         this.y += Math.sin(this.angle) * currentSpeed;
+                        
+                        // SAFETY FIX: Clamp manual movement so they don't wander off the map!
+                        const bnd = this.size * 2;
+                        this.x = MathUtils.clamp(this.x, bnd, gameObj.world.width - bnd);
+                        this.y = MathUtils.clamp(this.y, bnd, gameObj.world.height - bnd);
+
                     } else {
                         this.commandTarget = null; // Target reached
                     }
