@@ -1,13 +1,38 @@
 // expansions/UI.js
-import { Game, MathUtils } from '../game.js';
+import { Game, MathUtils, Structure, Spider, ResourceNode } from '../game.js';
 import { Queen } from './Queen.js';
 
 // ==========================================
-// 1. MINIMAP EXPANSION & HUD OVERLAY
+// 1. CONFIGURATION & STYLING
+// ==========================================
+const UI_CONFIG = {
+    minimap: {
+        size: 200,
+        padding: 10,
+        offsetY: 190,
+        bgColor: 'rgba(10, 5, 0, 0.8)',
+        waterColor: 'rgba(26, 78, 110, 0.7)',
+        frameColor: '#ff9d00'
+    },
+    colors: {
+        blackTeam: '#ffffff',
+        redTeam: '#ff4444',
+        blackSwarm: '#aaaaaa',
+        redSwarm: '#aa0000',
+        pumpkin: '#ff7b00',
+        dew: '#00aaff',
+        boss: '#00ff00'
+    }
+};
+
+const TWO_PI = Math.PI * 2;
+
+// ==========================================
+// 2. MINIMAP EXPANSION & HUD OVERLAY
 // ==========================================
 export const MinimapExpansion = {
     init: (game) => {
-        game.minimap = { size: 200, padding: 10, offsetY: 190 }; 
+        game.minimap = UI_CONFIG.minimap; 
         game.isMinimapDragging = false;
         
         // Convert Minimap click to World coordinates
@@ -23,8 +48,8 @@ export const MinimapExpansion = {
         // Center camera based on minimap click
         const moveCamera = (localX, localY) => {
             const pos = getMinimapWorldPos(localX, localY);
-            game.camera.x = MathUtils.clamp(pos.x - (game.canvas.width / 2), 0, game.world.width - game.canvas.width); 
-            game.camera.y = MathUtils.clamp(pos.y - (game.canvas.height / 2), 0, game.world.height - game.canvas.height);
+            game.camera.x = MathUtils.clamp(pos.x - (game.canvas.width / 2), 0, Math.max(0, game.world.width - game.canvas.width)); 
+            game.camera.y = MathUtils.clamp(pos.y - (game.canvas.height / 2), 0, Math.max(0, game.world.height - game.canvas.height));
         };
 
         // Issue a move command to the selected units via the minimap!
@@ -43,6 +68,9 @@ export const MinimapExpansion = {
                 });
             }
         };
+
+        // SAFETY FIX: Prevent duplicate UI injection on hot-reloads
+        if (document.getElementById('mobileToolbar')) return;
 
         // UI HACK: By creating an invisible DOM element named "mobileToolbar", Controls.js will naturally 
         // ignore clicks inside this box, allowing us to safely intercept them for the minimap!
@@ -106,7 +134,6 @@ export const MinimapExpansion = {
                     game.isMinimapDragging = false; // Stop camera dragging
                     commandUnits(localX, localY);
                     
-                    // Optional Haptic Feedback for mobile users
                     if (navigator.vibrate) navigator.vibrate(50); 
                 }, 400); 
             }
@@ -115,12 +142,10 @@ export const MinimapExpansion = {
         overlay.addEventListener('touchmove', e => { 
             e.preventDefault();
             if(e.touches.length === 1) {
-                // If the finger moves more than 10 pixels, cancel the long-press command timer
                 if (Math.abs(e.touches[0].clientX - touchStartX) > 10 || Math.abs(e.touches[0].clientY - touchStartY) > 10) {
                     clearTimeout(touchTimer);
                 }
                 
-                // Only pan the camera if we haven't locked into a long-press command
                 if(game.isMinimapDragging && !longPressed) {
                     const rect = overlay.getBoundingClientRect();
                     moveCamera(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
@@ -129,7 +154,7 @@ export const MinimapExpansion = {
         }, {passive: false});
 
         overlay.addEventListener('touchend', e => { 
-            clearTimeout(touchTimer); // Always clean up the timer
+            clearTimeout(touchTimer);
             game.isMinimapDragging = false; 
         });
     },
@@ -142,7 +167,7 @@ export const MinimapExpansion = {
             const startY = game.canvas.height - size - pad - game.minimap.offsetY; 
             
             // Base background
-            ctx.fillStyle = 'rgba(10, 5, 0, 0.8)'; 
+            ctx.fillStyle = UI_CONFIG.minimap.bgColor; 
             ctx.fillRect(startX, startY, size, size);
             
             const scaleX = size / game.world.width; 
@@ -150,7 +175,7 @@ export const MinimapExpansion = {
             
             // Draw Water
             if (game.mapGrid) {
-                ctx.fillStyle = 'rgba(26, 78, 110, 0.7)';
+                ctx.fillStyle = UI_CONFIG.minimap.waterColor;
                 for (let y = 0; y < game.mapGrid.length; y++) {
                     for (let x = 0; x < game.mapGrid[y].length; x++) {
                         if (game.mapGrid[y][x].type === 'water') {
@@ -160,7 +185,7 @@ export const MinimapExpansion = {
                 }
             }
 
-            // High-Performance Map Entity Drawing
+            // Draw Dot Helper
             const drawDot = (ent, color, r, hideIfInvisible, hideIfUndiscovered) => { 
                 if (game.mapGrid) {
                     const tX = Math.floor(ent.x / game.tileSize); 
@@ -175,25 +200,43 @@ export const MinimapExpansion = {
                 ctx.fillRect(startX + (ent.x * scaleX) - r, startY + (ent.y * scaleY) - r, r*2, r*2); 
             };
 
-            game.resourceNodes.forEach(r => drawDot(r, r.type === 'pumpkin' ? '#ff7b00' : '#00aaff', 1.5, false, true));
-            game.structures.forEach(s => drawDot(s, s.team === 'black' ? '#ffffff' : '#ff4444', 3, true, false));
-            game.spiders.forEach(s => drawDot(s, s.team === 'black' ? '#aaaaaa' : '#aa0000', 1, true, false));
-            game.critters.forEach(c => drawDot(c, c.color || 'gold', 2, true, false));
-            game.bosses.forEach(b => drawDot(b, '#00ff00', 4, true, false)); 
-            game.queens.forEach(q => { drawDot(q, q.team === 'black' ? '#ffffff' : '#ff4444', 4, true, false); });
+            // PERFORMANCE FIX: Single loop iteration over entities to replace 6 separate `.filter().forEach()` loops!
+            for (let i = 0; i < game.entities.length; i++) {
+                let ent = game.entities[i];
+                
+                // Skip dead units instantly
+                if (ent.hp !== undefined && ent.hp <= 0) continue;
 
-            // Control Points (Jack O' Lanterns) Minimap Dots
-            if (game.entities) {
-                game.entities.filter(e => e.captureProgress !== undefined).forEach(j => {
-                    let color = '#ffff00';
-                    if (j.controllingTeam === 'black') color = '#aa00ff';
-                    if (j.controllingTeam === 'red') color = '#ff0000';
-                    ctx.fillStyle = color;
+                if (ent instanceof Spider) {
+                    if (ent.role === 'queen') {
+                        drawDot(ent, ent.team === 'black' ? UI_CONFIG.colors.blackTeam : UI_CONFIG.colors.redTeam, 4, true, false);
+                    } else {
+                        drawDot(ent, ent.team === 'black' ? UI_CONFIG.colors.blackSwarm : UI_CONFIG.colors.redSwarm, 1, true, false);
+                    }
+                } 
+                else if (ent instanceof Structure) {
+                    drawDot(ent, ent.team === 'black' ? UI_CONFIG.colors.blackTeam : UI_CONFIG.colors.redTeam, 3, true, false);
+                } 
+                else if (ent.type === 'pumpkin' || ent.type === 'dew') {
+                    drawDot(ent, ent.type === 'pumpkin' ? UI_CONFIG.colors.pumpkin : UI_CONFIG.colors.dew, 1.5, false, true);
+                } 
+                else if (ent.team === 'nature' && ent.constructor.name !== 'CentipedeBoss') { // Critters
+                    drawDot(ent, ent.color || 'gold', 2, true, false);
+                } 
+                else if (ent.constructor.name === 'CentipedeBoss') {
+                    drawDot(ent, UI_CONFIG.colors.boss, 4, true, false);
+                } 
+                else if (ent.captureProgress !== undefined) { // JackOLanterns
+                    let cColor = '#ffff00';
+                    if (ent.controllingTeam === 'black') cColor = '#aa00ff';
+                    if (ent.controllingTeam === 'red') cColor = '#ff0000';
+                    
+                    ctx.fillStyle = cColor;
                     ctx.beginPath();
-                    ctx.arc(startX + (j.x * scaleX), startY + (j.y * scaleY), 5, 0, Math.PI * 2);
+                    ctx.arc(startX + (ent.x * scaleX), startY + (ent.y * scaleY), 5, 0, TWO_PI);
                     ctx.fill();
                     ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
-                });
+                }
             }
 
             // Draw Fog of War Overlay
@@ -215,16 +258,19 @@ export const MinimapExpansion = {
             );
             
             // Outer Frame
-            ctx.strokeStyle = '#ff9d00'; ctx.lineWidth = 4; ctx.strokeRect(startX, startY, size, size);
+            ctx.strokeStyle = UI_CONFIG.minimap.frameColor; ctx.lineWidth = 4; ctx.strokeRect(startX, startY, size, size);
         });
     }
 };
 
 // ==========================================
-// 2. COMMAND PANEL & HUD
+// 3. COMMAND PANEL & HUD
 // ==========================================
 export const ContextUIExpansion = {
     init: (game) => {
+        // SAFETY FIX: Prevent duplicate injection
+        if (document.getElementById('rtsUI')) return;
+
         const style = document.createElement('style');
         style.innerHTML = `
             #topBar {
@@ -369,7 +415,14 @@ export const ContextUIExpansion = {
             document.getElementById('top-pop').innerText = `${this.pop.black}/${this.maxPop.black}`;
             document.getElementById('top-tech').innerText = this.techLevel.black;
 
-            if(this.selectedUnits) this.selectedUnits = this.selectedUnits.filter(u => u.hp > 0);
+            // PERFORMANCE FIX: Zero-allocation sweep to purge dead units from active selection
+            if (this.selectedUnits && this.selectedUnits.length > 0) {
+                let aliveUnits = [];
+                for (let i = 0; i < this.selectedUnits.length; i++) {
+                    if (this.selectedUnits[i].hp > 0) aliveUnits.push(this.selectedUnits[i]);
+                }
+                this.selectedUnits = aliveUnits;
+            }
 
             // Determine what is currently selected
             let currentSelection = null;
@@ -495,52 +548,76 @@ export const ContextUIExpansion = {
 };
 
 // ==========================================
-// 3. GAME OVER MODAL
+// 4. GAME OVER MODAL
 // ==========================================
 export const GameLoopExpansion = {
     patch: (game) => {
-        const style = document.createElement('style');
-        style.innerHTML = `
-            #gameOverModal {
-                position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                background: rgba(10, 5, 0, 0.95); border: 4px solid; border-radius: 12px;
-                padding: 40px; color: white; font-family: 'Courier New', monospace; text-align: center;
-                display: none; z-index: 9999; box-shadow: 0 0 50px rgba(0,0,0,1);
-            }
-            #gameOverModal h1 { font-size: 40px; margin: 0 0 20px 0; text-transform: uppercase; }
-            .restart-btn { background: #fff; color: #000; padding: 15px 30px; font-size: 20px; font-weight: bold; border: none; cursor: pointer; border-radius: 8px; margin-top: 20px; transition: 0.2s;}
-            .restart-btn:hover { background: #ff9d00; transform: scale(1.05); }
-        `;
-        document.head.appendChild(style);
-        const goModal = document.createElement('div'); goModal.id = 'gameOverModal'; document.body.appendChild(goModal);
+        // SAFETY FIX: Prevent duplicate modal injection
+        if (!document.getElementById('gameOverStyle')) {
+            const style = document.createElement('style');
+            style.id = 'gameOverStyle';
+            style.innerHTML = `
+                #gameOverModal {
+                    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                    background: rgba(10, 5, 0, 0.95); border: 4px solid; border-radius: 12px;
+                    padding: 40px; color: white; font-family: 'Courier New', monospace; text-align: center;
+                    display: none; z-index: 9999; box-shadow: 0 0 50px rgba(0,0,0,1);
+                }
+                #gameOverModal h1 { font-size: 40px; margin: 0 0 20px 0; text-transform: uppercase; }
+                .restart-btn { background: #fff; color: #000; padding: 15px 30px; font-size: 20px; font-weight: bold; border: none; cursor: pointer; border-radius: 8px; margin-top: 20px; transition: 0.2s;}
+                .restart-btn:hover { background: #ff9d00; transform: scale(1.05); }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        let goModal = document.getElementById('gameOverModal');
+        if (!goModal) {
+            goModal = document.createElement('div'); 
+            goModal.id = 'gameOverModal'; 
+            document.body.appendChild(goModal);
+        }
 
         game.expansions.patchClass(Game, 'update', function(original) {
             original.call(this); 
             
-            if (this.queens.length > 0 && this.gameState === 'playing') {
-                const blackQueen = this.queens.find(q => q.team === 'black'); 
-                const redQueen = this.queens.find(q => q.team === 'red');
+            if (this.gameState === 'playing') {
                 
-                if (!blackQueen || blackQueen.hp <= 0) { 
-                    this.gameState = 'lose'; 
-                    const ui = document.getElementById('rtsUI'); if (ui) ui.style.display = 'none'; 
-                    goModal.style.borderColor = '#ff0000';
-                    goModal.innerHTML = `<h1 style="color:#ff0000; text-shadow: 0 0 10px #ff0000;">DEFEAT</h1><p>The Obsidian Queen has fallen to the Crimson Swarm.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
-                    goModal.style.display = 'block';
-                } 
-                else if (!redQueen || redQueen.hp <= 0) { 
-                    this.gameState = 'win'; 
-                    const ui = document.getElementById('rtsUI'); if (ui) ui.style.display = 'none'; 
-                    goModal.style.borderColor = '#aa00ff';
-                    goModal.innerHTML = `<h1 style="color:#aa00ff; text-shadow: 0 0 10px #aa00ff;">VICTORY</h1><p>The Pumpkin Patch belongs to the Obsidian Brood.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
-                    goModal.style.display = 'block';
+                // PERFORMANCE FIX: Loop through entities to find Queens without allocating arrays
+                let blackQueen = null;
+                let redQueen = null;
+                
+                for (let i = 0; i < this.entities.length; i++) {
+                    let e = this.entities[i];
+                    if (e.role === 'queen') {
+                        if (e.team === 'black') blackQueen = e;
+                        else if (e.team === 'red') redQueen = e;
+                    }
+                }
+                
+                // If both queens exist in memory but one is dead, trigger game over
+                if (blackQueen !== null && redQueen !== null) {
+                    if (blackQueen.hp <= 0) { 
+                        this.gameState = 'lose'; 
+                        const ui = document.getElementById('rtsUI'); if (ui) ui.style.display = 'none'; 
+                        goModal.style.borderColor = '#ff0000';
+                        goModal.innerHTML = `<h1 style="color:#ff0000; text-shadow: 0 0 10px #ff0000;">DEFEAT</h1><p>The Obsidian Queen has fallen to the Crimson Swarm.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
+                        goModal.style.display = 'block';
+                    } 
+                    else if (redQueen.hp <= 0) { 
+                        this.gameState = 'win'; 
+                        const ui = document.getElementById('rtsUI'); if (ui) ui.style.display = 'none'; 
+                        goModal.style.borderColor = '#aa00ff';
+                        goModal.innerHTML = `<h1 style="color:#aa00ff; text-shadow: 0 0 10px #aa00ff;">VICTORY</h1><p>The Pumpkin Patch belongs to the Obsidian Brood.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
+                        goModal.style.display = 'block';
+                    }
                 }
             }
         });
 
         game.bus.on('uiDraw', (ctx) => {
             if (game.gameState === 'playing') return;
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'; ctx.fillRect(0, 0, game.canvas.width, game.canvas.height);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'; 
+            ctx.fillRect(0, 0, game.canvas.width, game.canvas.height);
         });
     }
 };
