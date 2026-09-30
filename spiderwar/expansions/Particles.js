@@ -5,11 +5,14 @@
 
 // 1. CONFIGURATION
 const PARTICLE_CONFIG = {
-    maxParticles: 2000, // Hard limit to guarantee 60fps on mobile.
+    maxParticles: 2000,    // Hard limit to guarantee 60fps on mobile.
+    maxEmitPerCall: 100,   // Safety limit to prevent accidental browser freezes
     defaultFriction: 0.85,
     splatterFriction: 0.60,
     magicFloatSpeed: -1.5
 };
+
+const TWO_PI = Math.PI * 2;
 
 // 2. THE RECYCLABLE PARTICLE
 // We use a single class that gets reused to prevent Garbage Collection stutter.
@@ -31,7 +34,7 @@ class PooledParticle {
         this.color = color;
         this.type = type || 'standard';
         
-        const angle = Math.random() * Math.PI * 2; 
+        const angle = Math.random() * TWO_PI; 
         const speed = Math.random() * 4 + 1;
         
         this.vx = Math.cos(angle) * speed; 
@@ -72,25 +75,6 @@ class PooledParticle {
         this.life--;
         if (this.life <= 0) this.active = false;
     }
-
-    draw(ctx) {
-        // PERFORMANCE: Shrinking rectangles are vastly faster to render than fading arcs.
-        // It also perfectly fits the 16-bit retro style!
-        const lifeRatio = this.life / this.maxLife;
-        
-        if (this.type === 'magic') {
-            // Magic particles shrink to a pinpoint
-            const currentSize = Math.max(0.5, this.maxSize * lifeRatio);
-            ctx.fillStyle = this.color; 
-            ctx.fillRect(this.x - currentSize/2, this.y - currentSize/2, currentSize, currentSize);
-        } else {
-            // Standard/Splatter fade out
-            ctx.globalAlpha = Math.max(0, lifeRatio); 
-            ctx.fillStyle = this.color; 
-            ctx.fillRect(this.x - this.size/2, this.y - this.size/2, this.size, this.size);
-            ctx.globalAlpha = 1.0; 
-        }
-    }
 }
 
 // 3. THE RING-BUFFER OBJECT POOL
@@ -104,7 +88,10 @@ class ParticleSystem {
     }
 
     emit(x, y, color, count, type) {
-        for (let i = 0; i < count; i++) {
+        // SAFETY FIX: Sanitize input and clamp max emission to prevent freezing
+        const safeCount = Math.min(parseInt(count) || 1, PARTICLE_CONFIG.maxEmitPerCall);
+        
+        for (let i = 0; i < safeCount; i++) {
             let p = this.particles[this.index];
             
             // Offset spawn point slightly to create a cloud instead of a single point
@@ -127,14 +114,45 @@ class ParticleSystem {
     }
 
     draw(ctx, viewL, viewR, viewT, viewB) {
+        // PERFORMANCE FIX: Canvas State Caching
+        // Context changes are extremely slow. We track the current state to minimize API calls!
+        let lastColor = null;
+        let lastAlpha = -1;
+
         for (let i = 0; i < this.particles.length; i++) {
             let p = this.particles[i];
             
-            // Strict Viewport Culling! Only draw particles actually on the screen.
+            // Strict Viewport Culling! Only process particles actually on the screen.
             if (p.active && p.x >= viewL && p.x <= viewR && p.y >= viewT && p.y <= viewB) {
-                p.draw(ctx);
+                
+                const lifeRatio = p.life / p.maxLife;
+                let targetAlpha = 1.0;
+                let currentSize = p.size;
+                
+                if (p.type === 'magic') {
+                    // Magic particles shrink to a pinpoint but stay opaque
+                    currentSize = Math.max(0.5, p.maxSize * lifeRatio);
+                } else {
+                    // Standard/Splatter fade out
+                    targetAlpha = Math.max(0, lifeRatio); 
+                }
+
+                // Only touch the canvas API if the state actually needs to change!
+                if (lastAlpha !== targetAlpha) {
+                    ctx.globalAlpha = targetAlpha;
+                    lastAlpha = targetAlpha;
+                }
+                if (lastColor !== p.color) {
+                    ctx.fillStyle = p.color;
+                    lastColor = p.color;
+                }
+
+                ctx.fillRect(p.x - currentSize/2, p.y - currentSize/2, currentSize, currentSize);
             }
         }
+        
+        // Clean up the global alpha state for the rest of the game's rendering cycle
+        if (lastAlpha !== 1.0) ctx.globalAlpha = 1.0;
     }
 }
 
@@ -180,4 +198,4 @@ export const ParticleExpansion = {
             game.particleSystem.draw(ctx, viewL, viewR, viewT, viewB);
         });
     }
-}
+};
