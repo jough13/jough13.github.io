@@ -5,9 +5,26 @@ import { MathUtils, Spider } from '../game.js';
 // 1. CONFIGURATION & BALANCING
 // ==========================================
 const SPELL_CONFIG = {
-    venomStrike: { cost: 50, radius: 100, radiusSq: 10000, life: 600, dps: 5, tickRate: 15 },
-    silkTrap:    { cost: 25, radius: 150, radiusSq: 22500, life: 600 }
+    venomStrike: { 
+        cost: 50, 
+        radius: 100, 
+        radiusSq: 10000, 
+        life: 600, 
+        dps: 5, 
+        tickRate: 15,
+        color: '#00ff00' 
+    },
+    silkTrap: { 
+        cost: 25, 
+        radius: 150, 
+        radiusSq: 22500, 
+        life: 600,
+        color: '#ffffff'
+    }
 };
+
+const TWO_PI = Math.PI * 2;
+const PI_OVER_4 = Math.PI / 4;
 
 // ==========================================
 // 2. THE SPELL ENTITY (Area of Effect)
@@ -35,15 +52,14 @@ export class Spell {
         for (let i = 0; i < game.entities.length; i++) {
             let e = game.entities[i];
             
-            // Fast early-exit: Ignore dead units, buildings, and allies
-            if (!e.team || e.team === this.team || e.hp <= 0 || !(e instanceof Spider || e.constructor.name === 'CentipedeBoss')) {
-                continue;
-            }
+            // Fast early-exit: Ignore dead units, allies, and non-spider/boss entities
+            // SAFETY FIX: Added strict e.hp === undefined check
+            if (!e.team || e.team === this.team || e.hp === undefined || e.hp <= 0) continue;
+            if (!(e instanceof Spider || e.constructor.name === 'CentipedeBoss')) continue;
             
-            // Fast AABB early-exit: If it's not even in the square boundary, skip the heavy circle math!
-            if (Math.abs(this.x - e.x) > this.radius || Math.abs(this.y - e.y) > this.radius) {
-                continue;
-            }
+            // PERFORMANCE FIX: Fast AABB early-exit
+            // If it's not even in the square boundary, skip the heavy circle math!
+            if (Math.abs(this.x - e.x) > this.radius || Math.abs(this.y - e.y) > this.radius) continue;
 
             // High Precision Circle Check
             if (MathUtils.distSq(e.x, e.y, this.x, this.y) < this.radiusSq) {
@@ -52,7 +68,7 @@ export class Spell {
                 if (this.type === 'venomStrike') {
                     if (game.tick % SPELL_CONFIG.venomStrike.tickRate === 0) { 
                         e.hp -= SPELL_CONFIG.venomStrike.dps; 
-                        game.bus.emit('particles', {x: e.x, y: e.y, color: '#00ff00', count: 2}); 
+                        game.bus.emit('particles', {x: e.x, y: e.y, color: SPELL_CONFIG.venomStrike.color, count: 2}); 
                     }
                 } 
                 // Silk Trap: Movement Debuff
@@ -69,23 +85,28 @@ export class Spell {
         
         if (this.type === 'venomStrike') {
             // Animated bubbling acid pool
-            ctx.fillStyle = '#00ff00'; 
+            ctx.fillStyle = SPELL_CONFIG.venomStrike.color; 
             ctx.beginPath(); 
-            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); 
+            ctx.arc(this.x, this.y, this.radius, 0, TWO_PI); 
             ctx.fill();
             
             // Caustic ripple effect
             const ripple = this.radius * (0.8 + Math.sin(this.age * 0.1) * 0.1);
             ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
             ctx.beginPath(); 
-            ctx.arc(this.x, this.y, ripple, 0, Math.PI * 2); 
+            ctx.arc(this.x, this.y, ripple, 0, TWO_PI); 
             ctx.fill();
 
             // Random bubbling splashes
             if (Math.random() < 0.2) { 
                 ctx.fillStyle = '#fff'; 
                 ctx.beginPath(); 
-                ctx.arc(this.x + MathUtils.randomRange(-this.radius, this.radius), this.y + MathUtils.randomRange(-this.radius, this.radius), Math.random() * 5, 0, Math.PI * 2); 
+                
+                // PERFORMANCE FIX: Inlined random range calculation avoids function call overhead
+                const rx = this.x + (Math.random() * 2 - 1) * this.radius;
+                const ry = this.y + (Math.random() * 2 - 1) * this.radius;
+                
+                ctx.arc(rx, ry, Math.random() * 5, 0, TWO_PI); 
                 ctx.fill(); 
             }
         } 
@@ -100,9 +121,10 @@ export class Spell {
             ctx.beginPath();
             
             // 8-point star web
+            // PERFORMANCE FIX: PI_OVER_4 constant saves division math in the loop
             for (let i = 0; i < 8; i++) { 
                 ctx.moveTo(0, 0); 
-                ctx.lineTo(Math.cos(i * Math.PI / 4) * this.radius, Math.sin(i * Math.PI / 4) * this.radius); 
+                ctx.lineTo(Math.cos(i * PI_OVER_4) * this.radius, Math.sin(i * PI_OVER_4) * this.radius); 
             }
             
             ctx.lineWidth = 2; 
@@ -110,8 +132,8 @@ export class Spell {
             ctx.stroke();
             
             // Concentric magical rings
-            ctx.beginPath(); ctx.arc(0, 0, this.radius * 0.6, 0, Math.PI * 2); ctx.stroke();
-            ctx.beginPath(); ctx.arc(0, 0, this.radius * 0.3, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(0, 0, this.radius * 0.6, 0, TWO_PI); ctx.stroke();
+            ctx.beginPath(); ctx.arc(0, 0, this.radius * 0.3, 0, TWO_PI); ctx.stroke();
             
             ctx.restore();
         }
@@ -134,10 +156,10 @@ export const SpellExpansion = {
                 
                 game.addEntity(new Spell(data.x, data.y, data.team, data.type));
                 
-                const magicColor = data.type === 'venomStrike' ? '#00ff00' : '#ffffff';
-                game.bus.emit('particles', {x: data.x, y: data.y, color: magicColor, count: 100});
+                // EXPANDABILITY FIX: Pulls color directly from config
+                game.bus.emit('particles', {x: data.x, y: data.y, color: config.color, count: 100});
                 game.bus.emit('playSound', 'spell');
             }
         });
     }
-}
+};
