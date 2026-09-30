@@ -228,12 +228,29 @@ export const SaveLoadExpansion = {
                 } else if (s.role === 'broodling') {
                     o = new Broodling(s.x, s.y, s.team);
                 } else {
+                    // Base generation
                     o = new Spider(s.x, s.y, s.team, s.role);
                     
-                    if (s.role === 'spitter') { o.range = 250; o.rangeSq = 62500; }
-                    if (s.role === 'widow') { 
+                    // FIX: Re-link custom sprites and AI stats for Special Units
+                    if (s.role === 'spitter') { 
+                        o.range = 250; o.rangeSq = 62500; 
+                        if (game.assets) o.sprite = game.assets.get(s.team === 'black' ? 'assets/spitter_black.png' : 'assets/spitter_red.png');
+                        o.imageLoaded = true;
+                    } 
+                    else if (s.role === 'tarantula') {
+                        if (game.assets) o.sprite = game.assets.get(s.team === 'black' ? 'assets/tarantula_black.png' : 'assets/tarantula_red.png');
+                        o.imageLoaded = true;
+                    } 
+                    else if (s.role === 'widow') { 
                         o.isCloaked = s.isCloaked; 
                         o.cloakCooldown = s.cloakCooldown; 
+                        if (game.assets) o.sprite = game.assets.get(s.team === 'black' ? 'assets/widow_black.png' : 'assets/widow_red.png');
+                        o.imageLoaded = true;
+                    } 
+                    else if (s.role === 'goliath') {
+                        o.range = 300; o.rangeSq = 90000;
+                        if (game.assets) o.sprite = game.assets.get(s.team === 'black' ? 'assets/goliath_black.png' : 'assets/goliath_red.png');
+                        o.imageLoaded = true;
                     }
                 }
                 o.hp = s.hp; 
@@ -339,7 +356,7 @@ export const SaveLoadExpansion = {
                     
                     resourceNodes: game.resourceNodes.map(p => ({x: p.x, y: p.y, type: p.type, resources: p.resources})),
                     queens: game.queens.map(q => ({x: q.x, y: q.y, team: q.team, hp: q.hp})),
-                    critters: game.critters.map(b => ({x: b.x, y: b.y, hp: b.hp, color: b.color, type: b.constructor.name})),
+                    critters: game.critters.map(b => ({x: b.x, y: b.y, hp: b.hp, color: b.color, type: b.type || b.constructor.name})),
                     bosses: game.bosses.map(b => ({x: b.x, y: b.y, hp: b.hp})),
                     hazards: game.entities.filter(e => e instanceof VenusFlytrap).map(f => ({x: f.x, y: f.y, hp: f.hp, cooldown: f.cooldown})),
                     controlPoints: game.entities.filter(e => e instanceof JackOLantern).map(c => ({x: c.x, y: c.y, team: c.controllingTeam, prog: c.captureProgress})),
