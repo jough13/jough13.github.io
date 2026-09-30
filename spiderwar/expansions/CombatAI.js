@@ -85,9 +85,13 @@ export const CombatAndHarvesterExpansion = {
             }
 
             // --- PILLAR 3: TRAIT-BASED ESCORT AI ---
-            // Replaced `if (this.role === 'soldier')`! Any bug with 'escort' will automatically guard the Queen.
             if (this.hasTrait('escort')) {
-                const myQueen = gameObj.queens.find(q => q.team === this.team);
+                // PERFORMANCE FIX: Use standard loop instead of .find() to prevent memory allocation
+                let myQueen = null;
+                for (let i = 0; i < gameObj.queens.length; i++) {
+                    if (gameObj.queens[i].team === this.team) { myQueen = gameObj.queens[i]; break; }
+                }
+
                 if (myQueen) {
                     const dx = myQueen.x - this.x; 
                     const dy = myQueen.y - this.y;
@@ -103,7 +107,6 @@ export const CombatAndHarvesterExpansion = {
             }
 
             // --- PILLAR 3: TRAIT-BASED HARVESTER ECONOMY AI ---
-            // Now ONLY bugs with the 'gatherer' tag will attempt to mine pumpkins and dew!
             if (this.hasTrait('gatherer')) {
                 // If our target was destroyed (Nests) or depleted (Pumpkins) by someone else, clear it!
                 if (this.target && (
@@ -126,23 +129,32 @@ export const CombatAndHarvesterExpansion = {
                         let minD = Infinity;
 
                         if (this.state === SPIDER_STATE.SEEKING_RESOURCE) {
-                            // Find nearest Resource Node (that still has resources)
-                            gameObj.resourceNodes.forEach(r => { 
+                            // PERFORMANCE FIX: Replaced .forEach() with raw for-loop
+                            for (let i = 0; i < gameObj.resourceNodes.length; i++) {
+                                let r = gameObj.resourceNodes[i];
                                 if (r.resources > 0) {
                                     let dSq = MathUtils.distSq(r.x, r.y, this.x, this.y); 
                                     if(dSq < minD) { minD = dSq; closest = r; } 
                                 }
-                            });
+                            }
                         } else {
                             // Find nearest Dropoff Point (Nest, Pylon, or Queen)
-                            gameObj.structures.filter(s => s.team === this.team && (s.type === 'nest' || s.type === 'pylon') && s.hp > 0 && !s.isConstructing).forEach(n => { 
-                                let dSq = MathUtils.distSq(n.x, n.y, this.x, this.y); 
-                                if(dSq < minD) { minD = dSq; closest = n; } 
-                            });
-                            gameObj.queens.filter(q => q.team === this.team && q.hp > 0).forEach(q => { 
-                                let dSq = MathUtils.distSq(q.x, q.y, this.x, this.y); 
-                                if(dSq < minD) { minD = dSq; closest = q; } 
-                            });
+                            // PERFORMANCE FIX: Replaced .filter().forEach() chaining with raw for-loops
+                            for (let i = 0; i < gameObj.structures.length; i++) {
+                                let s = gameObj.structures[i];
+                                if (s.team === this.team && (s.type === 'nest' || s.type === 'pylon') && s.hp > 0 && !s.isConstructing) {
+                                    let dSq = MathUtils.distSq(s.x, s.y, this.x, this.y); 
+                                    if(dSq < minD) { minD = dSq; closest = s; } 
+                                }
+                            }
+                            
+                            for (let i = 0; i < gameObj.queens.length; i++) {
+                                let q = gameObj.queens[i];
+                                if (q.team === this.team && q.hp > 0) {
+                                    let dSq = MathUtils.distSq(q.x, q.y, this.x, this.y); 
+                                    if(dSq < minD) { minD = dSq; closest = q; } 
+                                }
+                            }
                         }
                         this.target = closest;
                     } else {
@@ -170,7 +182,7 @@ export const CombatAndHarvesterExpansion = {
                             this.cargo.type = this.target.type; 
                             
                             this.target.resources -= amountGathered; 
-                            this.target = null; // Clear target to trigger return home
+                            this.target = null; // AI POLISH: Clear immediately to prevent twitching
                             
                             const resColor = this.cargo.type === 'pumpkin' ? '#ff7b00' : '#00aaff';
                             gameObj.bus.emit('particles', {x: this.x, y: this.y, color: resColor, count: 5}); 
@@ -181,7 +193,7 @@ export const CombatAndHarvesterExpansion = {
                             else if (this.cargo.type === 'dew') gameObj.eco[this.team].dew += this.cargo.amount;
                             
                             this.cargo.amount = 0; 
-                            this.target = null; // Clear target to trigger gathering
+                            this.target = null; 
                         }
                     }
                 }
@@ -192,9 +204,10 @@ export const CombatAndHarvesterExpansion = {
                 this.x += Math.cos(this.angle) * (currentSpeed * 0.5); 
                 this.y += Math.sin(this.angle) * (currentSpeed * 0.5);
                 
-                // Stay inside the map bounds!
-                this.x = MathUtils.clamp(this.x, 50, gameObj.world.width - 50);
-                this.y = MathUtils.clamp(this.y, 50, gameObj.world.height - 50);
+                // AI POLISH: Dynamic bounds based on unit size prevents them getting permanently stuck on map edges
+                const bnd = this.size * 2;
+                this.x = MathUtils.clamp(this.x, bnd, gameObj.world.width - bnd);
+                this.y = MathUtils.clamp(this.y, bnd, gameObj.world.height - bnd);
             }
         });
 
