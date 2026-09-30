@@ -5,16 +5,24 @@ import { MathUtils, Structure } from '../game.js';
 // 1. CONFIGURATION & BALANCING
 // ==========================================
 const FORTRESS_CONFIG = {
+    // Mortar Artillery
     mortarRange: 750,
-    mortarMinRangeSq: 22500, // 150px squared
+    mortarMinRangeSq: 22500,     // 150px squared
+    mortarSplashRadius: 150,     // Pre-calculated for fast AABB math
     mortarSplashRadiusSq: 22500, // 150px squared
-    mortarCooldown: 180, // 6 seconds at 30fps
+    mortarCooldown: 180,         // 6 seconds at 30fps
     mortarBaseDamage: 150,
+    mortarShellSpeed: 4.5,       // Flight speed of the projectile
     
-    shrineHealRadiusSq: 62500, // 250px squared
+    // Nectar Shrine Healing
+    shrineHealRadius: 250,       // Pre-calculated for fast AABB math
+    shrineHealRadiusSq: 62500,   // 250px squared
     shrineHealAmount: 15,
-    shrinePulseRate: 30 // Pulses once per second
+    shrinePulseRate: 30,         // Pulses once per second
+    shrineAuraFade: 0.05         // Visual fade speed of the healing ring
 };
+
+const TWO_PI = Math.PI * 2;
 
 // ==========================================
 // 2. BALLISTIC ARTILLERY SHELL
@@ -29,8 +37,7 @@ export class MortarShell {
         this.active = true;
         
         const totalDist = MathUtils.dist(startX, startY, targetX, targetY);
-        const speed = 4.5;
-        this.flightFrames = Math.max(1, totalDist / speed); 
+        this.flightFrames = Math.max(1, totalDist / FORTRESS_CONFIG.mortarShellSpeed); 
         this.currentFrame = 0;
     }
 
@@ -49,21 +56,26 @@ export class MortarShell {
             game.bus.emit('particles', {x: this.targetX, y: this.targetY, color: secondaryColor, count: 30});
             
             // Splash Damage Calculation
+            const radius = FORTRESS_CONFIG.mortarSplashRadius;
             for (let i = 0; i < game.entities.length; i++) {
                 let e = game.entities[i];
                 
-                // Added e.hp === undefined to prevent NaN corruption on projectiles/resources
+                // SAFETY FIX: Added e.hp === undefined to prevent NaN corruption on projectiles/resources
                 if (!e.team || e.team === this.team || e.team === 'nature' || e.hp === undefined || e.hp <= 0) continue;
                 
+                // PERFORMANCE FIX: Fast AABB check to skip expensive circle math for distant units
+                if (Math.abs(this.targetX - e.x) > radius || Math.abs(this.targetY - e.y) > radius) continue;
+
                 if (MathUtils.distSq(this.targetX, this.targetY, e.x, e.y) < FORTRESS_CONFIG.mortarSplashRadiusSq) {
                     if (e.role || e.constructor.name === 'CentipedeBoss') {
                         e.hp -= this.damage;
                     } else {
-                        e.hp -= (this.damage * 0.5);
+                        e.hp -= (this.damage * 0.5); // 50% damage to buildings
                     }
                 }
             }
         } else {
+            // Animate flight path
             this.x = MathUtils.lerp(this.startX, this.targetX, progress);
             this.y = MathUtils.lerp(this.startY, this.targetY, progress);
         }
@@ -71,16 +83,20 @@ export class MortarShell {
 
     draw(ctx) {
         let progress = this.currentFrame / this.flightFrames;
+        // Sine wave arc for Z-axis height during flight
         let z = Math.sin(progress * Math.PI) * 100; 
         
+        // Ground Shadow
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.beginPath(); ctx.arc(this.x, this.y, Math.max(2, 8 - (z / 20)), 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(this.x, this.y, Math.max(2, 8 - (z / 20)), 0, TWO_PI); ctx.fill();
         
+        // Main Projectile Body (Elevated by Z)
         ctx.fillStyle = this.team === 'black' ? '#aa00ff' : '#ff5500';
-        ctx.beginPath(); ctx.arc(this.x, this.y - z, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(this.x, this.y - z, 10, 0, TWO_PI); ctx.fill();
         
+        // Projectile Core glow
         ctx.fillStyle = '#ffffff';
-        ctx.beginPath(); ctx.arc(this.x, this.y - z, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(this.x, this.y - z, 4, 0, TWO_PI); ctx.fill();
     }
 }
 
@@ -119,19 +135,23 @@ export const FortressExpansion = {
             // 2. Nectar Shrine Healing Logic
             if (this.type === 'shrine') {
                 // Manage the visual aura animation
-                this.auraAlpha = Math.max(0, (this.auraAlpha || 0) - 0.05);
+                this.auraAlpha = Math.max(0, (this.auraAlpha || 0) - FORTRESS_CONFIG.shrineAuraFade);
 
                 if (gameObj.tick % FORTRESS_CONFIG.shrinePulseRate === 0) {
                     let healed = false;
                     
-                    // Pre-calculate max health boost ONCE outside the loop for performance
+                    // Pre-calculate variables outside the loop for maximum performance
                     const techBoost = (gameObj.techLevel[this.team] || 0) * 20;
+                    const radius = FORTRESS_CONFIG.shrineHealRadius;
 
                     for (let i = 0; i < gameObj.entities.length; i++) {
                         let e = gameObj.entities[i];
                         
                         // Fast early-exits: Must be friendly, alive, and missing health!
                         if (e.team !== this.team || e.hp <= 0 || e.hp >= e.maxHp + techBoost) continue;
+
+                        // PERFORMANCE FIX: Fast AABB check
+                        if (Math.abs(this.x - e.x) > radius || Math.abs(this.y - e.y) > radius) continue;
 
                         if (MathUtils.distSq(this.x, this.y, e.x, e.y) < FORTRESS_CONFIG.shrineHealRadiusSq) {
                             e.hp = Math.min(e.maxHp + techBoost, e.hp + FORTRESS_CONFIG.shrineHealAmount);
@@ -161,37 +181,35 @@ export const FortressExpansion = {
                 ctx.lineWidth = 4;
                 
                 // Ring expands as it fades out
-                const radius = MathUtils.lerp(Math.sqrt(FORTRESS_CONFIG.shrineHealRadiusSq), this.size, this.auraAlpha);
+                const radius = MathUtils.lerp(FORTRESS_CONFIG.shrineHealRadius, this.size, this.auraAlpha);
                 ctx.beginPath(); 
-                ctx.arc(0, 0, radius, 0, Math.PI * 2); 
+                ctx.arc(0, 0, radius, 0, TWO_PI); 
                 ctx.stroke();
                 ctx.restore();
             }
 
-            // Draw Sprite or Fallback Art
-            if (this.spriteLoaded) {
-                original.call(this, ctx);
-            } else {
+            // BUG FIX: ALWAYS call original to guarantee CombatAI draws the Health Bar!
+            original.call(this, ctx);
+
+            // If the sprite isn't loaded, draw our custom chunky fallback OVER the generic base shape
+            if (!this.spriteLoaded) {
                 ctx.save();
                 if (this.type === 'mortar') {
                     // Improved chunky fallback art for Mortar
                     ctx.fillStyle = this.team === 'black' ? '#333' : '#522'; 
-                    ctx.beginPath(); ctx.ellipse(this.x, this.y, 25, 20, 0, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(this.x, this.y, 25, 20, 0, 0, TWO_PI); ctx.fill();
                     ctx.fillStyle = '#111'; 
-                    ctx.beginPath(); ctx.arc(this.x, this.y - 5, 12, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(this.x, this.y - 5, 12, 0, TWO_PI); ctx.fill();
                     ctx.fillStyle = this.team === 'black' ? '#aa00ff' : '#ff5500';
-                    ctx.beginPath(); ctx.arc(this.x, this.y - 5, 5, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(this.x, this.y - 5, 5, 0, TWO_PI); ctx.fill();
                 } 
                 else if (this.type === 'shrine') {
                     // Improved chunky fallback art for Shrine
                     ctx.fillStyle = '#225522'; 
                     ctx.beginPath(); ctx.moveTo(this.x, this.y - 30); ctx.lineTo(this.x + 20, this.y + 15); ctx.lineTo(this.x - 20, this.y + 15); ctx.fill();
                     ctx.fillStyle = '#00ff00'; 
-                    ctx.beginPath(); ctx.ellipse(this.x, this.y + 15, 22, 8, 0, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(this.x, this.y + 15, 22, 8, 0, 0, TWO_PI); ctx.fill();
                 } 
-                else {
-                    original.call(this, ctx); // Run original for Nests, Pylons, etc.
-                }
                 ctx.restore();
             }
         });
