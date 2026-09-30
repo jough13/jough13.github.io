@@ -5,6 +5,9 @@
 // ==========================================
 export const SplashScreenExpansion = {
     init: (game) => {
+        // SAFETY FIX: Prevent UI duplication on hot-reloads
+        if (document.getElementById('preGameUI')) return;
+
         game.gameState = 'menu'; // Pause the main RTS loop
         
         // --- 1. INJECT STYLES ---
@@ -75,10 +78,11 @@ export const SplashScreenExpansion = {
             #settingsView {
                 position: absolute; z-index: 20; display: none; flex-direction: column;
                 background: rgba(0,0,0,0.95); padding: 30px; border: 2px solid var(--color-pumpkin, #ff9d00);
-                border-radius: 8px; box-shadow: 0 0 30px #000;
+                border-radius: 8px; box-shadow: 0 0 30px #000; min-width: 300px;
             }
-            .setting-row { display: flex; align-items: center; gap: 15px; font-size: 1.2rem; margin-bottom: 20px; color: #fff;}
+            .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 15px; font-size: 1.2rem; margin-bottom: 20px; color: #fff;}
             .setting-row input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; accent-color: var(--color-pumpkin, #ff9d00); }
+            .setting-row select { background: #111; color: #ff9d00; border: 1px solid #ff9d00; padding: 5px 10px; font-family: inherit; font-size: 1rem; cursor: pointer; }
 
             /* --- LOADING VIEW --- */
             #loadingView {
@@ -112,12 +116,24 @@ export const SplashScreenExpansion = {
             </div>
 
             <div id="settingsView">
-                <h2 style="margin-top:0; color: var(--color-pumpkin, #ff9d00);">BROOD SETTINGS</h2>
+                <h2 style="margin-top:0; color: var(--color-pumpkin, #ff9d00); text-align: center;">BROOD SETTINGS</h2>
+                
                 <div class="setting-row">
-                    <input type="checkbox" id="chkSkipIntro">
-                    <label for="chkSkipIntro">Never show cinematic intro</label>
+                    <label for="difficultySelect">AI Difficulty:</label>
+                    <select id="difficultySelect">
+                        <option value="easy">Easy</option>
+                        <option value="normal" selected>Normal</option>
+                        <option value="hard">Hard</option>
+                        <option value="insane">Insane</option>
+                    </select>
                 </div>
-                <button class="menu-btn" id="btnCloseSettings" style="padding: 10px; font-size: 1rem;">SAVE & RETURN</button>
+
+                <div class="setting-row" style="justify-content: flex-start;">
+                    <input type="checkbox" id="chkSkipIntro">
+                    <label for="chkSkipIntro">Skip cinematic intro</label>
+                </div>
+
+                <button class="menu-btn" id="btnCloseSettings" style="padding: 10px; font-size: 1rem; margin-top: 20px;">SAVE & RETURN</button>
             </div>
 
             <div id="loadingView">
@@ -144,12 +160,20 @@ export const SplashScreenExpansion = {
         const skipPref = localStorage.getItem('spiderRTS_skipIntro') === 'true';
         document.getElementById('chkSkipIntro').checked = skipPref;
 
+        const diffPref = localStorage.getItem('spiderRTS_difficulty') || 'normal';
+        document.getElementById('difficultySelect').value = diffPref;
+        game.aiDifficulty = diffPref; // EXPANDABILITY: Link to AdvancedBase.js AI Profiles!
+
         // --- 4. NAVIGATION LOGIC ---
         let menuShown = false; // Safety lock
 
         const showMenu = () => {
             if (menuShown) return;
             menuShown = true;
+            
+            // CLEANUP FIX: Remove listener so it doesn't leak memory
+            viewIntro.removeEventListener('click', showMenu);
+            introVideo.removeEventListener('ended', showMenu);
             
             viewIntro.style.display = 'none';
             viewMenu.style.display = 'flex';
@@ -171,8 +195,15 @@ export const SplashScreenExpansion = {
         // Settings Menu Logic
         document.getElementById('btnSettings').addEventListener('click', () => { viewSettings.style.display = 'flex'; });
         document.getElementById('btnCloseSettings').addEventListener('click', () => { viewSettings.style.display = 'none'; });
+        
         document.getElementById('chkSkipIntro').addEventListener('change', (e) => {
             localStorage.setItem('spiderRTS_skipIntro', e.target.checked);
+        });
+        
+        document.getElementById('difficultySelect').addEventListener('change', (e) => {
+            const diff = e.target.value;
+            localStorage.setItem('spiderRTS_difficulty', diff);
+            game.aiDifficulty = diff; // Live update the game engine object
         });
 
         // --- 5. DYNAMIC PRELOADING ENGINE ---
@@ -222,6 +253,12 @@ export const SplashScreenExpansion = {
 
             // Instantiate image requests and push them straight to the RAM cache
             manifest.forEach(src => {
+                // PERFORMANCE FIX: Check if asset is already cached (Prevents duplicate fetches on hot-reload)
+                if (game.assets.cache[src]) {
+                    checkComplete();
+                    return;
+                }
+
                 const img = new Image();
                 img.onload = () => {
                     // STORE IN THE CENTRAL CACHE!
