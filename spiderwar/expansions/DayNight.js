@@ -2,11 +2,21 @@
 import { Game, Spider } from '../game.js';
 
 // ==========================================
-// CONFIGURATION (Easy Tweaking!)
+// 1. CONFIGURATION (Easy Tweaking!)
 // ==========================================
-const DAY_CYCLE_TICKS = 7200; // 7200 ticks = ~4 minutes at 30 fps
-const MAX_DARKNESS = 0.75;    // 75% opacity at the peak of night
-const NOCTURNAL_BUFF = 1.20;  // Spiders move 20% faster at night
+const DAYNIGHT_CONFIG = {
+    cycleTicks: 7200,      // 7200 ticks = ~4 minutes at 30 fps
+    maxDarkness: 0.75,     // 75% opacity at the peak of night
+    nocturnalBuff: 1.20,   // Spiders move 20% faster at night
+    
+    // Cycle Thresholds (0.0 to 1.0)
+    duskStart: 0.40,       // 40% into the cycle, sun begins to set
+    nightStart: 0.50,      // 50% into the cycle, true night begins
+    dawnStart: 0.90,       // 90% into the cycle, sun begins to rise
+    
+    // Aesthetic
+    nightColorRGB: '5, 0, 15' // Deep midnight-blue/purple
+};
 
 export const DayNightExpansion = {
     init: (game) => {
@@ -14,21 +24,30 @@ export const DayNightExpansion = {
         game.isNight = false;
 
         // 1. Setup the UI Announcer for Time Transitions
-        const style = document.createElement('style');
-        style.innerHTML = `
-            #dayNightAnnouncer {
-                position: fixed; top: 15%; left: 50%; transform: translateX(-50%);
-                color: #aa00ff; font-family: 'Courier New', monospace; font-size: 1.8rem;
-                text-align: center; text-shadow: 0 0 15px #aa00ff, 2px 2px 0 #000;
-                pointer-events: none; opacity: 0; transition: opacity 2s ease-in-out;
-                z-index: 3000; text-transform: uppercase; font-weight: bold; letter-spacing: 2px;
-            }
-        `;
-        document.head.appendChild(style);
+        // SAFETY FIX: Check if styles/elements exist to prevent DOM bloat on hot-reloads!
+        if (!document.getElementById('dayNightStyle')) {
+            const style = document.createElement('style');
+            style.id = 'dayNightStyle';
+            style.innerHTML = `
+                #dayNightAnnouncer {
+                    position: fixed; top: 15%; left: 50%; transform: translateX(-50%);
+                    color: #aa00ff; font-family: 'Courier New', monospace; font-size: 1.8rem;
+                    text-align: center; text-shadow: 0 0 15px #aa00ff, 2px 2px 0 #000;
+                    pointer-events: none; opacity: 0; transition: opacity 2s ease-in-out;
+                    z-index: 3000; text-transform: uppercase; font-weight: bold; letter-spacing: 2px;
+                }
+            `;
+            document.head.appendChild(style);
+        }
 
-        const announcer = document.createElement('div');
-        announcer.id = 'dayNightAnnouncer';
-        document.body.appendChild(announcer);
+        let announcer = document.getElementById('dayNightAnnouncer');
+        if (!announcer) {
+            announcer = document.createElement('div');
+            announcer.id = 'dayNightAnnouncer';
+            document.body.appendChild(announcer);
+        }
+
+        let msgTimeout = null;
 
         // Utility to show fading text on screen
         game.showTimeMessage = (msg, color) => {
@@ -37,8 +56,9 @@ export const DayNightExpansion = {
             announcer.style.textShadow = `0 0 15px ${color}, 2px 2px 0 #000`;
             announcer.style.opacity = '1';
             
-            // Fade out after 4 seconds
-            setTimeout(() => { announcer.style.opacity = '0'; }, 4000);
+            // UI POLISH FIX: Clear old timeouts so fast messages don't accidentally get hidden early
+            if (msgTimeout) clearTimeout(msgTimeout);
+            msgTimeout = setTimeout(() => { announcer.style.opacity = '0'; }, 4000);
         };
     },
 
@@ -52,11 +72,11 @@ export const DayNightExpansion = {
             
             if (this.gameState !== 'playing') return;
 
-            // Calculate the current time of day (0.0 = Dawn, 0.5 = Dusk)
-            this.dayTime = (this.tick % DAY_CYCLE_TICKS) / DAY_CYCLE_TICKS; 
+            // Calculate the current time of day (0.0 = Dawn, 1.0 = End of cycle)
+            this.dayTime = (this.tick % DAYNIGHT_CONFIG.cycleTicks) / DAYNIGHT_CONFIG.cycleTicks; 
             
             const wasNight = this.isNight;
-            this.isNight = this.dayTime > 0.5 && this.dayTime < 0.9;
+            this.isNight = this.dayTime > DAYNIGHT_CONFIG.nightStart && this.dayTime < DAYNIGHT_CONFIG.dawnStart;
             
             // Dusk Transition
             if (this.isNight && !wasNight) {
@@ -79,7 +99,7 @@ export const DayNightExpansion = {
             const originalSpeed = this.baseSpeed;
             
             if (gameObj.isNight) {
-                this.baseSpeed *= NOCTURNAL_BUFF;
+                this.baseSpeed *= DAYNIGHT_CONFIG.nocturnalBuff;
             }
             
             original.call(this, gameObj); // Run normal AI with boosted speed
@@ -93,26 +113,31 @@ export const DayNightExpansion = {
         // ==========================================
         game.bus.on('atmosphereDraw', (ctx) => {
             let darkness = 0;
+            const t = game.dayTime;
+            const cfg = DAYNIGHT_CONFIG;
             
-            // Smoothlerp calculations for dusk and dawn fading
-            if (game.dayTime > 0.4 && game.dayTime <= 0.5) {
-                // Dusk: Fade in from 0.4 to 0.5
-                darkness = (game.dayTime - 0.4) * 10 * MAX_DARKNESS; 
+            // MATH FIX: Dynamic normalization ensures the fade is always smooth 
+            // no matter how the modder alters the config thresholds!
+            if (t > cfg.duskStart && t <= cfg.nightStart) {
+                // Dusk: Fade in gradually
+                const progress = (t - cfg.duskStart) / (cfg.nightStart - cfg.duskStart);
+                darkness = progress * cfg.maxDarkness; 
             } 
-            else if (game.dayTime > 0.5 && game.dayTime <= 0.9) {
+            else if (t > cfg.nightStart && t <= cfg.dawnStart) {
                 // Dead of Night
-                darkness = MAX_DARKNESS; 
+                darkness = cfg.maxDarkness; 
             } 
-            else if (game.dayTime > 0.9) {
-                // Dawn: Fade out from 0.9 to 1.0
-                darkness = MAX_DARKNESS - ((game.dayTime - 0.9) * 10 * MAX_DARKNESS); 
+            else if (t > cfg.dawnStart) {
+                // Dawn: Fade out gradually
+                const progress = (t - cfg.dawnStart) / (1.0 - cfg.dawnStart);
+                darkness = cfg.maxDarkness - (progress * cfg.maxDarkness); 
             }
 
             // PERFORMANCE EARLY EXIT: Skip drawing entirely if it's daytime!
             if (darkness <= 0.01) return;
 
-            // Draw the deep midnight-blue/purple darkness overlay
-            ctx.fillStyle = `rgba(5, 0, 15, ${darkness})`; 
+            // Draw the night overlay
+            ctx.fillStyle = `rgba(${cfg.nightColorRGB}, ${darkness})`; 
             ctx.fillRect(game.camera.x, game.camera.y, game.canvas.width, game.canvas.height);
         });
     }
