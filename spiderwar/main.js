@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Developer Lore & Initialization Logs
     console.log("%c🕸️ THE OBSIDIAN BROOD AWAKENS 🕸️", "color: #aa00ff; font-size: 18px; font-weight: bold; text-shadow: 1px 1px 0px #000;");
-    console.log("%cInitializing SpiderWars! Engine v1.0...", "color: #ff9d00; font-family: monospace;");
+    console.log("%cSummoning the SpiderWars! Engine v1.0...", "color: #ff9d00; font-family: monospace;");
 
     const game = new Game();
     
@@ -100,24 +100,34 @@ document.addEventListener('DOMContentLoaded', () => {
     let loadedCount = 0;
 
     // EXPANDABILITY: Combine internal manifest with any externally injected mods via script tags
-    const externalMods = window.SpiderWarsMods || [];
+    // SAFETY FIX: Ensure window.SpiderWarsMods is an actual iterable array before spreading
+    const externalMods = Array.isArray(window.SpiderWarsMods) ? window.SpiderWarsMods : [];
     const fullManifest = [...expansionManifest, ...externalMods];
 
     // Robust loading loop
     for (const exp of fullManifest) {
         try {
             // SAFETY FIX: Prevent the engine from crashing blindly if a module import failed/typo'd
-            if (!exp.module) {
-                throw new Error("Module is undefined. Check your import paths at the top of main.js!");
+            if (!exp || !exp.module) {
+                throw new Error(`Module '${exp?.name || 'Unknown'}' is undefined. Check your import paths at the top of main.js!`);
             }
             game.expansions.load(exp.name, exp.module);
             loadedCount++;
         } catch (error) {
-            console.error(`%c[Engine Error] Failed to load expansion: ${exp.name}`, "color: #ff0000; font-weight: bold;");
+            console.error(`%c[Engine Error] Failed to weave expansion into the web: ${exp?.name || 'Unknown'}`, "color: #ff0000; font-weight: bold;");
             console.error(error);
             // Engine continues loading other modules gracefully!
         }
     }
 
-    console.log(`%c[Engine] Boot sequence complete. Loaded ${loadedCount}/${fullManifest.length} Expansions successfully.`, "color: #00ff00; font-family: monospace;");
+    console.log(`%c[Engine] The Web is woven. Loaded ${loadedCount}/${fullManifest.length} Expansions successfully.`, "color: #00ff00; font-family: monospace;");
+    
+    // EXPANDABILITY: Broadcast a global event so external scripts/mods know the engine is fully ready to accept commands
+    window.dispatchEvent(new CustomEvent('SpiderWarsReady', { 
+        detail: { 
+            game: window.SpiderWarsEngine, 
+            loadedCount: loadedCount, 
+            total: fullManifest.length 
+        } 
+    }));
 });
