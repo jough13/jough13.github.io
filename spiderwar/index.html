@@ -10,28 +10,44 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
     
     <!-- Lore & SEO Metadata -->
     <meta name="description" content="Command the Obsidian Brood to victory against the Crimson Swarm in SpiderWars! A retro 16-bit RTS of webs, magic, and survival.">
     <meta name="author" content="SpiderWars Dev">
     <title>SpiderWars!</title>
 
-    <!-- Social Media / OpenGraph Meta Tags (Expandability for sharing) -->
+    <!-- Social Media / OpenGraph Meta Tags -->
     <meta property="og:title" content="SpiderWars!">
     <meta property="og:description" content="Command the Obsidian Brood against the Crimson Swarm in this retro 16-bit RTS.">
     <meta property="og:type" content="website">
+    <meta property="og:image" content="assets/queen_black.png">
     
     <!-- Twitter/Discord Rich Embed Cards -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="SpiderWars!">
     <meta name="twitter:description" content="Command the Obsidian Brood against the Crimson Swarm in this retro 16-bit RTS.">
+    <meta name="twitter:image" content="assets/queen_black.png">
+
+    <!-- Schema.org JSON-LD for Game SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "VideoGame",
+      "name": "SpiderWars!",
+      "description": "Command the Obsidian Brood to victory against the Crimson Swarm in SpiderWars! A retro 16-bit RTS of webs, magic, and survival.",
+      "genre": ["Real-Time Strategy", "RTS", "Indie"],
+      "playMode": "SinglePlayer",
+      "applicationCategory": "Game"
+    }
+    </script>
 
     <!-- Dynamic SVG Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕷️</text></svg>">
     
-    <!-- Performance: Preload critical assets before rendering blocks -->
+    <!-- Performance: Preload CSS and properly Module-Preload the JS Engine -->
     <link rel="preload" href="style.css" as="style">
-    <link rel="preload" href="main.js" as="script" crossorigin="anonymous">
+    <link rel="modulepreload" href="main.js">
 
     <!-- Stylesheets -->
     <link rel="stylesheet" href="style.css">
@@ -48,9 +64,9 @@
 
     <!-- Fallback for players with JavaScript disabled -->
     <noscript>
-        <div style="color: #ff9d00; text-align: center; margin-top: 20%; font-family: 'Courier New', Courier, monospace;">
-            <h1>JavaScript is Required</h1>
-            <p>The Obsidian Brood slumbers. Please enable JavaScript to awaken the swarm.</p>
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff9d00; text-align: center; font-family: 'Courier New', Courier, monospace; background: rgba(5,2,0,0.95); padding: 30px; border: 3px solid #ff9d00; border-radius: 8px; box-shadow: 0 0 30px rgba(0,0,0,1);">
+            <h1 style="margin-top: 0; text-transform: uppercase; font-size: 24px;">JavaScript is Required</h1>
+            <p style="font-size: 16px; margin-bottom: 0; color: #dfba96;">The Obsidian Brood slumbers. Please enable JavaScript to awaken the swarm.</p>
         </div>
     </noscript>
 
