@@ -6,30 +6,36 @@ import { MathUtils, Spider } from '../game.js';
 // ==========================================
 const NECRO_CONFIG = {
     spellCost: 40,
-    spellRadius: 200,
-    spellRadiusSq: 40000, // 200^2 for fast math
+    spellRadius: 200,             // Pre-calculated for fast AABB math
+    spellRadiusSq: 40000,         // 200^2 for circle checks
     
-    corpseLife: 1800,     // Stays on battlefield for 60 seconds
+    corpseLife: 1800,             // Stays on battlefield for 60 seconds
     
+    // Base stats for a standard Size-16 Zombie (Scales dynamically!)
     zombieHp: 80,
     zombieDamage: 25,
-    zombieSpeed: 1.6,     // 28-Days-Later style fast zombies
-    zombieDecayRate: 0.15 // Loses 4.5 HP per second
+    zombieSpeed: 1.6,             // Fast zombies
+    zombieDecayRate: 0.15         // Loses ~4.5 HP per second
 };
+
+const TWO_PI = Math.PI * 2;
 
 // ==========================================
 // 2. THE CORPSE ENTITY
 // ==========================================
 export class Corpse {
-    constructor(x, y) {
+    // POLISH FIX: Accept the size of the spider that died to scale the corpse!
+    constructor(x, y, size) {
         this.x = x; 
         this.y = y;
-        this.size = 12;
-        this.hp = 100; // Fake HP so the engine doesn't auto-cull it until the timer finishes
+        this.size = size || 12;
+        
+        // Give the corpse actual destructible HP based on its size so explosions can gib it!
+        this.hp = 100 * (this.size / 16); 
         this.life = NECRO_CONFIG.corpseLife; 
         
         // Random rotation so the battlefield looks like an organic mess of casualties
-        this.angle = Math.random() * Math.PI * 2;
+        this.angle = Math.random() * TWO_PI;
         
         // Sprite will be pulled instantly from RAM cache on Tick 1 of its life
         this.sprite = null;
@@ -42,7 +48,8 @@ export class Corpse {
         }
 
         this.life--;
-        if (this.life <= 0) this.hp = 0; // Natural decay triggers engine cleanup
+        // The base engine culls entities if hp <= 0 OR life <= 0.
+        // We let the engine handle the cleanup automatically!
     }
 
     draw(ctx) {
@@ -56,12 +63,15 @@ export class Corpse {
         if (this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) {
             ctx.drawImage(this.sprite, -this.size, -this.size, this.size*2, this.size*2);
         } else {
-            // Fallback drawing: A creepy wrapped web cocoon
+            // Fallback drawing: A creepy wrapped web cocoon scaling with size
             ctx.fillStyle = '#dddddd';
-            ctx.beginPath(); ctx.ellipse(0, 0, 12, 8, Math.PI/4, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(0, 0, this.size, this.size * 0.66, Math.PI/4, 0, TWO_PI); ctx.fill();
             ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(10, 5); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(-8, 5); ctx.lineTo(8, -5); ctx.stroke();
+            
+            const w = this.size * 0.8;
+            const h = this.size * 0.4;
+            ctx.beginPath(); ctx.moveTo(-w, -h); ctx.lineTo(w, h); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-w + 2, h); ctx.lineTo(w - 2, -h); ctx.stroke();
         }
         ctx.restore();
     }
@@ -71,15 +81,19 @@ export class Corpse {
 // 3. THE ZOMBIE SPIDER UNIT
 // ==========================================
 export class ZombieSpider extends Spider {
-    constructor(x, y, team) {
+    constructor(x, y, team, size) {
         super(x, y, team, 'soldier'); // Inherit aggressive soldier AI
         
         this.isZombie = true; // Flags it so it doesn't drop another corpse when it dies!
         
-        // Apply Necro Config Stats
-        this.hp = NECRO_CONFIG.zombieHp; 
-        this.maxHp = NECRO_CONFIG.zombieHp;
-        this.damage = NECRO_CONFIG.zombieDamage; 
+        // POLISH FIX: Dynamic Scaling based on the corpse it came from!
+        const scale = (size || 16) / 16;
+        this.size = size || 16;
+        
+        // Apply Necro Config Stats (Multiplied by scale!)
+        this.hp = NECRO_CONFIG.zombieHp * scale; 
+        this.maxHp = this.hp;
+        this.damage = NECRO_CONFIG.zombieDamage * scale; 
         this.baseSpeed = NECRO_CONFIG.zombieSpeed; 
         this.speed = this.baseSpeed;
 
@@ -96,6 +110,7 @@ export class ZombieSpider extends Spider {
         }
 
         // Necrotic Rot: Zombies constantly take damage until they fall apart
+        // A massive zombie will inherently live longer because it has more max HP!
         this.hp -= NECRO_CONFIG.zombieDecayRate; 
         super.update(game);
     }
@@ -107,7 +122,7 @@ export class ZombieSpider extends Spider {
         ctx.shadowColor = '#00ff00';
         ctx.shadowBlur = 15;
         ctx.fillStyle = 'rgba(0, 255, 0, 0.15)';
-        ctx.beginPath(); ctx.arc(0, 0, this.size + 4, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(0, 0, this.size + 4, 0, TWO_PI); ctx.fill();
         ctx.restore();
 
         // 2. Draw the actual zombie sprite and health bar
@@ -127,17 +142,18 @@ class ReanimateAOE {
     }
     update() { 
         this.life--; 
-        if (this.life <= 0) this.hp = 0; // Triggers engine cleanup
+        // SAFETY FIX: Rely purely on `this.life` for GC, no need to fake `hp=0`
     }
     draw(ctx) {
         // Expanding shockwave effect
         const progress = 1 - (this.life / this.maxLife);
-        const currentRadius = this.maxRadius * Math.pow(progress, 0.5); // Fast start, slow end expansion
+        // MATH FIX: Math.sqrt is vastly faster than Math.pow(x, 0.5)
+        const currentRadius = this.maxRadius * Math.sqrt(progress); 
 
         ctx.globalAlpha = this.life / this.maxLife; // Fade out as it expands
         
         ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
-        ctx.beginPath(); ctx.arc(this.x, this.y, currentRadius, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(this.x, this.y, currentRadius, 0, TWO_PI); ctx.fill();
         
         ctx.strokeStyle = '#00ff00'; 
         ctx.lineWidth = 4; 
@@ -169,19 +185,26 @@ export const NecromancyExpansion = {
                     game.bus.emit('playSound', 'spell');
                     
                     let raisedCount = 0;
+                    const radius = NECRO_CONFIG.spellRadius;
                     
                     // Scan the battlefield for corpses
                     for (let i = 0; i < game.entities.length; i++) {
                         let e = game.entities[i];
                         
-                        if (e instanceof Corpse && MathUtils.distSq(e.x, e.y, data.x, data.y) <= NECRO_CONFIG.spellRadiusSq) {
-                            e.hp = 0; // Destroy corpse
+                        if (e instanceof Corpse) {
                             
-                            // Summon Zombie
-                            game.addEntity(new ZombieSpider(e.x, e.y, data.team));
-                            game.bus.emit('particles', {x: e.x, y: e.y, color: '#00ff00', count: 15});
-                            
-                            raisedCount++;
+                            // PERFORMANCE FIX: Fast AABB check to skip circle math for distant corpses
+                            if (Math.abs(data.x - e.x) > radius || Math.abs(data.y - e.y) > radius) continue;
+
+                            if (MathUtils.distSq(e.x, e.y, data.x, data.y) <= NECRO_CONFIG.spellRadiusSq) {
+                                e.life = 0; // Destroy corpse cleanly
+                                
+                                // Summon Zombie (Passing the corpse's size!)
+                                game.addEntity(new ZombieSpider(e.x, e.y, data.team, e.size));
+                                game.bus.emit('particles', {x: e.x, y: e.y, color: '#00ff00', count: 15});
+                                
+                                raisedCount++;
+                            }
                         }
                     }
 
@@ -202,9 +225,10 @@ export const NecromancyExpansion = {
                 let e = this.entities[i];
                 
                 // If a spider dies, and it wasn't already a zombie, drop a corpse!
-                if (e instanceof Spider && e.hp <= 0 && !e.isZombie && !e.corpseSpawned) {
+                // LOGIC FIX: Exclude 'broodling' suicide units to prevent infinite zombie cheese and map clutter
+                if (e instanceof Spider && e.hp <= 0 && !e.isZombie && !e.corpseSpawned && e.role !== 'broodling') {
                     e.corpseSpawned = true; // Safety flag to prevent double-spawns
-                    this.addEntity(new Corpse(e.x, e.y));
+                    this.addEntity(new Corpse(e.x, e.y, e.size));
                 }
             }
             
