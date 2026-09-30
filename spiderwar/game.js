@@ -22,7 +22,8 @@ export class GameBus {
         if (this.listeners[event]) {
             this.listeners[event].forEach(cb => {
                 try { cb(data); } 
-                catch (err) { console.error(`[GameBus] Error in event '${event}':`, err); }
+                // EXPANDABILITY FIX: Include the data payload in the error log so modders can debug their events!
+                catch (err) { console.error(`[GameBus] Error in event '${event}':`, err, data); }
             });
         }
     }
@@ -205,8 +206,15 @@ export class Projectile {
         }
     }
     draw(ctx) { 
+        ctx.save();
         ctx.fillStyle = this.team === 'black' ? '#aa00ff' : '#ffaa00'; 
+        
+        // LORE POLISH: Add a magical glow to the energy projectiles
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = ctx.fillStyle;
+        
         ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, MathUtils.TWO_PI); ctx.fill(); 
+        ctx.restore();
     }
 }
 
@@ -234,9 +242,16 @@ export class Game {
         baseAssets.forEach(src => this.assets.register(src));
         
         this.world = { width: 6000, height: 6000 }; 
-        this.camera = { x: 0, y: 0 }; this.tick = 0; 
+        this.camera = { x: 0, y: 0 }; 
+        this.tick = 0; 
+        
+        // FIX: High Refresh Rate Timing Variables
+        this.lastTime = performance.now();
+        this.accumulator = 0;
+        this.timeStep = 1000 / 60; // 60 FPS Target
         
         this.entities = [];
+        this.renderList = []; // FIX: Pre-allocated for draw() to prevent GC lag
         this.decor = []; 
         this.spatialGrid = new Map(); 
         
@@ -249,7 +264,7 @@ export class Game {
 
         this.resize(); window.addEventListener('resize', () => this.resize());
         this.setupInputs(); 
-        requestAnimationFrame(() => this.loop());
+        requestAnimationFrame((t) => this.loop(t));
     }
 
     get spiders() { return this.entities.filter(e => e.role && e.cargo !== undefined); }
@@ -377,7 +392,28 @@ export class Game {
         });
     }
 
-    loop() { this.update(); this.draw(); requestAnimationFrame(() => this.loop()); }
+    loop(currentTime = performance.now()) { 
+        requestAnimationFrame((t) => this.loop(t));
+        
+        // FIX: 60 FPS Fixed Timestep. Normalizes game speed across 60Hz and 144Hz monitors!
+        let deltaTime = currentTime - this.lastTime;
+        this.lastTime = currentTime;
+        
+        // Prevent "spiral of death" if the player alt-tabs away for an hour
+        if (deltaTime > 250) deltaTime = 250;
+        
+        this.accumulator += deltaTime;
+        
+        let updated = false;
+        while (this.accumulator >= this.timeStep) {
+            this.update();
+            this.accumulator -= this.timeStep;
+            updated = true;
+        }
+        
+        // Only draw if the logic actually updated this frame
+        if (updated) this.draw(); 
+    }
 
     update() {
         if (this.gameState !== 'playing') return; 
@@ -434,8 +470,10 @@ export class Game {
                 
                 // --- PILLAR 1: POPULATE SPATIAL GRID ---
                 if (e.team) {
-                    const cx = Math.floor(e.x / CELL_SIZE);
-                    const cy = Math.floor(e.y / CELL_SIZE);
+                    // SAFETY FIX: Clamp to 0 to prevent negative bitwise shift errors from off-screen projectiles
+                    const cx = Math.max(0, Math.floor(e.x / CELL_SIZE));
+                    const cy = Math.max(0, Math.floor(e.y / CELL_SIZE));
+                    
                     // MASSIVE PERFORMANCE FIX: Using bitwise integers for grid map keys entirely eliminates string GC thrashing!
                     const key = (cx << 16) | cy;
                     
@@ -469,7 +507,7 @@ export class Game {
             for (let cy = minCy; cy <= maxCy; cy++) {
                 
                 // GC FIX: Same integer-based lookup matches the new populator above.
-                const key = (cx << 16) | cy;
+                const key = (Math.max(0, cx) << 16) | Math.max(0, cy);
                 const cell = this.spatialGrid.get(key);
                 if (!cell) continue; 
 
@@ -512,18 +550,20 @@ export class Game {
         const viewT = this.camera.y - padding;
         const viewB = this.camera.y + this.canvas.height + padding;
 
-        let visibleEntities = [];
+        // FIX: Reused renderList array to prevent GC (Garbage Collection) memory thrashing every frame!
+        this.renderList.length = 0;
+        
         for (let i = 0; i < this.entities.length; i++) {
             let e = this.entities[i];
             const renderSize = e.size || 0;
             if (e.draw && e.x + renderSize >= viewL && e.x - renderSize <= viewR && e.y + renderSize >= viewT && e.y - renderSize <= viewB) {
-                visibleEntities.push(e);
+                this.renderList.push(e);
             }
         }
 
-        visibleEntities.sort((a, b) => a.y - b.y);
-        for (let i = 0; i < visibleEntities.length; i++) {
-            visibleEntities[i].draw(this.ctx);
+        this.renderList.sort((a, b) => a.y - b.y);
+        for (let i = 0; i < this.renderList.length; i++) {
+            this.renderList[i].draw(this.ctx);
         }
         
         this.bus.emit('postDraw', this.ctx);
