@@ -361,6 +361,7 @@ export const ContextUIExpansion = {
             'monolith': { icon: '🪦', name: 'Monolith', cost: '150🎃50💧', type: 'tool', val: 'monolith' }, // Spectral Swarm
             'obelisk': { icon: '⚡', name: 'Obelisk', cost: '150🎃80💧', type: 'tool', val: 'obelisk' }, // Cursed Relics
             'incubator':{ icon: '🍄', name: 'Incubate', cost: '200🎃', type: 'tool', val: 'incubator' }, // Toxic Plague
+            'maw':      { icon: '🕳️', name: 'The Maw', cost: '150🎃', type: 'tool', val: 'maw' }, // Void Whispers
             
             // Spells
             'strike': { icon: '☠️', name: 'Strike', cost: '50💧', type: 'tool', val: 'venomStrike' },
@@ -371,6 +372,7 @@ export const ContextUIExpansion = {
             'paralyze': { icon: '❄️', name: 'Paralyze', cost: '75💧', type: 'tool', val: 'paralyze' }, // Spectral Swarm
             'eclipse': { icon: '🌑', name: 'Eclipse', cost: '150💧', type: 'tool', val: 'eclipse' }, // Cursed Relics
             'contagion': { icon: '☣️', name: 'Contagion', cost: '80💧', type: 'tool', val: 'contagion' }, // Toxic Plague
+            'vortex':    { icon: '🌀', name: 'Vortex', cost: '90💧', type: 'tool', val: 'vortex' }, // Void Whispers
             
             // Units
             'harv':   { icon: '🕷️', name: 'Harvester', cost: '10🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'harvester'}) },
@@ -380,6 +382,7 @@ export const ContextUIExpansion = {
             'phantom': { icon: '👻', name: 'Phantom', cost: '60🎃20💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'phantom'}) }, // Spectral Swarm
             'wraith': { icon: '🗡️', name: 'Wraith', cost: '80🎃30💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'wraith'}) }, // Cursed Relics
             'defiler':{ icon: '🦠', name: 'Defiler', cost: '120🎃40💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'defiler'}) }, // Toxic Plague
+            'voidweaver': { icon: '👁️', name: 'Weaver', cost: '100🎃30💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'voidweaver'}) }, // Void Whispers
             'tank':    { icon: '🪲', name: 'Tarantula', cost: '75🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'tarantula'}) },
             'widow':   { icon: '👻', name: 'Widow', cost: '150🎃50💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'widow'}) },
             'goliath': { icon: '🔥', name: 'Goliath', cost: '400🎃150💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'goliath'}) },
@@ -480,7 +483,7 @@ export const ContextUIExpansion = {
                         addButton('nest'); addButton('eggsac'); addButton('pylon'); 
                         addButton('turret'); addButton('wall'); addButton('extractor'); 
                         addButton('mortar'); addButton('shrine'); addButton('monolith'); 
-                        addButton('obelisk'); addButton('incubator'); // <-- Added Incubator here
+                        addButton('obelisk'); addButton('incubator'); addButton('maw'); // <-- Added Maw here
                         addButton('cancel');
                     } else {
                         let roleName = unit.role.charAt(0).toUpperCase() + unit.role.slice(1);
@@ -495,7 +498,7 @@ export const ContextUIExpansion = {
                     if (this.selectedStructure.type === 'nest' && this.selectedStructure.team === 'black') {
                         addButton('harv'); addButton('sold'); addButton('tick'); 
                         addButton('spitter'); addButton('phantom'); addButton('wraith'); 
-                        addButton('defiler'); // <-- Added Defiler here
+                        addButton('defiler'); addButton('voidweaver'); // <-- Added Voidweaver here
                         addButton('tank'); addButton('widow'); 
                         addButton('goliath'); addButton('tech');
                     }
@@ -505,7 +508,7 @@ export const ContextUIExpansion = {
                     nameEl.innerText = "Obsidian Hive";
                     addButton('strike'); addButton('trap'); addButton('raise'); 
                     addButton('ambush'); addButton('bloodlust'); addButton('paralyze'); 
-                    addButton('eclipse'); addButton('contagion'); // <-- Added Contagion here
+                    addButton('eclipse'); addButton('contagion'); addButton('vortex'); // <-- Added Vortex here
                     addButton('cancel');
                 }
             }
