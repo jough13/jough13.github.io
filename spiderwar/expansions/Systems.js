@@ -329,11 +329,11 @@ export const SaveLoadExpansion = {
                         discovered: tile.discovered, visible: tile.visible
                     }))),
                     
-                    // SAFETY FIX: Store `src` instead of stringifying the DOM element
+                    // SAFETY FIX: Store `src` with the 'assets/' prefix so the AssetManager can find it on load
                     decor: game.decor ? game.decor.map(d => ({
                         x: d.x, y: d.y, type: d.type, size: d.size, renderSize: d.renderSize, 
                         angle: d.angle, alpha: d.alpha, fallbackColor: d.fallbackColor, 
-                        src: d.sprite ? d.sprite.src.split('/').pop() : null
+                        src: d.sprite ? 'assets/' + d.sprite.src.split('/').pop() : null
                     })) : [],
                     
                     spiders: game.spiders.map(s => {
