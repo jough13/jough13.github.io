@@ -35,24 +35,21 @@ export const MinimapExpansion = {
         game.minimap = UI_CONFIG.minimap; 
         game.isMinimapDragging = false;
         
-        // Convert Minimap click to World coordinates
         const getMinimapWorldPos = (localX, localY) => {
             const pctX = MathUtils.clamp(localX / game.minimap.size, 0, 1); 
             const pctY = MathUtils.clamp(localY / game.minimap.size, 0, 1);
-            return {
-                x: pctX * game.world.width,
-                y: pctY * game.world.height
+            return { 
+                x: pctX * game.world.width, 
+                y: pctY * game.world.height 
             };
         };
 
-        // Center camera based on minimap click
         const moveCamera = (localX, localY) => {
             const pos = getMinimapWorldPos(localX, localY);
             game.camera.x = MathUtils.clamp(pos.x - (game.canvas.width / 2), 0, Math.max(0, game.world.width - game.canvas.width)); 
             game.camera.y = MathUtils.clamp(pos.y - (game.canvas.height / 2), 0, Math.max(0, game.world.height - game.canvas.height));
         };
 
-        // Issue a move command to the selected units via the minimap!
         const commandUnits = (localX, localY) => {
             let validUnits = game.selectedUnits ? game.selectedUnits.filter(u => u.team === 'black' && u.hp > 0) : [];
             if (validUnits.length > 0) {
@@ -69,11 +66,8 @@ export const MinimapExpansion = {
             }
         };
 
-        // SAFETY FIX: Prevent duplicate UI injection on hot-reloads
         if (document.getElementById('mobileToolbar')) return;
 
-        // UI HACK: By creating an invisible DOM element named "mobileToolbar", Controls.js will naturally 
-        // ignore clicks inside this box, allowing us to safely intercept them for the minimap!
         const overlay = document.createElement('div');
         overlay.id = 'mobileToolbar'; 
         overlay.style.cssText = `
@@ -83,7 +77,6 @@ export const MinimapExpansion = {
         `;
         document.body.appendChild(overlay);
 
-        // Input Listeners strictly bound to the minimap area
         overlay.addEventListener('mousedown', e => {
             const rect = overlay.getBoundingClientRect();
             if (e.button === 0) {
@@ -99,18 +92,19 @@ export const MinimapExpansion = {
             }
         });
 
-        window.addEventListener('mouseup', e => { if (e.button === 0) game.isMinimapDragging = false; });
+        window.addEventListener('mouseup', e => { 
+            if (e.button === 0) game.isMinimapDragging = false; 
+        });
 
         overlay.addEventListener('contextmenu', e => {
-            e.preventDefault(); // Stop standard browser menu
+            e.preventDefault(); 
             const rect = overlay.getBoundingClientRect();
             commandUnits(e.clientX - rect.left, e.clientY - rect.top);
         });
 
-        // Mobile Touch Support for Minimap (With Long-Press Command)
         let touchTimer = null;
-        let touchStartX = 0;
-        let touchStartY = 0;
+        let touchStartX = 0; 
+        let touchStartY = 0; 
         let longPressed = false;
 
         overlay.addEventListener('touchstart', e => { 
@@ -120,20 +114,17 @@ export const MinimapExpansion = {
                 const localX = e.touches[0].clientX - rect.left;
                 const localY = e.touches[0].clientY - rect.top;
                 
-                touchStartX = e.touches[0].clientX;
+                touchStartX = e.touches[0].clientX; 
                 touchStartY = e.touches[0].clientY;
                 longPressed = false;
-
-                // 1. Immediately pan the camera to the tapped location
+                
                 game.isMinimapDragging = true;
                 moveCamera(localX, localY);
 
-                // 2. Start a timer. If held still for 400ms, issue a unit command!
                 touchTimer = setTimeout(() => {
-                    longPressed = true;
-                    game.isMinimapDragging = false; // Stop camera dragging
+                    longPressed = true; 
+                    game.isMinimapDragging = false; 
                     commandUnits(localX, localY);
-                    
                     if (navigator.vibrate) navigator.vibrate(50); 
                 }, 400); 
             }
@@ -145,7 +136,6 @@ export const MinimapExpansion = {
                 if (Math.abs(e.touches[0].clientX - touchStartX) > 10 || Math.abs(e.touches[0].clientY - touchStartY) > 10) {
                     clearTimeout(touchTimer);
                 }
-                
                 if(game.isMinimapDragging && !longPressed) {
                     const rect = overlay.getBoundingClientRect();
                     moveCamera(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
@@ -154,7 +144,7 @@ export const MinimapExpansion = {
         }, {passive: false});
 
         overlay.addEventListener('touchend', e => { 
-            clearTimeout(touchTimer);
+            clearTimeout(touchTimer); 
             game.isMinimapDragging = false; 
         });
     },
@@ -162,18 +152,17 @@ export const MinimapExpansion = {
     patch: (game) => {
         game.bus.on('uiDraw', (ctx) => {
             if(game.gameState !== 'playing') return;
-            const size = game.minimap.size; const pad = game.minimap.padding;
+            const size = game.minimap.size; 
+            const pad = game.minimap.padding;
             const startX = game.canvas.width - size - pad; 
             const startY = game.canvas.height - size - pad - game.minimap.offsetY; 
             
-            // Base background
             ctx.fillStyle = UI_CONFIG.minimap.bgColor; 
             ctx.fillRect(startX, startY, size, size);
             
             const scaleX = size / game.world.width; 
             const scaleY = size / game.world.height;
             
-            // Draw Water
             if (game.mapGrid) {
                 ctx.fillStyle = UI_CONFIG.minimap.waterColor;
                 for (let y = 0; y < game.mapGrid.length; y++) {
@@ -185,7 +174,6 @@ export const MinimapExpansion = {
                 }
             }
 
-            // Draw Dot Helper
             const drawDot = (ent, color, r, hideIfInvisible, hideIfUndiscovered) => { 
                 if (game.mapGrid) {
                     const tX = Math.floor(ent.x / game.tileSize); 
@@ -200,43 +188,26 @@ export const MinimapExpansion = {
                 ctx.fillRect(startX + (ent.x * scaleX) - r, startY + (ent.y * scaleY) - r, r*2, r*2); 
             };
 
-            // PERFORMANCE FIX: Single loop iteration over entities to replace 6 separate `.filter().forEach()` loops!
             for (let i = 0; i < game.entities.length; i++) {
                 let ent = game.entities[i];
-                
-                // Skip dead units instantly
                 if (ent.hp !== undefined && ent.hp <= 0) continue;
 
                 if (ent instanceof Spider) {
-                    if (ent.role === 'queen') {
-                        drawDot(ent, ent.team === 'black' ? UI_CONFIG.colors.blackTeam : UI_CONFIG.colors.redTeam, 4, true, false);
-                    } else {
-                        drawDot(ent, ent.team === 'black' ? UI_CONFIG.colors.blackSwarm : UI_CONFIG.colors.redSwarm, 1, true, false);
-                    }
+                    if (ent.role === 'queen') drawDot(ent, ent.team === 'black' ? UI_CONFIG.colors.blackTeam : UI_CONFIG.colors.redTeam, 4, true, false);
+                    else drawDot(ent, ent.team === 'black' ? UI_CONFIG.colors.blackSwarm : UI_CONFIG.colors.redSwarm, 1, true, false);
                 } 
-                else if (ent instanceof Structure) {
-                    drawDot(ent, ent.team === 'black' ? UI_CONFIG.colors.blackTeam : UI_CONFIG.colors.redTeam, 3, true, false);
-                } 
-                else if (ent.type === 'pumpkin' || ent.type === 'dew') {
-                    drawDot(ent, ent.type === 'pumpkin' ? UI_CONFIG.colors.pumpkin : UI_CONFIG.colors.dew, 1.5, false, true);
-                } 
-                else if (ent.team === 'nature' && ent.constructor.name !== 'CentipedeBoss') { // Critters
-                    drawDot(ent, ent.color || 'gold', 2, true, false);
-                } 
-                else if (ent.constructor.name === 'CentipedeBoss') {
-                    drawDot(ent, UI_CONFIG.colors.boss, 4, true, false);
-                } 
+                else if (ent instanceof Structure) drawDot(ent, ent.team === 'black' ? UI_CONFIG.colors.blackTeam : UI_CONFIG.colors.redTeam, 3, true, false);
+                else if (ent.type === 'pumpkin' || ent.type === 'dew') drawDot(ent, ent.type === 'pumpkin' ? UI_CONFIG.colors.pumpkin : UI_CONFIG.colors.dew, 1.5, false, true);
+                else if (ent.team === 'nature' && ent.constructor.name !== 'CentipedeBoss') drawDot(ent, ent.color || 'gold', 2, true, false);
+                else if (ent.constructor.name === 'CentipedeBoss') drawDot(ent, UI_CONFIG.colors.boss, 4, true, false);
             }
 
-            // Draw Fog of War Overlay
             if (game.fowCanvas) {
-                ctx.save();
-                ctx.filter = 'blur(4px)'; 
+                ctx.save(); ctx.filter = 'blur(4px)'; 
                 ctx.drawImage(game.fowCanvas, startX, startY, size, size);
                 ctx.restore();
             }
             
-            // Draw Camera Viewport Box
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; 
             ctx.lineWidth = 1.5; 
             ctx.strokeRect(
@@ -245,9 +216,9 @@ export const MinimapExpansion = {
                 Math.min(game.canvas.width * scaleX, size - (game.camera.x * scaleX)), 
                 Math.min(game.canvas.height * scaleY, size - (game.camera.y * scaleY))
             );
-            
-            // Outer Frame
-            ctx.strokeStyle = UI_CONFIG.minimap.frameColor; ctx.lineWidth = 4; ctx.strokeRect(startX, startY, size, size);
+            ctx.strokeStyle = UI_CONFIG.minimap.frameColor; 
+            ctx.lineWidth = 4; 
+            ctx.strokeRect(startX, startY, size, size);
         });
     }
 };
@@ -257,7 +228,6 @@ export const MinimapExpansion = {
 // ==========================================
 export const ContextUIExpansion = {
     init: (game) => {
-        // SAFETY FIX: Prevent duplicate injection
         if (document.getElementById('rtsUI')) return;
 
         const style = document.createElement('style');
@@ -284,15 +254,13 @@ export const ContextUIExpansion = {
                 box-shadow: 0 -5px 20px rgba(0,0,0,0.8); user-select: none;
                 transition: bottom 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
             }
-            
             #rtsUI.minimized { bottom: -150px; }
 
             #ui-toggle-btn {
                 position: absolute; top: -40px; right: 20px; width: 60px; height: 40px;
                 background: rgba(10, 5, 0, 0.95); border: 2px solid #ff9d00; border-bottom: none; border-radius: 8px 8px 0 0;
                 color: #ff9d00; display: flex; justify-content: center; align-items: center;
-                cursor: pointer; font-size: 20px; transition: background 0.2s, color 0.2s;
-                z-index: 2005; pointer-events: auto;
+                cursor: pointer; font-size: 20px; transition: background 0.2s, color 0.2s; z-index: 2005; pointer-events: auto;
             }
             #ui-toggle-btn:hover { background: #ff9d00; color: #000; }
             
@@ -305,15 +273,30 @@ export const ContextUIExpansion = {
             #ui-hp-bar-bg { width: 100%; height: 12px; background: rgba(0,0,0,0.8); margin-top: 5px; border: 1px solid #ff9d00; border-radius: 4px; overflow: hidden;}
             #ui-hp-bar-fill { width: var(--hp-pct, 100%); height: 100%; background: #00ff00; transition: width 0.2s; }
             
-            #ui-actions::-webkit-scrollbar { display: none; }
-            #ui-actions { flex-grow: 1; padding: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-content: center; overflow-y: auto; -ms-overflow-style: none; scrollbar-width: none; }
+            /* --- SCROLLBAR FIX FOR ACTIONS MENU --- */
+            #ui-actions { 
+                flex-grow: 1; padding: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; 
+                overflow-y: auto; scrollbar-width: thin; scrollbar-color: #ff9d00 rgba(0,0,0,0.5);
+            }
+            #ui-actions::-webkit-scrollbar { width: 8px; }
+            #ui-actions::-webkit-scrollbar-track { background: rgba(0,0,0,0.5); border-radius: 4px; }
+            #ui-actions::-webkit-scrollbar-thumb { background: #ff9d00; border-radius: 4px; border: 1px solid #000; }
+            
             .cmd-btn { width: 80px; height: 55px; background: rgba(34, 17, 0, 0.8); border: 2px solid #ff9d00; border-radius: 4px; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.1s; }
             .cmd-btn:hover { background: rgba(68, 34, 0, 0.9); transform: scale(1.05); }
             .cmd-btn:active { transform: scale(0.95); }
             .cmd-btn.active-tool { background: rgba(255, 157, 0, 0.9); color: #000; font-weight: bold; }
-            .cmd-icon { font-size: 20px; }
+            
+            /* --- CUSTOM ICON SUPPORT --- */
+            .cmd-icon { font-size: 20px; display: flex; justify-content: center; align-items: center; height: 24px; }
+            .cmd-icon img { width: 24px; height: 24px; image-rendering: pixelated; }
             .cmd-text { font-size: 10px; margin-top: 2px; }
             .cmd-cost { font-size: 10px; color: #ff5555; font-weight: bold; letter-spacing: -0.5px; }
+
+            /* --- TECH GATING CSS --- */
+            .cmd-btn.locked { filter: grayscale(100%) brightness(0.5); cursor: not-allowed; border-color: #555; }
+            .cmd-btn.locked:hover { transform: none; background: rgba(34, 17, 0, 0.8); }
+            .cmd-btn.locked .cmd-cost { color: #ff3333; }
         `;
         document.head.appendChild(style);
 
@@ -345,63 +328,72 @@ export const ContextUIExpansion = {
             toggleBtn.innerText = rtsUI.classList.contains('minimized') ? '▲' : '▼';
         });
 
-        // Master UI Buttons Dictionary
+        // ==========================================
+        // MASTER DICTIONARY (WITH TECH REQS & IMAGES)
+        // ==========================================
+        // Note: You can add `img: 'assets/icon_name.png'` to any of these!
         game.uiActions = {
-            // Base Buildings
-            'nest':   { icon: '🕸️', name: 'Nest', cost: '150🎃', type: 'tool', val: 'nest' },
-            'eggsac': { icon: '🥚', name: 'Sac', cost: '50🎃', type: 'tool', val: 'eggsac' },
-            'pylon':  { icon: '🗼', name: 'Pylon', cost: '25🎃', type: 'tool', val: 'pylon' },
-            'turret': { icon: '🔫', name: 'Turret', cost: '100🎃', type: 'tool', val: 'turret' },
-            'wall':   { icon: '🧱', name: 'Wall', cost: '25🎃', type: 'tool', val: 'wall' },
+            // -- BUILDINGS --
+            'nest':      { reqTech: 0, icon: '🕸️', name: 'Nest', cost: '150🎃', type: 'tool', val: 'nest' },
+            'eggsac':    { reqTech: 0, icon: '🥚', name: 'Sac', cost: '50🎃', type: 'tool', val: 'eggsac' },
+            'pylon':     { reqTech: 0, icon: '🗼', name: 'Pylon', cost: '25🎃', type: 'tool', val: 'pylon' },
+            'wall':      { reqTech: 0, icon: '🧱', name: 'Wall', cost: '25🎃', type: 'tool', val: 'wall' },
+            'turret':    { reqTech: 1, icon: '🔫', name: 'Turret', cost: '100🎃', type: 'tool', val: 'turret' },
+            'extractor': { reqTech: 1, icon: '🛢️', name: 'Extract', cost: '100🎃', type: 'tool', val: 'extractor' }, 
+            'shrine':    { reqTech: 1, icon: '⛲', name: 'Shrine', cost: '150🎃100💧', type: 'tool', val: 'shrine' },
+            'mortar':    { reqTech: 2, icon: '🌋', name: 'Mortar', cost: '200🎃50💧', type: 'tool', val: 'mortar' },
+            'monolith':  { reqTech: 2, icon: '🪦', name: 'Monolith', cost: '150🎃50💧', type: 'tool', val: 'monolith' }, 
+            'obelisk':   { reqTech: 2, icon: '⚡', name: 'Obelisk', cost: '150🎃80💧', type: 'tool', val: 'obelisk' }, 
+            'incubator': { reqTech: 2, icon: '🍄', name: 'Incubate', cost: '200🎃', type: 'tool', val: 'incubator' }, 
+            'maw':       { reqTech: 3, icon: '🕳️', name: 'The Maw', cost: '150🎃', type: 'tool', val: 'maw' }, 
             
-            // Expansion Buildings
-            'extractor': { icon: '🛢️', name: 'Extract', cost: '100🎃', type: 'tool', val: 'extractor' }, // Dark Rituals
-            'mortar': { icon: '🌋', name: 'Mortar', cost: '200🎃50💧', type: 'tool', val: 'mortar' },
-            'shrine': { icon: '⛲', name: 'Shrine', cost: '150🎃100💧', type: 'tool', val: 'shrine' },
-            'monolith': { icon: '🪦', name: 'Monolith', cost: '150🎃50💧', type: 'tool', val: 'monolith' }, // Spectral Swarm
-            'obelisk': { icon: '⚡', name: 'Obelisk', cost: '150🎃80💧', type: 'tool', val: 'obelisk' }, // Cursed Relics
-            'incubator':{ icon: '🍄', name: 'Incubate', cost: '200🎃', type: 'tool', val: 'incubator' }, // Toxic Plague
-            'maw':      { icon: '🕳️', name: 'The Maw', cost: '150🎃', type: 'tool', val: 'maw' }, // Void Whispers
+            // -- SPELLS --
+            'trap':      { reqTech: 0, icon: '🕸️', name: 'Trap', cost: '25💧', type: 'tool', val: 'silkTrap' },
+            'strike':    { reqTech: 1, icon: '☠️', name: 'Strike', cost: '50💧', type: 'tool', val: 'venomStrike' },
+            'raise':     { reqTech: 1, icon: '🧟', name: 'Raise', cost: '40💧', type: 'tool', val: 'reanimate' },
+            'ambush':    { reqTech: 1, icon: '🥚', name: 'Ambush', cost: '50💧', type: 'tool', val: 'ambush' }, 
+            'bloodlust': { reqTech: 2, icon: '🩸', name: 'Frenzy', cost: '60💧', type: 'tool', val: 'bloodlust' }, 
+            'paralyze':  { reqTech: 2, icon: '❄️', name: 'Paralyze', cost: '75💧', type: 'tool', val: 'paralyze' }, 
+            'contagion': { reqTech: 2, icon: '☣️', name: 'Contagion', cost: '80💧', type: 'tool', val: 'contagion' }, 
+            'eclipse':   { reqTech: 3, icon: '🌑', name: 'Eclipse', cost: '150💧', type: 'tool', val: 'eclipse' }, 
+            'vortex':    { reqTech: 3, icon: '🌀', name: 'Vortex', cost: '90💧', type: 'tool', val: 'vortex' }, 
             
-            // Spells
-            'strike': { icon: '☠️', name: 'Strike', cost: '50💧', type: 'tool', val: 'venomStrike' },
-            'trap':   { icon: '🕸️', name: 'Trap', cost: '25💧', type: 'tool', val: 'silkTrap' },
-            'raise':  { icon: '🧟', name: 'Raise', cost: '40💧', type: 'tool', val: 'reanimate' },
-            'ambush': { icon: '🥚', name: 'Ambush', cost: '50💧', type: 'tool', val: 'ambush' }, 
-            'bloodlust': { icon: '🩸', name: 'Frenzy', cost: '60💧', type: 'tool', val: 'bloodlust' }, // Dark Rituals
-            'paralyze': { icon: '❄️', name: 'Paralyze', cost: '75💧', type: 'tool', val: 'paralyze' }, // Spectral Swarm
-            'eclipse': { icon: '🌑', name: 'Eclipse', cost: '150💧', type: 'tool', val: 'eclipse' }, // Cursed Relics
-            'contagion': { icon: '☣️', name: 'Contagion', cost: '80💧', type: 'tool', val: 'contagion' }, // Toxic Plague
-            'vortex':    { icon: '🌀', name: 'Vortex', cost: '90💧', type: 'tool', val: 'vortex' }, // Void Whispers
+            // -- UNITS --
+            'harv':      { reqTech: 0, icon: '🕷️', name: 'Harvester', cost: '10🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'harvester'}) },
+            'sold':      { reqTech: 0, icon: '🐜', name: 'Soldier', cost: '25🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'soldier'}) },
+            'tick':      { reqTech: 0, icon: '💣', name: 'Tick', cost: '30🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'tick'}) }, 
+            'spitter':   { reqTech: 1, icon: '💦', name: 'Spitter', cost: '40🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'spitter'}) },
+            'phantom':   { reqTech: 1, icon: '👻', name: 'Phantom', cost: '60🎃20💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'phantom'}) }, 
+            'tank':      { reqTech: 1, icon: '🪲', name: 'Tarantula', cost: '75🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'tarantula'}) },
+            'wraith':    { reqTech: 2, icon: '🗡️', name: 'Wraith', cost: '80🎃30💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'wraith'}) }, 
+            'defiler':   { reqTech: 2, icon: '🦠', name: 'Defiler', cost: '120🎃40💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'defiler'}) }, 
+            'widow':     { reqTech: 2, icon: '👻', name: 'Widow', cost: '150🎃50💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'widow'}) },
+            'voidweaver':{ reqTech: 3, icon: '👁️', name: 'Weaver', cost: '100🎃30💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'voidweaver'}) }, 
+            'goliath':   { reqTech: 3, icon: '🔥', name: 'Goliath', cost: '400🎃150💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'goliath'}) },
             
-            // Units
-            'harv':   { icon: '🕷️', name: 'Harvester', cost: '10🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'harvester'}) },
-            'sold':   { icon: '🐜', name: 'Soldier', cost: '25🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'soldier'}) },
-            'tick':   { icon: '💣', name: 'Tick', cost: '30🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'tick'}) }, // Dark Rituals
-            'spitter': { icon: '💦', name: 'Spitter', cost: '40🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'spitter'}) },
-            'phantom': { icon: '👻', name: 'Phantom', cost: '60🎃20💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'phantom'}) }, // Spectral Swarm
-            'wraith': { icon: '🗡️', name: 'Wraith', cost: '80🎃30💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'wraith'}) }, // Cursed Relics
-            'defiler':{ icon: '🦠', name: 'Defiler', cost: '120🎃40💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'defiler'}) }, // Toxic Plague
-            'voidweaver': { icon: '👁️', name: 'Weaver', cost: '100🎃30💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'voidweaver'}) }, // Void Whispers
-            'tank':    { icon: '🪲', name: 'Tarantula', cost: '75🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'tarantula'}) },
-            'widow':   { icon: '👻', name: 'Widow', cost: '150🎃50💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'widow'}) },
-            'goliath': { icon: '🔥', name: 'Goliath', cost: '400🎃150💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'goliath'}) },
-            
-            // Utility Commands
-            'tech':   { icon: '🧬', name: 'Evolve', cost: '250🎃', type: 'instant', fn: (t) => { if(game.eco.black.pumpkins>=250){ game.eco.black.pumpkins-=250; game.techLevel.black++; game.bus.emit('playSound','spell');} } },
-            'cancel': { icon: '🛑', name: 'Stop', cost: '', type: 'instant', fn: () => { 
+            // -- UTILITY --
+            'tech':      { reqTech: 0, icon: '🧬', name: 'Evolve', cost: '250🎃', type: 'instant', fn: (t) => { if(game.eco.black.pumpkins>=250){ game.eco.black.pumpkins-=250; game.techLevel.black++; game.bus.emit('playSound','spell');} } },
+            'cancel':    { reqTech: 0, icon: '🛑', name: 'Stop', cost: '', type: 'instant', fn: () => { 
                 game.activeTool = 'select'; 
                 game.bus.emit('toolChanged', 'select');
                 if (game.selectedUnits) {
                     game.selectedUnits.forEach(u => { 
-                        u.commandTarget = null; u.buildTarget = null;   
-                        if (u.activeConstruction) { u.activeConstruction.isPaused = true; u.activeConstruction = null; }
+                        u.commandTarget = null; 
+                        u.buildTarget = null;   
+                        if (u.activeConstruction) { 
+                            u.activeConstruction.isPaused = true; 
+                            u.activeConstruction = null; 
+                        }
                     });
                 }
                 game.bus.emit('playSound', 'shoot'); 
             }},
-            'auto':   { icon: '⚙️', name: 'Automate', cost: '', type: 'instant', fn: () => { 
-                game.selectedUnits.forEach(u => { u.isManual = false; u.commandTarget = null; u.target = null; }); 
+            'auto':      { reqTech: 0, icon: '⚙️', name: 'Automate', cost: '', type: 'instant', fn: () => { 
+                game.selectedUnits.forEach(u => { 
+                    u.isManual = false; 
+                    u.commandTarget = null; 
+                    u.target = null; 
+                }); 
                 game.bus.emit('playSound', 'spell'); 
             }},
         };
@@ -410,7 +402,6 @@ export const ContextUIExpansion = {
     },
 
     patch: (game) => {
-        // Prevent click bleed-through
         document.getElementById('rtsUI').addEventListener('mousedown', (e) => e.stopPropagation());
         document.getElementById('rtsUI').addEventListener('touchstart', (e) => e.stopPropagation(), {passive: false});
         document.getElementById('topBar').addEventListener('mousedown', (e) => e.stopPropagation());
@@ -419,13 +410,11 @@ export const ContextUIExpansion = {
         game.expansions.patchClass(game.constructor, 'update', function(original) {
             original.call(this);
 
-            // Update Top Bar
             document.getElementById('top-pumpkins').innerText = Math.floor(this.eco.black.pumpkins);
             document.getElementById('top-dew').innerText = Math.floor(this.eco.black.dew);
             document.getElementById('top-pop').innerText = `${this.pop.black}/${this.maxPop.black}`;
             document.getElementById('top-tech').innerText = this.techLevel.black;
 
-            // PERFORMANCE FIX: Zero-allocation sweep to purge dead units from active selection
             if (this.selectedUnits && this.selectedUnits.length > 0) {
                 let aliveUnits = [];
                 for (let i = 0; i < this.selectedUnits.length; i++) {
@@ -434,7 +423,6 @@ export const ContextUIExpansion = {
                 this.selectedUnits = aliveUnits;
             }
 
-            // Determine what is currently selected
             let currentSelection = null;
             if (this.selectedUnits && this.selectedUnits.length > 0) {
                 currentSelection = this.selectedUnits.length === 1 ? this.selectedUnits[0] : 'swarm_group';
@@ -442,9 +430,12 @@ export const ContextUIExpansion = {
                 currentSelection = this.selectedStructure;
             }
 
-            // REBUILD UI ONLY IF SELECTION CHANGED
-            if (this.lastSelection !== currentSelection) {
-                this.lastSelection = currentSelection;
+            // REBUILD UI ONLY IF SELECTION CHANGED OR TECH LEVEL CHANGED
+            // We append TechLevel to the state string so the UI regenerates and unlocks buttons when you upgrade!
+            const stateString = (currentSelection ? (currentSelection.id || currentSelection.type || 'group') : 'none') + '_' + this.techLevel.black;
+
+            if (this.lastSelection !== stateString) {
+                this.lastSelection = stateString;
                 
                 const portrait = document.getElementById('ui-portrait');
                 const nameEl = document.getElementById('ui-name');
@@ -454,12 +445,25 @@ export const ContextUIExpansion = {
 
                 const addButton = (cmdKey) => {
                     const cmd = this.uiActions[cmdKey];
+                    const reqTech = cmd.reqTech || 0;
+                    const isLocked = this.techLevel.black < reqTech;
+                    
                     const btn = document.createElement('div');
                     btn.className = 'cmd-btn';
+                    if (isLocked) btn.classList.add('locked');
                     btn.setAttribute('data-tool', cmd.type === 'tool' ? cmd.val : '');
-                    btn.innerHTML = `<div class="cmd-icon">${cmd.icon}</div><div class="cmd-text">${cmd.name}</div><div class="cmd-cost">${cmd.cost}</div>`;
+                    
+                    // ICON / IMAGE INJECTION FIX
+                    const iconHtml = cmd.img ? `<img src="${cmd.img}" alt="${cmd.name}">` : cmd.icon;
+                    
+                    btn.innerHTML = `
+                        <div class="cmd-icon">${isLocked ? '🔒' : iconHtml}</div>
+                        <div class="cmd-text">${cmd.name}</div>
+                        <div class="cmd-cost">${isLocked ? `Tech ${reqTech}` : cmd.cost}</div>
+                    `;
                     
                     btn.onclick = () => {
+                        if (isLocked) return; // Do nothing if locked
                         if (cmd.type === 'tool') {
                             this.activeTool = cmd.val;
                             this.bus.emit('toolChanged', cmd.val);
@@ -473,48 +477,74 @@ export const ContextUIExpansion = {
                 if (this.selectedUnits && this.selectedUnits.length > 1) {
                     portrait.src = 'assets/black_spider.png';
                     nameEl.innerText = `Brood Swarm (${this.selectedUnits.length})`;
-                    addButton('auto'); addButton('cancel');
+                    addButton('auto'); 
+                    addButton('cancel');
                 }
                 else if (this.selectedUnits && this.selectedUnits.length === 1) {
                     let unit = this.selectedUnits[0];
                     portrait.src = unit.sprite.src || '';
+                    
                     if (unit instanceof Queen) {
                         nameEl.innerText = "Obsidian Queen";
-                        addButton('nest'); addButton('eggsac'); addButton('pylon'); 
-                        addButton('turret'); addButton('wall'); addButton('extractor'); 
-                        addButton('mortar'); addButton('shrine'); addButton('monolith'); 
-                        addButton('obelisk'); addButton('incubator'); addButton('maw'); // <-- Added Maw here
+                        addButton('nest'); 
+                        addButton('eggsac'); 
+                        addButton('pylon'); 
+                        addButton('wall');
+                        addButton('turret'); 
+                        addButton('extractor'); 
+                        addButton('shrine'); 
+                        addButton('monolith'); 
+                        addButton('mortar'); 
+                        addButton('obelisk'); 
+                        addButton('incubator'); 
+                        addButton('maw'); 
                         addButton('cancel');
                     } else {
                         let roleName = unit.role.charAt(0).toUpperCase() + unit.role.slice(1);
                         if (unit.isZombie) roleName = "Zombie " + roleName;
                         nameEl.innerText = roleName;
-                        addButton('auto'); addButton('cancel');
+                        addButton('auto'); 
+                        addButton('cancel');
                     }
                 }
                 else if (this.selectedStructure) {
                     portrait.src = this.selectedStructure.sprite.src || '';
                     nameEl.innerText = this.selectedStructure.type === 'nest' ? `Main Nest (Lv ${this.techLevel.black})` : this.selectedStructure.type.toUpperCase();
+                    
                     if (this.selectedStructure.type === 'nest' && this.selectedStructure.team === 'black') {
-                        addButton('harv'); addButton('sold'); addButton('tick'); 
-                        addButton('spitter'); addButton('phantom'); addButton('wraith'); 
-                        addButton('defiler'); addButton('voidweaver'); // <-- Added Voidweaver here
-                        addButton('tank'); addButton('widow'); 
-                        addButton('goliath'); addButton('tech');
+                        addButton('harv'); 
+                        addButton('sold'); 
+                        addButton('tick'); 
+                        addButton('spitter'); 
+                        addButton('phantom'); 
+                        addButton('tank'); 
+                        addButton('wraith'); 
+                        addButton('defiler'); 
+                        addButton('widow'); 
+                        addButton('voidweaver'); 
+                        addButton('goliath'); 
+                        addButton('tech');
                     }
                 } 
                 else {
                     portrait.src = 'assets/nest_black.png'; 
                     nameEl.innerText = "Obsidian Hive";
-                    addButton('strike'); addButton('trap'); addButton('raise'); 
-                    addButton('ambush'); addButton('bloodlust'); addButton('paralyze'); 
-                    addButton('eclipse'); addButton('contagion'); addButton('vortex'); // <-- Added Vortex here
+                    addButton('trap'); 
+                    addButton('strike'); 
+                    addButton('raise'); 
+                    addButton('ambush'); 
+                    addButton('bloodlust'); 
+                    addButton('paralyze'); 
+                    addButton('contagion');
+                    addButton('eclipse'); 
+                    addButton('vortex'); 
                     addButton('cancel');
                 }
             }
 
             // HP BAR UPDATE (Optimized)
             const statsContainer = document.getElementById('ui-stats-container');
+            
             if (currentSelection && currentSelection.hp !== undefined) {
                 let max = currentSelection.maxHp;
                 if (currentSelection.team === 'black' && !(currentSelection instanceof Queen)) max += (this.techLevel.black * 20);
@@ -535,15 +565,11 @@ export const ContextUIExpansion = {
                 const fill = document.getElementById('ui-hp-bar-fill');
                 const text = document.getElementById('ui-hp-text');
                 
-                // --- CARGO TEXT UPDATE ---
-                // Check if the extraStats changed (like picking up cargo).
-                // If they are exactly the same, it's safe to just update the HP variables!
                 if (fill && text && statsContainer.dataset.extra === extraStats) {
                     fill.style.setProperty('--hp-pct', `${pct}%`);
                     fill.style.background = barColor;
                     text.innerText = `HP: ${Math.ceil(currentSelection.hp)} / ${max}`;
                 } else {
-                    // Elements are missing, or extra stats changed. Rebuild HTML and save state!
                     statsContainer.innerHTML = newHTML;
                     statsContainer.dataset.extra = extraStats; 
                 }
@@ -567,7 +593,6 @@ export const ContextUIExpansion = {
 // ==========================================
 export const GameLoopExpansion = {
     patch: (game) => {
-        // SAFETY FIX: Prevent duplicate modal injection
         if (!document.getElementById('gameOverStyle')) {
             const style = document.createElement('style');
             style.id = 'gameOverStyle';
@@ -594,11 +619,7 @@ export const GameLoopExpansion = {
 
         game.expansions.patchClass(Game, 'update', function(original) {
             
-            // FIX: Evaluate Win/Loss BEFORE calling the original engine loop!
-            // This ensures we can read the Queen's HP before she is deleted from RAM.
             if (this.gameState === 'playing') {
-                
-                // PERFORMANCE FIX: Loop through entities to find Queens without allocating arrays
                 let blackQueen = null;
                 let redQueen = null;
                 
@@ -610,18 +631,19 @@ export const GameLoopExpansion = {
                     }
                 }
                 
-                // If both queens exist in memory but one is dead, trigger game over
                 if (blackQueen !== null && redQueen !== null) {
                     if (blackQueen.hp <= 0) { 
                         this.gameState = 'lose'; 
-                        const ui = document.getElementById('rtsUI'); if (ui) ui.style.display = 'none'; 
+                        const ui = document.getElementById('rtsUI'); 
+                        if (ui) ui.style.display = 'none'; 
                         goModal.style.borderColor = '#ff0000';
                         goModal.innerHTML = `<h1 style="color:#ff0000; text-shadow: 0 0 10px #ff0000;">DEFEAT</h1><p>The Obsidian Queen has fallen to the Crimson Swarm.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
                         goModal.style.display = 'block';
                     } 
                     else if (redQueen.hp <= 0) { 
                         this.gameState = 'win'; 
-                        const ui = document.getElementById('rtsUI'); if (ui) ui.style.display = 'none'; 
+                        const ui = document.getElementById('rtsUI'); 
+                        if (ui) ui.style.display = 'none'; 
                         goModal.style.borderColor = '#aa00ff';
                         goModal.innerHTML = `<h1 style="color:#aa00ff; text-shadow: 0 0 10px #aa00ff;">VICTORY</h1><p>The Pumpkin Patch belongs to the Obsidian Brood.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
                         goModal.style.display = 'block';
@@ -629,7 +651,6 @@ export const GameLoopExpansion = {
                 }
             }
 
-            // NOW call the original engine logic so the game can cull the dead queen body cleanly
             original.call(this); 
         });
 
