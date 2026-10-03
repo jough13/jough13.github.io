@@ -5,17 +5,13 @@ export const DarkRitualsExpansion = {
     init: (game) => {
         console.log("%c[DLC] Dark Rituals Expansion Loaded!", "color: #ff0000;");
 
-        // ==========================================
-        // 1. REGISTER YOUR NEW ASSETS HERE!
-        // ==========================================
+        // 1. REGISTER ASSETS
         game.assets.register('assets/tick_black.png');
         game.assets.register('assets/tick_red.png');
         game.assets.register('assets/extractor_black.png');
         game.assets.register('assets/extractor_red.png');
 
-        // ==========================================
         // 2. DATA CONFIGURATIONS
-        // ==========================================
         UNIT_DATA['tick'] = { 
             size: 10, hp: 20, damage: 100, attackSpeed: 1, 
             baseSpeedMin: 2.2, baseSpeedMax: 2.8, 
@@ -26,34 +22,9 @@ export const DarkRitualsExpansion = {
             hp: 250, size: 22, territory: 0 
         };
 
-        // UI Buttons
-        game.uiActions['tick'] = { icon: '💣', name: 'Tick', cost: '30🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'tick'}) };
-        game.uiActions['extractor'] = { icon: '🛢️', name: 'Extract', cost: '100🎃', type: 'tool', val: 'extractor' };
-        game.uiActions['bloodlust'] = { icon: '🩸', name: 'Frenzy', cost: '60💧', type: 'tool', val: 'bloodlust' };
+        // Note: UI Buttons are handled centrally in UI.js!
 
-        // ==========================================
-        // 3. SPAWNING & SPELL LOGIC
-        // ==========================================
-        
-        // Spawn the Tick and apply your custom graphics!
-        game.bus.on('spawnSpider', (data) => {
-            if (data.role === 'tick') {
-                if (game.eco[data.team].pumpkins >= 30 && game.pop[data.team] < game.maxPop[data.team]) {
-                    game.eco[data.team].pumpkins -= 30;
-                    
-                    let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
-                    
-                    // FETCH YOUR SPRITE FROM THE RAM CACHE!
-                    s.sprite = game.assets.get(data.team === 'black' ? 'assets/tick_black.png' : 'assets/tick_red.png');
-                    s.imageLoaded = true; 
-                    
-                    game.addEntity(s);
-                    game.bus.emit('playSound', 'harvest'); 
-                }
-            }
-        });
-
-        // Bloodlust Spell Logic
+        // 3. SPELL LOGIC: BLOODLUST
         game.bus.on('castSpell', (data) => {
             if (data.type === 'bloodlust') {
                 if (game.eco[data.team].dew >= 60) {
@@ -73,13 +44,27 @@ export const DarkRitualsExpansion = {
                 }
             }
         });
+
+        // Spawn Tick Logic
+        game.bus.on('spawnSpider', (data) => {
+            if (data.role === 'tick') {
+                if (game.eco[data.team].pumpkins >= 30 && game.pop[data.team] < game.maxPop[data.team]) {
+                    game.eco[data.team].pumpkins -= 30;
+                    
+                    let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
+                    s.sprite = game.assets.get(data.team === 'black' ? 'assets/tick_black.png' : 'assets/tick_red.png');
+                    s.imageLoaded = true; 
+                    
+                    game.addEntity(s);
+                    game.bus.emit('playSound', 'harvest'); 
+                }
+            }
+        });
     },
 
     patch: (game) => {
         
-        // ==========================================
         // 4. UNIT AI & BUFFS
-        // ==========================================
         game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
             
             if (this.hasTrait('kamikaze')) {
@@ -123,14 +108,11 @@ export const DarkRitualsExpansion = {
             this.damage = originalDamage;
         });
 
-        // ==========================================
         // 5. EXTRACTOR LOGIC
-        // ==========================================
         game.expansions.patchClass(Structure, 'update', function(original, gameObj) {
             original.call(this, gameObj);
             
             if (this.type === 'extractor' && !this.isConstructing && this.hp > 0) {
-                // Generate 2 Dew every 3 seconds
                 if (gameObj.tick % 90 === 0) {
                     gameObj.eco[this.team].dew += 2;
                     gameObj.bus.emit('particles', {x: this.x, y: this.y - 20, color: '#00aaff', count: 3});
@@ -138,20 +120,15 @@ export const DarkRitualsExpansion = {
             }
         });
 
-        // ==========================================
         // 6. DRAWING INJECTIONS
-        // ==========================================
-        // Make sure the Extractor uses your new sprite!
         game.expansions.patchClass(Structure, 'draw', function(original, ctx) {
-            
             if (this.type === 'extractor' && !this.spriteLoaded && game.assets) {
                 this.sprite = game.assets.get(this.team === 'black' ? 'assets/extractor_black.png' : 'assets/extractor_red.png');
                 this.spriteLoaded = true;
             }
 
-            original.call(this, ctx); // Run standard structure drawing (handles health bars and construction rings!)
+            original.call(this, ctx); 
 
-            // If you still haven't drawn the images yet, this draws the canvas fallback
             if (this.type === 'extractor' && (!this.sprite || !this.sprite.complete || this.sprite.naturalHeight === 0)) {
                 ctx.save(); ctx.translate(this.x, this.y);
                 ctx.fillStyle = '#333'; ctx.fillRect(-15, -10, 30, 20);
