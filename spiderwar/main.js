@@ -31,7 +31,8 @@ import { ControlPointsExpansion } from './expansions/ControlPoints.js';
 import { NecromancyExpansion } from './expansions/Necromancy.js'; 
 import { TitansExpansion } from './expansions/Titans.js'; 
 import { BroodAmbushExpansion } from './expansions/BroodAmbush.js'; 
-import { FortressExpansion } from './expansions/Fortress.js';       
+import { FortressExpansion } from './expansions/Fortress.js';
+import { DarkRitualsExpansion } from './expansions/DarkRituals.js';
 
 // Controls, UI, & Systems
 import { AdvancedUnitControlExpansion, ConstructionExpansion } from './expansions/Controls.js';
@@ -64,6 +65,7 @@ const expansionManifest = [
     { name: 'ControlPoints',        module: ControlPointsExpansion },
     { name: 'CommanderSpells',      module: SpellExpansion },
     { name: 'Necromancy',           module: NecromancyExpansion },
+    { name: 'DarkRituals',          module: DarkRitualsExpansion },
     { name: 'Titans',               module: TitansExpansion },
     { name: 'BroodAmbush',          module: BroodAmbushExpansion },
     { name: 'Fortress',             module: FortressExpansion },
