@@ -77,6 +77,10 @@ export const AdvancedUnitControlExpansion = {
         
         game.canvas.addEventListener('mousedown', e => {
             startX = e.clientX; startY = e.clientY;
+            
+            // Record the tool state the exact moment the click starts
+            game.toolAtClickStart = game.activeTool; 
+
             if (e.button === 0 && e.shiftKey) { 
                 isDraggingBox = true;
                 game.dragBox = { x: startX, y: startY, w: 0, h: 0 };
@@ -100,6 +104,13 @@ export const AdvancedUnitControlExpansion = {
             const wasDraggingBox = isDraggingBox;
             isDraggingBox = false;
             
+            // If the user was placing a building or casting a spell, safely ignore this click 
+            // so we don't accidentally deselect their Queen/Hive!
+            if (game.toolAtClickStart !== 'select') {
+                game.dragBox = null;
+                return;
+            }
+
             // Prevent interaction if clicking on UI elements
             if (targetElem && targetElem.closest && (targetElem.closest('#structureModal') || targetElem.closest('#rtsUI') || targetElem.closest('#preGameUI'))) {
                 game.dragBox = null; return;
@@ -253,12 +264,14 @@ export const AdvancedUnitControlExpansion = {
         
         // Touch events explicitly verify 1 finger to prevent pinch-zoom commands from firing moves
         game.canvas.addEventListener('touchstart', e => { 
-            if(e.touches.length === 1) { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }
+            if(e.touches.length === 1) { 
+                startX = e.touches[0].clientX; 
+                startY = e.touches[0].clientY; 
+                
+                // Record for mobile touches too!
+                game.toolAtClickStart = game.activeTool; 
+            }
         }, {passive: false});
-        
-        window.addEventListener('touchend', e => { 
-            if(e.changedTouches.length === 1) handleRTSClick(e, e.changedTouches[0].clientX, e.changedTouches[0].clientY, e.target, true); 
-        });
     },
 
     patch: (game) => {
