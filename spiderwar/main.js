@@ -32,7 +32,8 @@ import { NecromancyExpansion } from './expansions/Necromancy.js';
 import { DarkRitualsExpansion } from './expansions/DarkRituals.js';
 import { SpectralSwarmExpansion } from './expansions/SpectralSwarm.js'; 
 import { CursedRelicsExpansion } from './expansions/CursedRelics.js'; 
-import { ToxicPlagueExpansion } from './expansions/ToxicPlague.js'; // <-- ADDED TOXIC PLAGUE IMPORT
+import { ToxicPlagueExpansion } from './expansions/ToxicPlague.js'; 
+import { VoidWhispersExpansion } from './expansions/VoidWhispers.js'; // <-- ADDED VOID WHISPERS IMPORT
 import { TitansExpansion } from './expansions/Titans.js'; 
 import { BroodAmbushExpansion } from './expansions/BroodAmbush.js'; 
 import { FortressExpansion } from './expansions/Fortress.js';
@@ -71,7 +72,8 @@ const expansionManifest = [
     { name: 'DarkRituals',          module: DarkRitualsExpansion },
     { name: 'SpectralSwarm',        module: SpectralSwarmExpansion }, 
     { name: 'CursedRelics',         module: CursedRelicsExpansion }, 
-    { name: 'ToxicPlague',          module: ToxicPlagueExpansion }, // <-- ADDED TO MANIFEST
+    { name: 'ToxicPlague',          module: ToxicPlagueExpansion }, 
+    { name: 'VoidWhispers',         module: VoidWhispersExpansion }, // <-- ADDED TO MANIFEST
     { name: 'Titans',               module: TitansExpansion },
     { name: 'BroodAmbush',          module: BroodAmbushExpansion },
     { name: 'Fortress',             module: FortressExpansion },
