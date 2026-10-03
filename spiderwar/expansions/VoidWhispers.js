@@ -104,12 +104,9 @@ export const VoidWhispersExpansion = {
             hp: 500, size: 35, territory: 0 
         };
 
-        // 3. UI BUTTONS
-        game.uiActions['voidweaver'] = { icon: '👁️', name: 'Weaver', cost: '100🎃30💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'voidweaver'}) };
-        game.uiActions['maw'] = { icon: '🕳️', name: 'The Maw', cost: '150🎃', type: 'tool', val: 'maw' };
-        game.uiActions['vortex'] = { icon: '🌀', name: 'Vortex', cost: '90💧', type: 'tool', val: 'vortex' };
+        // Note: UI Buttons are handled centrally in UI.js!
 
-        // 4. SPELL LOGIC: VORTEX
+        // 3. SPELL LOGIC: VORTEX
         game.bus.on('castSpell', (data) => {
             if (data.type === 'vortex') {
                 if (game.eco[data.team].dew >= 90) {
@@ -144,7 +141,7 @@ export const VoidWhispersExpansion = {
 
     patch: (game) => {
         
-        // 5. UNIT AI: GRAVITY PULL
+        // 4. UNIT AI: GRAVITY PULL
         game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
             
             // --- TRAIT: GRAVITY PULL ---
@@ -186,7 +183,7 @@ export const VoidWhispersExpansion = {
             original.call(this, gameObj); // Run normal AI (handles moving into range)
         });
 
-        // 6. STRUCTURE AI: THE MAW
+        // 5. STRUCTURE AI: THE MAW
         const MAW_PULL_RADIUS = 200;
         const MAW_PULL_RADIUS_SQ = 40000;
         const MAW_BITE_RADIUS_SQ = 900; // 30px (Right in the center)
@@ -233,7 +230,7 @@ export const VoidWhispersExpansion = {
             }
         });
 
-        // 7. DRAWING MODIFICATIONS
+        // 6. DRAWING MODIFICATIONS
         game.expansions.patchClass(Spider, 'draw', function(original, ctx) {
             // Draw Voidweaver Tractor Beam
             if (this.hasTrait('gravity_pull') && this.beamVisual && this.beamVisual.timer > 0) {
