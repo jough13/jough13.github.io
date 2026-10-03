@@ -87,12 +87,9 @@ export const ToxicPlagueExpansion = {
             hp: 300, size: 26, territory: 0 
         };
 
-        // 3. UI BUTTONS (Master Dict is handled in UI.js)
-        game.uiActions['defiler'] = { icon: '🦠', name: 'Defiler', cost: '120🎃40💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'defiler'}) };
-        game.uiActions['incubator'] = { icon: '🍄', name: 'Incubate', cost: '200🎃', type: 'tool', val: 'incubator' };
-        game.uiActions['contagion'] = { icon: '☣️', name: 'Contagion', cost: '80💧', type: 'tool', val: 'contagion' };
+        // Note: UI Buttons are handled centrally in UI.js!
 
-        // 4. SPELL LOGIC: CONTAGION
+        // 3. SPELL LOGIC: CONTAGION
         game.bus.on('castSpell', (data) => {
             if (data.type === 'contagion') {
                 if (game.eco[data.team].dew >= 80) {
@@ -152,7 +149,7 @@ export const ToxicPlagueExpansion = {
 
     patch: (game) => {
         
-        // 5. UNIT AI: TOXIC TRAIL & CONTAGION DEBUFF
+        // 4. UNIT AI: TOXIC TRAIL & CONTAGION DEBUFF
         game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
             
             // --- TRAIT: TOXIC TRAIL ---
@@ -221,7 +218,7 @@ export const ToxicPlagueExpansion = {
             original.call(this, gameObj); // Run normal AI
         });
 
-        // 6. STRUCTURE AI: THE INCUBATOR
+        // 5. STRUCTURE AI: THE INCUBATOR
         game.expansions.patchClass(Structure, 'update', function(original, gameObj) {
             original.call(this, gameObj);
             
@@ -235,7 +232,7 @@ export const ToxicPlagueExpansion = {
             }
         });
 
-        // 7. DRAWING LOGIC: INFECTED AURA
+        // 6. DRAWING LOGIC: INFECTED AURA
         game.expansions.patchClass(Spider, 'draw', function(original, ctx) {
             
             // Draw glowing toxic aura under infected units
