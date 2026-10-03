@@ -29,10 +29,11 @@ import { HazardsExpansion } from './expansions/Hazards.js';
 import { DayNightExpansion } from './expansions/DayNight.js';
 import { ControlPointsExpansion } from './expansions/ControlPoints.js';
 import { NecromancyExpansion } from './expansions/Necromancy.js'; 
+import { DarkRitualsExpansion } from './expansions/DarkRituals.js';
+import { SpectralSwarmExpansion } from './expansions/SpectralSwarm.js'; // <-- ADDED SPECTRAL SWARM IMPORT
 import { TitansExpansion } from './expansions/Titans.js'; 
 import { BroodAmbushExpansion } from './expansions/BroodAmbush.js'; 
 import { FortressExpansion } from './expansions/Fortress.js';
-import { DarkRitualsExpansion } from './expansions/DarkRituals.js';
 
 // Controls, UI, & Systems
 import { AdvancedUnitControlExpansion, ConstructionExpansion } from './expansions/Controls.js';
@@ -66,6 +67,7 @@ const expansionManifest = [
     { name: 'CommanderSpells',      module: SpellExpansion },
     { name: 'Necromancy',           module: NecromancyExpansion },
     { name: 'DarkRituals',          module: DarkRitualsExpansion },
+    { name: 'SpectralSwarm',        module: SpectralSwarmExpansion }, // <-- ADDED SPECTRAL SWARM TO MANIFEST
     { name: 'Titans',               module: TitansExpansion },
     { name: 'BroodAmbush',          module: BroodAmbushExpansion },
     { name: 'Fortress',             module: FortressExpansion },
