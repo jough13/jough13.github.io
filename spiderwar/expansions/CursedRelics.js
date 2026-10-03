@@ -22,12 +22,9 @@ export const CursedRelicsExpansion = {
             hp: 350, size: 20, territory: 0 
         };
 
-        // 3. UI BUTTONS (Master Dict is handled in UI.js)
-        game.uiActions['wraith'] = { icon: '🗡️', name: 'Wraith', cost: '80🎃30💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'wraith'}) };
-        game.uiActions['obelisk'] = { icon: '⚡', name: 'Obelisk', cost: '150🎃80💧', type: 'tool', val: 'obelisk' };
-        game.uiActions['eclipse'] = { icon: '🌑', name: 'Eclipse', cost: '150💧', type: 'tool', val: 'eclipse' };
+        // Note: UI Buttons are handled centrally in UI.js!
 
-        // 4. SPELL LOGIC: ECLIPSE (Time Manipulation)
+        // 3. SPELL LOGIC: ECLIPSE (Time Manipulation)
         game.bus.on('castSpell', (data) => {
             if (data.type === 'eclipse') {
                 if (game.eco[data.team].dew >= 150) {
@@ -71,7 +68,7 @@ export const CursedRelicsExpansion = {
 
     patch: (game) => {
         
-        // 5. UNIT AI: BLINK STRIKE
+        // 4. UNIT AI: BLINK STRIKE
         game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
             
             if (this.hasTrait('blink_strike')) {
@@ -102,7 +99,7 @@ export const CursedRelicsExpansion = {
             original.call(this, gameObj); // Run normal AI afterward
         });
 
-        // 6. STRUCTURE AI: THE OBELISK (Tesla Coil)
+        // 5. STRUCTURE AI: THE OBELISK (Tesla Coil)
         game.expansions.patchClass(Structure, 'update', function(original, gameObj) {
             original.call(this, gameObj);
             
@@ -127,7 +124,7 @@ export const CursedRelicsExpansion = {
             }
         });
 
-        // 7. DRAWING LOGIC: JAGGED LIGHTNING
+        // 6. DRAWING LOGIC: JAGGED LIGHTNING
         game.expansions.patchClass(Structure, 'draw', function(original, ctx) {
             original.call(this, ctx); // Draw base structure first
             
