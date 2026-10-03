@@ -15,19 +15,16 @@ export const SpectralSwarmExpansion = {
         UNIT_DATA['phantom'] = { 
             size: 14, hp: 80, damage: 15, attackSpeed: 30, 
             baseSpeedMin: 1.5, baseSpeedMax: 1.9, 
-            traits: ['ethereal'] // Custom trait for Life Drain
+            traits: ['ethereal'] 
         };
 
         STRUCTURE_DATA['monolith'] = { 
             hp: 400, size: 28, territory: 0 
         };
 
-        // 3. UI BUTTONS
-        game.uiActions['phantom'] = { icon: '👻', name: 'Phantom', cost: '60🎃20💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'phantom'}) };
-        game.uiActions['monolith'] = { icon: '🪦', name: 'Monolith', cost: '150🎃50💧', type: 'tool', val: 'monolith' };
-        game.uiActions['paralyze'] = { icon: '❄️', name: 'Paralyze', cost: '75💧', type: 'tool', val: 'paralyze' };
+        // Note: UI Buttons are handled centrally in UI.js!
 
-        // 4. SPELL LOGIC: PARALYZE
+        // 3. SPELL LOGIC: PARALYZE
         game.bus.on('castSpell', (data) => {
             if (data.type === 'paralyze') {
                 if (game.eco[data.team].dew >= 75) {
@@ -40,10 +37,9 @@ export const SpectralSwarmExpansion = {
                     
                     for (let i = 0; i < game.entities.length; i++) {
                         let e = game.entities[i];
-                        // Target LIVING ENEMIES
                         if (e.team && e.team !== data.team && e.hp > 0 && (e instanceof Spider || e.constructor.name === 'CentipedeBoss')) {
                             if (MathUtils.distSq(e.x, e.y, data.x, data.y) < radiusSq) {
-                                e.stunTimer = 150; // 5 seconds of stun (30 ticks * 5)
+                                e.stunTimer = 150; // 5 seconds of stun
                                 game.bus.emit('particles', {x: e.x, y: e.y, color: '#00ffff', count: 5});
                             }
                         }
@@ -72,31 +68,26 @@ export const SpectralSwarmExpansion = {
 
     patch: (game) => {
         
-        // 5. UNIT AI: PARALYSIS & LIFE DRAIN
+        // 4. UNIT AI: PARALYSIS & LIFE DRAIN
         game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
             
             // --- DEBUFF: STUNNED ---
             if (this.stunTimer > 0) {
                 this.stunTimer--;
-                // Emit freeze particles while stunned
                 if (gameObj.tick % 10 === 0) gameObj.bus.emit('particles', {x: this.x, y: this.y - 10, color: '#00ffff', count: 1});
-                
-                // Return immediately! This completely bypasses their AI, freezing them in place!
                 return; 
             }
 
             // --- TRAIT: ETHEREAL (Life Drain) ---
             if (this.hasTrait('ethereal') && gameObj.tick % 30 === 0) {
-                // Every 1 second, drain 2 HP from all nearby enemies and heal self
                 let healed = false;
                 for (let i = 0; i < gameObj.entities.length; i++) {
                     let e = gameObj.entities[i];
                     if (e.team && e.team !== this.team && e.hp > 0) {
-                        if (MathUtils.distSq(this.x, this.y, e.x, e.y) < 10000) { // 100px range
+                        if (MathUtils.distSq(this.x, this.y, e.x, e.y) < 10000) { 
                             e.hp -= 2;
                             this.hp = Math.min(this.maxHp, this.hp + 2);
                             healed = true;
-                            // Visual soul-leech effect
                             gameObj.bus.emit('particles', {x: e.x, y: e.y, color: '#00ffff', count: 1});
                         }
                     }
@@ -107,7 +98,7 @@ export const SpectralSwarmExpansion = {
             original.call(this, gameObj); // Run normal AI
         });
 
-        // 6. STRUCTURE AI: THE MONOLITH STEALTH FIELD
+        // 5. STRUCTURE AI: THE MONOLITH STEALTH FIELD
         const STEALTH_RADIUS = 250;
         const STEALTH_RADIUS_SQ = STEALTH_RADIUS * STEALTH_RADIUS;
 
@@ -115,15 +106,13 @@ export const SpectralSwarmExpansion = {
             original.call(this, gameObj);
             
             if (this.type === 'monolith' && !this.isConstructing && this.hp > 0) {
-                // Pulse every 5 frames to keep nearby allies cloaked
                 if (gameObj.tick % 5 === 0) {
                     for (let i = 0; i < gameObj.entities.length; i++) {
                         let e = gameObj.entities[i];
-                        // Only cloak friendly units (Spiders)
                         if (e.team === this.team && e.hp > 0 && e instanceof Spider) {
                             if (MathUtils.distSq(this.x, this.y, e.x, e.y) < STEALTH_RADIUS_SQ) {
                                 e.isCloaked = true;
-                                e.stealthAuraTimer = 10; // Gives them 10 frames of stealth
+                                e.stealthAuraTimer = 10; 
                             }
                         }
                     }
@@ -131,22 +120,19 @@ export const SpectralSwarmExpansion = {
             }
         });
 
-        // 7. DRAWING MODIFICATIONS
+        // 6. DRAWING MODIFICATIONS
         game.expansions.patchClass(Spider, 'draw', function(original, ctx) {
             
-            // Handle Monolith Stealth Transparency
             if (this.stealthAuraTimer > 0) {
                 this.stealthAuraTimer--;
-                ctx.globalAlpha = 0.35; // Ghostly transparent
-                if (this.stealthAuraTimer <= 0) this.isCloaked = false; // Uncloak when leaving aura
+                ctx.globalAlpha = 0.35; 
+                if (this.stealthAuraTimer <= 0) this.isCloaked = false; 
             }
             
-            // Phantoms are naturally semi-transparent
             if (this.role === 'phantom' && ctx.globalAlpha === 1.0) ctx.globalAlpha = 0.7;
 
             original.call(this, ctx);
             
-            // Draw an icy/webbed cage over stunned units
             if (this.stunTimer > 0) {
                 ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 2;
                 ctx.beginPath();
@@ -154,11 +140,10 @@ export const SpectralSwarmExpansion = {
                 ctx.moveTo(this.x + this.size, this.y - this.size); ctx.lineTo(this.x - this.size, this.y + this.size);
                 ctx.stroke();
             }
-            ctx.globalAlpha = 1.0; // Reset
+            ctx.globalAlpha = 1.0;
         });
         
         game.expansions.patchClass(Structure, 'draw', function(original, ctx) {
-            // Draw the Stealth Field Aura under the Monolith
             if (this.type === 'monolith' && !this.isConstructing && this.hp > 0) {
                 ctx.save();
                 ctx.translate(this.x, this.y);
@@ -170,7 +155,6 @@ export const SpectralSwarmExpansion = {
 
             original.call(this, ctx);
 
-            // Chunk fallback for testing before you add art
             if (this.type === 'monolith' && (!this.sprite || !this.sprite.complete || this.sprite.naturalHeight === 0)) {
                 ctx.save(); ctx.translate(this.x, this.y);
                 ctx.fillStyle = '#222'; ctx.beginPath(); ctx.moveTo(-15, 20); ctx.lineTo(15, 20); ctx.lineTo(5, -30); ctx.lineTo(-5, -30); ctx.fill();
