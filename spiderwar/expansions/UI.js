@@ -347,29 +347,38 @@ export const ContextUIExpansion = {
 
         // Master UI Buttons Dictionary
         game.uiActions = {
+            // Base Buildings
             'nest':   { icon: '🕸️', name: 'Nest', cost: '150🎃', type: 'tool', val: 'nest' },
             'eggsac': { icon: '🥚', name: 'Sac', cost: '50🎃', type: 'tool', val: 'eggsac' },
             'pylon':  { icon: '🗼', name: 'Pylon', cost: '25🎃', type: 'tool', val: 'pylon' },
             'turret': { icon: '🔫', name: 'Turret', cost: '100🎃', type: 'tool', val: 'turret' },
             'wall':   { icon: '🧱', name: 'Wall', cost: '25🎃', type: 'tool', val: 'wall' },
-            'extractor': { icon: '🛢️', name: 'Extract', cost: '100🎃', type: 'tool', val: 'extractor' }, // Dark Rituals Expansion
+            
+            // Expansion Buildings
+            'extractor': { icon: '🛢️', name: 'Extract', cost: '100🎃', type: 'tool', val: 'extractor' }, // Dark Rituals
             'mortar': { icon: '🌋', name: 'Mortar', cost: '200🎃50💧', type: 'tool', val: 'mortar' },
             'shrine': { icon: '⛲', name: 'Shrine', cost: '150🎃100💧', type: 'tool', val: 'shrine' },
+            'monolith': { icon: '🪦', name: 'Monolith', cost: '150🎃50💧', type: 'tool', val: 'monolith' }, // Spectral Swarm
             
+            // Spells
             'strike': { icon: '☠️', name: 'Strike', cost: '50💧', type: 'tool', val: 'venomStrike' },
             'trap':   { icon: '🕸️', name: 'Trap', cost: '25💧', type: 'tool', val: 'silkTrap' },
             'raise':  { icon: '🧟', name: 'Raise', cost: '40💧', type: 'tool', val: 'reanimate' },
             'ambush': { icon: '🥚', name: 'Ambush', cost: '50💧', type: 'tool', val: 'ambush' }, 
-            'bloodlust': { icon: '🩸', name: 'Frenzy', cost: '60💧', type: 'tool', val: 'bloodlust' }, // Dark Rituals Expansion
+            'bloodlust': { icon: '🩸', name: 'Frenzy', cost: '60💧', type: 'tool', val: 'bloodlust' }, // Dark Rituals
+            'paralyze': { icon: '❄️', name: 'Paralyze', cost: '75💧', type: 'tool', val: 'paralyze' }, // Spectral Swarm
             
+            // Units
             'harv':   { icon: '🕷️', name: 'Harvester', cost: '10🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'harvester'}) },
             'sold':   { icon: '🐜', name: 'Soldier', cost: '25🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'soldier'}) },
-            'tick':   { icon: '💣', name: 'Tick', cost: '30🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'tick'}) }, // Dark Rituals Expansion
+            'tick':   { icon: '💣', name: 'Tick', cost: '30🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'tick'}) }, // Dark Rituals
             'spitter': { icon: '💦', name: 'Spitter', cost: '40🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'spitter'}) },
+            'phantom': { icon: '👻', name: 'Phantom', cost: '60🎃20💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'phantom'}) }, // Spectral Swarm
             'tank':    { icon: '🪲', name: 'Tarantula', cost: '75🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'tarantula'}) },
             'widow':   { icon: '👻', name: 'Widow', cost: '150🎃50💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'widow'}) },
             'goliath': { icon: '🔥', name: 'Goliath', cost: '400🎃150💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'goliath'}) },
             
+            // Utility Commands
             'tech':   { icon: '🧬', name: 'Evolve', cost: '250🎃', type: 'instant', fn: (t) => { if(game.eco.black.pumpkins>=250){ game.eco.black.pumpkins-=250; game.techLevel.black++; game.bus.emit('playSound','spell');} } },
             'cancel': { icon: '🛑', name: 'Stop', cost: '', type: 'instant', fn: () => { 
                 game.activeTool = 'select'; 
@@ -463,8 +472,8 @@ export const ContextUIExpansion = {
                     if (unit instanceof Queen) {
                         nameEl.innerText = "Obsidian Queen";
                         addButton('nest'); addButton('eggsac'); addButton('pylon'); 
-                        addButton('turret'); addButton('wall'); addButton('extractor'); // Added Extractor to Queen Build Menu
-                        addButton('mortar'); addButton('shrine');
+                        addButton('turret'); addButton('wall'); addButton('extractor'); 
+                        addButton('mortar'); addButton('shrine'); addButton('monolith'); // Added Monolith to Queen Build Menu
                         addButton('cancel');
                     } else {
                         let roleName = unit.role.charAt(0).toUpperCase() + unit.role.slice(1);
@@ -477,17 +486,17 @@ export const ContextUIExpansion = {
                     portrait.src = this.selectedStructure.sprite.src || '';
                     nameEl.innerText = this.selectedStructure.type === 'nest' ? `Main Nest (Lv ${this.techLevel.black})` : this.selectedStructure.type.toUpperCase();
                     if (this.selectedStructure.type === 'nest' && this.selectedStructure.team === 'black') {
-                        addButton('harv'); addButton('sold'); addButton('tick'); // Added Tick to Nest Spawning
-                        addButton('spitter'); addButton('tank'); 
-                        addButton('widow'); addButton('goliath'); 
-                        addButton('tech');
+                        addButton('harv'); addButton('sold'); addButton('tick'); 
+                        addButton('spitter'); addButton('phantom'); // Added Phantom to Nest Spawning
+                        addButton('tank'); addButton('widow'); 
+                        addButton('goliath'); addButton('tech');
                     }
                 } 
                 else {
                     portrait.src = 'assets/nest_black.png'; 
                     nameEl.innerText = "Obsidian Hive";
                     addButton('strike'); addButton('trap'); addButton('raise'); 
-                    addButton('ambush'); addButton('bloodlust'); // Added Bloodlust to Global Spells
+                    addButton('ambush'); addButton('bloodlust'); addButton('paralyze'); // Added Paralyze to Global Spells
                     addButton('cancel');
                 }
             }
