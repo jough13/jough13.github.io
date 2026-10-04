@@ -16,7 +16,7 @@ import { DecorExpansion } from './expansions/Decor.js';
 import { ParticleExpansion } from './expansions/Particles.js';
 import { AdvancedBaseExpansion } from './expansions/AdvancedBase.js';
 import { AIDirectorExpansion } from './expansions/AIDirector.js'; 
-import { TraitManagerExpansion } from './expansions/TraitManager.js'; // <-- ADDED TRAIT MANAGER IMPORT
+import { TraitManagerExpansion } from './expansions/TraitManager.js'; 
 import { GodUnitExpansion } from './expansions/Boss.js';
 
 // Core AI & Networks
@@ -60,7 +60,7 @@ const expansionManifest = [
     
     { name: 'AdvancedBaseBuilder',  module: AdvancedBaseExpansion },
     { name: 'AIDirector',           module: AIDirectorExpansion }, 
-    { name: 'TraitManager',         module: TraitManagerExpansion }, // <-- ADDED TO MANIFEST
+    { name: 'TraitManager',         module: TraitManagerExpansion }, 
     { name: 'CentipedeBoss',        module: GodUnitExpansion },
     { name: 'QueenSystem',          module: QueenExpansion },
     { name: 'CombatAndHarvesterAI', module: CombatAndHarvesterExpansion },
@@ -104,9 +104,19 @@ const expansionManifest = [
 // instantly without waiting for heavy video/image assets to finish downloading.
 document.addEventListener('DOMContentLoaded', () => {
     
-    // Developer Lore & Initialization Logs
+    // 1. PERFORMANCE TRACKING
+    const bootStartTime = performance.now();
+
+    // 2. GLOBAL CONFIGURATION (For future settings, options, and mods)
+    window.SpiderWarsConfig = window.SpiderWarsConfig || {
+        version: '1.1.0',
+        debugMode: false,
+        cheatsEnabled: false
+    };
+    
+    // 3. DEVELOPER LORE & INIT LOGS
     console.log("%c🕸️ THE OBSIDIAN BROOD AWAKENS 🕸️", "color: #aa00ff; font-size: 18px; font-weight: bold; text-shadow: 1px 1px 0px #000;");
-    console.log("%cSummoning the SpiderWars! Engine v1.0...", "color: #ff9d00; font-family: monospace;");
+    console.log(`%cSummoning the SpiderWars! Engine v${window.SpiderWarsConfig.version}...`, "color: #ff9d00; font-family: monospace;");
 
     const game = new Game();
     
@@ -114,13 +124,17 @@ document.addEventListener('DOMContentLoaded', () => {
     window.SpiderWarsEngine = game;
 
     let loadedCount = 0;
+    let failedCount = 0;
 
     // EXPANDABILITY: Combine internal manifest with any externally injected mods via script tags
     // Ensure window.SpiderWarsMods is an actual iterable array before spreading
     const externalMods = Array.isArray(window.SpiderWarsMods) ? window.SpiderWarsMods : [];
     const fullManifest = [...expansionManifest, ...externalMods];
 
-    // Robust loading loop
+    // UI POLISH: Group console logs so the DevTools aren't spammed with dozens of lines!
+    console.groupCollapsed(`%c📦 Weaving ${fullManifest.length} Expansions...`, "color: #00aaff; font-weight: bold;");
+
+    // 4. ROBUST LOADING LOOP
     for (const exp of fullManifest) {
         try {
             // SAFETY FIX: Prevent the engine from crashing blindly if a module import failed/typo'd
@@ -132,18 +146,29 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error(`%c[Engine Error] Failed to weave expansion into the web: ${exp?.name || 'Unknown'}`, "color: #ff0000; font-weight: bold;");
             console.error(error);
+            failedCount++;
             // Engine continues loading other modules gracefully!
         }
     }
-
-    console.log(`%c[Engine] The Web is woven. Loaded ${loadedCount}/${fullManifest.length} Expansions successfully.`, "color: #00ff00; font-family: monospace;");
     
-    // EXPANDABILITY: Broadcast a global event so external scripts/mods know the engine is fully ready to accept commands
+    console.groupEnd(); // Close the console group folder
+
+    const bootTime = (performance.now() - bootStartTime).toFixed(2);
+
+    if (failedCount > 0) {
+        console.warn(`%c[Engine Warning] The Web is torn. ${failedCount} expansions failed to load.`, "color: #ffaa00; font-family: monospace;");
+    } else {
+        console.log(`%c[Engine] The Web is perfectly woven. Loaded ${loadedCount} Expansions in ${bootTime}ms.`, "color: #00ff00; font-family: monospace;");
+    }
+    
+    // 5. EVENT BROADCAST: Tell external scripts/mods the engine is fully ready to accept commands
     window.dispatchEvent(new CustomEvent('SpiderWarsReady', { 
         detail: { 
             game: window.SpiderWarsEngine, 
+            config: window.SpiderWarsConfig,
             loadedCount: loadedCount, 
-            total: fullManifest.length 
+            failedCount: failedCount,
+            bootTimeMs: bootTime
         } 
     }));
 });
