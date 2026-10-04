@@ -99,7 +99,14 @@ export class VenusFlytrap {
         const activeSprite = isOpen ? this.spriteOpen : this.spriteClosed;
 
         if (activeSprite && activeSprite.complete && activeSprite.naturalHeight !== 0) {
-            ctx.drawImage(activeSprite, -this.size, -this.size, this.size*2, this.size*2);
+            
+            // ASPECT RATIO FIX: Calculate dynamic width based on the actual image proportions!
+            const aspect = activeSprite.naturalWidth / activeSprite.naturalHeight;
+            const drawH = this.size * 2;
+            const drawW = drawH * aspect;
+            
+            ctx.drawImage(activeSprite, -drawW / 2, -drawH / 2, drawW, drawH);
+            
         } else {
             // Fallback drawing if sprites are missing
             ctx.fillStyle = isOpen ? '#55ff55' : '#335533';
