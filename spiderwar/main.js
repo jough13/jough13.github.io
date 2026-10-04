@@ -21,6 +21,7 @@ import { GodUnitExpansion } from './expansions/Boss.js';
 import { QueenExpansion } from './expansions/Queen.js';
 import { CombatAndHarvesterExpansion } from './expansions/CombatAI.js';
 import { SilkNetworkExpansion, WebNetworkExpansion } from './expansions/Networks.js';
+import { SwarmDynamicsExpansion } from './expansions/SwarmDynamics.js'; // <-- ADDED SWARM PHYSICS IMPORT
 
 // Mechanics & Units
 import { SpellExpansion } from './expansions/Spells.js';
@@ -33,7 +34,7 @@ import { DarkRitualsExpansion } from './expansions/DarkRituals.js';
 import { SpectralSwarmExpansion } from './expansions/SpectralSwarm.js'; 
 import { CursedRelicsExpansion } from './expansions/CursedRelics.js'; 
 import { ToxicPlagueExpansion } from './expansions/ToxicPlague.js'; 
-import { VoidWhispersExpansion } from './expansions/VoidWhispers.js'; // <-- ADDED VOID WHISPERS IMPORT
+import { VoidWhispersExpansion } from './expansions/VoidWhispers.js'; 
 import { TitansExpansion } from './expansions/Titans.js'; 
 import { BroodAmbushExpansion } from './expansions/BroodAmbush.js'; 
 import { FortressExpansion } from './expansions/Fortress.js';
@@ -73,11 +74,12 @@ const expansionManifest = [
     { name: 'SpectralSwarm',        module: SpectralSwarmExpansion }, 
     { name: 'CursedRelics',         module: CursedRelicsExpansion }, 
     { name: 'ToxicPlague',          module: ToxicPlagueExpansion }, 
-    { name: 'VoidWhispers',         module: VoidWhispersExpansion }, // <-- ADDED TO MANIFEST
+    { name: 'VoidWhispers',         module: VoidWhispersExpansion }, 
     { name: 'Titans',               module: TitansExpansion },
     { name: 'BroodAmbush',          module: BroodAmbushExpansion },
     { name: 'Fortress',             module: FortressExpansion },
     
+    { name: 'SwarmDynamics',        module: SwarmDynamicsExpansion }, // <-- ADDED SWARM PHYSICS TO MANIFEST
     { name: 'MinimapUI',            module: MinimapExpansion },
     { name: 'AdvancedUnitControl',  module: AdvancedUnitControlExpansion },
     { name: 'ConstructionLogic',    module: ConstructionExpansion },
