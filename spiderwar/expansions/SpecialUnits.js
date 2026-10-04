@@ -1,5 +1,5 @@
 // expansions/SpecialUnits.js
-import { Spider, Projectile, MathUtils, UNIT_DATA, SPIDER_STATE } from '../game.js';
+import { Spider, Projectile, MathUtils, UNIT_DATA } from '../game.js';
 
 // ==========================================
 // 1. CONFIGURATION & BALANCING
@@ -26,7 +26,7 @@ export const SpecialUnitsExpansion = {
         game.assets.register('assets/tarantula_black.png');
         game.assets.register('assets/tarantula_red.png');
 
-        // --- PILLAR 3: TRAIT ASSIGNMENT ---
+        // --- 2. DATA CONFIGURATIONS ---
         UNIT_DATA['spitter'] = { 
             size: SPECIAL_CONFIG.spitter.size, hp: SPECIAL_CONFIG.spitter.hp, 
             damage: SPECIAL_CONFIG.spitter.damage, attackSpeed: SPECIAL_CONFIG.spitter.attackSpeed, 
@@ -41,27 +41,113 @@ export const SpecialUnitsExpansion = {
             traits: ['melee', 'escort'] // Heavy melee guard
         };
 
+        // ==========================================
+        // 3. ECS TRAIT REGISTRATION
+        // ==========================================
+        game.registerTrait('ranged_attacker', {
+            update: (entity, gameObj) => {
+                const techLvl = gameObj.techLevel[entity.team] || 0; 
+                const currentDamage = entity.damage + (techLvl * 5); 
+                
+                // Environmental and magical speed modifiers
+                const terrain = gameObj.getTerrainAt(entity.x, entity.y); 
+                let tMod = (terrain === 'water') ? 0.05 : ((terrain === 'grass') ? 1.3 : 1.0);
+                
+                // Safe fallback for buildings that might get this trait later
+                let currentSpeed = ((entity.baseSpeed || 0) + (techLvl * 0.15)) * tMod;
+                if (entity.isSlowed) currentSpeed *= 0.3;
+                entity.isSlowed = false; // Reset trap debuff
+
+                // Detect range based on unit's configured range, plus a little buffer
+                const detectRadius = (entity.range || 200) + 50 + (techLvl * 10);
+                let nearestEnemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, detectRadius);
+
+                // COMBAT OVERRIDE: Prioritize shooting over everything else!
+                if (nearestEnemy) {
+                    entity.state = 1; // SPIDER_STATE.COMBAT
+                    entity.angle = Math.atan2(nearestEnemy.y - entity.y, nearestEnemy.x - entity.x);
+                    const distSq = MathUtils.distSq(entity.x, entity.y, nearestEnemy.x, nearestEnemy.y);
+                    
+                    const effectiveRangeSq = entity.rangeSq || 40000;
+
+                    if (distSq > effectiveRangeSq && currentSpeed > 0) {
+                        // Chase until in range (if it's a mobile unit)
+                        entity.x += Math.cos(entity.angle) * currentSpeed; 
+                        entity.y += Math.sin(entity.angle) * currentSpeed;
+                    } else {
+                        // In range, open fire!
+                        entity.cooldown = (entity.cooldown || 0) - 1;
+                        if (entity.cooldown <= 0) {
+                            gameObj.addEntity(new Projectile(entity.x, entity.y, nearestEnemy, currentDamage, entity.team));
+                            gameObj.bus.emit('playSound', 'shoot');
+                            
+                            // Ranged Recoil Effect (only for mobile units)
+                            if (currentSpeed > 0) {
+                                entity.x -= Math.cos(entity.angle) * 4; 
+                                entity.y -= Math.sin(entity.angle) * 4; 
+                            }
+                            
+                            entity.cooldown = entity.attackSpeed || 45;
+                        }
+                    }
+                    return true; // RETURN TRUE: Prevent standard melee AI from running
+                }
+
+                // MANUAL MOVEMENT OVERRIDE: 
+                // If the ranged unit has no enemies in range, but is under player command, move there!
+                if (entity.isManual && entity.commandTarget && currentSpeed > 0) {
+                    const dx = entity.commandTarget.x - entity.x; 
+                    const dy = entity.commandTarget.y - entity.y;
+                    
+                    if (MathUtils.distSq(0, 0, dx, dy) > 225) { 
+                        const targetAngle = Math.atan2(dy, dx);
+                        
+                        // Smooth rotation
+                        let diff = targetAngle - entity.angle;
+                        while (diff > Math.PI) diff -= TWO_PI;
+                        while (diff < -Math.PI) diff += TWO_PI;
+                        entity.angle += (diff * 0.15); 
+                        
+                        entity.x += Math.cos(entity.angle) * currentSpeed; 
+                        entity.y += Math.sin(entity.angle) * currentSpeed;
+                        
+                        // Clamp manual movement so they don't wander off the map!
+                        const bnd = entity.size * 2;
+                        entity.x = MathUtils.clamp(entity.x, bnd, gameObj.world.width - bnd);
+                        entity.y = MathUtils.clamp(entity.y, bnd, gameObj.world.height - bnd);
+
+                    } else {
+                        entity.commandTarget = null; // Target reached
+                    }
+                    return true; // RETURN TRUE: Prevent standard melee AI from running
+                }
+
+                return false; // RETURN FALSE: Let normal AI handle idle behavior (Gathering/Escorting)
+            }
+        });
+
+        // --- 4. SPAWNING LOGIC ---
         game.bus.on('spawnSpider', (data) => {
-            // PERFORMANCE FIX: Pull directly from config instead of recreating an object in memory every spawn
             const config = SPECIAL_CONFIG[data.role];
             
             if (config && config.cost !== undefined) {
-                // SAFETY FIX: Optional chaining on game.eco[data.team]
                 if (game.eco[data.team]?.pumpkins >= config.cost && game.pop[data.team] < game.maxPop[data.team]) {
                     game.eco[data.team].pumpkins -= config.cost;
                     
                     let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
                     
-                    // --- 2. INSTANT RAM CACHE RETRIEVAL ---
                     if (data.role === 'spitter') {
                         s.sprite = game.assets.get(data.team === 'black' ? 'assets/spitter_black.png' : 'assets/spitter_red.png');
-                        s.range = config.range; 
-                        s.rangeSq = config.rangeSq; // PERFORMANCE FIX: Cache squared range for AABB math
+                        // Inject configuration stats into the entity so the Trait can read them
+                        if (s.hasTrait('ranged_attacker')) {
+                            s.range = config.range; 
+                            s.rangeSq = config.rangeSq; 
+                        }
                     } else if (data.role === 'tarantula') {
                         s.sprite = game.assets.get(data.team === 'black' ? 'assets/tarantula_black.png' : 'assets/tarantula_red.png');
                     }
                     
-                    s.imageLoaded = true; // Tell base engine it's ready immediately
+                    s.imageLoaded = true; 
                     game.addEntity(s);
                     game.bus.emit('playSound', 'harvest'); 
                 }
@@ -70,86 +156,7 @@ export const SpecialUnitsExpansion = {
     },
 
     patch: (game) => {
-        // 3. Ranged Combat AI for any unit with the 'ranged_attacker' trait!
-        game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
-            
-            // --- PILLAR 3: TRAIT-BASED AI CHECK ---
-            if (this.hasTrait('ranged_attacker')) {
-                const techLvl = gameObj.techLevel[this.team] || 0; 
-                const currentDamage = this.damage + (techLvl * 5); 
-                
-                // Environmental and magical speed modifiers
-                const terrain = gameObj.getTerrainAt(this.x, this.y); 
-                let tMod = (terrain === 'water') ? 0.05 : ((terrain === 'grass') ? 1.3 : 1.0);
-                let currentSpeed = (this.baseSpeed + (techLvl * 0.15)) * tMod;
-                if (this.isSlowed) currentSpeed *= 0.3;
-                this.isSlowed = false; // Reset trap debuff
-
-                const detectRadius = (this.range || 200) + 50 + (techLvl * 10);
-                let nearestEnemy = gameObj.getNearestEnemy(this.x, this.y, this.team, detectRadius);
-
-                // COMBAT OVERRIDE: Prioritize shooting over everything else!
-                if (nearestEnemy) {
-                    this.state = SPIDER_STATE.COMBAT; 
-                    this.angle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
-                    const distSq = MathUtils.distSq(this.x, this.y, nearestEnemy.x, nearestEnemy.y);
-                    
-                    // PERFORMANCE FIX: Use pre-cached squared range to skip multiplication
-                    const effectiveRangeSq = this.rangeSq || 40000;
-
-                    if (distSq > effectiveRangeSq) {
-                        // Chase until in range
-                        this.x += Math.cos(this.angle) * currentSpeed; 
-                        this.y += Math.sin(this.angle) * currentSpeed;
-                    } else {
-                        // In range, open fire!
-                        this.cooldown = (this.cooldown || 0) - 1;
-                        if (this.cooldown <= 0) {
-                            gameObj.addEntity(new Projectile(this.x, this.y, nearestEnemy, currentDamage, this.team));
-                            gameObj.bus.emit('playSound', 'shoot');
-                            
-                            // Ranged Recoil Effect
-                            this.x -= Math.cos(this.angle) * 4; 
-                            this.y -= Math.sin(this.angle) * 4; 
-                            
-                            this.cooldown = this.attackSpeed;
-                        }
-                    }
-                    return; // Prevent standard melee AI from running
-                }
-
-                // MANUAL MOVEMENT OVERRIDE: 
-                // If the ranged unit has no enemies in range, but is under player command, move there!
-                if (this.isManual && this.commandTarget) {
-                    const dx = this.commandTarget.x - this.x; 
-                    const dy = this.commandTarget.y - this.y;
-                    
-                    if (MathUtils.distSq(0, 0, dx, dy) > 225) { 
-                        const targetAngle = Math.atan2(dy, dx);
-                        
-                        // Smooth rotation (Using optimized TWO_PI)
-                        let diff = targetAngle - this.angle;
-                        while (diff > Math.PI) diff -= TWO_PI;
-                        while (diff < -Math.PI) diff += TWO_PI;
-                        this.angle += (diff * 0.15); 
-                        
-                        this.x += Math.cos(this.angle) * currentSpeed; 
-                        this.y += Math.sin(this.angle) * currentSpeed;
-                        
-                        // SAFETY FIX: Clamp manual movement so they don't wander off the map!
-                        const bnd = this.size * 2;
-                        this.x = MathUtils.clamp(this.x, bnd, gameObj.world.width - bnd);
-                        this.y = MathUtils.clamp(this.y, bnd, gameObj.world.height - bnd);
-
-                    } else {
-                        this.commandTarget = null; // Target reached
-                    }
-                    return; // Prevent standard melee AI from running
-                }
-            }
-            
-            // All non-ranged combat units safely fall back to the standard AI (which now handles Escort/Gatherer traits!)
-            original.call(this, gameObj);
-        });
+        // NOTE: Spider.update patch is entirely deleted from this file!
+        // All ranged logic is cleanly handled by the Trait Manager!
     }
 };
