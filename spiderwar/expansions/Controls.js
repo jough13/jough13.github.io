@@ -173,10 +173,7 @@ export const AdvancedUnitControlExpansion = {
                     for (let i = 0; i < game.selectedUnits.length; i++) {
                         let u = game.selectedUnits[i];
                         if (u.team === 'black' && u.hp > 0) {
-                            // Disperse units slightly around the target coordinate so they don't form a single-pixel black hole
-                            let offsetX = MathUtils.randomRange(-validCount * 4, validCount * 4);
-                            let offsetY = MathUtils.randomRange(-validCount * 4, validCount * 4);
-                            u.commandTarget = { x: worldX + offsetX, y: worldY + offsetY };
+                            u.commandTarget = { x: worldX, y: worldY }; // Removed random offset!
                             u.isManual = true; 
                         }
                     }
