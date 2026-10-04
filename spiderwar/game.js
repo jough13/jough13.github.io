@@ -76,7 +76,8 @@ export const UNIT_DATA = {
 export const STRUCTURE_DATA = {
     nest:   { hp: 200, size: 40, territory: 400 },
     eggsac: { hp: 200, size: 25, territory: 0 },
-    turret: { hp: 200, size: 20, territory: 0 },
+    // WE ADDED THE TRAIT TO THE TURRET!
+    turret: { hp: 200, size: 20, territory: 0, traits: ['siege_attacker'] }, 
     wall:   { hp: 500, size: 35, territory: 0 },
     pylon:  { hp: 200, size: 18, territory: 250 }
 };
