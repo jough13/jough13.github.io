@@ -1,221 +1,235 @@
 // expansions/CombatAI.js
-import { MathUtils, Spider, Structure, Projectile, SPIDER_STATE } from '../game.js';
+import { MathUtils, Spider, Structure, SPIDER_STATE } from '../game.js';
 import { Queen } from './Queen.js';
 
 export const CombatAndHarvesterExpansion = {
-    patch: (game) => {
+    init: (game) => {
         
         // ==========================================
-        // 1. TURRET COMBAT AI
+        // ECS TRAIT: GATHERER (Economy & Self-Defense)
         // ==========================================
-        game.expansions.patchClass(Structure, 'update', function(original, gameObj) {
-            original.call(this, gameObj);
-            
-            if (this.type === 'turret' && !this.isConstructing && this.hp > 0) {
-                this.cooldown = this.cooldown || 0;
+        game.registerTrait('gatherer', {
+            update: (entity, gameObj) => {
+                const techLvl = gameObj.techLevel[entity.team] || 0; 
+                const currentDamage = entity.damage + (techLvl * 5); 
                 
-                if (this.cooldown > 0) {
-                    this.cooldown--;
-                } else {
-                    let enemy = gameObj.getNearestEnemy(this.x, this.y, this.team, 350);
-                    if (enemy) {
-                        // Projectile damage scales with faction Tech Level
-                        const projDamage = 15 + (gameObj.techLevel[this.team] || 0) * 5;
-                        gameObj.addEntity(new Projectile(this.x, this.y, enemy, projDamage, this.team));
-                        
-                        gameObj.bus.emit('playSound', 'shoot');
-                        this.cooldown = 40; // Reload time
-                    }
-                }
-            }
-        });
-
-        // ==========================================
-        // 2. SPIDER SWARM & HARVESTER AI
-        // ==========================================
-        game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
-            // Apply Tech Level upgrades
-            const techLvl = gameObj.techLevel[this.team] || 0; 
-            const currentDamage = this.damage + (techLvl * 5); 
-            
-            // Apply Terrain modifiers
-            const terrain = gameObj.getTerrainAt(this.x, this.y); 
-            let tMod = 1.0;
-            if(terrain === 'water') tMod = 0.05; // Spiders hate water
-            if(terrain === 'grass') tMod = 1.3;  // Camouflage/speed boost in grass
-            
-            let currentSpeed = (this.baseSpeed + (techLvl * 0.15)) * tMod;
-            if (this.isSlowed) currentSpeed *= 0.3; // Apply trap debuffs
-            this.isSlowed = false; // Resets every frame (traps must re-apply it)
-
-            // --- COMBAT OVERRIDE ---
-            // If an enemy is within detection range, drop everything and fight!
-            // (Notice we don't use a trait here: all bugs in the swarm will bite back to defend themselves)
-            const detectRadius = 150 + (techLvl * 10);
-            let nearestEnemy = gameObj.getNearestEnemy(this.x, this.y, this.team, detectRadius);
-
-            if (nearestEnemy) {
-                this.state = SPIDER_STATE.COMBAT; 
-                this.angle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
+                const terrain = gameObj.getTerrainAt(entity.x, entity.y); 
+                let tMod = (terrain === 'water') ? 0.05 : ((terrain === 'grass') ? 1.3 : 1.0);
+                let currentSpeed = (entity.baseSpeed + (techLvl * 0.15)) * tMod;
                 
-                const combatRange = nearestEnemy.size ? nearestEnemy.size + 15 : 20;
-                const distSq = MathUtils.distSq(this.x, this.y, nearestEnemy.x, nearestEnemy.y);
-                
-                if (distSq > combatRange * combatRange) { 
-                    this.x += Math.cos(this.angle) * currentSpeed; 
-                    this.y += Math.sin(this.angle) * currentSpeed;
-                } else {
-                    this.cooldown = this.cooldown || 0;
-                    if (this.cooldown > 0) this.cooldown--;
+                if (entity.isSlowed) currentSpeed *= 0.3;
+                entity.isSlowed = false; 
+
+                // 1. SELF DEFENSE OVERRIDE
+                let nearestEnemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, 150 + (techLvl * 10));
+                if (nearestEnemy) {
+                    entity.state = 1; // SPIDER_STATE.COMBAT
+                    entity.angle = Math.atan2(nearestEnemy.y - entity.y, nearestEnemy.x - entity.x);
                     
-                    if (this.cooldown <= 0) {
-                        nearestEnemy.hp -= currentDamage; 
-                        this.cooldown = this.attackSpeed;
-                        
-                        // Recoil effect
-                        this.x -= Math.cos(this.angle) * 10; 
-                        this.y -= Math.sin(this.angle) * 10; 
-                        
-                        const magicColor = this.team === 'black' ? '#aa00ff' : '#ffaa00';
-                        gameObj.bus.emit('particles', {x: nearestEnemy.x, y: nearestEnemy.y, color: magicColor, count: 5}); 
-                        gameObj.bus.emit('playSound', 'harvest'); // Squishy impact sound
+                    const combatRange = nearestEnemy.size ? nearestEnemy.size + 15 : 20;
+                    if (MathUtils.distSq(entity.x, entity.y, nearestEnemy.x, nearestEnemy.y) > combatRange * combatRange) { 
+                        entity.x += Math.cos(entity.angle) * currentSpeed; 
+                        entity.y += Math.sin(entity.angle) * currentSpeed;
+                    } else {
+                        entity.cooldown = (entity.cooldown || 0) - 1;
+                        if (entity.cooldown <= 0) {
+                            nearestEnemy.hp -= currentDamage; 
+                            entity.cooldown = entity.attackSpeed;
+                            entity.x -= Math.cos(entity.angle) * 10; 
+                            entity.y -= Math.sin(entity.angle) * 10; 
+                            gameObj.bus.emit('particles', {x: nearestEnemy.x, y: nearestEnemy.y, color: entity.team==='black'?'#aa00ff':'#ffaa00', count: 5}); 
+                            gameObj.bus.emit('playSound', 'harvest'); 
+                        }
                     }
-                }
-                return; // End update (Combat overrides all other tasks)
-            }
-
-            // --- PILLAR 3: TRAIT-BASED ESCORT AI ---
-            if (this.hasTrait('escort')) {
-                // PERFORMANCE FIX: Use standard loop instead of .find() to prevent memory allocation
-                let myQueen = null;
-                for (let i = 0; i < gameObj.queens.length; i++) {
-                    if (gameObj.queens[i].team === this.team) { myQueen = gameObj.queens[i]; break; }
+                    return true; // Bypass gathering if fighting
                 }
 
-                if (myQueen) {
-                    const dx = myQueen.x - this.x; 
-                    const dy = myQueen.y - this.y;
-                    
-                    if (MathUtils.distSq(0,0, dx, dy) > 6400) { // 80px orbit radius
-                        // Add a slight randomization to the angle so soldiers fan out into a protective ring
-                        this.angle = Math.atan2(dy, dx) + MathUtils.randomRange(-0.2, 0.2);
-                        this.x += Math.cos(this.angle) * currentSpeed; 
-                        this.y += Math.sin(this.angle) * currentSpeed;
+                // 2. MANUAL MOVEMENT OVERRIDE
+                if (entity.isManual && entity.commandTarget) {
+                    const dx = entity.commandTarget.x - entity.x; 
+                    const dy = entity.commandTarget.y - entity.y;
+                    if (MathUtils.distSq(0,0, dx, dy) > 225) { 
+                        entity.angle = Math.atan2(dy, dx);
+                        entity.x += Math.cos(entity.angle) * currentSpeed; 
+                        entity.y += Math.sin(entity.angle) * currentSpeed;
+                    } else {
+                        entity.commandTarget = null;
                     }
-                }
-                return; 
-            }
-
-            // --- PILLAR 3: TRAIT-BASED HARVESTER ECONOMY AI ---
-            if (this.hasTrait('gatherer')) {
-                // If our target was destroyed (Nests) or depleted (Pumpkins) by someone else, clear it!
-                if (this.target && (
-                    (this.target.hp !== undefined && this.target.hp <= 0) || 
-                    (this.target.resources !== undefined && this.target.resources <= 0)
-                )) {
-                    this.target = null; 
+                    return true; // Bypass gathering if being manually controlled
                 }
 
-                if (this.cargo.amount === 0) this.state = SPIDER_STATE.SEEKING_RESOURCE; 
-                else this.state = SPIDER_STATE.RETURNING_HOME;
+                // 3. HARVESTING LOGIC
+                if (entity.target && ((entity.target.hp !== undefined && entity.target.hp <= 0) || (entity.target.resources !== undefined && entity.target.resources <= 0))) {
+                    entity.target = null; 
+                }
+
+                if (entity.cargo.amount === 0) entity.state = 2; // SEEKING_RESOURCE
+                else entity.state = 3; // RETURNING_HOME
                 
-                // PERFORMANCE: Stagger target searches to prevent CPU lag spikes
-                if (!this.target) {
-                    this.searchDelay = (this.searchDelay || 0) - 1;
-                    
-                    if (this.searchDelay <= 0) {
-                        this.searchDelay = MathUtils.randomInt(10, 20); // Wait 10-20 frames before searching again
+                if (!entity.target) {
+                    entity.searchDelay = (entity.searchDelay || 0) - 1;
+                    if (entity.searchDelay <= 0) {
+                        entity.searchDelay = MathUtils.randomInt(10, 20); 
                         let closest = null; 
                         let minD = Infinity;
 
-                        if (this.state === SPIDER_STATE.SEEKING_RESOURCE) {
-                            // PERFORMANCE FIX: Replaced .forEach() with raw for-loop
+                        if (entity.state === 2) {
                             for (let i = 0; i < gameObj.resourceNodes.length; i++) {
                                 let r = gameObj.resourceNodes[i];
                                 if (r.resources > 0) {
-                                    let dSq = MathUtils.distSq(r.x, r.y, this.x, this.y); 
+                                    let dSq = MathUtils.distSq(r.x, r.y, entity.x, entity.y); 
                                     if(dSq < minD) { minD = dSq; closest = r; } 
                                 }
                             }
                         } else {
-                            // Find nearest Dropoff Point (Nest, Pylon, or Queen)
-                            // PERFORMANCE FIX: Replaced .filter().forEach() chaining with raw for-loops
                             for (let i = 0; i < gameObj.structures.length; i++) {
                                 let s = gameObj.structures[i];
-                                if (s.team === this.team && (s.type === 'nest' || s.type === 'pylon') && s.hp > 0 && !s.isConstructing) {
-                                    let dSq = MathUtils.distSq(s.x, s.y, this.x, this.y); 
+                                if (s.team === entity.team && (s.type === 'nest' || s.type === 'pylon') && s.hp > 0 && !s.isConstructing) {
+                                    let dSq = MathUtils.distSq(s.x, s.y, entity.x, entity.y); 
                                     if(dSq < minD) { minD = dSq; closest = s; } 
                                 }
                             }
-                            
                             for (let i = 0; i < gameObj.queens.length; i++) {
                                 let q = gameObj.queens[i];
-                                if (q.team === this.team && q.hp > 0) {
-                                    let dSq = MathUtils.distSq(q.x, q.y, this.x, this.y); 
+                                if (q.team === entity.team && q.hp > 0) {
+                                    let dSq = MathUtils.distSq(q.x, q.y, entity.x, entity.y); 
                                     if(dSq < minD) { minD = dSq; closest = q; } 
                                 }
                             }
                         }
-                        this.target = closest;
+                        entity.target = closest;
                     } else {
-                        return; // Yield CPU if we are waiting for our search cycle
+                        return true; 
                     }
                 }
 
-                // Move towards target
-                if (this.target) {
-                    const dx = this.target.x - this.x; 
-                    const dy = this.target.y - this.y;
+                if (entity.target) {
+                    const dx = entity.target.x - entity.x; 
+                    const dy = entity.target.y - entity.y;
                     const distSq = MathUtils.distSq(0,0, dx, dy); 
                     
-                    this.angle = Math.atan2(dy, dx);
-                    const targetRadius = this.target.size ? this.target.size + 5 : 15;
+                    entity.angle = Math.atan2(dy, dx);
+                    const targetRadius = entity.target.size ? entity.target.size + 5 : 15;
                     
                     if (distSq > targetRadius * targetRadius) { 
-                        this.x += Math.cos(this.angle) * currentSpeed; 
-                        this.y += Math.sin(this.angle) * currentSpeed;
+                        entity.x += Math.cos(entity.angle) * currentSpeed; 
+                        entity.y += Math.sin(entity.angle) * currentSpeed;
                     } else {
-                        // Reached Target!
-                        if (this.state === SPIDER_STATE.SEEKING_RESOURCE && this.target.resources > 0) {
-                            let amountGathered = Math.min(10, this.target.resources);
-                            this.cargo.amount = amountGathered; 
-                            this.cargo.type = this.target.type; 
+                        if (entity.state === 2 && entity.target.resources > 0) {
+                            let amountGathered = Math.min(10, entity.target.resources);
+                            entity.cargo.amount = amountGathered; 
+                            entity.cargo.type = entity.target.type; 
+                            entity.target.resources -= amountGathered; 
+                            entity.target = null; 
                             
-                            this.target.resources -= amountGathered; 
-                            this.target = null; // AI POLISH: Clear immediately to prevent twitching
-                            
-                            const resColor = this.cargo.type === 'pumpkin' ? '#ff7b00' : '#00aaff';
-                            gameObj.bus.emit('particles', {x: this.x, y: this.y, color: resColor, count: 5}); 
+                            const resColor = entity.cargo.type === 'pumpkin' ? '#ff7b00' : '#00aaff';
+                            gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: resColor, count: 5}); 
                             gameObj.bus.emit('playSound', 'harvest');
                         } 
-                        else if (this.state === SPIDER_STATE.RETURNING_HOME) {
-                            if (this.cargo.type === 'pumpkin') gameObj.eco[this.team].pumpkins += this.cargo.amount;
-                            else if (this.cargo.type === 'dew') gameObj.eco[this.team].dew += this.cargo.amount;
-                            
-                            this.cargo.amount = 0; 
-                            this.target = null; 
+                        else if (entity.state === 3) {
+                            if (entity.cargo.type === 'pumpkin') gameObj.eco[entity.team].pumpkins += entity.cargo.amount;
+                            else if (entity.cargo.type === 'dew') gameObj.eco[entity.team].dew += entity.cargo.amount;
+                            entity.cargo.amount = 0; 
+                            entity.target = null; 
                         }
                     }
                 }
-            } else {
-                // --- DEFAULT IDLE WANDERING ---
-                // Non-gatherers that have no enemies nearby and aren't escorting the queen will just gently patrol
-                this.angle += MathUtils.randomRange(-0.5, 0.5);
-                this.x += Math.cos(this.angle) * (currentSpeed * 0.5); 
-                this.y += Math.sin(this.angle) * (currentSpeed * 0.5);
-                
-                // AI POLISH: Dynamic bounds based on unit size prevents them getting permanently stuck on map edges
-                const bnd = this.size * 2;
-                this.x = MathUtils.clamp(this.x, bnd, gameObj.world.width - bnd);
-                this.y = MathUtils.clamp(this.y, bnd, gameObj.world.height - bnd);
+                return true; 
             }
         });
 
         // ==========================================
-        // 3. UNIVERSAL HEALTH BAR RENDERING
+        // ECS TRAIT: MELEE (Combat, Escort, Wander)
+        // ==========================================
+        game.registerTrait('melee', {
+            update: (entity, gameObj) => {
+                const techLvl = gameObj.techLevel[entity.team] || 0; 
+                const currentDamage = entity.damage + (techLvl * 5); 
+                
+                const terrain = gameObj.getTerrainAt(entity.x, entity.y); 
+                let tMod = (terrain === 'water') ? 0.05 : ((terrain === 'grass') ? 1.3 : 1.0);
+                let currentSpeed = (entity.baseSpeed + (techLvl * 0.15)) * tMod;
+                
+                if (entity.isSlowed) currentSpeed *= 0.3;
+                entity.isSlowed = false; 
+
+                // 1. COMBAT AGGRO OVERRIDE
+                let nearestEnemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, 150 + (techLvl * 10));
+                if (nearestEnemy) {
+                    entity.state = 1; 
+                    entity.angle = Math.atan2(nearestEnemy.y - entity.y, nearestEnemy.x - entity.x);
+                    
+                    const combatRange = nearestEnemy.size ? nearestEnemy.size + 15 : 20;
+                    if (MathUtils.distSq(entity.x, entity.y, nearestEnemy.x, nearestEnemy.y) > combatRange * combatRange) { 
+                        entity.x += Math.cos(entity.angle) * currentSpeed; 
+                        entity.y += Math.sin(entity.angle) * currentSpeed;
+                    } else {
+                        entity.cooldown = (entity.cooldown || 0) - 1;
+                        if (entity.cooldown <= 0) {
+                            nearestEnemy.hp -= currentDamage; 
+                            entity.cooldown = entity.attackSpeed;
+                            entity.x -= Math.cos(entity.angle) * 10; 
+                            entity.y -= Math.sin(entity.angle) * 10; 
+                            gameObj.bus.emit('particles', {x: nearestEnemy.x, y: nearestEnemy.y, color: entity.team==='black'?'#aa00ff':'#ffaa00', count: 5}); 
+                            gameObj.bus.emit('playSound', 'harvest'); 
+                        }
+                    }
+                    return true; 
+                }
+
+                // 2. ESCORT QUEEN BEHAVIOR (If they have the trait)
+                if (entity.hasTrait('escort') && !entity.isManual) {
+                    let myQueen = null;
+                    for (let i = 0; i < gameObj.queens.length; i++) {
+                        if (gameObj.queens[i].team === entity.team) { myQueen = gameObj.queens[i]; break; }
+                    }
+
+                    if (myQueen) {
+                        const dx = myQueen.x - entity.x; 
+                        const dy = myQueen.y - entity.y;
+                        
+                        if (MathUtils.distSq(0,0, dx, dy) > 6400) { // 80px orbit radius
+                            entity.angle = Math.atan2(dy, dx) + MathUtils.randomRange(-0.2, 0.2);
+                            entity.x += Math.cos(entity.angle) * currentSpeed; 
+                            entity.y += Math.sin(entity.angle) * currentSpeed;
+                        }
+                        return true; 
+                    }
+                }
+
+                // 3. MANUAL MOVEMENT
+                if (entity.isManual && entity.commandTarget) {
+                    const dx = entity.commandTarget.x - entity.x; 
+                    const dy = entity.commandTarget.y - entity.y;
+                    if (MathUtils.distSq(0,0, dx, dy) > 225) { 
+                        entity.angle = Math.atan2(dy, dx);
+                        entity.x += Math.cos(entity.angle) * currentSpeed; 
+                        entity.y += Math.sin(entity.angle) * currentSpeed;
+                    } else {
+                        entity.commandTarget = null;
+                    }
+                    return true;
+                }
+
+                // 4. DEFAULT IDLE WANDERING
+                entity.angle += MathUtils.randomRange(-0.5, 0.5);
+                entity.x += Math.cos(entity.angle) * (currentSpeed * 0.5); 
+                entity.y += Math.sin(entity.angle) * (currentSpeed * 0.5);
+                
+                const bnd = entity.size * 2;
+                entity.x = MathUtils.clamp(entity.x, bnd, gameObj.world.width - bnd);
+                entity.y = MathUtils.clamp(entity.y, bnd, gameObj.world.height - bnd);
+                
+                return true; 
+            }
+        });
+    },
+
+    patch: (game) => {
+        // ==========================================
+        // UNIVERSAL HEALTH BAR RENDERING
         // ==========================================
         const drawHealth = function(ctx) {
-            // Check if entity is damaged (taking into account dynamic tech level HP boosts)
             const techBoost = (game.techLevel[this.team] || 0) * 20;
             const absoluteMaxHp = this.maxHp + techBoost;
 
@@ -223,18 +237,15 @@ export const CombatAndHarvesterExpansion = {
                 const w = this.size * 1.5; 
                 const hpPct = Math.max(0, this.hp) / absoluteMaxHp;
 
-                // Color interpolates based on health: Green -> Yellow -> Red
                 let barColor = '#00ff00';
                 if (hpPct < 0.5) barColor = '#ffff00';
                 if (hpPct < 0.25) barColor = '#ff0000';
 
-                // Background (Black border + Dark Red missing health)
                 ctx.fillStyle = '#000000'; 
                 ctx.fillRect(this.x - w/2 - 1, this.y - this.size - 11, w + 2, 6);
                 ctx.fillStyle = '#550000'; 
                 ctx.fillRect(this.x - w/2, this.y - this.size - 10, w, 4);
                 
-                // Current Health
                 ctx.fillStyle = barColor; 
                 ctx.fillRect(this.x - w/2, this.y - this.size - 10, w * hpPct, 4);
             }
