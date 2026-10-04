@@ -15,13 +15,14 @@ import { TerrainExpansion } from './expansions/Terrain.js';
 import { DecorExpansion } from './expansions/Decor.js';
 import { ParticleExpansion } from './expansions/Particles.js';
 import { AdvancedBaseExpansion } from './expansions/AdvancedBase.js';
+import { AIDirectorExpansion } from './expansions/AIDirector.js'; // <-- ADDED AI DIRECTOR IMPORT
 import { GodUnitExpansion } from './expansions/Boss.js';
 
 // Core AI & Networks
 import { QueenExpansion } from './expansions/Queen.js';
 import { CombatAndHarvesterExpansion } from './expansions/CombatAI.js';
 import { SilkNetworkExpansion, WebNetworkExpansion } from './expansions/Networks.js';
-import { SwarmDynamicsExpansion } from './expansions/SwarmDynamics.js'; // <-- ADDED SWARM PHYSICS IMPORT
+import { SwarmDynamicsExpansion } from './expansions/SwarmDynamics.js';
 
 // Mechanics & Units
 import { SpellExpansion } from './expansions/Spells.js';
@@ -57,6 +58,7 @@ const expansionManifest = [
     { name: 'ParticleEngine',       module: ParticleExpansion },
     
     { name: 'AdvancedBaseBuilder',  module: AdvancedBaseExpansion },
+    { name: 'AIDirector',           module: AIDirectorExpansion }, // <-- ADDED AI DIRECTOR TO MANIFEST
     { name: 'CentipedeBoss',        module: GodUnitExpansion },
     { name: 'QueenSystem',          module: QueenExpansion },
     { name: 'CombatAndHarvesterAI', module: CombatAndHarvesterExpansion },
@@ -79,7 +81,7 @@ const expansionManifest = [
     { name: 'BroodAmbush',          module: BroodAmbushExpansion },
     { name: 'Fortress',             module: FortressExpansion },
     
-    { name: 'SwarmDynamics',        module: SwarmDynamicsExpansion }, // <-- ADDED SWARM PHYSICS TO MANIFEST
+    { name: 'SwarmDynamics',        module: SwarmDynamicsExpansion },
     { name: 'MinimapUI',            module: MinimapExpansion },
     { name: 'AdvancedUnitControl',  module: AdvancedUnitControlExpansion },
     { name: 'ConstructionLogic',    module: ConstructionExpansion },
