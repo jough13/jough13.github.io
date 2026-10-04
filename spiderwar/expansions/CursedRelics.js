@@ -22,9 +22,41 @@ export const CursedRelicsExpansion = {
             hp: 350, size: 20, territory: 0 
         };
 
-        // Note: UI Buttons are handled centrally in UI.js!
+        // ==========================================
+        // 3. ECS TRAIT REGISTRATION
+        // ==========================================
+        game.registerTrait('blink_strike', {
+            update: (entity, gameObj) => {
+                if (!entity.blinkCooldown) entity.blinkCooldown = 0;
+                if (entity.blinkCooldown > 0) entity.blinkCooldown--;
 
-        // 3. SPELL LOGIC: ECLIPSE (Time Manipulation)
+                // Scan for an enemy within teleport range (150px)
+                let enemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, 150);
+                
+                if (enemy && entity.blinkCooldown <= 0) {
+                    // Poof! (Start location)
+                    gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#aa00ff', count: 10});
+                    
+                    // Teleport behind them
+                    entity.x = enemy.x + MathUtils.randomRange(-10, 10);
+                    entity.y = enemy.y + MathUtils.randomRange(-10, 10);
+                    
+                    // Poof! (End location)
+                    gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#aa00ff', count: 10});
+                    gameObj.bus.emit('playSound', 'spell');
+                    
+                    // Sneak attack damage multiplier!
+                    enemy.hp -= (entity.damage * 1.5) + ((gameObj.techLevel[entity.team] || 0) * 10);
+                    entity.blinkCooldown = 150; // Takes 5 seconds to recharge teleport
+                }
+                
+                // RETURN FALSE: This allows the normal "melee" AI trait to keep running 
+                // so the Wraith actually attacks the target after teleporting!
+                return false; 
+            }
+        });
+
+        // 4. SPELL LOGIC: ECLIPSE (Time Manipulation)
         game.bus.on('castSpell', (data) => {
             if (data.type === 'eclipse') {
                 if (game.eco[data.team].dew >= 150) {
@@ -34,7 +66,6 @@ export const CursedRelicsExpansion = {
                     setTimeout(() => game.bus.emit('playSound', 'death'), 300); // Double-boom ominous sound
                     
                     // The DayNight cycle is 7200 ticks. Night starts at exactly 50% (0.50).
-                    // We calculate how many ticks we need to jump the global clock forward!
                     const cycleTicks = 7200;
                     const targetRatio = 0.51; // Just past dusk, plunging into night
                     
@@ -67,37 +98,7 @@ export const CursedRelicsExpansion = {
     },
 
     patch: (game) => {
-        
-        // 4. UNIT AI: BLINK STRIKE
-        game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
-            
-            if (this.hasTrait('blink_strike')) {
-                if (!this.blinkCooldown) this.blinkCooldown = 0;
-                if (this.blinkCooldown > 0) this.blinkCooldown--;
-
-                // Scan for an enemy within teleport range (150px)
-                let enemy = gameObj.getNearestEnemy(this.x, this.y, this.team, 150);
-                
-                if (enemy && this.blinkCooldown <= 0) {
-                    // Poof! (Start location)
-                    gameObj.bus.emit('particles', {x: this.x, y: this.y, color: '#aa00ff', count: 10});
-                    
-                    // Teleport behind them
-                    this.x = enemy.x + MathUtils.randomRange(-10, 10);
-                    this.y = enemy.y + MathUtils.randomRange(-10, 10);
-                    
-                    // Poof! (End location)
-                    gameObj.bus.emit('particles', {x: this.x, y: this.y, color: '#aa00ff', count: 10});
-                    gameObj.bus.emit('playSound', 'spell');
-                    
-                    // Sneak attack damage multiplier!
-                    enemy.hp -= (this.damage * 1.5) + ((gameObj.techLevel[this.team] || 0) * 10);
-                    this.blinkCooldown = 150; // Takes 5 seconds to recharge teleport
-                }
-            }
-
-            original.call(this, gameObj); // Run normal AI afterward
-        });
+        // NOTE: The Spider.update patch is completely GONE from this file!
 
         // 5. STRUCTURE AI: THE OBELISK (Tesla Coil)
         game.expansions.patchClass(Structure, 'update', function(original, gameObj) {
