@@ -252,11 +252,18 @@ export const ContextUIExpansion = {
             /* --- SCROLLBAR FIX FOR ACTIONS MENU --- */
             #ui-actions { 
                 flex-grow: 1; padding: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; 
-                overflow-y: auto; scrollbar-width: thin; scrollbar-color: #ff9d00 rgba(0,0,0,0.5);
+                overflow-y: auto; 
+                scrollbar-width: thin; scrollbar-color: rgba(255, 157, 0, 0.4) rgba(0,0,0,0.2);
             }
+            
+            /* Dimmed scrollbar when not interacting */
             #ui-actions::-webkit-scrollbar { width: 8px; }
-            #ui-actions::-webkit-scrollbar-track { background: rgba(0,0,0,0.5); border-radius: 4px; }
-            #ui-actions::-webkit-scrollbar-thumb { background: #ff9d00; border-radius: 4px; border: 1px solid #000; }
+            #ui-actions::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+            #ui-actions::-webkit-scrollbar-thumb { background: rgba(255, 157, 0, 0.3); border-radius: 4px; border: 1px solid rgba(0,0,0,0.3); }
+            
+            /* Bright scrollbar when hovered */
+            #ui-actions:hover::-webkit-scrollbar-track { background: rgba(0,0,0,0.5); }
+            #ui-actions:hover::-webkit-scrollbar-thumb { background: rgba(255, 157, 0, 1.0); border: 1px solid #000; }
             
             .cmd-btn { width: 80px; height: 55px; background: rgba(34, 17, 0, 0.8); border: 2px solid #ff9d00; border-radius: 4px; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.1s; }
             .cmd-btn:hover { background: rgba(68, 34, 0, 0.9); transform: scale(1.05); }
@@ -314,8 +321,8 @@ export const ContextUIExpansion = {
             'wall':      { reqTech: 0, icon: '🧱', img: 'assets/wall_black.png', name: 'Wall', cost: '25🎃', type: 'tool', val: 'wall' },
             'turret':    { reqTech: 1, icon: '🔫', img: 'assets/turret_black.png', name: 'Turret', cost: '100🎃', type: 'tool', val: 'turret' },
             'extractor': { reqTech: 1, icon: '🛢️', img: 'assets/extractor_black.png', name: 'Extract', cost: '100🎃', type: 'tool', val: 'extractor' }, 
-            'shrine':    { reqTech: 1, icon: '⛲', name: 'Shrine', cost: '150🎃100💧', type: 'tool', val: 'shrine' }, // Emoji Fallback
-            'mortar':    { reqTech: 2, icon: '🌋', name: 'Mortar', cost: '200🎃50💧', type: 'tool', val: 'mortar' }, // Emoji Fallback
+            'shrine':    { reqTech: 1, icon: '⛲', name: 'Shrine', cost: '150🎃100💧', type: 'tool', val: 'shrine' }, 
+            'mortar':    { reqTech: 2, icon: '🌋', name: 'Mortar', cost: '200🎃50💧', type: 'tool', val: 'mortar' }, 
             'monolith':  { reqTech: 2, icon: '🪦', img: 'assets/monolith_black.png', name: 'Monolith', cost: '150🎃50💧', type: 'tool', val: 'monolith' }, 
             'obelisk':   { reqTech: 2, icon: '⚡', img: 'assets/obelisk_black.png', name: 'Obelisk', cost: '150🎃80💧', type: 'tool', val: 'obelisk' }, 
             'incubator': { reqTech: 2, icon: '🍄', img: 'assets/incubator_black.png', name: 'Incubate', cost: '200🎃', type: 'tool', val: 'incubator' }, 
@@ -325,10 +332,10 @@ export const ContextUIExpansion = {
             'trap':      { reqTech: 0, icon: '🕸️', img: 'assets/icon_trap.png', name: 'Trap', cost: '25💧', type: 'tool', val: 'silkTrap' },
             'strike':    { reqTech: 1, icon: '☠️', img: 'assets/icon_strike.png', name: 'Strike', cost: '50💧', type: 'tool', val: 'venomStrike' },
             'raise':     { reqTech: 1, icon: '🧟', img: 'assets/icon_reanimate.png', name: 'Raise', cost: '40💧', type: 'tool', val: 'reanimate' },
-            'ambush':    { reqTech: 1, icon: '🥚', name: 'Ambush', cost: '50💧', type: 'tool', val: 'ambush' }, // Emoji Fallback
+            'ambush':    { reqTech: 1, icon: '🥚', name: 'Ambush', cost: '50💧', type: 'tool', val: 'ambush' }, 
             'bloodlust': { reqTech: 2, icon: '🩸', img: 'assets/icon_bloodlust.png', name: 'Frenzy', cost: '60💧', type: 'tool', val: 'bloodlust' }, 
-            'paralyze':  { reqTech: 2, icon: '❄️', name: 'Paralyze', cost: '75💧', type: 'tool', val: 'paralyze' }, // Emoji Fallback
-            'contagion': { reqTech: 2, icon: '☣️', name: 'Contagion', cost: '80💧', type: 'tool', val: 'contagion' }, // Emoji Fallback
+            'paralyze':  { reqTech: 2, icon: '❄️', name: 'Paralyze', cost: '75💧', type: 'tool', val: 'paralyze' }, 
+            'contagion': { reqTech: 2, icon: '☣️', name: 'Contagion', cost: '80💧', type: 'tool', val: 'contagion' }, 
             'eclipse':   { reqTech: 3, icon: '🌑', img: 'assets/icon_eclipse.png', name: 'Eclipse', cost: '150💧', type: 'tool', val: 'eclipse' }, 
             'vortex':    { reqTech: 3, icon: '🌀', img: 'assets/icon_vortex.png', name: 'Vortex', cost: '90💧', type: 'tool', val: 'vortex' }, 
             
@@ -336,18 +343,18 @@ export const ContextUIExpansion = {
             'harv':      { reqTech: 0, icon: '🕷️', img: 'assets/black_spider.png', name: 'Harvester', cost: '10🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'harvester'}) },
             'sold':      { reqTech: 0, icon: '🐜', img: 'assets/soldier_black.png', name: 'Soldier', cost: '25🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'soldier'}) },
             'tick':      { reqTech: 0, icon: '💣', img: 'assets/tick_black.png', name: 'Tick', cost: '30🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'tick'}) }, 
-            'spitter':   { reqTech: 1, icon: '💦', name: 'Spitter', cost: '40🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'spitter'}) }, // Emoji Fallback
+            'spitter':   { reqTech: 1, icon: '💦', name: 'Spitter', cost: '40🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'spitter'}) }, 
             'phantom':   { reqTech: 1, icon: '👻', img: 'assets/phantom_black.png', name: 'Phantom', cost: '60🎃20💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'phantom'}) }, 
-            'tank':      { reqTech: 1, icon: '🪲', name: 'Tarantula', cost: '75🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'tarantula'}) }, // Emoji Fallback
+            'tank':      { reqTech: 1, icon: '🪲', name: 'Tarantula', cost: '75🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'tarantula'}) }, 
             'wraith':    { reqTech: 2, icon: '🗡️', img: 'assets/wraith_black.png', name: 'Wraith', cost: '80🎃30💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'wraith'}) }, 
             'defiler':   { reqTech: 2, icon: '🦠', img: 'assets/defiler_black.png', name: 'Defiler', cost: '120🎃40💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'defiler'}) }, 
-            'widow':     { reqTech: 2, icon: '👻', name: 'Widow', cost: '150🎃50💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'widow'}) }, // Emoji Fallback
+            'widow':     { reqTech: 2, icon: '👻', name: 'Widow', cost: '150🎃50💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'widow'}) }, 
             'voidweaver':{ reqTech: 3, icon: '👁️', img: 'assets/voidweaver_black.png', name: 'Weaver', cost: '100🎃30💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'voidweaver'}) }, 
-            'goliath':   { reqTech: 3, icon: '🔥', name: 'Goliath', cost: '400🎃150💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'goliath'}) }, // Emoji Fallback
+            'goliath':   { reqTech: 3, icon: '🔥', name: 'Goliath', cost: '400🎃150💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'goliath'}) }, 
             
             // -- UTILITY --
             'tech':      { reqTech: 0, icon: '🧬', img: 'assets/icon_tech.png', name: 'Evolve', cost: '250🎃', type: 'instant', fn: (t) => { if(game.eco.black.pumpkins>=250){ game.eco.black.pumpkins-=250; game.techLevel.black++; game.bus.emit('playSound','spell');} } },
-            'cancel':    { reqTech: 0, icon: '🛑', name: 'Stop', cost: '', type: 'instant', fn: () => { 
+            'cancel':    { reqTech: 0, icon: '🛑', img: 'assets/icon_cancel.png', name: 'Stop', cost: '', type: 'instant', fn: () => { 
                 game.activeTool = 'select'; game.bus.emit('toolChanged', 'select');
                 if (game.selectedUnits) {
                     game.selectedUnits.forEach(u => { 
@@ -417,7 +424,6 @@ export const ContextUIExpansion = {
                     if (isLocked) btn.classList.add('locked');
                     btn.setAttribute('data-tool', cmd.type === 'tool' ? cmd.val : '');
                     
-                    // ICON / IMAGE INJECTION FIX
                     const iconHtml = cmd.img ? `<img src="${cmd.img}" alt="${cmd.name}">` : cmd.icon;
                     
                     btn.innerHTML = `
@@ -427,7 +433,7 @@ export const ContextUIExpansion = {
                     `;
                     
                     btn.onclick = () => {
-                        if (isLocked) return; // Do nothing if locked
+                        if (isLocked) return; 
                         if (cmd.type === 'tool') {
                             this.activeTool = cmd.val;
                             this.bus.emit('toolChanged', cmd.val);
