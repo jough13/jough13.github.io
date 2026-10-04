@@ -76,11 +76,10 @@ export const ToxicPlagueExpansion = {
             traits: ['toxic_trail', 'melee'] 
         };
 
-        // Parasites are hyper-fast but incredibly weak. 
         UNIT_DATA['parasite'] = { 
             size: 8, hp: 15, damage: 8, attackSpeed: 15, 
             baseSpeedMin: 2.5, baseSpeedMax: 3.2, 
-            traits: ['melee', 'parasite_ai'] 
+            traits: ['parasite_ai'] // Removed 'melee' because parasite_ai overrides everything!
         };
 
         STRUCTURE_DATA['incubator'] = { 
@@ -89,7 +88,66 @@ export const ToxicPlagueExpansion = {
 
         // Note: UI Buttons are handled centrally in UI.js!
 
-        // 3. SPELL LOGIC: CONTAGION
+        // ==========================================
+        // 3. ECS TRAIT REGISTRATION
+        // ==========================================
+        
+        // Toxic Trail Trait
+        game.registerTrait('toxic_trail', {
+            update: (entity, gameObj) => {
+                // Drop a puddle every 15 frames while moving
+                if (!entity.puddleTimer) entity.puddleTimer = 0;
+                entity.puddleTimer++;
+                
+                // We assume the spider is moving if the timer increments.
+                // In a perfect world we'd check velocity, but this is a great, cheap approximation!
+                if (entity.puddleTimer > 15) {
+                    entity.puddleTimer = 0;
+                    gameObj.addEntity(new ToxicPuddle(entity.x, entity.y, entity.team));
+                }
+                
+                // RETURN FALSE: This is a passive trait. We want the spider to still run its 
+                // normal 'melee' AI so it actually attacks things while dropping puddles!
+                return false; 
+            }
+        });
+
+        // Parasite AI Trait
+        game.registerTrait('parasite_ai', {
+            update: (entity, gameObj) => {
+                // Parasites are hyper-aggressive and will wander randomly to seek out targets far away
+                let enemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, 500); // Massive detection radius
+                
+                if (enemy) {
+                    entity.state = SPIDER_STATE.COMBAT;
+                    entity.angle = Math.atan2(enemy.y - entity.y, enemy.x - entity.x);
+                    
+                    if (MathUtils.distSq(entity.x, entity.y, enemy.x, enemy.y) > 400) { 
+                        entity.x += Math.cos(entity.angle) * entity.baseSpeed; 
+                        entity.y += Math.sin(entity.angle) * entity.baseSpeed;
+                    } else {
+                        // Attack!
+                        entity.cooldown--;
+                        if (entity.cooldown <= 0) {
+                            enemy.hp -= entity.damage;
+                            entity.cooldown = entity.attackSpeed;
+                            entity.x -= Math.cos(entity.angle) * 5; entity.y -= Math.sin(entity.angle) * 5;
+                            gameObj.bus.emit('playSound', 'harvest');
+                        }
+                    }
+                } else {
+                    // No enemies? Run around erratically looking for them
+                    if (Math.random() < 0.2) entity.angle += MathUtils.randomRange(-1, 1);
+                    entity.x += Math.cos(entity.angle) * entity.baseSpeed;
+                    entity.y += Math.sin(entity.angle) * entity.baseSpeed;
+                }
+
+                // RETURN TRUE: The parasite handles its own movement and attacking. Do not run standard AI!
+                return true; 
+            }
+        });
+
+        // 4. SPELL LOGIC: CONTAGION
         game.bus.on('castSpell', (data) => {
             if (data.type === 'contagion') {
                 if (game.eco[data.team].dew >= 80) {
@@ -100,13 +158,12 @@ export const ToxicPlagueExpansion = {
                     
                     const radiusSq = 22500; // 150px radius
                     
-                    // Infect enemies
                     for (let i = 0; i < game.entities.length; i++) {
                         let e = game.entities[i];
                         if (e.team && e.team !== data.team && e.hp > 0 && (e instanceof Spider || e.constructor.name === 'CentipedeBoss')) {
                             if (MathUtils.distSq(e.x, e.y, data.x, data.y) < radiusSq) {
                                 e.infectedTimer = 600; // Infected for 20 seconds
-                                e.infectedByTeam = data.team; // Track who cast it so we spawn the parasite for the right team
+                                e.infectedByTeam = data.team; // Track who cast it
                                 game.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 10});
                             }
                         }
@@ -120,7 +177,7 @@ export const ToxicPlagueExpansion = {
             if (data.role === 'defiler' || data.role === 'parasite') {
                 let canSpawn = true;
                 
-                // Only charge resources/pop for the Defiler. Parasites are FREE and ignore population caps!
+                // Only charge resources/pop for the Defiler. Parasites are FREE!
                 if (data.role === 'defiler') {
                     if (game.eco[data.team].pumpkins >= 120 && game.eco[data.team].dew >= 40 && game.pop[data.team] < game.maxPop[data.team]) {
                         game.eco[data.team].pumpkins -= 120;
@@ -145,80 +202,35 @@ export const ToxicPlagueExpansion = {
                 }
             }
         });
+
+        // 5. GLOBAL DEBUFF MANAGER: INFECTION
+        // We handle this via a bus listener on the main loop so it applies to ANY unit that gets infected!
+        game.bus.on('preDraw', () => {
+            if (game.tick % 30 !== 0) return; // Only process DoT damage once a second
+
+            for (let i = 0; i < game.entities.length; i++) {
+                let e = game.entities[i];
+                if (e.infectedTimer > 0) {
+                    e.infectedTimer--;
+                    
+                    e.hp -= 3; // Acid DoT
+                    game.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 2});
+                    
+                    // CHESTBURSTER EFFECT: If it dies from infection!
+                    if (e.hp <= 0 && e.role !== 'parasite') {
+                        game.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 30});
+                        game.bus.emit('playSound', 'death');
+                        game.bus.emit('spawnSpider', {x: e.x, y: e.y, team: e.infectedByTeam, role: 'parasite'});
+                    }
+                }
+            }
+        });
     },
 
     patch: (game) => {
-        
-        // 4. UNIT AI: TOXIC TRAIL & CONTAGION DEBUFF
-        game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
-            
-            // --- TRAIT: TOXIC TRAIL ---
-            if (this.hasTrait('toxic_trail')) {
-                // Drop a puddle every 15 frames while moving
-                if (!this.puddleTimer) this.puddleTimer = 0;
-                this.puddleTimer++;
-                
-                // Only drop puddles if we are actually moving (check velocity)
-                if (this.puddleTimer > 15) {
-                    this.puddleTimer = 0;
-                    // Inject a puddle entity directly under the spider
-                    gameObj.addEntity(new ToxicPuddle(this.x, this.y, this.team));
-                }
-            }
+        // NOTE: The entire Spider.update patch is gone!
 
-            // --- DEBUFF: INFECTED ---
-            if (this.infectedTimer > 0) {
-                this.infectedTimer--;
-                
-                // Take damage over time
-                if (gameObj.tick % 30 === 0) {
-                    this.hp -= 3;
-                    gameObj.bus.emit('particles', {x: this.x, y: this.y, color: '#55ff00', count: 2});
-                }
-                
-                // CHESTBURSTER EFFECT: If the unit dies while infected, spawn a parasite!
-                if (this.hp <= 0 && this.role !== 'parasite') {
-                    gameObj.bus.emit('particles', {x: this.x, y: this.y, color: '#55ff00', count: 30});
-                    gameObj.bus.emit('playSound', 'death');
-                    gameObj.bus.emit('spawnSpider', {x: this.x, y: this.y, team: this.infectedByTeam, role: 'parasite'});
-                }
-            }
-
-            // --- TRAIT: PARASITE AI ---
-            // Parasites are hyper-aggressive and will wander randomly to seek out targets far away
-            if (this.hasTrait('parasite_ai')) {
-                let enemy = gameObj.getNearestEnemy(this.x, this.y, this.team, 500); // Massive detection radius
-                if (enemy) {
-                    this.state = SPIDER_STATE.COMBAT;
-                    this.angle = Math.atan2(enemy.y - this.y, enemy.x - this.x);
-                    
-                    if (MathUtils.distSq(this.x, this.y, enemy.x, enemy.y) > 400) { 
-                        this.x += Math.cos(this.angle) * this.baseSpeed; 
-                        this.y += Math.sin(this.angle) * this.baseSpeed;
-                    } else {
-                        // Attack!
-                        this.cooldown--;
-                        if (this.cooldown <= 0) {
-                            enemy.hp -= this.damage;
-                            this.cooldown = this.attackSpeed;
-                            this.x -= Math.cos(this.angle) * 5; this.y -= Math.sin(this.angle) * 5;
-                            gameObj.bus.emit('playSound', 'harvest');
-                        }
-                    }
-                    return; // Skip normal AI
-                } else {
-                    // No enemies? Run around erratically looking for them
-                    if (Math.random() < 0.2) this.angle += MathUtils.randomRange(-1, 1);
-                    this.x += Math.cos(this.angle) * this.baseSpeed;
-                    this.y += Math.sin(this.angle) * this.baseSpeed;
-                    return;
-                }
-            }
-
-            original.call(this, gameObj); // Run normal AI
-        });
-
-        // 5. STRUCTURE AI: THE INCUBATOR
+        // 6. STRUCTURE AI: THE INCUBATOR
         game.expansions.patchClass(Structure, 'update', function(original, gameObj) {
             original.call(this, gameObj);
             
@@ -226,16 +238,14 @@ export const ToxicPlagueExpansion = {
                 // Spawn a free Parasite every 5 seconds (150 ticks)
                 if (gameObj.tick % 150 === 0) {
                     gameObj.bus.emit('particles', {x: this.x, y: this.y + 15, color: '#55ff00', count: 10});
-                    gameObj.bus.emit('playSound', 'harvest'); // Squishy birth noise
+                    gameObj.bus.emit('playSound', 'harvest'); 
                     gameObj.bus.emit('spawnSpider', {x: this.x, y: this.y + 20, team: this.team, role: 'parasite'});
                 }
             }
         });
 
-        // 6. DRAWING LOGIC: INFECTED AURA
+        // 7. DRAWING LOGIC: INFECTED AURA
         game.expansions.patchClass(Spider, 'draw', function(original, ctx) {
-            
-            // Draw glowing toxic aura under infected units
             if (this.infectedTimer > 0) {
                 ctx.save();
                 ctx.translate(this.x, this.y);
@@ -243,7 +253,6 @@ export const ToxicPlagueExpansion = {
                 ctx.beginPath(); ctx.arc(0, 0, this.size + 4, 0, Math.PI*2); ctx.fill();
                 ctx.restore();
             }
-
             original.call(this, ctx);
         });
         
