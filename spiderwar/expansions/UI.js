@@ -55,9 +55,7 @@ export const MinimapExpansion = {
                 game.bus.emit('playSound', 'shoot');
                 
                 validUnits.forEach(u => {
-                    let offsetX = MathUtils.randomRange(-validUnits.length * 4, validUnits.length * 4);
-                    let offsetY = MathUtils.randomRange(-validUnits.length * 4, validUnits.length * 4);
-                    u.commandTarget = { x: pos.x + offsetX, y: pos.y + offsetY };
+                    u.commandTarget = { x: pos.x, y: pos.y }; // Removed random offset!
                     u.isManual = true; 
                 });
             }
