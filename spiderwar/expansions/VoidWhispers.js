@@ -1,5 +1,5 @@
 // expansions/VoidWhispers.js
-import { Spider, Structure, MathUtils, UNIT_DATA, STRUCTURE_DATA, SPIDER_STATE } from '../game.js';
+import { Spider, Structure, MathUtils, UNIT_DATA, STRUCTURE_DATA } from '../game.js';
 
 // ==========================================
 // 1. THE VORTEX SPELL ENTITY (Black Hole)
@@ -106,7 +106,52 @@ export const VoidWhispersExpansion = {
 
         // Note: UI Buttons are handled centrally in UI.js!
 
-        // 3. SPELL LOGIC: VORTEX
+        // ==========================================
+        // 3. ECS TRAIT REGISTRATION
+        // ==========================================
+        game.registerTrait('gravity_pull', {
+            update: (entity, gameObj) => {
+                let enemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, entity.range || 250);
+                
+                if (enemy && !entity.isManual) {
+                    entity.state = 1; // 1 = SPIDER_STATE.COMBAT
+                    entity.angle = Math.atan2(enemy.y - entity.y, enemy.x - entity.x);
+                    
+                    const distSq = MathUtils.distSq(entity.x, entity.y, enemy.x, enemy.y);
+                    const effectiveRangeSq = entity.rangeSq || 62500; // Default to 250px range
+                    
+                    // Instead of running away to kite, the unit stands its ground and drags the enemy in!
+                    if (distSq <= effectiveRangeSq) {
+                        if (!entity.cooldown) entity.cooldown = 0;
+                        entity.cooldown--;
+                        
+                        if (entity.cooldown <= 0) {
+                            // Minor damage
+                            enemy.hp -= entity.damage;
+                            
+                            // THE PULL: Move the enemy directly towards the pulling unit!
+                            enemy.x -= Math.cos(entity.angle) * 15;
+                            enemy.y -= Math.sin(entity.angle) * 15;
+                            enemy.isSlowed = true; // Disrupts their normal walking
+                            
+                            entity.cooldown = entity.attackSpeed;
+                            
+                            // Cosmic Tractor Beam visuals
+                            gameObj.bus.emit('playSound', 'shoot');
+                            gameObj.bus.emit('particles', {x: enemy.x, y: enemy.y, color: '#9900ff', count: 3});
+                            
+                            // Store line drawing data for 5 frames
+                            entity.beamVisual = { x: enemy.x, y: enemy.y, timer: 5 };
+                        }
+                        return true; // RETURN TRUE: Halt movement while channeling gravity
+                    }
+                }
+                
+                return false; // RETURN FALSE: No enemies in pull range, let normal AI run
+            }
+        });
+
+        // 4. SPELL LOGIC: VORTEX
         game.bus.on('castSpell', (data) => {
             if (data.type === 'vortex') {
                 if (game.eco[data.team].dew >= 90) {
@@ -140,48 +185,7 @@ export const VoidWhispersExpansion = {
     },
 
     patch: (game) => {
-        
-        // 4. UNIT AI: GRAVITY PULL
-        game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
-            
-            // --- TRAIT: GRAVITY PULL ---
-            if (this.hasTrait('gravity_pull')) {
-                let enemy = gameObj.getNearestEnemy(this.x, this.y, this.team, this.range || 250);
-                
-                if (enemy && !this.isManual) {
-                    this.state = SPIDER_STATE.COMBAT;
-                    this.angle = Math.atan2(enemy.y - this.y, enemy.x - this.x);
-                    
-                    const distSq = MathUtils.distSq(this.x, this.y, enemy.x, enemy.y);
-                    
-                    // Instead of running away to kite, the Voidweaver stands its ground and drags the enemy in!
-                    if (distSq <= this.rangeSq) {
-                        this.cooldown--;
-                        if (this.cooldown <= 0) {
-                            // Minor damage
-                            enemy.hp -= this.damage;
-                            
-                            // THE PULL: Move the enemy directly towards the Voidweaver!
-                            enemy.x -= Math.cos(this.angle) * 15;
-                            enemy.y -= Math.sin(this.angle) * 15;
-                            enemy.isSlowed = true; // Disrupts their normal walking
-                            
-                            this.cooldown = this.attackSpeed;
-                            
-                            // Cosmic Tractor Beam visuals
-                            gameObj.bus.emit('playSound', 'shoot');
-                            gameObj.bus.emit('particles', {x: enemy.x, y: enemy.y, color: '#9900ff', count: 3});
-                            
-                            // Store line drawing data for 5 frames
-                            this.beamVisual = { x: enemy.x, y: enemy.y, timer: 5 };
-                        }
-                        return; // Halt movement while channeling gravity
-                    }
-                }
-            }
-
-            original.call(this, gameObj); // Run normal AI (handles moving into range)
-        });
+        // NOTE: Spider.update patch is entirely gone from this file!
 
         // 5. STRUCTURE AI: THE MAW
         const MAW_PULL_RADIUS = 200;
