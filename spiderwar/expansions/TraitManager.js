@@ -18,8 +18,7 @@ export const TraitManagerExpansion = {
         };
 
         // ==========================================
-        // 3. FREE EXAMPLE TRAITS! 
-        // (You can assign these to ANY unit or building in the data dictionaries!)
+        // 3. REGISTERED TRAITS 
         // ==========================================
 
         // Trait 1: Regenerator (Passive Healing)
@@ -33,8 +32,7 @@ export const TraitManagerExpansion = {
             }
         });
 
-        // Trait 2: Thorns (Damage Attackers)
-        // (This would require a slight hook into the damage pipeline later, but for now it's a great placeholder)
+        // Trait 2: Burning Aura (Damage Attackers)
         game.registerTrait('burning_aura', {
             update: (entity, gameObj) => {
                 if (gameObj.tick % 30 === 0) { // Every 1 second
@@ -51,6 +49,45 @@ export const TraitManagerExpansion = {
                     }
                     if (burned) gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#ff5500', count: 3});
                 }
+                return false; 
+            }
+        });
+
+        // Trait 3: Kamikaze (Explode on contact)
+        game.registerTrait('kamikaze', {
+            update: (entity, gameObj) => {
+                let enemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, 200);
+                if (enemy) {
+                    // We found an enemy! Override default AI states.
+                    entity.state = 1; // 1 = SPIDER_STATE.COMBAT
+                    entity.angle = Math.atan2(enemy.y - entity.y, enemy.x - entity.x);
+                    
+                    // If close enough, EXPLODE!
+                    if (Math.abs(entity.x - enemy.x) < 30 && Math.abs(entity.y - enemy.y) < 30) { 
+                        entity.hp = 0; // Kill self
+                        gameObj.bus.emit('playSound', 'death');
+                        gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#ffaa00', count: 40});
+                        
+                        // Splash damage
+                        for (let i = 0; i < gameObj.entities.length; i++) {
+                            let e = gameObj.entities[i];
+                            if (e.team && e.team !== entity.team && e.hp > 0) {
+                                // Fast distance check
+                                if (Math.abs(entity.x - e.x) < 100 && Math.abs(entity.y - e.y) < 100) {
+                                    e.hp -= entity.damage; 
+                                }
+                            }
+                        }
+                    } else {
+                        // Sprint at enemy
+                        entity.x += Math.cos(entity.angle) * entity.baseSpeed; 
+                        entity.y += Math.sin(entity.angle) * entity.baseSpeed;
+                    }
+                    
+                    // RETURN TRUE: This tells the TraitManager "I handled the movement, skip the default AI!"
+                    return true; 
+                }
+                // RETURN FALSE: No enemies nearby, let the bug wander normally
                 return false; 
             }
         });
@@ -86,7 +123,7 @@ export const TraitManagerExpansion = {
 
             // Run standard movement/combat AI if a trait didn't override it
             if (!skipDefaultAI) {
-                original.call(entity, gameObj);
+                originalUpdate.call(entity, gameObj);
             }
         };
 
