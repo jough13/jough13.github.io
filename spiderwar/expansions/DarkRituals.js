@@ -1,5 +1,5 @@
 // expansions/DarkRituals.js
-import { Spider, Structure, MathUtils, UNIT_DATA, STRUCTURE_DATA, SPIDER_STATE } from '../game.js';
+import { Spider, Structure, MathUtils, UNIT_DATA, STRUCTURE_DATA } from '../game.js';
 
 export const DarkRitualsExpansion = {
     init: (game) => {
@@ -15,7 +15,7 @@ export const DarkRitualsExpansion = {
         UNIT_DATA['tick'] = { 
             size: 10, hp: 20, damage: 100, attackSpeed: 1, 
             baseSpeedMin: 2.2, baseSpeedMax: 2.8, 
-            traits: ['kamikaze'] 
+            traits: ['kamikaze'] // The TraitManager automatically handles this now!
         };
 
         STRUCTURE_DATA['extractor'] = { 
@@ -67,34 +67,11 @@ export const DarkRitualsExpansion = {
         // 4. UNIT AI & BUFFS
         game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
             
-            if (this.hasTrait('kamikaze')) {
-                let enemy = gameObj.getNearestEnemy(this.x, this.y, this.team, 200);
-                if (enemy) {
-                    this.state = SPIDER_STATE.COMBAT;
-                    this.angle = Math.atan2(enemy.y - this.y, enemy.x - this.x);
-                    
-                    if (MathUtils.distSq(this.x, this.y, enemy.x, enemy.y) < 900) { 
-                        this.hp = 0; 
-                        gameObj.bus.emit('playSound', 'death');
-                        gameObj.bus.emit('particles', {x: this.x, y: this.y, color: '#ffaa00', count: 40});
-                        
-                        for (let i = 0; i < gameObj.entities.length; i++) {
-                            let e = gameObj.entities[i];
-                            if (e.team && e.team !== this.team && e.hp > 0 && MathUtils.distSq(this.x, this.y, e.x, e.y) < 10000) {
-                                e.hp -= this.damage; 
-                            }
-                        }
-                    } else {
-                        this.x += Math.cos(this.angle) * this.baseSpeed; 
-                        this.y += Math.sin(this.angle) * this.baseSpeed;
-                    }
-                    return; 
-                }
-            }
-
             let originalSpeed = this.baseSpeed;
             let originalDamage = this.damage;
             
+            // --- BUFF: BLOODLUST ---
+            // Much cleaner now! Only handles the temporary stat boost.
             if (this.bloodlustTimer > 0) {
                 this.bloodlustTimer--;
                 this.baseSpeed *= 1.8; 
@@ -102,7 +79,7 @@ export const DarkRitualsExpansion = {
                 if (gameObj.tick % 5 === 0) gameObj.bus.emit('particles', {x: this.x, y: this.y, color: '#ff0000', count: 1});
             }
 
-            original.call(this, gameObj); 
+            original.call(this, gameObj); // Run normal AI (or TraitManager AI!)
 
             this.baseSpeed = originalSpeed;
             this.damage = originalDamage;
