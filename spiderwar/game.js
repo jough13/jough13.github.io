@@ -3,6 +3,7 @@
 // ==========================================
 export const MathUtils = {
     TWO_PI: Math.PI * 2, // Cached for massive rendering performance
+    HALF_PI: Math.PI / 2, // Added for expansions to use
     // Optimized: Direct multiplication is vastly faster than the ** exponent operator in JS
     distSq: (x1, y1, x2, y2) => { const dx = x2 - x1; const dy = y2 - y1; return (dx * dx) + (dy * dy); },
     dist: (x1, y1, x2, y2) => { const dx = x2 - x1; const dy = y2 - y1; return Math.sqrt((dx * dx) + (dy * dy)); },
@@ -203,6 +204,11 @@ export class Projectile {
             const dist = Math.sqrt(distSq);
             if (dist > 0) { // Safety to prevent NaN interpolation
                 this.x += (dx/dist) * this.speed; this.y += (dy/dist) * this.speed; 
+                
+                // JUICE: Small particle trail for projectiles!
+                if (game.tick % 3 === 0) {
+                    game.bus.emit('particles', {x: this.x, y: this.y, color: this.team==='black'?'#aa00ff':'#ffaa00', count: 1});
+                }
             }
         }
     }
@@ -246,6 +252,11 @@ export class Game {
         this.camera = { x: 0, y: 0 }; 
         this.tick = 0; 
         
+        // Game Feel: Camera Shake
+        this.shakeX = 0;
+        this.shakeY = 0;
+        this.shakeIntensity = 0;
+        
         // FIX: High Refresh Rate Timing Variables
         this.lastTime = performance.now();
         this.accumulator = 0;
@@ -277,6 +288,8 @@ export class Game {
     get bosses() { return this.entities.filter(e => e.constructor.name === 'CentipedeBoss'); }
     
     addEntity(entity) { this.entities.push(entity); }
+    
+    triggerShake(power) { this.shakeIntensity = Math.max(this.shakeIntensity, power); }
     
     resize() { 
         this.canvas.width = window.innerWidth; 
@@ -396,11 +409,9 @@ export class Game {
     loop(currentTime = performance.now()) { 
         requestAnimationFrame((t) => this.loop(t));
         
-        // FIX: 60 FPS Fixed Timestep. Normalizes game speed across 60Hz and 144Hz monitors!
         let deltaTime = currentTime - this.lastTime;
         this.lastTime = currentTime;
         
-        // Prevent "spiral of death" if the player alt-tabs away for an hour
         if (deltaTime > 250) deltaTime = 250;
         
         this.accumulator += deltaTime;
@@ -412,13 +423,21 @@ export class Game {
             updated = true;
         }
         
-        // Only draw if the logic actually updated this frame
         if (updated) this.draw(); 
     }
 
     update() {
         if (this.gameState !== 'playing') return; 
         this.tick++;
+
+        // Camera Shake Physics
+        if (this.shakeIntensity > 0.1) {
+            this.shakeX = (Math.random() - 0.5) * this.shakeIntensity;
+            this.shakeY = (Math.random() - 0.5) * this.shakeIntensity;
+            this.shakeIntensity *= 0.85; // Decay
+        } else {
+            this.shakeX = 0; this.shakeY = 0;
+        }
 
         const camSpeed = 15;
         if (this.keys['w']) this.camera.y -= camSpeed; if (this.keys['s']) this.camera.y += camSpeed;
@@ -471,9 +490,9 @@ export class Game {
                 
                 // --- PILLAR 1: POPULATE SPATIAL GRID ---
                 if (e.team) {
-                    // SAFETY FIX: Clamp to 0 to prevent negative bitwise shift errors from off-screen projectiles
-                    const cx = Math.max(0, Math.floor(e.x / CELL_SIZE));
-                    const cy = Math.max(0, Math.floor(e.y / CELL_SIZE));
+                    // PERFORMANCE FIX: Swapped Math.floor for bitwise | 0
+                    const cx = Math.max(0, (e.x / CELL_SIZE) | 0);
+                    const cy = Math.max(0, (e.y / CELL_SIZE) | 0);
                     
                     // MASSIVE PERFORMANCE FIX: Using bitwise integers for grid map keys entirely eliminates string GC thrashing!
                     const key = (cx << 16) | cy;
@@ -483,6 +502,11 @@ export class Game {
                     cell.push(e);
                 }
             }
+        }
+
+        // PERFORMANCE FIX: GC Leak cleanup before trimming length
+        for (let i = aliveCount; i < this.entities.length; i++) {
+            this.entities[i] = null; 
         }
 
         let spawnedCount = this.entities.length - originalLength;
@@ -496,10 +520,11 @@ export class Game {
     getNearestEnemy(x, y, team, maxDist) {
         const CELL_SIZE = 250;
         
-        const minCx = Math.floor((x - maxDist) / CELL_SIZE);
-        const maxCx = Math.floor((x + maxDist) / CELL_SIZE);
-        const minCy = Math.floor((y - maxDist) / CELL_SIZE);
-        const maxCy = Math.floor((y + maxDist) / CELL_SIZE);
+        // PERFORMANCE FIX: Swapped Math.floor for bitwise | 0
+        const minCx = ((x - maxDist) / CELL_SIZE) | 0;
+        const maxCx = ((x + maxDist) / CELL_SIZE) | 0;
+        const minCy = ((y - maxDist) / CELL_SIZE) | 0;
+        const maxCy = ((y + maxDist) / CELL_SIZE) | 0;
 
         let nearest = null;
         let minDistSq = maxDist * maxDist;
@@ -533,7 +558,10 @@ export class Game {
 
     draw() {
         this.ctx.fillStyle = '#2c1e16'; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.save(); this.ctx.translate(-this.camera.x, -this.camera.y);
+        this.ctx.save(); 
+        
+        // APPLY CAMERA SHAKE
+        this.ctx.translate(-this.camera.x + this.shakeX, -this.camera.y + this.shakeY);
         
         this.bus.emit('preDraw', this.ctx); 
         this.bus.emit('territoryDraw', this.ctx); 
