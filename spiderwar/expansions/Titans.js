@@ -142,21 +142,26 @@ export const TitansExpansion = {
                 
                 const terrain = gameObj.getTerrainAt(entity.x, entity.y); 
                 let tMod = (terrain === 'water') ? 0.05 : ((terrain === 'grass') ? 1.3 : 1.0);
-                let currentSpeed = (entity.baseSpeed + (techLvl * 0.15)) * tMod;
+                
+                // UNIVERSAL FIX: Fallback to 0 speed if it's a building!
+                let currentSpeed = ((entity.baseSpeed || 0) + (techLvl * 0.15)) * tMod;
                 if (entity.isSlowed) currentSpeed *= 0.3;
                 entity.isSlowed = false; 
 
-                const detectRadius = entity.range + 50 + (techLvl * 10);
+                // Default range to 300 if not specified
+                const effectiveRangeSq = entity.rangeSq || 90000;
+                const detectRadius = Math.sqrt(effectiveRangeSq) + 50 + (techLvl * 10);
+                
                 let nearestEnemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, detectRadius);
 
                 // COMBAT OVERRIDE
                 if (nearestEnemy) {
-                    entity.state = SPIDER_STATE.COMBAT; 
+                    entity.state = 1; // SPIDER_STATE.COMBAT
                     entity.angle = Math.atan2(nearestEnemy.y - entity.y, nearestEnemy.x - entity.x);
                     const distSq = MathUtils.distSq(entity.x, entity.y, nearestEnemy.x, nearestEnemy.y);
-                    const effectiveRangeSq = entity.rangeSq || 90000;
 
-                    if (distSq > effectiveRangeSq) {
+                    if (distSq > effectiveRangeSq && currentSpeed > 0) {
+                        // Only move if it actually has speed (isn't a building)
                         entity.x += Math.cos(entity.angle) * currentSpeed; 
                         entity.y += Math.sin(entity.angle) * currentSpeed;
                     } else {
@@ -164,24 +169,29 @@ export const TitansExpansion = {
                         if (entity.cooldown <= 0) {
                             gameObj.addEntity(new ExplosiveProjectile(entity.x, entity.y, nearestEnemy, currentDamage, entity.team));
                             gameObj.bus.emit('playSound', 'shoot');
-                            entity.x -= Math.cos(entity.angle) * 5; 
-                            entity.y -= Math.sin(entity.angle) * 5; 
-                            entity.cooldown = entity.attackSpeed;
+                            
+                            // Only apply recoil to mobile units
+                            if (currentSpeed > 0) {
+                                entity.x -= Math.cos(entity.angle) * 5; 
+                                entity.y -= Math.sin(entity.angle) * 5; 
+                            }
+                            // Default to 60 attack speed if the entity doesn't have one defined
+                            entity.cooldown = entity.attackSpeed || 60;
                         }
                     }
-                    return true; // Prevent standard melee AI!
+                    return true; // Prevent standard AI!
                 }
 
-                // MANUAL MOVEMENT OVERRIDE (Stutter-Step Logic)
-                if (entity.isManual && entity.commandTarget) {
+                // MANUAL MOVEMENT OVERRIDE
+                if (entity.isManual && entity.commandTarget && currentSpeed > 0) {
                     const dx = entity.commandTarget.x - entity.x; 
                     const dy = entity.commandTarget.y - entity.y;
                     
                     if (MathUtils.distSq(0, 0, dx, dy) > 225) { 
                         const targetAngle = Math.atan2(dy, dx);
                         let diff = targetAngle - entity.angle;
-                        while (diff > Math.PI) diff -= TWO_PI;
-                        while (diff < -Math.PI) diff += TWO_PI;
+                        while (diff > Math.PI) diff -= MathUtils.TWO_PI;
+                        while (diff < -Math.PI) diff += MathUtils.TWO_PI;
                         entity.angle += (diff * 0.05); 
                         
                         entity.x += Math.cos(entity.angle) * currentSpeed; 
@@ -193,7 +203,7 @@ export const TitansExpansion = {
                     } else {
                         entity.commandTarget = null; 
                     }
-                    return true; // Prevent standard melee AI!
+                    return true; 
                 }
                 
                 return false; 
