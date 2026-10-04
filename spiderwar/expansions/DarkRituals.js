@@ -13,9 +13,10 @@ export const DarkRitualsExpansion = {
 
         // 2. DATA CONFIGURATIONS
         UNIT_DATA['tick'] = { 
-            size: 10, hp: 20, damage: 100, attackSpeed: 1, 
+            size: 10, hp: 20, damage: 100, attackSpeed: 45, 
             baseSpeedMin: 2.2, baseSpeedMax: 2.8, 
-            traits: ['kamikaze'] // The TraitManager automatically handles this now!
+            range: 250, rangeSq: 62500, // Added for siege_attacker
+            traits: ['siege_attacker'] // Replaced 'kamikaze'
         };
 
         STRUCTURE_DATA['extractor'] = { 
@@ -53,6 +54,13 @@ export const DarkRitualsExpansion = {
                     
                     let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
                     s.sprite = game.assets.get(data.team === 'black' ? 'assets/tick_black.png' : 'assets/tick_red.png');
+                    
+                    // ECS Trait Setup for Tick's new Siege capabilities
+                    if (s.hasTrait('siege_attacker')) {
+                        s.range = UNIT_DATA['tick'].range;
+                        s.rangeSq = UNIT_DATA['tick'].rangeSq;
+                    }
+
                     s.imageLoaded = true; 
                     
                     game.addEntity(s);
