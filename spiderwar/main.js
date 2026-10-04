@@ -15,7 +15,8 @@ import { TerrainExpansion } from './expansions/Terrain.js';
 import { DecorExpansion } from './expansions/Decor.js';
 import { ParticleExpansion } from './expansions/Particles.js';
 import { AdvancedBaseExpansion } from './expansions/AdvancedBase.js';
-import { AIDirectorExpansion } from './expansions/AIDirector.js'; // <-- ADDED AI DIRECTOR IMPORT
+import { AIDirectorExpansion } from './expansions/AIDirector.js'; 
+import { TraitManagerExpansion } from './expansions/TraitManager.js'; // <-- ADDED TRAIT MANAGER IMPORT
 import { GodUnitExpansion } from './expansions/Boss.js';
 
 // Core AI & Networks
@@ -58,7 +59,8 @@ const expansionManifest = [
     { name: 'ParticleEngine',       module: ParticleExpansion },
     
     { name: 'AdvancedBaseBuilder',  module: AdvancedBaseExpansion },
-    { name: 'AIDirector',           module: AIDirectorExpansion }, // <-- ADDED AI DIRECTOR TO MANIFEST
+    { name: 'AIDirector',           module: AIDirectorExpansion }, 
+    { name: 'TraitManager',         module: TraitManagerExpansion }, // <-- ADDED TO MANIFEST
     { name: 'CentipedeBoss',        module: GodUnitExpansion },
     { name: 'QueenSystem',          module: QueenExpansion },
     { name: 'CombatAndHarvesterAI', module: CombatAndHarvesterExpansion },
