@@ -13,8 +13,8 @@ const TITAN_CONFIG = {
     goliath: { 
         hp: 1200, damage: 90, attackSpeed: 60, size: 38, 
         baseSpeedMin: 0.3, baseSpeedMax: 0.5, costP: 400, costD: 150, 
-        range: 300, rangeSq: 90000,                  // Pre-calculated for fast MathUtils.distSq
-        splashRadius: 100, splashRadiusSq: 10000,    // Pre-calculated for fast AABB math
+        range: 300, rangeSq: 90000,                  
+        splashRadius: 100, splashRadiusSq: 10000,    
         projSpeed: 3.5 
     }
 };
@@ -35,7 +35,6 @@ export class ExplosiveProjectile {
     }
 
     update(game) {
-        // SAFETY FIX: Undefined HP check to prevent targeting ghosts, spells, or particles
         if(!this.target || this.target.hp === undefined || this.target.hp <= 0) { 
             this.active = false; 
             return; 
@@ -45,39 +44,29 @@ export class ExplosiveProjectile {
         const dy = this.target.y - this.y;
         const distSq = MathUtils.distSq(this.x, this.y, this.target.x, this.target.y);
         
-        if (distSq < 225) { // 15px Direct Hit!
+        if (distSq < 225) { 
             this.active = false; 
-            game.bus.emit('playSound', 'death'); // Heavy explosion
+            game.bus.emit('playSound', 'death'); 
             
             const magicColor = this.team === 'black' ? '#aa00ff' : '#ff0000';
             game.bus.emit('particles', {x: this.target.x, y: this.target.y, color: magicColor, count: 40});
             game.bus.emit('particles', {x: this.target.x, y: this.target.y, color: '#ffaa00', count: 20, type: 'splatter'});
             
-            // Splash Damage Calculation
             const splashRad = TITAN_CONFIG.goliath.splashRadius;
             const splashRadSq = TITAN_CONFIG.goliath.splashRadiusSq;
 
             for (let i = 0; i < game.entities.length; i++) {
                 let e = game.entities[i];
-                
                 if (!e.team || e.team === this.team || e.team === 'nature' || e.hp === undefined || e.hp <= 0) continue;
-                
-                // PERFORMANCE FIX: Fast AABB check using config values
                 if (Math.abs(this.x - e.x) > splashRad || Math.abs(this.y - e.y) > splashRad) continue;
 
                 if (MathUtils.distSq(this.x, this.y, e.x, e.y) < splashRadSq) { 
-                    // Full damage to units, 50% damage to buildings
-                    if (e instanceof Spider || e.constructor.name === 'CentipedeBoss') {
-                        e.hp -= this.damage;
-                    } else {
-                        e.hp -= (this.damage * 0.5); 
-                    }
+                    if (e instanceof Spider || e.constructor.name === 'CentipedeBoss') e.hp -= this.damage;
+                    else e.hp -= (this.damage * 0.5); 
                 }
             }
         } else {
-            // Homing movement (tracks moving targets)
             const dist = Math.sqrt(distSq);
-            // SAFETY FIX: Ensure distance > 0 to prevent NaN interpolation
             if (dist > 0) {
                 this.x += (dx/dist) * this.speed; 
                 this.y += (dy/dist) * this.speed; 
@@ -87,17 +76,10 @@ export class ExplosiveProjectile {
 
     draw(ctx) { 
         const magicColor = this.team === 'black' ? '#aa00ff' : '#ff0000';
-        
-        // Flaming magic pumpkin
         ctx.fillStyle = magicColor; 
-        ctx.beginPath(); 
-        ctx.arc(this.x, this.y, 8, 0, TWO_PI); 
-        ctx.fill(); 
-        
+        ctx.beginPath(); ctx.arc(this.x, this.y, 8, 0, TWO_PI); ctx.fill(); 
         ctx.fillStyle = '#ffaa00'; 
-        ctx.beginPath(); 
-        ctx.arc(this.x, this.y, 4, 0, TWO_PI); 
-        ctx.fill(); 
+        ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, TWO_PI); ctx.fill(); 
     }
 }
 
@@ -112,27 +94,116 @@ export const TitansExpansion = {
         game.assets.register('assets/goliath_black.png');
         game.assets.register('assets/goliath_red.png');
 
-        // --- PILLAR 3: TRAIT ASSIGNMENT ---
+        // --- 2. TRAIT ASSIGNMENT ---
         UNIT_DATA['widow'] = { 
             size: TITAN_CONFIG.widow.size, hp: TITAN_CONFIG.widow.hp, 
             damage: TITAN_CONFIG.widow.damage, attackSpeed: TITAN_CONFIG.widow.attackSpeed, 
             baseSpeedMin: TITAN_CONFIG.widow.baseSpeedMin, baseSpeedMax: TITAN_CONFIG.widow.baseSpeedMax,
-            traits: ['melee', 'stealth'] // Combines default melee AI with cloaking mechanics
+            traits: ['melee', 'stealth'] 
         };
         
         UNIT_DATA['goliath'] = { 
             size: TITAN_CONFIG.goliath.size, hp: TITAN_CONFIG.goliath.hp, 
             damage: TITAN_CONFIG.goliath.damage, attackSpeed: TITAN_CONFIG.goliath.attackSpeed, 
             baseSpeedMin: TITAN_CONFIG.goliath.baseSpeedMin, baseSpeedMax: TITAN_CONFIG.goliath.baseSpeedMax,
-            traits: ['siege_attacker'] // Triggers the heavy explosive mortar AI
+            traits: ['siege_attacker'] 
         };
 
+        // --- 3. ECS TRAIT REGISTRATION! ---
+        
+        // Stealth Trait
+        game.registerTrait('stealth', {
+            update: (entity, gameObj) => {
+                // Handle stealth cooldown and visual effects
+                if (entity.cloakCooldown > 0) {
+                    entity.cloakCooldown--;
+                    if (entity.cloakCooldown <= 0) {
+                        gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#333333', count: 15});
+                        gameObj.bus.emit('playSound', 'spell'); 
+                    }
+                }
+                entity.isCloaked = (entity.cloakCooldown <= 0);
+
+                // Strip stealth instantly if the unit just attacked!
+                if (entity.cooldown >= entity.attackSpeed - 1 && entity.cooldown > 0) {
+                    entity.cloakCooldown = TITAN_CONFIG.widow.decloakTime; 
+                    entity.isCloaked = false;
+                }
+                
+                return false; // Return false to allow standard melee AI to continue running
+            }
+        });
+
+        // Siege Attacker Trait
+        game.registerTrait('siege_attacker', {
+            update: (entity, gameObj) => {
+                const techLvl = gameObj.techLevel[entity.team] || 0; 
+                const currentDamage = entity.damage + (techLvl * 5); 
+                
+                const terrain = gameObj.getTerrainAt(entity.x, entity.y); 
+                let tMod = (terrain === 'water') ? 0.05 : ((terrain === 'grass') ? 1.3 : 1.0);
+                let currentSpeed = (entity.baseSpeed + (techLvl * 0.15)) * tMod;
+                if (entity.isSlowed) currentSpeed *= 0.3;
+                entity.isSlowed = false; 
+
+                const detectRadius = entity.range + 50 + (techLvl * 10);
+                let nearestEnemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, detectRadius);
+
+                // COMBAT OVERRIDE
+                if (nearestEnemy) {
+                    entity.state = SPIDER_STATE.COMBAT; 
+                    entity.angle = Math.atan2(nearestEnemy.y - entity.y, nearestEnemy.x - entity.x);
+                    const distSq = MathUtils.distSq(entity.x, entity.y, nearestEnemy.x, nearestEnemy.y);
+                    const effectiveRangeSq = entity.rangeSq || 90000;
+
+                    if (distSq > effectiveRangeSq) {
+                        entity.x += Math.cos(entity.angle) * currentSpeed; 
+                        entity.y += Math.sin(entity.angle) * currentSpeed;
+                    } else {
+                        entity.cooldown = (entity.cooldown || 0) - 1;
+                        if (entity.cooldown <= 0) {
+                            gameObj.addEntity(new ExplosiveProjectile(entity.x, entity.y, nearestEnemy, currentDamage, entity.team));
+                            gameObj.bus.emit('playSound', 'shoot');
+                            entity.x -= Math.cos(entity.angle) * 5; 
+                            entity.y -= Math.sin(entity.angle) * 5; 
+                            entity.cooldown = entity.attackSpeed;
+                        }
+                    }
+                    return true; // Prevent standard melee AI!
+                }
+
+                // MANUAL MOVEMENT OVERRIDE (Stutter-Step Logic)
+                if (entity.isManual && entity.commandTarget) {
+                    const dx = entity.commandTarget.x - entity.x; 
+                    const dy = entity.commandTarget.y - entity.y;
+                    
+                    if (MathUtils.distSq(0, 0, dx, dy) > 225) { 
+                        const targetAngle = Math.atan2(dy, dx);
+                        let diff = targetAngle - entity.angle;
+                        while (diff > Math.PI) diff -= TWO_PI;
+                        while (diff < -Math.PI) diff += TWO_PI;
+                        entity.angle += (diff * 0.05); 
+                        
+                        entity.x += Math.cos(entity.angle) * currentSpeed; 
+                        entity.y += Math.sin(entity.angle) * currentSpeed;
+                        
+                        const bnd = entity.size * 2;
+                        entity.x = MathUtils.clamp(entity.x, bnd, gameObj.world.width - bnd);
+                        entity.y = MathUtils.clamp(entity.y, bnd, gameObj.world.height - bnd);
+                    } else {
+                        entity.commandTarget = null; 
+                    }
+                    return true; // Prevent standard melee AI!
+                }
+                
+                return false; 
+            }
+        });
+
+        // --- 4. SPAWN LOGIC ---
         game.bus.on('spawnSpider', (data) => {
-            // PERFORMANCE FIX: Pull directly from config instead of recreating variables in memory every spawn
             const config = TITAN_CONFIG[data.role];
-            
             if (config && config.costP !== undefined) {
-                // SAFETY FIX: Optional chaining on game.eco[data.team]
                 if (game.eco[data.team]?.pumpkins >= config.costP && game.eco[data.team]?.dew >= config.costD && game.pop[data.team] < game.maxPop[data.team]) {
                     game.eco[data.team].pumpkins -= config.costP; 
                     game.eco[data.team].dew -= config.costD;
@@ -142,17 +213,17 @@ export const TitansExpansion = {
                     if (data.role === 'widow') s.sprite = game.assets.get(data.team === 'black' ? 'assets/widow_black.png' : 'assets/widow_red.png');
                     if (data.role === 'goliath') s.sprite = game.assets.get(data.team === 'black' ? 'assets/goliath_black.png' : 'assets/goliath_red.png');
 
-                    // --- PILLAR 3: TRAIT INITIALIZATION ---
+                    // ECS Trait Setup
                     if (s.hasTrait('stealth')) {
                         s.isCloaked = true; 
                         s.cloakCooldown = 0;
                     }
                     if (s.hasTrait('siege_attacker')) {
                         s.range = config.range;
-                        s.rangeSq = config.rangeSq; // Cache squared range
+                        s.rangeSq = config.rangeSq; 
                     }
 
-                    s.imageLoaded = true; // Tell base engine it's ready immediately
+                    s.imageLoaded = true; 
                     game.addEntity(s);
                     game.bus.emit('playSound', 'spell');
                 }
@@ -161,108 +232,7 @@ export const TitansExpansion = {
     },
 
     patch: (game) => {
-        
-        // 3. AI & COMBAT LOGIC
-        game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
-            
-            // --- PILLAR 3: STEALTH TRAIT ---
-            if (this.hasTrait('stealth')) {
-                if (this.cloakCooldown > 0) {
-                    this.cloakCooldown--;
-                    // Visual re-cloaking effect
-                    if (this.cloakCooldown <= 0) {
-                        gameObj.bus.emit('particles', {x: this.x, y: this.y, color: '#333333', count: 15});
-                        gameObj.bus.emit('playSound', 'spell'); 
-                    }
-                }
-                this.isCloaked = (this.cloakCooldown <= 0);
-            }
-
-            // --- PILLAR 3: SIEGE ATTACKER TRAIT ---
-            if (this.hasTrait('siege_attacker')) {
-                const techLvl = gameObj.techLevel[this.team] || 0; 
-                const currentDamage = this.damage + (techLvl * 5); 
-                
-                // Environmental and magical speed modifiers
-                const terrain = gameObj.getTerrainAt(this.x, this.y); 
-                let tMod = (terrain === 'water') ? 0.05 : ((terrain === 'grass') ? 1.3 : 1.0);
-                let currentSpeed = (this.baseSpeed + (techLvl * 0.15)) * tMod;
-                if (this.isSlowed) currentSpeed *= 0.3;
-                this.isSlowed = false; // Reset trap debuff
-
-                const detectRadius = this.range + 50 + (techLvl * 10);
-                let nearestEnemy = gameObj.getNearestEnemy(this.x, this.y, this.team, detectRadius);
-
-                // COMBAT OVERRIDE: Prioritize shooting over everything else!
-                if (nearestEnemy) {
-                    this.state = SPIDER_STATE.COMBAT; 
-                    this.angle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
-                    const distSq = MathUtils.distSq(this.x, this.y, nearestEnemy.x, nearestEnemy.y);
-                    
-                    // PERFORMANCE FIX: Use pre-cached squared range to skip multiplication
-                    const effectiveRangeSq = this.rangeSq || 90000;
-
-                    if (distSq > effectiveRangeSq) {
-                        // Chase until in range
-                        this.x += Math.cos(this.angle) * currentSpeed; 
-                        this.y += Math.sin(this.angle) * currentSpeed;
-                    } else {
-                        // In range, open fire!
-                        this.cooldown = (this.cooldown || 0) - 1;
-                        if (this.cooldown <= 0) {
-                            gameObj.addEntity(new ExplosiveProjectile(this.x, this.y, nearestEnemy, currentDamage, this.team));
-                            gameObj.bus.emit('playSound', 'shoot');
-                            
-                            // Heavy Ranged Recoil
-                            this.x -= Math.cos(this.angle) * 5; 
-                            this.y -= Math.sin(this.angle) * 5; 
-                            
-                            this.cooldown = this.attackSpeed;
-                        }
-                    }
-                    return; // Prevent standard melee AI from running
-                }
-
-                // MANUAL MOVEMENT OVERRIDE (Stutter-Step Logic)
-                if (this.isManual && this.commandTarget) {
-                    const dx = this.commandTarget.x - this.x; 
-                    const dy = this.commandTarget.y - this.y;
-                    
-                    if (MathUtils.distSq(0, 0, dx, dy) > 225) { 
-                        const targetAngle = Math.atan2(dy, dx);
-                        
-                        // Smooth, lumbering rotation (Using optimized TWO_PI)
-                        let diff = targetAngle - this.angle;
-                        while (diff > Math.PI) diff -= TWO_PI;
-                        while (diff < -Math.PI) diff += TWO_PI;
-                        this.angle += (diff * 0.05); 
-                        
-                        this.x += Math.cos(this.angle) * currentSpeed; 
-                        this.y += Math.sin(this.angle) * currentSpeed;
-                        
-                        // SAFETY FIX: Clamp manual movement so they don't wander off the map!
-                        const bnd = this.size * 2;
-                        this.x = MathUtils.clamp(this.x, bnd, gameObj.world.width - bnd);
-                        this.y = MathUtils.clamp(this.y, bnd, gameObj.world.height - bnd);
-                        
-                    } else {
-                        this.commandTarget = null; // Target reached
-                    }
-                    return; // Prevent standard melee AI from running
-                }
-            }
-
-            // Standard fallback AI for movement and melee (runs for Stealthed units when they aren't manually controlled)
-            original.call(this, gameObj);
-
-            // POST-COMBAT TRIGGER: Strip stealth if the unit just attacked!
-            if (this.hasTrait('stealth') && this.cooldown === this.attackSpeed) {
-                this.cloakCooldown = TITAN_CONFIG.widow.decloakTime; 
-                this.isCloaked = false;
-            }
-        });
-
-        // 4. RENDERING POLISH (Ghostly transparency for cloaked units)
+        // 4. RENDERING POLISH (The only patch remaining!)
         game.expansions.patchClass(Spider, 'draw', function(original, ctx) {
             if (this.hasTrait('stealth') && this.isCloaked) {
                 ctx.globalAlpha = 0.35; // Highly transparent to the player
