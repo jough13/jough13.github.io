@@ -16,11 +16,10 @@ const DECOR_CONFIG = {
 };
 
 const CHUNK_SIZE = 500; // Size of spatial hash grids for rendering performance
-const TWO_PI = Math.PI * 2;
 
 export const DecorExpansion = {
     init: (game) => {
-        game.decorChunks = new Map(); // PERFORMANCE FIX: Swapped {} to Map() for integer key lookups
+        game.decorChunks = new Map(); // PERFORMANCE FIX: Map() for integer key lookups
         game.decorInitialized = false;
 
         // --- 1. ASSET REGISTRY ---
@@ -61,19 +60,19 @@ export const DecorExpansion = {
                                 y: dy, 
                                 type: type, 
                                 size: rawSize,
-                                renderSize: rawSize * 2, // PERFORMANCE FIX: Pre-calculated math saves 2 multiplications per frame per decor item!
-                                angle: Math.random() * TWO_PI, // Organic rotation
+                                renderSize: rawSize * 2, // Pre-calculated math saves multiplications per frame
+                                angle: Math.random() * MathUtils.TWO_PI, // Organic rotation
                                 alpha: MathUtils.randomRange(config.minAlpha, config.maxAlpha), // Organic transparency
                                 fallbackColor: config.fallbackColor,
                                 
-                                // --- 2. INSTANT RAM CACHE RETRIEVAL ---
+                                // INSTANT RAM CACHE RETRIEVAL
                                 sprite: this.assets.get(config.src)
                             };
 
                             // Assign to Spatial Hash Chunk
-                            // SAFETY FIX: Ensure chunks don't go negative and use Bitwise Integers to prevent GC String Allocation
-                            const chunkX = Math.max(0, Math.floor(dx / CHUNK_SIZE));
-                            const chunkY = Math.max(0, Math.floor(dy / CHUNK_SIZE));
+                            // PERFORMANCE FIX: Swapped Math.floor with bitwise | 0
+                            const chunkX = Math.max(0, (dx / CHUNK_SIZE) | 0);
+                            const chunkY = Math.max(0, (dy / CHUNK_SIZE) | 0);
                             const chunkKey = (chunkX << 16) | chunkY;
 
                             let chunk = this.decorChunks.get(chunkKey);
@@ -101,17 +100,18 @@ export const DecorExpansion = {
 
             const padding = 100;
             
-            // Calculate which chunks the camera is currently looking at (Safely clamped to 0)
-            const startX = Math.max(0, Math.floor((game.camera.x - padding) / CHUNK_SIZE));
-            const endX = Math.max(0, Math.floor((game.camera.x + game.canvas.width + padding) / CHUNK_SIZE));
-            const startY = Math.max(0, Math.floor((game.camera.y - padding) / CHUNK_SIZE));
-            const endY = Math.max(0, Math.floor((game.camera.y + game.canvas.height + padding) / CHUNK_SIZE));
+            // Calculate which chunks the camera is currently looking at
+            // PERFORMANCE FIX: Swapped Math.floor with bitwise | 0
+            const startX = Math.max(0, ((game.camera.x - padding) / CHUNK_SIZE) | 0);
+            const endX = Math.max(0, ((game.camera.x + game.canvas.width + padding) / CHUNK_SIZE) | 0);
+            const startY = Math.max(0, ((game.camera.y - padding) / CHUNK_SIZE) | 0);
+            const endY = Math.max(0, ((game.camera.y + game.canvas.height + padding) / CHUNK_SIZE) | 0);
 
             // ONLY loop through the chunks that are visible!
             for (let cy = startY; cy <= endY; cy++) {
                 for (let cx = startX; cx <= endX; cx++) {
                     
-                    // PERFORMANCE FIX: Zero-allocation bitwise lookup instead of string interpolation
+                    // PERFORMANCE FIX: Zero-allocation bitwise lookup
                     const chunkKey = (cx << 16) | cy;
                     const chunk = game.decorChunks.get(chunkKey);
                     
@@ -120,18 +120,36 @@ export const DecorExpansion = {
                             let d = chunk[i];
                             
                             ctx.save();
-                            ctx.translate(d.x, d.y);
-                            ctx.rotate(d.angle);       // Apply organic rotation
-                            ctx.globalAlpha = d.alpha; // Apply organic fading
+                            
+                            // JUICE: Ambient Wind and Water Ripples!
+                            let drawY = d.y;
+                            let drawAngle = d.angle;
+                            
+                            if (d.type === 'water') {
+                                // Gentle bobbing on the Y axis, offset by its X coordinate so they don't all bob in sync
+                                drawY += Math.sin(game.tick * 0.03 + d.x) * 2; 
+                            } else if (d.type === 'grass' || d.type === 'vines') {
+                                // Gentle swaying in the wind
+                                drawAngle += Math.sin(game.tick * 0.015 + d.y) * 0.08; 
+                            }
+
+                            ctx.translate(d.x, drawY);
+                            ctx.rotate(drawAngle);       
+                            ctx.globalAlpha = d.alpha; 
                             
                             // Render Asset or Fallback Shape
                             if (d.sprite && d.sprite.complete && d.sprite.naturalHeight !== 0) {
-                                ctx.drawImage(d.sprite, -d.size, -d.size, d.renderSize, d.renderSize);
+                                // ASPECT RATIO FIX: Calculate dynamic width based on actual image proportions
+                                const aspect = d.sprite.naturalWidth / d.sprite.naturalHeight;
+                                const drawH = d.renderSize;
+                                const drawW = drawH * aspect;
+                                
+                                ctx.drawImage(d.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
                             } else {
-                                // SAFETY FIX: Graceful fallback so map still looks populated if an image is missing
+                                // Graceful fallback
                                 ctx.fillStyle = d.fallbackColor;
                                 ctx.beginPath(); 
-                                ctx.ellipse(0, 0, d.size, d.size * 0.6, 0, 0, TWO_PI); 
+                                ctx.ellipse(0, 0, d.size, d.size * 0.6, 0, 0, MathUtils.TWO_PI); 
                                 ctx.fill();
                             }
                             
