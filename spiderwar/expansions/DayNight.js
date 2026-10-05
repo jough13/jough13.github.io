@@ -1,11 +1,11 @@
 // expansions/DayNight.js
-import { Game, Spider } from '../game.js';
+import { Game, Spider, MathUtils } from '../game.js';
 
 // ==========================================
 // 1. CONFIGURATION (Easy Tweaking!)
 // ==========================================
 const DAYNIGHT_CONFIG = {
-    cycleTicks: 7200,      // 7200 ticks = ~4 minutes at 30 fps
+    cycleTicks: 7200,      // 7200 ticks = ~4 minutes at 60 fps (Oops, updated comment for 60fps!)
     maxDarkness: 0.75,     // 75% opacity at the peak of night
     nocturnalBuff: 1.20,   // Spiders move 20% faster at night
     
@@ -15,7 +15,8 @@ const DAYNIGHT_CONFIG = {
     dawnStart: 0.90,       // 90% into the cycle, sun begins to rise
     
     // Aesthetic
-    nightColorRGB: '5, 0, 15' // Deep midnight-blue/purple
+    nightColorRGB: '5, 0, 15', // Deep midnight-blue/purple
+    fireflyColor: '#d4ff00'    // Glowing yellow-green
 };
 
 export const DayNightExpansion = {
@@ -30,11 +31,16 @@ export const DayNightExpansion = {
             style.id = 'dayNightStyle';
             style.innerHTML = `
                 #dayNightAnnouncer {
-                    position: fixed; top: 15%; left: 50%; transform: translateX(-50%);
-                    color: #aa00ff; font-family: 'Courier New', monospace; font-size: 1.8rem;
+                    position: fixed; top: 20%; left: 50%; transform: translate(-50%, -50%) scale(1);
+                    color: #aa00ff; font-family: 'Courier New', monospace; font-size: 2rem;
                     text-align: center; text-shadow: 0 0 15px #aa00ff, 2px 2px 0 #000;
-                    pointer-events: none; opacity: 0; transition: opacity 2s ease-in-out;
-                    z-index: 3000; text-transform: uppercase; font-weight: bold; letter-spacing: 2px;
+                    pointer-events: none; opacity: 0; 
+                    transition: opacity 1.5s ease-in-out, transform 3s ease-out;
+                    z-index: 3000; text-transform: uppercase; font-weight: bold; letter-spacing: 4px;
+                }
+                #dayNightAnnouncer.active {
+                    opacity: 1;
+                    transform: translate(-50%, -50%) scale(1.1); /* Cinematic slow zoom */
                 }
             `;
             document.head.appendChild(style);
@@ -53,12 +59,16 @@ export const DayNightExpansion = {
         game.showTimeMessage = (msg, color) => {
             announcer.innerText = msg;
             announcer.style.color = color;
-            announcer.style.textShadow = `0 0 15px ${color}, 2px 2px 0 #000`;
-            announcer.style.opacity = '1';
+            announcer.style.textShadow = `0 0 20px ${color}, 2px 2px 0 #000`;
+            
+            // Trigger CSS Transition
+            announcer.classList.remove('active');
+            void announcer.offsetWidth; // Force DOM reflow to restart animation
+            announcer.classList.add('active');
             
             // UI POLISH FIX: Clear old timeouts so fast messages don't accidentally get hidden early
             if (msgTimeout) clearTimeout(msgTimeout);
-            msgTimeout = setTimeout(() => { announcer.style.opacity = '0'; }, 4000);
+            msgTimeout = setTimeout(() => { announcer.classList.remove('active'); }, 4000);
         };
     },
 
@@ -88,6 +98,23 @@ export const DayNightExpansion = {
             if (!this.isNight && wasNight) {
                 this.bus.emit('playSound', 'build'); // Deep thud/gong
                 this.showTimeMessage("Daybreak Returns", "#ff9d00");
+            }
+
+            // JUICE: Spawn ambient fireflies during the night!
+            // We use a 15% chance per frame to keep the particle count reasonable
+            if (this.isNight && Math.random() < 0.15) {
+                // PERFORMANCE FIX: Only spawn them inside the current camera viewport!
+                const spawnX = this.camera.x + MathUtils.randomRange(0, this.canvas.width);
+                const spawnY = this.camera.y + MathUtils.randomRange(0, this.canvas.height);
+                
+                // Using 'magic' type so they drift upward slowly and don't slow down via friction
+                this.bus.emit('particles', {
+                    x: spawnX, 
+                    y: spawnY, 
+                    color: DAYNIGHT_CONFIG.fireflyColor, 
+                    count: 1, 
+                    type: 'magic'
+                });
             }
         });
 
