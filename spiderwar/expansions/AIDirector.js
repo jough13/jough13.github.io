@@ -1,7 +1,7 @@
 // expansions/AIDirector.js
 import { Structure, Spider, MathUtils } from '../game.js';
 import { Queen } from './Queen.js';
-import { AI_PROFILES } from './AdvancedBase.js'; // We'll leverage your existing difficulty profiles!
+import { AI_PROFILES } from './AdvancedBase.js'; 
 
 // ==========================================
 // THE AI DIRECTOR STATE MACHINE
@@ -50,10 +50,11 @@ export const AIDirectorExpansion = {
             let blackNest = null;
             let underAttack = false;
 
+            // PERFORMANCE FIX: Clean for-loop instead of array iterators
             for (let i = 0; i < this.structures.length; i++) {
                 let s = this.structures[i];
                 if (s.team === 'red' && s.type === 'nest') redNest = s;
-                if (s.team === 'black' && s.type === 'nest') blackNest = s;
+                else if (s.team === 'black' && s.type === 'nest') blackNest = s;
                 
                 // If a red building is damaged, we are under attack!
                 if (s.team === 'red' && s.hp < s.maxHp && s.hp > 0) underAttack = true;
@@ -82,7 +83,14 @@ export const AIDirectorExpansion = {
             // --- STATE: BUILDING (Rallying troops) ---
             if (dir.state === AI_STATE.BUILDING || dir.state === AI_STATE.DEFENDING) {
                 dir.state = AI_STATE.BUILDING;
-                dir.rallyPoint = { x: redNest.x - 150, y: redNest.y - 150 }; // Rally in front of the base
+                
+                // SMART PATHING: Calculate an angle pointing towards the center of the map
+                // This ensures the AI never rallies its troops out-of-bounds off the screen!
+                const angleToCenter = Math.atan2((this.world.height / 2) - redNest.y, (this.world.width / 2) - redNest.x);
+                dir.rallyPoint = { 
+                    x: redNest.x + Math.cos(angleToCenter) * 250, 
+                    y: redNest.y + Math.sin(angleToCenter) * 250 
+                };
 
                 // Recruit idle red combat units into the squad
                 for (let i = 0; i < this.entities.length; i++) {
@@ -92,7 +100,7 @@ export const AIDirectorExpansion = {
                         if (!dir.squad.has(e) && !e.target) {
                             dir.squad.add(e);
                             // Send them to the rally point
-                            e.commandTarget = { x: dir.rallyPoint.x + MathUtils.randomRange(-50, 50), y: dir.rallyPoint.y + MathUtils.randomRange(-50, 50) };
+                            e.commandTarget = { x: dir.rallyPoint.x + MathUtils.randomRange(-80, 80), y: dir.rallyPoint.y + MathUtils.randomRange(-80, 80) };
                             e.isManual = true;
                         }
                     }
@@ -106,14 +114,25 @@ export const AIDirectorExpansion = {
                     if (blackNest) {
                         dir.target = { x: blackNest.x, y: blackNest.y };
                     } else {
-                        let blackQueen = this.queens.find(q => q.team === 'black');
+                        // PERFORMANCE FIX: Clean for-loop instead of .find()
+                        let blackQueen = null;
+                        for (let i = 0; i < this.queens.length; i++) {
+                            if (this.queens[i].team === 'black' && this.queens[i].hp > 0) {
+                                blackQueen = this.queens[i]; break;
+                            }
+                        }
                         if (blackQueen) dir.target = { x: blackQueen.x, y: blackQueen.y };
                     }
                     
                     if (dir.target) {
                         console.log(`[AI Director] Launching Wave of ${dir.squad.size} units!`);
-                        // Optional: Play a menacing global sound or particle effect to warn the player!
+                        
+                        // JUICE: Terrifying global visual and audio warning!
                         this.bus.emit('playSound', 'death');
+                        setTimeout(() => this.bus.emit('playSound', 'death'), 150); // Double-boom roar
+                        
+                        if (this.triggerShake) this.triggerShake(10);
+                        this.bus.emit('particles', {x: redNest.x, y: redNest.y, color: '#ff0000', count: 100, type: 'magic'});
                     }
                 }
             }
