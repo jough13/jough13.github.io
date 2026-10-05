@@ -40,7 +40,7 @@ body, html {
     font-family: var(--font-primary);
     color: var(--color-pumpkin);
     
-    /* CRITICAL MOBILE FIX: Prevents "Pull to refresh" and elastic bounce effects when panning camera */
+    /* CRITICAL MOBILE FIX: Prevents "Pull to refresh" and elastic bounce effects */
     overscroll-behavior: none;
     
     /* Prevent accidental text highlighting when drag-selecting units */
@@ -52,8 +52,8 @@ body, html {
     /* Prevents the ugly blue flash when tapping UI on mobile iOS/Android */
     -webkit-tap-highlight-color: transparent;
     
-    /* RTS style targeting cursor */
-    cursor: crosshair; 
+    /* JUICE: Custom RTS cursor support! (Falls back to crosshair if image is missing) */
+    cursor: url('assets/cursor.png') 16 16, crosshair; 
 }
 
 /* Prevent accidental image dragging in the HTML UI layer (Portraits, Icons) */
@@ -78,19 +78,32 @@ img {
 }
 
 /* ==========================================
-   ATMOSPHERE (VIGNETTE)
+   ATMOSPHERE (VIGNETTE & RETRO SCANLINES)
 ========================================== */
-/* Adds a spooky shadowed edge to the entire screen */
+/* Spooky shadowed edge */
 body::after {
     content: "";
     position: absolute;
-    inset: 0; /* Modern replacement for top:0, left:0, width:100%, height:100% */
-    pointer-events: none; /* Lets all clicks pass through to the canvas */
+    inset: 0; 
+    pointer-events: none; /* Lets clicks pass through to canvas */
     background: radial-gradient(circle, transparent 60%, rgba(5, 2, 0, 0.85) 100%);
-    z-index: var(--z-vignette); /* Sits above the canvas, but below the UI */
+    z-index: var(--z-vignette);
     
-    /* Hardware acceleration: Explicitly tells GPU to composite this layer separately */
+    /* Hardware acceleration */
     transform: translateZ(0);
+    will-change: transform;
+}
+
+/* JUICE: Retro 16-bit CRT Monitor Scanlines */
+body::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: calc(var(--z-vignette) - 1); /* Under vignette, over canvas */
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
+    background-size: 100% 4px; /* Adjust 4px to make lines thicker/thinner */
+    opacity: 0.4;
 }
 
 /* ==========================================
@@ -107,51 +120,17 @@ body::after {
     image-rendering: crisp-edges;              /* Standard */
     image-rendering: pixelated;                /* Standard */
     
-    /* CRITICAL for mobile RTS: Prevents browser from trying to scroll the page when dragging */
+    /* CRITICAL: Prevents browser from trying to scroll the page when dragging */
     touch-action: none; 
     outline: none;
-}
 
-/* ==========================================
-   TYPOGRAPHY & LEGACY UI FALLBACKS
-========================================== */
-#ui {
-    position: absolute;
-    top: 15px;
-    left: 15px;
-    background: rgba(15, 7, 2, 0.85);
-    padding: 15px 20px;
-    border: 1px solid var(--color-pumpkin);
-    border-radius: 6px;
-    pointer-events: none; 
-    z-index: var(--z-ui-base); 
-    
-    /* Spooky glowing glassmorphism */
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.9), inset 0 0 15px rgba(255, 157, 0, 0.15);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-}
-
-h1 {
-    margin: 0 0 8px 0;
-    font-size: 1.3rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    /* Subtle neon pumpkin glow */
-    text-shadow: 0 0 8px rgba(255, 157, 0, 0.6), 2px 2px 2px rgba(0, 0, 0, 1);
-}
-
-p {
-    margin: 0 0 10px 0;
-    font-size: 0.9rem;
-    color: var(--color-bone);
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 1);
+    /* PERFORMANCE: Force GPU compositing layer for 60fps rendering */
+    will-change: transform;
 }
 
 /* ==========================================
    CUSTOM SCROLLBARS (For JS-injected Menus)
 ========================================== */
-
 /* Modern scrollbar support for Firefox */
 * {
     scrollbar-width: thin;
@@ -163,22 +142,18 @@ p {
     width: 8px;
     height: 8px;
 }
-
 ::-webkit-scrollbar-track {
     background: rgba(26, 16, 5, 0.9);
     border-left: 1px solid #331a00;
 }
-
 ::-webkit-scrollbar-thumb {
     background: var(--color-pumpkin);
     border-radius: 4px;
     border: 1px solid rgba(26, 16, 5, 0.9);
 }
-
 ::-webkit-scrollbar-thumb:hover {
     background: var(--color-pumpkin-light);
 }
-
 ::-webkit-scrollbar-corner {
     background: rgba(26, 16, 5, 0.9);
 }
@@ -189,11 +164,31 @@ p {
 .text-obsidian { color: var(--color-obsidian) !important; text-shadow: 0 0 5px var(--color-obsidian); }
 .text-crimson { color: var(--color-crimson) !important; text-shadow: 0 0 5px var(--color-crimson); }
 
+/* Animations */
 .pulse-warning {
     animation: warningPulse 1s infinite alternate;
 }
-
 @keyframes warningPulse {
     from { box-shadow: inset 0 0 10px rgba(255, 0, 0, 0.2); border-color: var(--color-pumpkin); }
     to { box-shadow: inset 0 0 30px rgba(255, 0, 0, 0.8); border-color: var(--color-crimson); }
+}
+
+.float {
+    animation: etherealFloat 3s ease-in-out infinite;
+}
+@keyframes etherealFloat {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-5px); }
+}
+
+.glitch {
+    animation: voidGlitch 0.2s infinite;
+}
+@keyframes voidGlitch {
+    0% { transform: translate(0); }
+    20% { transform: translate(-2px, 1px); }
+    40% { transform: translate(2px, -1px); }
+    60% { transform: translate(-1px, 2px); }
+    80% { transform: translate(1px, -2px); }
+    100% { transform: translate(0); }
 }
