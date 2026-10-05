@@ -8,7 +8,7 @@ const AMBUSH_CONFIG = {
     spellCost: 50,
     trapHp: 50,
     armingTimer: 30,              // 1-second incubation before it can detonate
-    triggerRadius: 80,            // 80px radius (used for fast AABB)
+    triggerRadius: 80,            // 80px radius
     triggerRadiusSq: 6400,        // 80^2 for distance checks
     explosionDamageUnit: 40,      // High explosive venom damage to units
     explosionDamageStruct: 20,    // 50% damage to buildings
@@ -36,7 +36,7 @@ export class EggTrap {
 
     update(game) {
         // --- ASSET MANAGER CACHE LINKING ---
-        if (!this.sprite) {
+        if (!this.sprite && game.assets) {
             this.sprite = game.assets.get(this.team === 'black' ? 'assets/eggtrap_black.png' : 'assets/eggtrap_red.png');
         }
 
@@ -48,31 +48,16 @@ export class EggTrap {
             return; 
         }
 
-        let triggered = false;
-        
-        // 1. Scan for nearby enemies to trigger the detonation
-        for (let i = 0; i < game.entities.length; i++) {
-            let e = game.entities[i];
-            
-            // Fast early exits: Exclude dead, allied, un-targetable, or STEALTHED entities
-            if (!e.team || e.team === this.team || e.hp <= 0 || e.isCloaked) continue;
-            
-            // Only trigger on Units or Bosses (ignore buildings)
-            if (e instanceof Spider || e.constructor.name === 'CentipedeBoss') {
-                
-                // PERFORMANCE FIX: Fast AABB check to skip expensive math for distant units
-                if (Math.abs(this.x - e.x) > AMBUSH_CONFIG.triggerRadius || Math.abs(this.y - e.y) > AMBUSH_CONFIG.triggerRadius) continue;
-
-                if (MathUtils.distSq(this.x, this.y, e.x, e.y) < AMBUSH_CONFIG.triggerRadiusSq) {
-                    triggered = true;
-                    break; // Just one enemy is enough to set it off!
-                }
-            }
-        }
+        // PERFORMANCE FIX: Use the zero-allocation Spatial Grid to check for triggers!
+        // This prevents the trap from looping through 2000 entities every single frame.
+        let triggerTarget = game.getNearestEnemy(this.x, this.y, this.team, AMBUSH_CONFIG.triggerRadius);
 
         // 2. Detonation Sequence
-        if (triggered) {
+        if (triggerTarget) {
             this.hp = 0; // Destroy self
+            
+            // JUICE: Explosion Screen Shake!
+            if (game.triggerShake) game.triggerShake(8);
             game.bus.emit('playSound', 'death'); // Viscous pop sound
             
             const magicColor = this.team === 'black' ? '#aa00ff' : '#ff0000';
@@ -83,14 +68,14 @@ export class EggTrap {
             for (let i = 0; i < game.entities.length; i++) {
                 let e = game.entities[i];
                 
-                // BUG FIX: Removed `e.team !== 'nature'` so the CentipedeBoss ACTUALLY takes damage!
+                // Deal damage to all non-allied physical entities (including CentipedeBoss!)
                 if (e.team && e.team !== this.team && e.hp !== undefined && e.hp > 0) {
                     
-                    // PERFORMANCE FIX: Fast AABB check
+                    // Fast AABB check to save CPU
                     if (Math.abs(this.x - e.x) > AMBUSH_CONFIG.triggerRadius || Math.abs(this.y - e.y) > AMBUSH_CONFIG.triggerRadius) continue;
 
                     if (MathUtils.distSq(this.x, this.y, e.x, e.y) < AMBUSH_CONFIG.triggerRadiusSq) {
-                        if (e instanceof Spider || e.constructor.name === 'CentipedeBoss') {
+                        if (e.role || e.constructor.name === 'CentipedeBoss') {
                             e.hp -= AMBUSH_CONFIG.explosionDamageUnit; 
                         } else {
                             e.hp -= AMBUSH_CONFIG.explosionDamageStruct; 
@@ -139,7 +124,7 @@ export class EggTrap {
 // ==========================================
 export class Broodling extends Spider {
     constructor(x, y, team) {
-        super(x, y, team, 'soldier'); // Inherit aggressive soldier AI targeting traits
+        super(x, y, team, 'soldier'); // Pull base stats
         
         // Override base stats to be a hyper-fast, fragile swarmer
         this.role = 'broodling';
@@ -149,15 +134,16 @@ export class Broodling extends Spider {
         this.speed = this.baseSpeed;
         this.size = 7; 
         
-        this.life = AMBUSH_CONFIG.broodlingLife; 
+        // AI POLISH FIX: Overwrite inherited 'escort' trait so they don't run away to guard the Queen!
+        this.traits = ['melee']; 
         
+        this.life = AMBUSH_CONFIG.broodlingLife; 
         this.ramSpriteLoaded = false;
     }
 
     update(game) {
         // --- ASSET MANAGER CACHE LINKING ---
-        // Overrides the default Spider() constructor image safely
-        if (!this.ramSpriteLoaded) {
+        if (!this.ramSpriteLoaded && game.assets) {
             this.sprite = game.assets.get(this.team === 'black' ? 'assets/broodling_black.png' : 'assets/broodling_red.png');
             this.imageLoaded = true; // Tell base class it's ready to draw
             this.ramSpriteLoaded = true;
@@ -205,6 +191,8 @@ export const BroodAmbushExpansion = {
                     game.addEntity(new EggTrap(data.x, data.y, data.team));
                     
                     game.bus.emit('playSound', 'spell');
+                    // Add a tiny dirt kickup to show the egg "burrowing"
+                    game.bus.emit('particles', {x: data.x, y: data.y, color: '#3d2817', count: 10});
                     game.bus.emit('particles', {x: data.x, y: data.y, color: '#ffffff', count: 15});
                 }
             }
