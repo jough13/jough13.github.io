@@ -73,24 +73,29 @@ export const CombatAndHarvesterExpansion = {
                         let closest = null; 
                         let minD = Infinity;
 
+                        // PERFORMANCE FIX: Cache getters so .filter() doesn't fire 100 times in the loop condition!
                         if (entity.state === 2) {
-                            for (let i = 0; i < gameObj.resourceNodes.length; i++) {
-                                let r = gameObj.resourceNodes[i];
+                            const nodes = gameObj.resourceNodes;
+                            for (let i = 0; i < nodes.length; i++) {
+                                let r = nodes[i];
                                 if (r.resources > 0) {
                                     let dSq = MathUtils.distSq(r.x, r.y, entity.x, entity.y); 
                                     if(dSq < minD) { minD = dSq; closest = r; } 
                                 }
                             }
                         } else {
-                            for (let i = 0; i < gameObj.structures.length; i++) {
-                                let s = gameObj.structures[i];
+                            const structs = gameObj.structures;
+                            for (let i = 0; i < structs.length; i++) {
+                                let s = structs[i];
                                 if (s.team === entity.team && (s.type === 'nest' || s.type === 'pylon') && s.hp > 0 && !s.isConstructing) {
                                     let dSq = MathUtils.distSq(s.x, s.y, entity.x, entity.y); 
                                     if(dSq < minD) { minD = dSq; closest = s; } 
                                 }
                             }
-                            for (let i = 0; i < gameObj.queens.length; i++) {
-                                let q = gameObj.queens[i];
+                            
+                            const queens = gameObj.queens;
+                            for (let i = 0; i < queens.length; i++) {
+                                let q = queens[i];
                                 if (q.team === entity.team && q.hp > 0) {
                                     let dSq = MathUtils.distSq(q.x, q.y, entity.x, entity.y); 
                                     if(dSq < minD) { minD = dSq; closest = q; } 
@@ -127,8 +132,13 @@ export const CombatAndHarvesterExpansion = {
                             gameObj.bus.emit('playSound', 'harvest');
                         } 
                         else if (entity.state === 3) {
+                            // JUICE: Visual confirmation of resources being deposited
+                            const resColor = entity.cargo.type === 'pumpkin' ? '#ff7b00' : '#00aaff';
+                            gameObj.bus.emit('particles', {x: entity.x, y: entity.y - 15, color: resColor, count: 12, type: 'magic'}); 
+                            
                             if (entity.cargo.type === 'pumpkin') gameObj.eco[entity.team].pumpkins += entity.cargo.amount;
                             else if (entity.cargo.type === 'dew') gameObj.eco[entity.team].dew += entity.cargo.amount;
+                            
                             entity.cargo.amount = 0; 
                             entity.target = null; 
                         }
@@ -180,8 +190,9 @@ export const CombatAndHarvesterExpansion = {
                 // 2. ESCORT QUEEN BEHAVIOR (If they have the trait)
                 if (entity.hasTrait('escort') && !entity.isManual) {
                     let myQueen = null;
-                    for (let i = 0; i < gameObj.queens.length; i++) {
-                        if (gameObj.queens[i].team === entity.team) { myQueen = gameObj.queens[i]; break; }
+                    const queens = gameObj.queens; // Performance Cache
+                    for (let i = 0; i < queens.length; i++) {
+                        if (queens[i].team === entity.team) { myQueen = queens[i]; break; }
                     }
 
                     if (myQueen) {
@@ -189,7 +200,13 @@ export const CombatAndHarvesterExpansion = {
                         const dy = myQueen.y - entity.y;
                         
                         if (MathUtils.distSq(0,0, dx, dy) > 6400) { // 80px orbit radius
-                            entity.angle = Math.atan2(dy, dx) + MathUtils.randomRange(-0.2, 0.2);
+                            // AI POLISH: Smoother turning while escorting
+                            let targetAngle = Math.atan2(dy, dx);
+                            let diff = targetAngle - entity.angle;
+                            while (diff > Math.PI) diff -= MathUtils.TWO_PI;
+                            while (diff < -Math.PI) diff += MathUtils.TWO_PI;
+                            
+                            entity.angle += (diff * 0.1); 
                             entity.x += Math.cos(entity.angle) * currentSpeed; 
                             entity.y += Math.sin(entity.angle) * currentSpeed;
                         }
@@ -242,12 +259,13 @@ export const CombatAndHarvesterExpansion = {
                 if (hpPct < 0.25) barColor = '#ff0000';
 
                 ctx.fillStyle = '#000000'; 
-                ctx.fillRect(this.x - w/2 - 1, this.y - this.size - 11, w + 2, 6);
+                // Moved up 1px so it doesn't overlap the bottom of tall sprites
+                ctx.fillRect(this.x - w/2 - 1, this.y - this.size - 12, w + 2, 6);
                 ctx.fillStyle = '#550000'; 
-                ctx.fillRect(this.x - w/2, this.y - this.size - 10, w, 4);
+                ctx.fillRect(this.x - w/2, this.y - this.size - 11, w, 4);
                 
                 ctx.fillStyle = barColor; 
-                ctx.fillRect(this.x - w/2, this.y - this.size - 10, w * hpPct, 4);
+                ctx.fillRect(this.x - w/2, this.y - this.size - 11, w * hpPct, 4);
             }
         };
         
