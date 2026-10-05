@@ -26,8 +26,6 @@ const CRITTER_CONFIG = {
     }
 };
 
-const TWO_PI = Math.PI * 2;
-
 // ==========================================
 // 2. THE APHID (Dew Drop Source)
 // ==========================================
@@ -38,7 +36,7 @@ export class Aphid {
         this.size = CRITTER_CONFIG.aphid.size; 
         this.hp = CRITTER_CONFIG.aphid.hp; 
         this.maxHp = CRITTER_CONFIG.aphid.hp; 
-        this.angle = Math.random() * TWO_PI; 
+        this.angle = Math.random() * MathUtils.TWO_PI; 
         this.speed = CRITTER_CONFIG.aphid.speed; 
         this.team = 'nature'; 
         this.color = CRITTER_CONFIG.aphid.color;
@@ -87,13 +85,16 @@ export class Aphid {
         ctx.translate(this.x, this.y); 
         ctx.rotate(this.angle); 
         
-        // Render Sprite if it exists in assets, otherwise fallback to shape
+        // Render Sprite with dynamic Aspect Ratio
         if (this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) {
-            ctx.drawImage(this.sprite, -this.size, -this.size, this.size * 2, this.size * 2);
+            const aspect = this.sprite.naturalWidth / this.sprite.naturalHeight;
+            const drawH = this.size * 2;
+            const drawW = drawH * aspect;
+            ctx.drawImage(this.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
         } else {
             ctx.fillStyle = this.color; 
             ctx.beginPath(); 
-            ctx.ellipse(0, 0, this.size, this.size - 2, 0, 0, TWO_PI); 
+            ctx.ellipse(0, 0, this.size, this.size - 2, 0, 0, MathUtils.TWO_PI); 
             ctx.fill(); 
         }
         
@@ -111,7 +112,7 @@ export class GoldenBug {
         this.size = CRITTER_CONFIG.goldenBug.size; 
         this.hp = CRITTER_CONFIG.goldenBug.hp; 
         this.maxHp = CRITTER_CONFIG.goldenBug.hp; 
-        this.angle = Math.random() * TWO_PI; 
+        this.angle = Math.random() * MathUtils.TWO_PI; 
         this.speed = CRITTER_CONFIG.goldenBug.speed; 
         this.team = 'nature'; 
         this.color = CRITTER_CONFIG.goldenBug.color;
@@ -137,12 +138,19 @@ export class GoldenBug {
         let currentSpeed = this.speed;
         if (this.hp < this.maxHp) {
             currentSpeed *= CRITTER_CONFIG.goldenBug.fleeMultiplier; 
+            // JUICE: The golden bug sheds golden particles when panicking/bleeding!
+            if (game.tick % 5 === 0) game.bus.emit('particles', {x: this.x, y: this.y, color: '#ffea00', count: 1});
+        }
+
+        // JUICE: Subtle sparkling trail while walking
+        if (game.tick % 15 === 0 && Math.random() > 0.5) {
+            game.bus.emit('particles', {x: this.x, y: this.y, color: '#ffffff', count: 1, type: 'magic'});
         }
 
         this.x += Math.cos(this.angle) * currentSpeed; 
         this.y += Math.sin(this.angle) * currentSpeed;
         
-        // Bounce off world bounds cleanly (Dynamic based on size)
+        // Bounce off world bounds cleanly
         const bound = this.size * 2;
         this.x = MathUtils.clamp(this.x, bound, game.world.width - bound); 
         this.y = MathUtils.clamp(this.y, bound, game.world.height - bound);
@@ -150,6 +158,8 @@ export class GoldenBug {
         // Death: Drop a massive scatter of resources!
         if (this.hp <= 0) { 
             const spread = CRITTER_CONFIG.goldenBug.dropSpread;
+            game.bus.emit('particles', {x: this.x, y: this.y, color: '#ffea00', count: 50});
+            
             for(let i = 0; i < CRITTER_CONFIG.goldenBug.dropCount; i++) {
                 game.addEntity(new ResourceNode(
                     this.x + MathUtils.randomRange(-spread, spread), 
@@ -165,9 +175,12 @@ export class GoldenBug {
         ctx.translate(this.x, this.y); 
         ctx.rotate(this.angle); 
         
-        // Render Sprite if it exists in assets, otherwise fallback to glowing shape
+        // Render Sprite with dynamic Aspect Ratio
         if (this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) {
-            ctx.drawImage(this.sprite, -this.size, -this.size, this.size * 2, this.size * 2);
+            const aspect = this.sprite.naturalWidth / this.sprite.naturalHeight;
+            const drawH = this.size * 2;
+            const drawW = drawH * aspect;
+            ctx.drawImage(this.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
         } else {
             // Shiny glowing aura
             ctx.shadowColor = '#ffea00';
@@ -175,7 +188,7 @@ export class GoldenBug {
             
             ctx.fillStyle = '#ffd700'; 
             ctx.beginPath(); 
-            ctx.ellipse(0, 0, this.size, this.size - 5, 0, 0, TWO_PI); 
+            ctx.ellipse(0, 0, this.size, this.size - 5, 0, 0, MathUtils.TWO_PI); 
             ctx.fill();
             
             ctx.shadowBlur = 0; // Reset shadow so it doesn't apply to the eyes
@@ -188,7 +201,7 @@ export class GoldenBug {
         ctx.restore();
         
         // Health Bar (Only visible when damaged)
-        if (this.hp < this.maxHp) { 
+        if (this.hp < this.maxHp && this.hp > 0) { 
             const w = 20;
             const pct = Math.max(0, this.hp) / this.maxHp;
 
