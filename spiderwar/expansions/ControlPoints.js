@@ -48,7 +48,7 @@ export class JackOLantern {
 
     update(game) {
         // --- ASSET MANAGER CACHE LINKING ---
-        if (!this.sprite) {
+        if (!this.sprite && game.assets) {
             this.sprite = game.assets.get('assets/jackolantern.png');
         }
 
@@ -58,8 +58,11 @@ export class JackOLantern {
         let blackScore = 0;
         let redScore = 0;
 
-        for (let i = 0; i < game.structures.length; i++) {
-            let s = game.structures[i];
+        // PERFORMANCE FIX: Cache the getter so we don't run an array filter 60 times a second!
+        const structs = game.structures;
+
+        for (let i = 0; i < structs.length; i++) {
+            let s = structs[i];
             
             // Fast early exits: Structure must be alive and fully built
             if (s.hp <= 0 || s.isConstructing) continue;
@@ -91,9 +94,12 @@ export class JackOLantern {
                     this.controllingTeam = dominantTeam;
                     this.captureProgress = 100;
                     
+                    // JUICE: Massive visual feedback when a point is secured!
+                    if (game.triggerShake) game.triggerShake(5); 
                     game.bus.emit('playSound', 'spell');
                     const magicColor = dominantTeam === 'black' ? '#aa00ff' : '#ff0000';
                     game.bus.emit('particles', {x: this.x, y: this.y, color: magicColor, count: 50});
+                    game.bus.emit('particles', {x: this.x, y: this.y, color: '#ffffff', count: 20});
                 }
             }
         } else if (blackScore === 0 && redScore === 0) {
@@ -221,6 +227,7 @@ export const ControlPointsExpansion = {
                     
                     ctx.fillStyle = color;
                     ctx.beginPath();
+                    // Using pre-calculated startX/startY instead of doing the math over and over!
                     ctx.arc(startX + (j.x * scaleX), startY + (j.y * scaleY), 5, 0, TWO_PI);
                     ctx.fill();
                     ctx.strokeStyle = '#000'; 
