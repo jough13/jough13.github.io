@@ -49,7 +49,6 @@ export const AudioExpansion = {
         // 2. DATA-DRIVEN SOUND LIBRARY
         // ==========================================
         // Each sound is an array of "Layers". You can stack oscillators and noise!
-        // Added `pitchVar` to introduce organic, random pitch shifts per-play!
         const SOUND_LIBRARY = {
             
             // "Thwip!" - High pitched sweeping triangle + sharp white noise burst
@@ -81,6 +80,25 @@ export const AudioExpansion = {
             'build': [
                 { type: 'triangle', freqStart: 200, freqEnd: 80, attack: 0.02, decay: 0.25, vol: 0.06, pitchVar: 30 },
                 { type: 'noise', filterFreq: 400, filterType: 'lowpass', attack: 0.01, decay: 0.15, vol: 0.03 }
+            ],
+
+            // --- NEW SOUNDS ADDED FOR UI & BOSSES ---
+
+            // "Bzzzt" - Low negative buzz for invalid actions/cannot afford
+            'error': [
+                { type: 'sawtooth', freqStart: 120, freqEnd: 100, attack: 0.01, decay: 0.15, vol: 0.05 }
+            ],
+
+            // "Ding" - High, clean chime for UI clicks and Minimap commands
+            'ping': [
+                { type: 'sine', freqStart: 1200, freqEnd: 1200, attack: 0.01, decay: 0.3, vol: 0.05, pitchVar: 50 }
+            ],
+
+            // "ROAR!" - Massive, low-frequency, layered monster scream
+            'roar': [
+                { type: 'sawtooth', freqStart: 150, freqEnd: 40, attack: 0.1, decay: 1.5, vol: 0.1, pitchVar: 20 },
+                { type: 'square', freqStart: 100, freqEnd: 30, attack: 0.2, decay: 1.5, vol: 0.08, pitchVar: 20 },
+                { type: 'noise', filterFreq: 400, filterType: 'lowpass', attack: 0.1, decay: 1.5, vol: 0.12 }
             ]
         };
 
@@ -95,8 +113,6 @@ export const AudioExpansion = {
             const now = ctx.currentTime;
 
             // PERFORMANCE FIX: Polyphony Throttling
-            // If 50 spiders shoot on the same frame, only generate 1 sound instance.
-            // Prevents massive CPU spikes and ear-destroying audio clipping!
             if (soundThrottle[recipeName] && now - soundThrottle[recipeName] < 0.03) {
                 return;
             }
@@ -105,11 +121,12 @@ export const AudioExpansion = {
             layers.forEach(layer => {
                 // 1. Setup Envelope (Gain Node)
                 const gainNode = ctx.createGain();
-                gainNode.gain.setValueAtTime(0, now); // Start silent to prevent clicks
-                gainNode.gain.linearRampToValueAtTime(layer.vol, now + layer.attack); // Attack
-                gainNode.gain.exponentialRampToValueAtTime(0.001, now + layer.attack + layer.decay); // Decay
                 
-                // AUDIO POLISH FIX: Force absolute zero at the very end to prevent DC offset clicks
+                // AUDIO ROBUSTNESS FIX: Explicitly pin values before ramping to prevent Webkit NaN glitches
+                gainNode.gain.setValueAtTime(0, now); 
+                gainNode.gain.linearRampToValueAtTime(layer.vol, now + layer.attack); 
+                gainNode.gain.setValueAtTime(layer.vol, now + layer.attack); // The Safety Pin!
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + layer.attack + layer.decay); 
                 gainNode.gain.setValueAtTime(0, now + layer.attack + layer.decay);
                 
                 // 2. Setup Filter (If requested by the layer)
@@ -130,14 +147,12 @@ export const AudioExpansion = {
                     sourceNode = ctx.createOscillator();
                     sourceNode.type = layer.type;
                     
-                    // AUDIO POLISH FIX: Apply organic pitch variation per-play
                     const varAmount = layer.pitchVar ? (Math.random() * layer.pitchVar - (layer.pitchVar / 2)) : 0;
-                    const startFreq = Math.max(10, layer.freqStart + varAmount); // Clamp to prevent negative frequencies
+                    const startFreq = Math.max(10, layer.freqStart + varAmount); 
                     
                     sourceNode.frequency.setValueAtTime(startFreq, now);
                     if (layer.freqEnd) {
                         const endFreq = Math.max(10, layer.freqEnd + varAmount);
-                        // Pitch drop/rise effect!
                         sourceNode.frequency.exponentialRampToValueAtTime(endFreq, now + layer.attack + layer.decay);
                     }
                 }
@@ -157,15 +172,25 @@ export const AudioExpansion = {
             });
         };
 
-        // EXPANDABILITY: Attach audio engine to the game object so external mods can hook into it
+        // ==========================================
+        // 4. GLOBAL AUDIO API EXPORT
+        // ==========================================
         game.audio = {
-            library: SOUND_LIBRARY,
+            // Allows external files/UI to change the volume (0.0 to 1.0)
+            setVolume: (val) => { 
+                if (masterGain) masterGain.gain.value = Math.max(0, Math.min(1, val)); 
+            },
+            
+            // Allows new Expansion Packs to add custom synth recipes!
+            registerSound: (name, recipeArray) => {
+                SOUND_LIBRARY[name] = recipeArray;
+            },
+            
+            // Direct playback hook
             play: playSynthRecipe
         };
 
-        // ==========================================
-        // 4. GAME BUS EVENT HOOK
-        // ==========================================
+        // Hook up the GameBus listener
         game.bus.on('playSound', (type) => {
             playSynthRecipe(type);
         });
