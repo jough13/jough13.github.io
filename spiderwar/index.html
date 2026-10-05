@@ -12,6 +12,10 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="format-detection" content="telephone=no">
     
+    <!-- Future PWA Support (Allows players to install the game to their home screen) -->
+    <link rel="manifest" href="manifest.json" crossorigin="use-credentials">
+    <link rel="apple-touch-icon" href="assets/queen_black.png">
+    
     <!-- Lore & SEO Metadata -->
     <meta name="description" content="Command the Obsidian Brood to victory against the Crimson Swarm in SpiderWars! A retro 16-bit RTS of webs, magic, and survival.">
     <meta name="author" content="SpiderWars Dev">
@@ -58,26 +62,57 @@
         // main.js will automatically detect and append them to the boot sequence!
         window.SpiderWarsMods = [];
     </script>
+
+    <style>
+        /* Inline CSS for the Pre-Boot Loader to ensure it renders instantly */
+        #preBootLoader {
+            position: fixed; inset: 0; background: #050200; z-index: 999999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: #ff9d00; font-family: 'Courier New', Courier, monospace;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid rgba(255, 157, 0, 0.3);
+            border-top: 4px solid #aa00ff; border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
 </head>
-<!-- Inline styles prevent the dreaded "white flash" and mobile scroll-stutter while loading on slow connections -->
+
 <body style="background-color: #050200; overflow: hidden; margin: 0; padding: 0; touch-action: none;">
 
-    <!-- Fallback for players with JavaScript disabled -->
+    <!-- 1. INSTANT PRE-BOOT LOADER (Fades out when main.js finishes parsing) -->
+    <div id="preBootLoader" aria-hidden="true">
+        <div class="spinner"></div>
+        <div style="text-shadow: 0 0 10px #ff9d00;">Weaving Engine...</div>
+    </div>
+
+    <!-- 2. NO-JS FALLBACK -->
     <noscript>
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff9d00; text-align: center; font-family: 'Courier New', Courier, monospace; background: rgba(5,2,0,0.95); padding: 30px; border: 3px solid #ff9d00; border-radius: 8px; box-shadow: 0 0 30px rgba(0,0,0,1);">
+        <div style="position: absolute; z-index: 9999999; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff9d00; text-align: center; font-family: 'Courier New', Courier, monospace; background: rgba(5,2,0,0.95); padding: 30px; border: 3px solid #ff9d00; border-radius: 8px; box-shadow: 0 0 30px rgba(0,0,0,1);">
             <h1 style="margin-top: 0; text-transform: uppercase; font-size: 24px;">JavaScript is Required</h1>
             <p style="font-size: 16px; margin-bottom: 0; color: #dfba96;">The Obsidian Brood slumbers. Please enable JavaScript to awaken the swarm.</p>
         </div>
     </noscript>
 
-    <!-- 
-        The actual game rendering layer.
-        Added aria-labels for screen readers, tabindex for focus, and hardcoded right-click prevention.
-    -->
+    <!-- 3. MAIN GAME CANVAS -->
     <canvas id="gameCanvas" aria-label="SpiderWars Game Area" role="application" tabindex="0" oncontextmenu="return false;" style="touch-action: none; outline: none;"></canvas>
 
-    <!-- Game Engine & Modular Expansions (Type 'module' allows top-level imports) -->
+    <!-- 4. ENGINE BOOT SCRIPT -->
     <script type="module" src="main.js"></script>
+
+    <!-- 5. PRE-BOOT CLEANUP LOGIC -->
+    <script>
+        // Listens for the custom event we added to main.js earlier!
+        window.addEventListener('SpiderWarsReady', () => {
+            const loader = document.getElementById('preBootLoader');
+            if (loader) {
+                loader.style.opacity = '0';
+                setTimeout(() => loader.remove(), 500); // Remove from DOM after fade
+            }
+        });
+    </script>
 
 </body>
 </html>
