@@ -47,6 +47,9 @@ export class MortarShell {
         
         if (progress >= 1.0) {
             this.active = false;
+            
+            // JUICE: Massive Artillery Impact!
+            if (game.triggerShake) game.triggerShake(10);
             game.bus.emit('playSound', 'death'); 
             
             const primaryColor = this.team === 'black' ? '#aa00ff' : '#ff0000';
@@ -54,16 +57,17 @@ export class MortarShell {
             
             game.bus.emit('particles', {x: this.targetX, y: this.targetY, color: primaryColor, count: 50});
             game.bus.emit('particles', {x: this.targetX, y: this.targetY, color: secondaryColor, count: 30});
+            game.bus.emit('particles', {x: this.targetX, y: this.targetY, color: '#3d2817', count: 40}); // Dirt clods
             
-            // Splash Damage Calculation
+            // Splash Damage Calculation (Zero-Allocation Loop!)
             const radius = FORTRESS_CONFIG.mortarSplashRadius;
             for (let i = 0; i < game.entities.length; i++) {
                 let e = game.entities[i];
                 
-                // SAFETY FIX: Added e.hp === undefined to prevent NaN corruption on projectiles/resources
+                // Fast Early Exits
                 if (!e.team || e.team === this.team || e.team === 'nature' || e.hp === undefined || e.hp <= 0) continue;
                 
-                // PERFORMANCE FIX: Fast AABB check to skip expensive circle math for distant units
+                // Fast AABB check skips expensive circle math for distant units
                 if (Math.abs(this.targetX - e.x) > radius || Math.abs(this.targetY - e.y) > radius) continue;
 
                 if (MathUtils.distSq(this.targetX, this.targetY, e.x, e.y) < FORTRESS_CONFIG.mortarSplashRadiusSq) {
@@ -104,6 +108,14 @@ export class MortarShell {
 // 3. EXPANSION LOGIC
 // ==========================================
 export const FortressExpansion = {
+    init: (game) => {
+        // --- ASSET REGISTRY ---
+        game.assets.register('assets/mortar_black.png');
+        game.assets.register('assets/mortar_red.png');
+        game.assets.register('assets/shrine_black.png');
+        game.assets.register('assets/shrine_red.png');
+    },
+
     patch: (game) => {
         
         // PATCH: Structure AI Logic
@@ -126,6 +138,8 @@ export const FortressExpansion = {
                         const actualDamage = FORTRESS_CONFIG.mortarBaseDamage + ((gameObj.techLevel[this.team] || 0) * 15);
                         gameObj.addEntity(new MortarShell(this.x, this.y, target.x, target.y, actualDamage, this.team));
                         
+                        // Recoil Shake (If the camera is near the mortar when it fires!)
+                        if (gameObj.triggerShake) gameObj.triggerShake(3); 
                         gameObj.bus.emit('playSound', 'shoot'); 
                         this.cooldown = FORTRESS_CONFIG.mortarCooldown; 
                     }
@@ -164,6 +178,7 @@ export const FortressExpansion = {
                     // Emit a pulse from the Shrine if it successfully healed something
                     if (healed) {
                         this.auraAlpha = 1.0; // Trigger the visual expanding ring
+                        gameObj.bus.emit('playSound', 'ping'); // JUICE: Satisfying healing chime
                         gameObj.bus.emit('particles', {x: this.x, y: this.y - 20, color: '#00ff00', count: 8});
                     }
                 }
@@ -188,11 +203,17 @@ export const FortressExpansion = {
                 ctx.restore();
             }
 
-            // BUG FIX: ALWAYS call original to guarantee CombatAI draws the Health Bar!
+            // Sprite Caching Link
+            if ((this.type === 'mortar' || this.type === 'shrine') && !this.spriteLoaded && game.assets) {
+                this.sprite = game.assets.get(`assets/${this.type}_${this.team}.png`);
+                if (this.sprite) this.spriteLoaded = true;
+            }
+
+            // ALWAYS call original to guarantee CombatAI draws the Health Bar!
             original.call(this, ctx);
 
             // If the sprite isn't loaded, draw our custom chunky fallback OVER the generic base shape
-            if (!this.spriteLoaded) {
+            if ((this.type === 'mortar' || this.type === 'shrine') && (!this.sprite || !this.sprite.complete || this.sprite.naturalHeight === 0)) {
                 ctx.save();
                 if (this.type === 'mortar') {
                     // Improved chunky fallback art for Mortar
