@@ -18,13 +18,10 @@ const NECRO_CONFIG = {
     zombieDecayRate: 0.15         // Loses ~4.5 HP per second
 };
 
-const TWO_PI = Math.PI * 2;
-
 // ==========================================
 // 2. THE CORPSE ENTITY
 // ==========================================
 export class Corpse {
-    // POLISH FIX: Accept the size of the spider that died to scale the corpse!
     constructor(x, y, size) {
         this.x = x; 
         this.y = y;
@@ -35,7 +32,7 @@ export class Corpse {
         this.life = NECRO_CONFIG.corpseLife; 
         
         // Random rotation so the battlefield looks like an organic mess of casualties
-        this.angle = Math.random() * TWO_PI;
+        this.angle = Math.random() * MathUtils.TWO_PI;
         
         // Sprite will be pulled instantly from RAM cache on Tick 1 of its life
         this.sprite = null;
@@ -61,11 +58,16 @@ export class Corpse {
         ctx.globalAlpha = Math.min(1, this.life / 300); 
         
         if (this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) {
-            ctx.drawImage(this.sprite, -this.size, -this.size, this.size*2, this.size*2);
+            // ASPECT RATIO FIX: Calculate dynamic width based on actual image proportions
+            const aspect = this.sprite.naturalWidth / this.sprite.naturalHeight;
+            const drawH = this.size * 2;
+            const drawW = drawH * aspect;
+            
+            ctx.drawImage(this.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
         } else {
             // Fallback drawing: A creepy wrapped web cocoon scaling with size
             ctx.fillStyle = '#dddddd';
-            ctx.beginPath(); ctx.ellipse(0, 0, this.size, this.size * 0.66, Math.PI/4, 0, TWO_PI); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(0, 0, this.size, this.size * 0.66, Math.PI/4, 0, MathUtils.TWO_PI); ctx.fill();
             ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
             
             const w = this.size * 0.8;
@@ -103,7 +105,7 @@ export class ZombieSpider extends Spider {
     update(game) {
         // --- ASSET MANAGER CACHE LINKING ---
         // Overrides the default Spider() constructor image safely
-        if (!this.ramSpriteLoaded) {
+        if (!this.ramSpriteLoaded && game.assets) {
             this.sprite = game.assets.get(this.team === 'black' ? 'assets/zombie_black.png' : 'assets/zombie_red.png');
             this.imageLoaded = true; // Tell base class it's ready to draw
             this.ramSpriteLoaded = true;
@@ -122,7 +124,7 @@ export class ZombieSpider extends Spider {
         ctx.shadowColor = '#00ff00';
         ctx.shadowBlur = 15;
         ctx.fillStyle = 'rgba(0, 255, 0, 0.15)';
-        ctx.beginPath(); ctx.arc(0, 0, this.size + 4, 0, TWO_PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(0, 0, this.size + 4, 0, MathUtils.TWO_PI); ctx.fill();
         ctx.restore();
 
         // 2. Draw the actual zombie sprite and health bar
@@ -142,7 +144,6 @@ class ReanimateAOE {
     }
     update() { 
         this.life--; 
-        // SAFETY FIX: Rely purely on `this.life` for GC, no need to fake `hp=0`
     }
     draw(ctx) {
         // Expanding shockwave effect
@@ -153,7 +154,7 @@ class ReanimateAOE {
         ctx.globalAlpha = this.life / this.maxLife; // Fade out as it expands
         
         ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
-        ctx.beginPath(); ctx.arc(this.x, this.y, currentRadius, 0, TWO_PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(this.x, this.y, currentRadius, 0, MathUtils.TWO_PI); ctx.fill();
         
         ctx.strokeStyle = '#00ff00'; 
         ctx.lineWidth = 4; 
@@ -182,6 +183,9 @@ export const NecromancyExpansion = {
                     
                     // Spawn the visual shockwave
                     game.addEntity(new ReanimateAOE(data.x, data.y));
+                    
+                    // JUICE: Heavy camera shake for the massive exertion of dark magic!
+                    if (game.triggerShake) game.triggerShake(6);
                     game.bus.emit('playSound', 'spell');
                     
                     let raisedCount = 0;
@@ -203,6 +207,9 @@ export const NecromancyExpansion = {
                                 game.addEntity(new ZombieSpider(e.x, e.y, data.team, e.size));
                                 game.bus.emit('particles', {x: e.x, y: e.y, color: '#00ff00', count: 15});
                                 
+                                // JUICE: The wet snapping sound of bones reconstructing
+                                game.bus.emit('playSound', 'harvest'); 
+                                
                                 raisedCount++;
                             }
                         }
@@ -221,12 +228,13 @@ export const NecromancyExpansion = {
         // Intercept the main game loop to drop corpses right BEFORE a spider is culled
         game.expansions.patchClass(game.constructor, 'update', function(original) {
             
+            // PERFORMANCE FIX: Native for-loop is vastly faster than .forEach for the main update tick
             for (let i = 0; i < this.entities.length; i++) {
                 let e = this.entities[i];
                 
                 // If a spider dies, and it wasn't already a zombie, drop a corpse!
                 // LOGIC FIX: Exclude 'broodling' suicide units to prevent infinite zombie cheese and map clutter
-                if (e instanceof Spider && e.hp <= 0 && !e.isZombie && !e.corpseSpawned && e.role !== 'broodling') {
+                if (e.hp <= 0 && e instanceof Spider && !e.isZombie && !e.corpseSpawned && e.role !== 'broodling') {
                     e.corpseSpawned = true; // Safety flag to prevent double-spawns
                     this.addEntity(new Corpse(e.x, e.y, e.size));
                 }
