@@ -3,16 +3,18 @@
 // THE OBSIDIAN BROOD PARTICLE ENGINE
 // ==========================================
 
+import { MathUtils } from '../game.js';
+
 // 1. CONFIGURATION
 const PARTICLE_CONFIG = {
     maxParticles: 2000,    // Hard limit to guarantee 60fps on mobile.
     maxEmitPerCall: 100,   // Safety limit to prevent accidental browser freezes
     defaultFriction: 0.85,
     splatterFriction: 0.60,
-    magicFloatSpeed: -1.5
+    magicFloatSpeed: -1.5,
+    gravity: 0.05,         // Subtle pull downwards
+    wind: 0.2              // Gentle drift to the right
 };
-
-const TWO_PI = Math.PI * 2;
 
 // 2. THE RECYCLABLE PARTICLE
 // We use a single class that gets reused to prevent Garbage Collection stutter.
@@ -34,7 +36,7 @@ class PooledParticle {
         this.color = color;
         this.type = type || 'standard';
         
-        const angle = Math.random() * TWO_PI; 
+        const angle = Math.random() * MathUtils.TWO_PI; 
         const speed = Math.random() * 4 + 1;
         
         this.vx = Math.cos(angle) * speed; 
@@ -64,12 +66,15 @@ class PooledParticle {
         if (this.type === 'splatter') {
             this.vx *= PARTICLE_CONFIG.splatterFriction; 
             this.vy *= PARTICLE_CONFIG.splatterFriction;
+            this.vy += PARTICLE_CONFIG.gravity; // Heavy blood/acid falls fast
         } else if (this.type === 'magic') {
-            // Magic floats up and ignores standard friction
+            // Magic floats up and is caught by the wind
             this.vy = Math.min(this.vy, PARTICLE_CONFIG.magicFloatSpeed);
+            this.x += PARTICLE_CONFIG.wind; 
         } else {
             this.vx *= PARTICLE_CONFIG.defaultFriction; 
             this.vy *= PARTICLE_CONFIG.defaultFriction; 
+            this.vy += PARTICLE_CONFIG.gravity; // Standard dirt clods fall slowly
         }
 
         this.life--;
@@ -114,10 +119,11 @@ class ParticleSystem {
     }
 
     draw(ctx, viewL, viewR, viewT, viewB) {
-        // PERFORMANCE FIX: Canvas State Caching
-        // Context changes are extremely slow. We track the current state to minimize API calls!
-        let lastColor = null;
-        let lastAlpha = -1;
+        // PERFORMANCE FIX: Massive Canvas API Batching!
+        // Instead of setting the color and drawing 2000 individual rectangles, we group the particles
+        // into buckets based on their color and alpha, and draw them all in ONE single API call per bucket!
+        
+        const batches = {};
 
         for (let i = 0; i < this.particles.length; i++) {
             let p = this.particles[i];
@@ -126,33 +132,44 @@ class ParticleSystem {
             if (p.active && p.x >= viewL && p.x <= viewR && p.y >= viewT && p.y <= viewB) {
                 
                 const lifeRatio = p.life / p.maxLife;
-                let targetAlpha = 1.0;
                 let currentSize = p.size;
+                
+                // We quantize the alpha to 10 discrete steps (0.1, 0.2, etc.) to keep the batch map small
+                let alphaStep = 1.0; 
                 
                 if (p.type === 'magic') {
                     // Magic particles shrink to a pinpoint but stay opaque
                     currentSize = Math.max(0.5, p.maxSize * lifeRatio);
                 } else {
-                    // Standard/Splatter fade out
-                    targetAlpha = Math.max(0, lifeRatio); 
+                    // Standard/Splatter fade out. Multiply by 10, bitwise floor, divide by 10 to quantize!
+                    alphaStep = Math.max(0.1, ((lifeRatio * 10) | 0) / 10); 
                 }
 
-                // Only touch the canvas API if the state actually needs to change!
-                if (lastAlpha !== targetAlpha) {
-                    ctx.globalAlpha = targetAlpha;
-                    lastAlpha = targetAlpha;
-                }
-                if (lastColor !== p.color) {
-                    ctx.fillStyle = p.color;
-                    lastColor = p.color;
-                }
-
-                ctx.fillRect(p.x - currentSize/2, p.y - currentSize/2, currentSize, currentSize);
+                const batchKey = `${p.color}_${alphaStep}`;
+                if (!batches[batchKey]) batches[batchKey] = { color: p.color, alpha: alphaStep, rects: [] };
+                
+                // Add this particle's dimensions to the batch
+                batches[batchKey].rects.push({ x: p.x - currentSize/2, y: p.y - currentSize/2, s: currentSize });
             }
         }
         
+        // Now, execute the batched draw calls!
+        for (const key in batches) {
+            const batch = batches[key];
+            ctx.globalAlpha = batch.alpha;
+            ctx.fillStyle = batch.color;
+            ctx.beginPath();
+            
+            for (let i = 0; i < batch.rects.length; i++) {
+                const r = batch.rects[i];
+                ctx.rect(r.x, r.y, r.s, r.s);
+            }
+            
+            ctx.fill(); // Send the entire batch to the GPU at once
+        }
+        
         // Clean up the global alpha state for the rest of the game's rendering cycle
-        if (lastAlpha !== 1.0) ctx.globalAlpha = 1.0;
+        ctx.globalAlpha = 1.0;
     }
 }
 
@@ -171,7 +188,7 @@ export const ParticleExpansion = {
             
             // Determine type based on source if not explicitly provided
             let type = data.type || 'standard';
-            if (c === '#00ff00' || c === '#aaffaa') type = 'magic'; // Healing/Spells
+            if (c === '#00ff00' || c === '#aaffaa' || c === '#00ffff') type = 'magic'; // Healing/Spells
             if (c === '#ff0000') type = 'splatter'; // Blood
             
             game.particleSystem.emit(data.x, data.y, c, data.count, type);
