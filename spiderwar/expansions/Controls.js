@@ -1,5 +1,5 @@
 // expansions/Controls.js
-import { MathUtils, Spider, Structure, SPIDER_STATE } from '../game.js';
+import { MathUtils, Spider, Structure } from '../game.js';
 import { Queen } from './Queen.js';
 
 // ==========================================
@@ -13,10 +13,8 @@ const CONTROLS_CONFIG = {
     buildRangeSq: 4900,        // 70px squared - How close Queen must be to build
     buildResumeRangeSq: 3600,  // 60px squared - How close Queen must be to auto-resume paused building
     buildSpeed: 0.001,         // Takes ~1000 ticks (30s) to build
-    autoResumeDelay: 45        // 1.5 seconds of idling before auto-resuming a paused build
+    autoResumeDelay: 45        // 1.5 seconds of idling before auto-resuming a paused building
 };
-
-const TWO_PI = Math.PI * 2;
 
 // ==========================================
 // 2. ADVANCED UNIT CONTROL EXPANSION
@@ -168,12 +166,14 @@ export const AdvancedUnitControlExpansion = {
                 
                 if (validCount > 0) {
                     game.bus.emit('particles', {x: worldX, y: worldY, color: '#ffffff', count: 12});
-                    game.bus.emit('playSound', 'shoot');
+                    
+                    // JUICE: Crisp ping sound for issuing a command!
+                    game.bus.emit('playSound', 'ping');
                     
                     for (let i = 0; i < game.selectedUnits.length; i++) {
                         let u = game.selectedUnits[i];
                         if (u.team === 'black' && u.hp > 0) {
-                            u.commandTarget = { x: worldX, y: worldY }; // Removed random offset!
+                            u.commandTarget = { x: worldX, y: worldY }; 
                             u.isManual = true; 
                         }
                     }
@@ -277,7 +277,7 @@ export const AdvancedUnitControlExpansion = {
         game.expansions.patchClass(game.constructor, 'update', function(original) {
             original.call(this);
             
-            // Run the sweep once every 60 frames (2 seconds)
+            // Run the sweep once every 60 frames (1 second)
             if (this.gameState === 'playing' && this.tick % 60 === 0 && this.controlGroups) {
                 for (let i = 1; i <= 9; i++) {
                     if (this.controlGroups[i] && this.controlGroups[i].length > 0) {
@@ -303,88 +303,21 @@ export const AdvancedUnitControlExpansion = {
                 if (u.hp > 0) {
                     ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 2; 
                     ctx.setLineDash([4, 4]); ctx.lineDashOffset = dashOffset;
-                    ctx.beginPath(); ctx.arc(u.x, u.y, u.size + 8, 0, TWO_PI); ctx.stroke(); 
+                    ctx.beginPath(); ctx.arc(u.x, u.y, u.size + 8, 0, MathUtils.TWO_PI); ctx.stroke(); 
                 }
             }
             ctx.setLineDash([]);
         });
 
-        // Override standard AI if the unit is being manually controlled
-        game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
-            
-            // --- FIX 1: Yield to Ranged & Siege Units ---
-            // If the unit has custom ranged manual logic (defined in SpecialUnits.js or Titans.js), 
-            // pass execution down the chain and exit so we don't force a melee attack!
-            if (this.isManual && (this.hasTrait('ranged_attacker') || this.hasTrait('siege_attacker'))) {
-                original.call(this, gameObj);
-                return;
-            }
-
-            if (this.isManual) {
-                const techLvl = gameObj.techLevel[this.team] || 0; 
-                const currentDamage = this.damage + (techLvl * 5); 
-                
-                // Aggro check during manual movement
-                const detectRadius = 150 + (techLvl * 10);
-                let nearestEnemy = gameObj.getNearestEnemy(this.x, this.y, this.team, detectRadius);
-
-                if (nearestEnemy) {
-                    this.state = SPIDER_STATE.COMBAT; 
-                    this.angle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
-                    const combatRange = nearestEnemy.size ? nearestEnemy.size + 15 : 20;
-                    const distSq = MathUtils.distSq(this.x, this.y, nearestEnemy.x, nearestEnemy.y);
-                    
-                    if (distSq > combatRange * combatRange) { 
-                        let speed = (this.baseSpeed + (gameObj.techLevel[this.team] * 0.15));
-                        this.x += Math.cos(this.angle) * speed; this.y += Math.sin(this.angle) * speed;
-                    } else {
-                        this.cooldown--;
-                        if (this.cooldown <= 0) {
-                            nearestEnemy.hp -= currentDamage; this.cooldown = this.attackSpeed;
-                            this.x -= Math.cos(this.angle) * 10; this.y -= Math.sin(this.angle) * 10; 
-                            gameObj.bus.emit('particles', {x: nearestEnemy.x, y: nearestEnemy.y, color: this.team==='black'?'#aa00ff':'#ffaa00', count: 5}); 
-                            gameObj.bus.emit('playSound', 'harvest');
-                        }
-                    }
-                    return; // Skip normal movement if fighting
-                }
-
-                // Normal movement towards command target
-                if (this.commandTarget) {
-                    const dx = this.commandTarget.x - this.x; const dy = this.commandTarget.y - this.y;
-                    if (MathUtils.distSq(0,0, dx, dy) > 225) { 
-                        const targetAngle = Math.atan2(dy, dx);
-                        
-                        // Smooth rotation
-                        let diff = targetAngle - this.angle;
-                        while (diff > Math.PI) diff -= Math.PI * 2;
-                        while (diff < -Math.PI) diff += Math.PI * 2;
-                        this.angle += (diff * 0.15); 
-                        
-                        // Apply terrain modifiers
-                        const terrain = gameObj.getTerrainAt(this.x, this.y); 
-                        let tMod = (terrain === 'water') ? 0.05 : ((terrain === 'grass') ? 1.3 : 1.0);
-                        let speed = (this.baseSpeed + (gameObj.techLevel[this.team] * 0.15)) * tMod;
-                        
-                        this.x += Math.cos(this.angle) * speed; this.y += Math.sin(this.angle) * speed;
-                    } else {
-                        this.commandTarget = null; // Reached target
-                    }
-                }
-            } else {
-                original.call(this, gameObj); // Not manual, run standard AI
-            }
-        });
-
-        // Custom Queen rotation handling
+        // Custom Queen rotation handling (Smoothing her turns!)
         game.expansions.patchClass(Queen, 'update', function(original, gameObj) {
             const prevAngle = this.angle || 0;
             original.call(this, gameObj);
             if (this.commandTarget) {
                 let targetAngle = Math.atan2(this.commandTarget.y - this.y, this.commandTarget.x - this.x);
                 let diff = targetAngle - prevAngle;
-                while (diff > Math.PI) diff -= TWO_PI; 
-                while (diff < -Math.PI) diff += TWO_PI;
+                while (diff > Math.PI) diff -= MathUtils.TWO_PI; 
+                while (diff < -Math.PI) diff += MathUtils.TWO_PI;
                 this.angle = prevAngle + (diff * 0.10);
             }
         });
@@ -407,8 +340,9 @@ export const ConstructionExpansion = {
             
             // PERFORMANCE FIX: Find Queen safely without generating array garbage
             let queen = null;
-            for (let i = 0; i < game.queens.length; i++) {
-                if (game.queens[i].team === data.team) { queen = game.queens[i]; break; }
+            const queens = game.queens; // Cache
+            for (let i = 0; i < queens.length; i++) {
+                if (queens[i].team === data.team) { queen = queens[i]; break; }
             }
             if (!queen) return; 
             
@@ -416,27 +350,31 @@ export const ConstructionExpansion = {
             // Ensure the player is only building inside their own Web Network!
             if (data.team === 'black') {
                 let hasBase = false;
-                for (let i = 0; i < game.structures.length; i++) {
-                    if (game.structures[i].team === 'black') { hasBase = true; break; }
+                const structs = game.structures; // Cache
+                for (let i = 0; i < structs.length; i++) {
+                    if (structs[i].team === 'black') { hasBase = true; break; }
                 }
                 
                 if (hasBase && !game.checkTerritory(data.x, data.y, data.team)) {
                     // Flash red particles to indicate invalid placement
                     game.bus.emit('particles', {x: data.x, y: data.y, color: '#ff0000', count: 10});
+                    game.bus.emit('playSound', 'error'); // JUICE: Rejection sound!
                     return; 
                 }
             }
 
             const costs = { 
                 'nest': {p: 150, d: 0}, 'eggsac': {p: 50, d: 0}, 'pylon': {p: 25, d: 0}, 
-                'turret': {p: 100, d: 0}, 'wall': {p: 25, d: 0},
-                'mortar': {p: 200, d: 50}, 'shrine': {p: 150, d: 100} 
+                'turret': {p: 100, d: 0}, 'wall': {p: 25, d: 0}, 'extractor': {p: 100, d: 0},
+                'mortar': {p: 200, d: 50}, 'shrine': {p: 150, d: 100}, 'monolith': {p: 150, d: 50},
+                'obelisk': {p: 150, d: 80}, 'incubator': {p: 200, d: 0}, 'maw': {p: 150, d: 0}
             };
             let cost = costs[data.type];
             
             // Verify player can afford it
             if (!cost || game.eco[data.team].pumpkins < cost.p || game.eco[data.team].dew < cost.d) {
                 game.bus.emit('particles', {x: data.x, y: data.y, color: '#ff0000', count: 10});
+                game.bus.emit('playSound', 'error'); // JUICE: Rejection sound!
                 return; 
             }
 
@@ -449,7 +387,7 @@ export const ConstructionExpansion = {
             queen.buildTarget = { x: data.x, y: data.y, type: data.type, cost: cost };
             queen.commandTarget = { x: data.x, y: data.y }; 
             game.bus.emit('particles', {x: data.x, y: data.y, color: '#ff9d00', count: 10});
-            game.bus.emit('playSound', 'shoot');
+            game.bus.emit('playSound', 'ping'); // JUICE: Confirmation ping
         });
     },
 
@@ -478,7 +416,7 @@ export const ConstructionExpansion = {
                         this.activeConstruction.territory = this.activeConstruction.originalTerritory; 
                         
                         gameObj.bus.emit('particles', {x: this.activeConstruction.x, y: this.activeConstruction.y, color: '#ffffff', count: 40});
-                        gameObj.bus.emit('playSound', 'spell');
+                        gameObj.bus.emit('playSound', 'build'); // Building finished thud!
                         this.activeConstruction = null;
                     }
                     return; 
@@ -515,7 +453,6 @@ export const ConstructionExpansion = {
                             
                             gameObj.addEntity(s);
                             this.activeConstruction = s; 
-                            gameObj.bus.emit('playSound', 'build');
                         }
                         this.buildTarget = null;
                         this.commandTarget = null; 
@@ -528,10 +465,10 @@ export const ConstructionExpansion = {
                 this.idleBuildTimer = (this.idleBuildTimer || 0) + 1;
                 
                 if (this.idleBuildTimer > CONTROLS_CONFIG.autoResumeDelay) {
-                    // PERFORMANCE FIX: Replaced .find with raw for-loop to stop memory thrashing
                     let unfinished = null;
-                    for (let i = 0; i < gameObj.structures.length; i++) {
-                        let s = gameObj.structures[i];
+                    const structs = gameObj.structures; // Cache
+                    for (let i = 0; i < structs.length; i++) {
+                        let s = structs[i];
                         if (s.isConstructing && s.team === this.team && MathUtils.distSq(s.x, s.y, this.x, this.y) < CONTROLS_CONFIG.buildResumeRangeSq) {
                             unfinished = s; break;
                         }
@@ -564,14 +501,14 @@ export const ConstructionExpansion = {
                 
                 // Base
                 ctx.fillStyle = '#221100';
-                ctx.beginPath(); ctx.arc(0, 0, (this.size * 0.7) + pulse, 0, TWO_PI); ctx.fill();
+                ctx.beginPath(); ctx.arc(0, 0, (this.size * 0.7) + pulse, 0, MathUtils.TWO_PI); ctx.fill();
                 
                 // Magic construction ring
                 ctx.strokeStyle = this.isPaused ? '#885500' : '#ff9d00';
                 ctx.lineWidth = 2;
                 ctx.setLineDash([8, 8]);
                 ctx.lineDashOffset = this.isPaused ? 0 : -game.tick * 0.5;
-                ctx.beginPath(); ctx.arc(0, 0, this.size * 0.8, 0, TWO_PI); ctx.stroke();
+                ctx.beginPath(); ctx.arc(0, 0, this.size * 0.8, 0, MathUtils.TWO_PI); ctx.stroke();
                 
                 // Build Progress Bar
                 const w = this.size * 1.5;
