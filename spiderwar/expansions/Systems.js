@@ -20,7 +20,16 @@ export const AtmosphereExpansion = {
             
             const cycle = Math.sin(game.tick / 1800); 
             const darkness = Math.max(0, cycle * 0.6); 
-            ctx.fillStyle = `rgba(5, 10, 35, ${darkness})`; 
+            
+            // JUICE: Dynamic breathing vignette instead of a flat color fill
+            const viewCenterX = game.camera.x + (game.canvas.width / 2);
+            const viewCenterY = game.camera.y + (game.canvas.height / 2);
+            
+            let grad = ctx.createRadialGradient(viewCenterX, viewCenterY, game.canvas.height * 0.2, viewCenterX, viewCenterY, game.canvas.width);
+            grad.addColorStop(0, `rgba(5, 10, 35, ${Math.max(0, darkness - 0.2)})`); 
+            grad.addColorStop(1, `rgba(5, 10, 35, ${darkness + 0.2})`);
+            
+            ctx.fillStyle = grad; 
             ctx.fillRect(game.camera.x, game.camera.y, game.canvas.width, game.canvas.height);
         });
 
@@ -64,7 +73,7 @@ export const FogOfWarExpansion = {
             if (this.tick % 10 === 0) {
                 const w = this.fowCanvas.width;
                 const h = this.fowCanvas.height;
-                const tileSize = this.tileSize || 256; // SAFETY FIX: Decouple from Terrain.js
+                const tileSize = this.tileSize || 256; 
 
                 // 1. Reset Visibility
                 for (let y = 0; y < h; y++) {
@@ -73,10 +82,10 @@ export const FogOfWarExpansion = {
                     }
                 }
 
-                // 2. Calculate newly revealed tiles
+                // 2. Calculate newly revealed tiles (OPTIMIZED MATH)
                 const reveal = (worldX, worldY, radiusTiles) => {
-                    const tX = Math.floor(worldX / tileSize);
-                    const tY = Math.floor(worldY / tileSize);
+                    const tX = (worldX / tileSize) | 0;
+                    const tY = (worldY / tileSize) | 0;
                     const rSq = radiusTiles * radiusTiles;
                     
                     const startY = Math.max(0, tY - radiusTiles);
@@ -85,9 +94,10 @@ export const FogOfWarExpansion = {
                     const endX = Math.min(w - 1, tX + radiusTiles);
 
                     for (let y = startY; y <= endY; y++) {
+                        const dySq = (y - tY) * (y - tY);
                         for (let x = startX; x <= endX; x++) {
-                            // PERFORMANCE FIX: Inline distance check
-                            if (((x - tX)*(x - tX) + (y - tY)*(y - tY)) <= rSq) {
+                            // PERFORMANCE FIX: Cached dySq outside inner loop
+                            if (dySq + ((x - tX) * (x - tX)) <= rSq) {
                                 this.mapGrid[y][x].visible = true;
                                 this.mapGrid[y][x].discovered = true;
                             }
@@ -141,8 +151,8 @@ export const FogOfWarExpansion = {
             game.expansions.patchClass(ClassRef, 'draw', function(original, ctx) {
                 if (game.mapGrid) {
                     const tileSize = game.tileSize || 256;
-                    const tX = Math.floor(this.x / tileSize); 
-                    const tY = Math.floor(this.y / tileSize);
+                    const tX = (this.x / tileSize) | 0; 
+                    const tY = (this.y / tileSize) | 0;
                     const tile = game.mapGrid[tY] && game.mapGrid[tY][tX];
                     if (tile) {
                         if (hideIfUndiscovered && !tile.discovered) return;
@@ -208,11 +218,9 @@ export const SaveLoadExpansion = {
                 const CHUNK_SIZE = 500; 
                 
                 game.decor.forEach(d => {
-                    // Re-link the raw Image element from the AssetManager
                     if (game.assets) d.sprite = game.assets.get(d.src);
 
-                    // Re-assign to spatial hash chunk
-                    const chunkKey = (Math.floor(d.x / CHUNK_SIZE) << 16) | Math.floor(d.y / CHUNK_SIZE);
+                    const chunkKey = ((d.x / CHUNK_SIZE) | 0) << 16 | ((d.y / CHUNK_SIZE) | 0);
                     let chunk = game.decorChunks.get(chunkKey);
                     if (!chunk) { chunk = []; game.decorChunks.set(chunkKey, chunk); }
                     chunk.push(d);
@@ -228,10 +236,8 @@ export const SaveLoadExpansion = {
                 } else if (s.role === 'broodling') {
                     o = new Broodling(s.x, s.y, s.team);
                 } else {
-                    // Base generation
                     o = new Spider(s.x, s.y, s.team, s.role);
                     
-                    // FIX: Re-link custom sprites and AI stats for Special Units
                     if (s.role === 'spitter') { 
                         o.range = 250; o.rangeSq = 62500; 
                         if (game.assets) o.sprite = game.assets.get(s.team === 'black' ? 'assets/spitter_black.png' : 'assets/spitter_red.png');
@@ -314,6 +320,7 @@ export const SaveLoadExpansion = {
                 });
             }
             
+            game.bus.emit('playSound', 'spell');
             console.log("Game Successfully Loaded!");
         };
 
@@ -321,6 +328,38 @@ export const SaveLoadExpansion = {
 
         window.addEventListener('keydown', (e) => {
             if (e.key.toLowerCase() === 'o') {
+                
+                // PERFORMANCE FIX: One single pass over the entities array to serialize everything!
+                const spiders = []; const structures = []; const resNodes = []; const queens = [];
+                const critters = []; const bosses = []; const hazards = []; const cps = [];
+                const corpses = []; const eggTraps = [];
+
+                for (let i = 0; i < game.entities.length; i++) {
+                    let u = game.entities[i];
+                    if (u instanceof Spider && u.role !== 'queen') {
+                        const sData = { x: u.x, y: u.y, team: u.team, role: u.role, hp: u.hp, cargo: u.cargo, size: u.size };
+                        if (u.isZombie) sData.isZombie = true;
+                        if (u.isCloaked !== undefined) { sData.isCloaked = u.isCloaked; sData.cloakCooldown = u.cloakCooldown; }
+                        if (u.life !== undefined) sData.life = u.life;
+                        spiders.push(sData);
+                    }
+                    else if (u instanceof Structure) {
+                        structures.push({
+                            x: u.x, y: u.y, team: u.team, type: u.type, hp: u.hp,
+                            isConstructing: u.isConstructing, buildProgress: u.buildProgress,
+                            territory: u.territory, originalTerritory: u.originalTerritory, cooldown: u.cooldown
+                        });
+                    }
+                    else if (u instanceof ResourceNode) resNodes.push({x: u.x, y: u.y, type: u.type, resources: u.resources});
+                    else if (u instanceof Queen) queens.push({x: u.x, y: u.y, team: u.team, hp: u.hp});
+                    else if (u.team === 'nature' && u.constructor.name !== 'CentipedeBoss') critters.push({x: u.x, y: u.y, hp: u.hp, color: u.color, type: u.type || u.constructor.name});
+                    else if (u.constructor.name === 'CentipedeBoss') bosses.push({x: u.x, y: u.y, hp: u.hp});
+                    else if (u instanceof VenusFlytrap) hazards.push({x: u.x, y: u.y, hp: u.hp, cooldown: u.cooldown});
+                    else if (u instanceof JackOLantern) cps.push({x: u.x, y: u.y, team: u.controllingTeam, prog: u.captureProgress});
+                    else if (u instanceof Corpse) corpses.push({x: u.x, y: u.y, life: u.life, size: u.size});
+                    else if (u instanceof EggTrap) eggTraps.push({x: u.x, y: u.y, team: u.team, hp: u.hp});
+                }
+
                 const state = {
                     eco: game.eco, pop: game.pop, maxPop: game.maxPop, techLevel: game.techLevel, camera: game.camera, tick: game.tick,
                     
@@ -329,43 +368,20 @@ export const SaveLoadExpansion = {
                         discovered: tile.discovered, visible: tile.visible
                     }))),
                     
-                    // SAFETY FIX: Store `src` with the 'assets/' prefix so the AssetManager can find it on load
                     decor: game.decor ? game.decor.map(d => ({
                         x: d.x, y: d.y, type: d.type, size: d.size, renderSize: d.renderSize, 
                         angle: d.angle, alpha: d.alpha, fallbackColor: d.fallbackColor, 
                         src: d.sprite ? 'assets/' + d.sprite.src.split('/').pop() : null
                     })) : [],
                     
-                    spiders: game.spiders.map(s => {
-                        const sData = {
-                            x: s.x, y: s.y, team: s.team, role: s.role, hp: s.hp, cargo: s.cargo, size: s.size
-                        };
-                        // SAFETY FIX: Cleanly serialize optional traits
-                        if (s.isZombie) sData.isZombie = true;
-                        if (s.isCloaked !== undefined) { sData.isCloaked = s.isCloaked; sData.cloakCooldown = s.cloakCooldown; }
-                        if (s.life !== undefined) sData.life = s.life;
-                        return sData;
-                    }),
-                    
-                    structures: game.structures.map(s => ({
-                        x: s.x, y: s.y, team: s.team, type: s.type, hp: s.hp,
-                        isConstructing: s.isConstructing, buildProgress: s.buildProgress,
-                        territory: s.territory, originalTerritory: s.originalTerritory,
-                        cooldown: s.cooldown
-                    })),
-                    
-                    resourceNodes: game.resourceNodes.map(p => ({x: p.x, y: p.y, type: p.type, resources: p.resources})),
-                    queens: game.queens.map(q => ({x: q.x, y: q.y, team: q.team, hp: q.hp})),
-                    critters: game.critters.map(b => ({x: b.x, y: b.y, hp: b.hp, color: b.color, type: b.type || b.constructor.name})),
-                    bosses: game.bosses.map(b => ({x: b.x, y: b.y, hp: b.hp})),
-                    hazards: game.entities.filter(e => e instanceof VenusFlytrap).map(f => ({x: f.x, y: f.y, hp: f.hp, cooldown: f.cooldown})),
-                    controlPoints: game.entities.filter(e => e instanceof JackOLantern).map(c => ({x: c.x, y: c.y, team: c.controllingTeam, prog: c.captureProgress})),
-                    corpses: game.entities.filter(e => e instanceof Corpse).map(c => ({x: c.x, y: c.y, life: c.life, size: c.size})),
-                    eggTraps: game.entities.filter(e => e instanceof EggTrap).map(t => ({x: t.x, y: t.y, team: t.team, hp: t.hp}))
+                    spiders: spiders, structures: structures, resourceNodes: resNodes, queens: queens,
+                    critters: critters, bosses: bosses, hazards: hazards, controlPoints: cps, corpses: corpses, eggTraps: eggTraps
                 };
+                
                 localStorage.setItem('spiderRTS_saveData', JSON.stringify(state)); 
                 
                 game.bus.emit('particles', {x: game.camera.x + game.canvas.width/2, y: game.camera.y + game.canvas.height/2, color: '#00ff00', count: 50});
+                game.bus.emit('playSound', 'ping');
                 console.log("Game Saved!");
             }
             if (e.key.toLowerCase() === 'p') {
