@@ -4,7 +4,8 @@ import { ResourceNode, MathUtils } from '../game.js';
 // ==========================================
 // 1. CONFIGURATION & BALANCING
 // ==========================================
-const CRITTER_CONFIG = {
+// [EXPANDABILITY] Exported so other mods can tweak critter stats, speeds, and loot tables!
+export const CRITTER_CONFIG = {
     aphid: {
         hp: 30,
         size: 8,
@@ -31,6 +32,7 @@ const CRITTER_CONFIG = {
 // ==========================================
 export class Aphid {
     constructor(x, y) { 
+        this.id = Math.random().toString(36).substring(2, 11);
         this.x = x; 
         this.y = y; 
         this.size = CRITTER_CONFIG.aphid.size; 
@@ -40,6 +42,11 @@ export class Aphid {
         this.speed = CRITTER_CONFIG.aphid.speed; 
         this.team = 'nature'; 
         this.color = CRITTER_CONFIG.aphid.color;
+        
+        // [JUICE] Animation Offsets & Damage Tracking
+        this.animOffset = parseInt(this.id, 36) % 100;
+        this._lastHp = this.hp;
+        this.flashFrames = 0;
         
         // Sprite linking
         this.spriteFetched = false;
@@ -53,9 +60,15 @@ export class Aphid {
             this.spriteFetched = true;
         }
 
+        // [JUICE] Damage Flashing Tracker
+        if (this.hp < this._lastHp) this.flashFrames = 4;
+        this._lastHp = this.hp;
+        if (this.flashFrames > 0) this.flashFrames--;
+
         // Idle AI: Erratic turning
         if (Math.random() < 0.1) {
             this.angle += MathUtils.randomRange(-0.5, 0.5);
+            this.angle = MathUtils.angleWrap(this.angle); // Keep normalized
         }
 
         // Fleeing AI: Run away quickly if attacked!
@@ -75,15 +88,27 @@ export class Aphid {
         // Death: Drop a magic dew node!
         if (this.hp <= 0) { 
             for(let i = 0; i < CRITTER_CONFIG.aphid.dropCount; i++) {
-                game.addEntity(new ResourceNode(this.x, this.y, CRITTER_CONFIG.aphid.dropType)); 
+                // [FIX] Ensure the dropped node is safely clamped within the map bounds
+                const pX = MathUtils.clamp(this.x + MathUtils.randomRange(-10, 10), 50, game.world.width - 50);
+                const pY = MathUtils.clamp(this.y + MathUtils.randomRange(-10, 10), 50, game.world.height - 50);
+                game.addEntity(new ResourceNode(pX, pY, CRITTER_CONFIG.aphid.dropType)); 
             }
         }
     }
 
-    draw(ctx) { 
+    draw(ctx, game) { 
         ctx.save(); 
         ctx.translate(this.x, this.y); 
         ctx.rotate(this.angle); 
+        
+        // [JUICE] Organic wiggle that speeds up significantly if they are fleeing in panic
+        const tick = game ? game.tick : 0;
+        const wiggleSpeed = this.hp < this.maxHp ? 0.8 : 0.1;
+        const wiggle = Math.sin(tick * wiggleSpeed + this.animOffset) * 0.15;
+        ctx.rotate(wiggle);
+
+        // [JUICE] Flash bright white when damaged
+        if (this.flashFrames > 0) ctx.filter = 'brightness(2.5)';
         
         // Render Sprite with dynamic Aspect Ratio
         if (this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) {
@@ -107,6 +132,7 @@ export class Aphid {
 // ==========================================
 export class GoldenBug {
     constructor(x, y) { 
+        this.id = Math.random().toString(36).substring(2, 11);
         this.x = x; 
         this.y = y; 
         this.size = CRITTER_CONFIG.goldenBug.size; 
@@ -116,6 +142,11 @@ export class GoldenBug {
         this.speed = CRITTER_CONFIG.goldenBug.speed; 
         this.team = 'nature'; 
         this.color = CRITTER_CONFIG.goldenBug.color;
+
+        // [JUICE] Animation Offsets & Damage Tracking
+        this.animOffset = parseInt(this.id, 36) % 100;
+        this._lastHp = this.hp;
+        this.flashFrames = 0;
 
         // Sprite linking
         this.spriteFetched = false;
@@ -129,9 +160,15 @@ export class GoldenBug {
             this.spriteFetched = true;
         }
 
+        // [JUICE] Damage Flashing Tracker
+        if (this.hp < this._lastHp) this.flashFrames = 4;
+        this._lastHp = this.hp;
+        if (this.flashFrames > 0) this.flashFrames--;
+
         // Idle AI: Slow, gentle turning
         if (Math.random() < 0.05) {
             this.angle += MathUtils.randomRange(-0.5, 0.5);
+            this.angle = MathUtils.angleWrap(this.angle);
         }
 
         // Fleeing AI: Run away quickly if attacked!
@@ -161,26 +198,44 @@ export class GoldenBug {
             game.bus.emit('particles', {x: this.x, y: this.y, color: '#ffea00', count: 50});
             
             for(let i = 0; i < CRITTER_CONFIG.goldenBug.dropCount; i++) {
-                game.addEntity(new ResourceNode(
-                    this.x + MathUtils.randomRange(-spread, spread), 
-                    this.y + MathUtils.randomRange(-spread, spread), 
-                    CRITTER_CONFIG.goldenBug.dropType
-                ));
+                // [FIX] Strict boundary clamping so the massive loot explosion doesn't toss pumpkins off-map!
+                const dropAngle = Math.random() * MathUtils.TWO_PI;
+                const dropDist = Math.random() * spread;
+                
+                const pX = MathUtils.clamp(this.x + Math.cos(dropAngle) * dropDist, 50, game.world.width - 50);
+                const pY = MathUtils.clamp(this.y + Math.sin(dropAngle) * dropDist, 50, game.world.height - 50);
+
+                game.addEntity(new ResourceNode(pX, pY, CRITTER_CONFIG.goldenBug.dropType));
             }
         }
     }
 
-    draw(ctx) {
+    draw(ctx, game) {
         ctx.save(); 
         ctx.translate(this.x, this.y); 
         ctx.rotate(this.angle); 
         
+        // [JUICE] Frantic wiggle animation when running away
+        const tick = game ? game.tick : 0;
+        const wiggleSpeed = this.hp < this.maxHp ? 0.6 : 0.05;
+        const wiggle = Math.sin(tick * wiggleSpeed + this.animOffset) * 0.1;
+        ctx.rotate(wiggle);
+
+        // [JUICE] Flash bright white when damaged
+        if (this.flashFrames > 0) ctx.filter = 'brightness(2.5)';
+
         // Render Sprite with dynamic Aspect Ratio
         if (this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) {
             const aspect = this.sprite.naturalWidth / this.sprite.naturalHeight;
             const drawH = this.size * 2;
             const drawW = drawH * aspect;
+            
+            // [JUICE] Pulsing golden aura behind the sprite
+            ctx.shadowColor = '#ffea00';
+            ctx.shadowBlur = 15 + Math.sin(tick * 0.1 + this.animOffset) * 5;
+            
             ctx.drawImage(this.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
+            ctx.shadowBlur = 0;
         } else {
             // Shiny glowing aura
             ctx.shadowColor = '#ffea00';
@@ -206,13 +261,14 @@ export class GoldenBug {
             const pct = Math.max(0, this.hp) / this.maxHp;
 
             ctx.fillStyle = 'black'; 
-            ctx.fillRect(this.x - (w/2 + 1), this.y - (this.size + 6), w + 2, 6); 
+            // Placed slightly above the bug
+            ctx.fillRect(this.x - (w/2 + 1), this.y - (this.size + 12), w + 2, 6); 
             
             ctx.fillStyle = 'red'; 
-            ctx.fillRect(this.x - (w/2), this.y - (this.size + 5), w, 4); 
+            ctx.fillRect(this.x - (w/2), this.y - (this.size + 11), w, 4); 
             
             ctx.fillStyle = 'lime'; 
-            ctx.fillRect(this.x - (w/2), this.y - (this.size + 5), w * pct, 4); 
+            ctx.fillRect(this.x - (w/2), this.y - (this.size + 11), w * pct, 4); 
         }
     }
 }
