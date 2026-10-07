@@ -49,8 +49,7 @@ import { AtmosphereExpansion, FogOfWarExpansion, SaveLoadExpansion } from './exp
 // ==========================================
 // 3. EXPANSION MANIFEST
 // ==========================================
-// This array defines the exact load order. 
-// Easy to toggle mechanics on/off for debugging or expansions!
+// This array defines the exact load order of the vanilla game.
 const expansionManifest = [
     { name: 'SplashScreen',         module: SplashScreenExpansion },
     { name: 'AudioSynth',           module: AudioExpansion },
@@ -92,62 +91,73 @@ const expansionManifest = [
     { name: 'SaveLoadManager',      module: SaveLoadExpansion },
     
     { name: 'Atmosphere',           module: AtmosphereExpansion },
-    
-    // MUST LOAD LAST: Renders over the top of all other entities
-    { name: 'FogOfWar',             module: FogOfWarExpansion }
+    { name: 'FogOfWar',             module: FogOfWarExpansion } // MUST LOAD LAST!
 ];
 
 // ==========================================
-// 4. BOOT SEQUENCE
+// 4. BULLETPROOF BOOT SEQUENCE
 // ==========================================
-// Use DOMContentLoaded instead of window.onload so the engine boots 
-// instantly without waiting for heavy video/image assets to finish downloading.
-document.addEventListener('DOMContentLoaded', () => {
-    
+const bootEngine = () => {
     // 1. PERFORMANCE TRACKING
     const bootStartTime = performance.now();
 
-    // 2. GLOBAL CONFIGURATION (For future settings, options, and mods)
+    // 2. GLOBAL CONFIGURATION
     window.SpiderWarsConfig = window.SpiderWarsConfig || {
         version: '1.1.0',
         debugMode: false,
         cheatsEnabled: false
     };
     
-    // 3. DEVELOPER LORE & INIT LOGS
-    console.log("%c🕸️ THE OBSIDIAN BROOD AWAKENS 🕸️", "color: #aa00ff; font-size: 18px; font-weight: bold; text-shadow: 1px 1px 0px #000;");
-    console.log(`%cSummoning the SpiderWars! Engine v${window.SpiderWarsConfig.version}...`, "color: #ff9d00; font-family: monospace;");
+    // 3. DEVTOOLS JUICE (ASCII ART)
+    const spiderASCII = `
+%c
+   / _ \\
+ \\_\\(_)/_/
+  _//o\\\\_
+   /   \\
+🕸️ THE OBSIDIAN BROOD AWAKENS 🕸️
+SpiderWars! Engine v${window.SpiderWarsConfig.version}
+    `;
+    console.log(spiderASCII, "color: #aa00ff; font-weight: bold; text-shadow: 1px 1px 0px #000;");
 
+    // Initialize core state
     const game = new Game();
+    window.SpiderWarsEngine = game; // Expose to global scope for DevTools
+
+    // 4. MODDING API (Expandability Win)
+    // We use a Map to allow external mods to easily overwrite core modules by matching the name!
+    const activeManifest = new Map();
+    expansionManifest.forEach(exp => activeManifest.set(exp.name, exp));
     
-    // EXPANDABILITY: Expose engine to global scope for easy DevTools debugging and external Modding
-    window.SpiderWarsEngine = game;
+    if (Array.isArray(window.SpiderWarsMods)) {
+        window.SpiderWarsMods.forEach(mod => {
+            if (activeManifest.has(mod.name)) {
+                console.warn(`%c[Mod API] External mod is overriding core expansion: ${mod.name}`, "color: #ffaa00; font-weight: bold;");
+            }
+            activeManifest.set(mod.name, mod);
+        });
+    }
+
+    // Convert back to an ordered array for the loading sequence
+    const fullManifest = Array.from(activeManifest.values());
 
     let loadedCount = 0;
     let failedCount = 0;
 
-    // EXPANDABILITY: Combine internal manifest with any externally injected mods via script tags
-    // Ensure window.SpiderWarsMods is an actual iterable array before spreading
-    const externalMods = Array.isArray(window.SpiderWarsMods) ? window.SpiderWarsMods : [];
-    const fullManifest = [...expansionManifest, ...externalMods];
-
-    // UI POLISH: Group console logs so the DevTools aren't spammed with dozens of lines!
     console.groupCollapsed(`%c📦 Weaving ${fullManifest.length} Expansions...`, "color: #00aaff; font-weight: bold;");
 
-    // 4. ROBUST LOADING LOOP
+    // 5. ROBUST LOADING LOOP
     for (const exp of fullManifest) {
         try {
-            // SAFETY FIX: Prevent the engine from crashing blindly if a module import failed/typo'd
             if (!exp || !exp.module) {
-                throw new Error(`Module '${exp?.name || 'Unknown'}' is undefined. Check your import paths at the top of main.js!`);
+                throw new Error(`Module '${exp?.name || 'Unknown'}' is undefined. Check import paths!`);
             }
             game.expansions.load(exp.name, exp.module);
             loadedCount++;
         } catch (error) {
             console.error(`%c[Engine Error] Failed to weave expansion into the web: ${exp?.name || 'Unknown'}`, "color: #ff0000; font-weight: bold;");
             console.error(error);
-            failedCount++;
-            // Engine continues loading other modules gracefully!
+            failedCount++; // Engine skips bad module and continues loading safely
         }
     }
     
@@ -161,7 +171,20 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`%c[Engine] The Web is perfectly woven. Loaded ${loadedCount} Expansions in ${bootTime}ms.`, "color: #00ff00; font-family: monospace;");
     }
     
-    // 5. EVENT BROADCAST: Tell external scripts/mods the engine is fully ready to accept commands
+    // 6. HOT-PLUGGABLE MOD API
+    // Allows devs (or Chrome Extensions) to inject scripts while the game is actively running!
+    window.SpiderWarsAPI = {
+        loadMod: (modName, modModule) => {
+            try {
+                game.expansions.load(modName, modModule);
+                console.log(`%c[Mod API] Late-loaded mod successfully: ${modName}`, "color: #00ff00; font-weight: bold;");
+            } catch (e) {
+                console.error(`[Mod API] Failed to late-load ${modName}`, e);
+            }
+        }
+    };
+
+    // 7. EVENT BROADCAST (UI Ready Signal)
     window.dispatchEvent(new CustomEvent('SpiderWarsReady', { 
         detail: { 
             game: window.SpiderWarsEngine, 
@@ -171,4 +194,14 @@ document.addEventListener('DOMContentLoaded', () => {
             bootTimeMs: bootTime
         } 
     }));
-});
+};
+
+// ==========================================
+// 5. SAFELY EXECUTE BOOT
+// ==========================================
+// [FIX] Handles the race condition where DOMContentLoaded already fired before this script executed
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootEngine);
+} else {
+    bootEngine(); // Document is already ready, boot immediately!
+}
