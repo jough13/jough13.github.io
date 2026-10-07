@@ -2,15 +2,20 @@
 // 1. CORE ARCHITECTURE & UTILITIES
 // ==========================================
 export const MathUtils = {
-    TWO_PI: Math.PI * 2, // Cached for massive rendering performance
-    HALF_PI: Math.PI / 2, // Added for expansions to use
-    // Optimized: Direct multiplication is vastly faster than the ** exponent operator in JS
+    TWO_PI: Math.PI * 2,
+    HALF_PI: Math.PI / 2,
     distSq: (x1, y1, x2, y2) => { const dx = x2 - x1; const dy = y2 - y1; return (dx * dx) + (dy * dy); },
     dist: (x1, y1, x2, y2) => { const dx = x2 - x1; const dy = y2 - y1; return Math.sqrt((dx * dx) + (dy * dy)); },
     clamp: (val, min, max) => Math.max(min, Math.min(max, val)),
     lerp: (start, end, amt) => (1 - amt) * start + amt * end,
     randomRange: (min, max) => Math.random() * (max - min) + min,
-    randomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min
+    randomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
+    // [EXPANDABILITY] Added for mods to easily do smooth rotations
+    angleWrap: (angle) => {
+        while (angle > Math.PI) angle -= MathUtils.TWO_PI;
+        while (angle < -Math.PI) angle += MathUtils.TWO_PI;
+        return angle;
+    }
 };
 
 export class GameBus {
@@ -19,11 +24,15 @@ export class GameBus {
         if (!this.listeners[event]) this.listeners[event] = []; 
         this.listeners[event].push(callback); 
     }
+    // [EXPANDABILITY] Allow mods to remove listeners to prevent memory leaks if they are toggled off
+    off(event, callback) {
+        if (!this.listeners[event]) return;
+        this.listeners[event] = this.listeners[event].filter(cb => cb !== callback);
+    }
     emit(event, data) { 
         if (this.listeners[event]) {
             this.listeners[event].forEach(cb => {
                 try { cb(data); } 
-                // EXPANDABILITY FIX: Include the data payload in the error log so modders can debug their events!
                 catch (err) { console.error(`[GameBus] Error in event '${event}':`, err, data); }
             });
         }
@@ -42,16 +51,19 @@ export class AssetManager {
 export class ExpansionManager {
     constructor(game) { this.game = game; this.expansions = {}; }
     load(name, expansion) {
-        console.log(`%c[Plugin Loaded] ${name}`, 'color: #00aaff;');
-        this.expansions[name] = expansion;
-        if (expansion.init) expansion.init(this.game);
-        if (expansion.patch) expansion.patch(this.game);
+        // [FIX] Added try/catch error boundaries. If one mod has a syntax error, it won't crash the whole game!
+        try {
+            console.log(`%c[Plugin Loaded] ${name}`, 'color: #00aaff;');
+            this.expansions[name] = expansion;
+            if (expansion.init) expansion.init(this.game);
+            if (expansion.patch) expansion.patch(this.game);
+        } catch (err) {
+            console.error(`%c[Plugin Error] Failed to load ${name}:`, 'color: #ff0000;', err);
+        }
     }
     patchClass(TargetClass, methodName, newMethod) {
         const originalMethod = TargetClass.prototype[methodName];
         TargetClass.prototype[methodName] = function(...args) {
-            // GC LEAK FIX: Removed .bind(this) which created a new function in memory every frame.
-            // Raw method is safely passed down, expansions handle `.call(this)` natively!
             return newMethod.call(this, originalMethod, ...args);
         };
     }
@@ -68,7 +80,6 @@ export const SPIDER_STATE = {
     RETURNING_HOME: 3
 };
 
-// --- PILLAR 3: THE TRAIT DICTIONARY ---
 export const UNIT_DATA = {
     harvester: { size: 12, hp: 100, damage: 15, attackSpeed: 30, baseSpeedMin: 0.8, baseSpeedMax: 1.8, traits: ['gatherer'] },
     soldier:   { size: 16, hp: 200, damage: 30, attackSpeed: 20, baseSpeedMin: 1.2, baseSpeedMax: 2.2, traits: ['melee', 'escort'] }
@@ -84,7 +95,7 @@ export const STRUCTURE_DATA = {
 
 export class Spider {
     constructor(x, y, team, role = 'harvester') {
-        this.id = Math.random().toString(36).substring(2, 11); // <-- ADDED ID HERE
+        this.id = Math.random().toString(36).substring(2, 11); 
         this.x = x; this.y = y; this.team = team; this.role = role;
         
         const stats = UNIT_DATA[role] || UNIT_DATA['harvester'];
@@ -95,12 +106,14 @@ export class Spider {
         this.hp = stats.hp; this.maxHp = this.hp;
         this.damage = stats.damage; this.attackSpeed = stats.attackSpeed;
         
-        // EXPANDABILITY: Cloned array protects the global config from accidental mutation
         this.traits = stats.traits ? [...stats.traits] : [];
         
         this.cooldown = 0; this.angle = 0; this.state = SPIDER_STATE.IDLE; this.target = null; 
         this.cargo = { amount: 0, type: null };
         this.isCloaked = false; 
+        
+        // [PERFORMANCE] Convert ID string to a number once for animation offset
+        this.animOffset = parseInt(this.id, 36) % 100;
         
         this.sprite = new Image();
         if (role === 'soldier') this.sprite.src = team === 'black' ? 'assets/soldier_black.png' : 'assets/soldier_red.png';
@@ -109,18 +122,29 @@ export class Spider {
         this.imageLoaded = false; this.sprite.onload = () => { this.imageLoaded = true; };
     }
     
-    hasTrait(traitName) {
-        return this.traits.includes(traitName);
-    }
-    
+    hasTrait(traitName) { return this.traits.includes(traitName); }
     update(game) { }
     
-    draw(ctx) {
-        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); 
+    draw(ctx, game) {
+        ctx.save(); 
+        ctx.translate(this.x, this.y); 
+        ctx.rotate(this.angle); 
+        
+        // [JUICE] Organic breathing animation! Faster when in combat or moving.
+        const tick = game ? game.tick : 0;
+        const breathSpeed = (this.state === SPIDER_STATE.COMBAT || this.speed > 0.5) ? 0.2 : 0.05;
+        const breath = 1 + Math.sin(tick * breathSpeed + this.animOffset) * 0.05;
+        ctx.scale(breath, 1 / breath); // Squish and stretch volume preservation
+        
         if (this.imageLoaded || (this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0)) { 
             ctx.drawImage(this.sprite, -this.size, -this.size, this.size * 2, this.size * 2); 
         } else {
+            // [JUICE] Added drop shadow to fallback graphics so they pop off the ground
+            ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2;
+            
             ctx.fillStyle = this.team; ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
+            
+            ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; // Reset shadow for eyes
             ctx.fillStyle = 'white'; ctx.fillRect(this.size/2, -3, 4, 6);
             if(this.role === 'soldier') { ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(0, 0, 4, 0, MathUtils.TWO_PI); ctx.fill(); }
         }
@@ -134,18 +158,32 @@ export class Spider {
 
 export class ResourceNode {
     constructor(x, y, type) {
+        this.id = Math.random().toString(36).substring(2, 11);
         this.x = x; this.y = y; this.type = type; 
         this.size = type === 'pumpkin' ? 25 : 15; 
         this.resources = type === 'pumpkin' ? 100 : 50; 
+        this.animOffset = parseInt(this.id, 36) % 100;
+        
         this.sprite = new Image(); 
         this.sprite.src = type === 'pumpkin' ? 'assets/pumpkin.png' : 'assets/dewdrop.png';
         this.imageLoaded = false; this.sprite.onload = () => { this.imageLoaded = true; };
     }
-    draw(ctx) {
+    draw(ctx, game) {
         if (this.resources <= 0) return; 
-        ctx.save(); ctx.translate(this.x, this.y);
+        ctx.save(); 
+        
+        // [JUICE] Magical hovering animation for resources
+        const tick = game ? game.tick : 0;
+        const floatY = Math.sin(tick * 0.05 + this.animOffset) * 4;
+        ctx.translate(this.x, this.y + floatY);
+        
         const maxRes = this.type === 'pumpkin' ? 100 : 50;
-        const scale = Math.max(0.4, this.resources / maxRes); ctx.scale(scale, scale);
+        const scale = Math.max(0.4, this.resources / maxRes); 
+        ctx.scale(scale, scale);
+        
+        // [JUICE] Add an ethereal glow matching the resource color
+        ctx.shadowColor = this.type === 'pumpkin' ? '#ff7b00' : '#00aaff';
+        ctx.shadowBlur = 15;
         
         if (this.imageLoaded) { 
             ctx.drawImage(this.sprite, -this.size, -this.size, this.size * 2, this.size * 2); 
@@ -166,6 +204,9 @@ export class Structure {
         this.size = stats.size;
         this.territory = stats.territory;
         
+        // [JUICE] Spawn-in animation tracking
+        this.spawnScale = 0.1;
+        
         if(type === 'turret') this.cooldown = 0; 
 
         this.sprite = new Image(); this.sprite.src = `assets/${type}_${team}.png`;
@@ -173,29 +214,47 @@ export class Structure {
     }
     update(game) {} 
     draw(ctx) {
-        if(this.spriteLoaded) { 
-            ctx.drawImage(this.sprite, this.x - this.size, this.y - this.size, this.size * 2, this.size * 2); 
-        } else {
-            ctx.fillStyle = this.team === 'black' ? '#222' : '#500';
-            if(this.type === 'nest') { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, MathUtils.TWO_PI); ctx.fill(); }
-            else if(this.type === 'eggsac') { ctx.beginPath(); ctx.ellipse(this.x, this.y, this.size, this.size-10, 0, 0, MathUtils.TWO_PI); ctx.fill(); }
-            else if(this.type === 'turret') { ctx.fillRect(this.x - this.size, this.y - this.size, this.size * 2, this.size * 2); ctx.fillStyle='purple'; ctx.beginPath(); ctx.arc(this.x, this.y, 8, 0, MathUtils.TWO_PI); ctx.fill(); }
-            else if(this.type === 'wall') { ctx.fillRect(this.x - this.size, this.y - 10, this.size * 2, 20); }
-            else if(this.type === 'pylon') { ctx.beginPath(); ctx.moveTo(this.x, this.y - this.size); ctx.lineTo(this.x - this.size, this.y + this.size); ctx.lineTo(this.x + this.size, this.y + this.size); ctx.fill(); }
-            ctx.strokeStyle = this.team; ctx.lineWidth = 2; ctx.stroke();
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        
+        // [JUICE] Pop-in scale animation when placed
+        if (this.spawnScale < 1.0) {
+            this.spawnScale += 0.1;
+            if (this.spawnScale > 1.0) this.spawnScale = 1.0;
         }
+        ctx.scale(this.spawnScale, this.spawnScale);
+        
+        if(this.spriteLoaded) { 
+            ctx.drawImage(this.sprite, -this.size, -this.size, this.size * 2, this.size * 2); 
+        } else {
+            // [JUICE] Add drop shadows to fallback structures
+            ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 4;
+            ctx.fillStyle = this.team === 'black' ? '#222' : '#500';
+            
+            if(this.type === 'nest') { ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill(); }
+            else if(this.type === 'eggsac') { ctx.beginPath(); ctx.ellipse(0, 0, this.size, this.size-10, 0, 0, MathUtils.TWO_PI); ctx.fill(); }
+            else if(this.type === 'turret') { ctx.fillRect(-this.size, -this.size, this.size * 2, this.size * 2); ctx.shadowBlur = 0; ctx.fillStyle='purple'; ctx.beginPath(); ctx.arc(0, 0, 8, 0, MathUtils.TWO_PI); ctx.fill(); }
+            else if(this.type === 'wall') { ctx.fillRect(-this.size, -10, this.size * 2, 20); }
+            else if(this.type === 'pylon') { ctx.beginPath(); ctx.moveTo(0, -this.size); ctx.lineTo(-this.size, this.size); ctx.lineTo(this.size, this.size); ctx.fill(); }
+            
+            ctx.shadowBlur = 0; ctx.strokeStyle = this.team; ctx.lineWidth = 2; ctx.stroke();
+        }
+        ctx.restore();
     }
 }
 
 export class Projectile {
     constructor(x, y, target, damage, team) {
         this.x = x; this.y = y; this.target = target; this.damage = damage; this.team = team;
-        this.speed = 5; this.active = true;
+        this.speed = 5; this.active = true; this.angle = 0;
     }
     update(game) {
         if(!this.target || this.target.hp === undefined || this.target.hp <= 0) { this.active = false; return; }
         const dx = this.target.x - this.x; const dy = this.target.y - this.y;
         const distSq = MathUtils.distSq(this.x, this.y, this.target.x, this.target.y);
+        
+        // [JUICE] Track angle for motion blur rendering
+        this.angle = Math.atan2(dy, dx);
         
         if (distSq < 100) { 
             this.target.hp -= this.damage; this.active = false; 
@@ -204,8 +263,6 @@ export class Projectile {
             const dist = Math.sqrt(distSq);
             if (dist > 0) { 
                 this.x += (dx/dist) * this.speed; this.y += (dy/dist) * this.speed; 
-                
-                // JUICE: Small particle trail for projectiles!
                 if (game.tick % 3 === 0) {
                     game.bus.emit('particles', {x: this.x, y: this.y, color: this.team==='black'?'#aa00ff':'#ffaa00', count: 1});
                 }
@@ -214,13 +271,18 @@ export class Projectile {
     }
     draw(ctx) { 
         ctx.save();
-        ctx.fillStyle = this.team === 'black' ? '#aa00ff' : '#ffaa00'; 
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
         
-        // LORE POLISH: Add a magical glow to the energy projectiles
+        ctx.fillStyle = this.team === 'black' ? '#aa00ff' : '#ffaa00'; 
         ctx.shadowBlur = 10;
         ctx.shadowColor = ctx.fillStyle;
         
-        ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, MathUtils.TWO_PI); ctx.fill(); 
+        // [JUICE] Motion Blur: Draw as a stretched ellipse instead of a perfect circle!
+        ctx.beginPath(); ctx.ellipse(0, 0, 8, 3, 0, 0, MathUtils.TWO_PI); ctx.fill(); 
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(2, 0, 2, 0, MathUtils.TWO_PI); ctx.fill(); // Hot white core at the front
         ctx.restore();
     }
 }
@@ -232,7 +294,6 @@ export class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas'); 
         this.ctx = this.canvas.getContext('2d', { alpha: false }); 
-        this.ctx.imageSmoothingEnabled = false; 
 
         this.bus = new GameBus(); 
         this.expansions = new ExpansionManager(this);
@@ -251,18 +312,18 @@ export class Game {
         this.camera = { x: 0, y: 0 }; 
         this.tick = 0; 
         
-        // Game Feel: Camera Shake
+        // Game Feel: Camera Shake & Hit-Stop
         this.shakeX = 0;
         this.shakeY = 0;
         this.shakeIntensity = 0;
+        this.freezeFrames = 0; // [JUICE] Freezes game logic briefly on massive hits!
         
-        // FIX: High Refresh Rate Timing Variables
         this.lastTime = performance.now();
         this.accumulator = 0;
         this.timeStep = 1000 / 60; // 60 FPS Target
         
         this.entities = [];
-        this.renderList = []; // FIX: Pre-allocated for draw() to prevent GC lag
+        this.renderList = []; 
         this.decor = []; 
         this.spatialGrid = new Map(); 
         
@@ -288,12 +349,17 @@ export class Game {
     
     addEntity(entity) { this.entities.push(entity); }
     
-    triggerShake(power) { this.shakeIntensity = Math.max(this.shakeIntensity, power); }
+    // [JUICE] Added hit-stop freeze frames for heavy impacts!
+    triggerShake(power) { 
+        this.shakeIntensity = Math.max(this.shakeIntensity, power); 
+        if (power > 10) this.freezeFrames = Math.min(Math.floor(power / 2), 10);
+    }
     
     resize() { 
         this.canvas.width = window.innerWidth; 
         this.canvas.height = window.innerHeight; 
-        // DOM REFOW FIX: Cache bounds once on resize so mousemove doesn't trigger layout thrashing
+        // [FIX] Browsers reset canvas context state when resized. Must reapply crisp rendering here!
+        this.ctx.imageSmoothingEnabled = false; 
         this.canvasRect = this.canvas.getBoundingClientRect();
     }
     
@@ -363,6 +429,9 @@ export class Game {
                         this.selectedStructure = clickedStruct; 
                         if(clickedStruct) this.bus.emit('openModal', clickedStruct);
                         else this.bus.emit('closeModal'); 
+                        
+                        // [JUICE] Visual click indicator on ground
+                        if (!clickedStruct) this.bus.emit('particles', {x: worldX, y: worldY, color: 'rgba(255,255,255,0.5)', count: 5});
                     }
                 }
             }
@@ -417,7 +486,12 @@ export class Game {
         
         let updated = false;
         while (this.accumulator >= this.timeStep) {
-            this.update();
+            // [JUICE] Hit-Stop processing. Freezes game logic, but allows rendering to continue!
+            if (this.freezeFrames > 0) {
+                this.freezeFrames--;
+            } else {
+                this.update();
+            }
             this.accumulator -= this.timeStep;
             updated = true;
         }
@@ -462,6 +536,10 @@ export class Game {
 
         this.spatialGrid.clear();
         const CELL_SIZE = 250;
+        
+        // [PERFORMANCE] Fast spatial map bounds caching
+        const maxGridX = Math.ceil(this.world.width / CELL_SIZE);
+        const maxGridY = Math.ceil(this.world.height / CELL_SIZE);
 
         let aliveCount = 0;
         let originalLength = this.entities.length;
@@ -489,8 +567,9 @@ export class Game {
                 
                 // --- PILLAR 1: POPULATE SPATIAL GRID ---
                 if (e.team) {
-                    const cx = Math.max(0, (e.x / CELL_SIZE) | 0);
-                    const cy = Math.max(0, (e.y / CELL_SIZE) | 0);
+                    // [FIX] Double-clamping ensures grid keys never overflow or go negative if bugs walk off-map
+                    const cx = MathUtils.clamp((e.x / CELL_SIZE) | 0, 0, maxGridX);
+                    const cy = MathUtils.clamp((e.y / CELL_SIZE) | 0, 0, maxGridY);
                     
                     const key = (cx << 16) | cy;
                     
@@ -582,9 +661,16 @@ export class Game {
             }
         }
 
-        this.renderList.sort((a, b) => a.y - b.y);
+        // [FIX] Sort by Y for depth, but give structures a tiny negative offset so bugs walk slightly *in front* of them
+        this.renderList.sort((a, b) => {
+            const aY = (a instanceof Structure) ? a.y - 1 : a.y;
+            const bY = (b instanceof Structure) ? b.y - 1 : b.y;
+            return aY - bY;
+        });
+
         for (let i = 0; i < this.renderList.length; i++) {
-            this.renderList[i].draw(this.ctx);
+            // [EXPANDABILITY] Pass the game reference to draw methods so they can use this.tick for animations!
+            this.renderList[i].draw(this.ctx, this);
         }
         
         this.bus.emit('postDraw', this.ctx);
