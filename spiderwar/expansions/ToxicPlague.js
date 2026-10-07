@@ -16,7 +16,6 @@ class ToxicPuddle {
         this.life--;
         
         // PERFORMANCE FIX: Spatial Grid Lookup!
-        // Puddles no longer loop through every unit on the map. They just check the tile they are sitting on.
         const CELL_SIZE = 250;
         const cx = Math.max(0, (this.x / CELL_SIZE) | 0);
         const cy = Math.max(0, (this.y / CELL_SIZE) | 0);
@@ -227,35 +226,37 @@ export const ToxicPlagueExpansion = {
                 }
             }
         });
+    }, // <-- Notice this closes the init() block safely!
 
-        // 5. GLOBAL DEBUFF MANAGER: INFECTION
-        game.bus.on('preDraw', () => {
-            if (game.tick % 30 !== 0) return; // Only process DoT damage once a second
-
-            // PERFORMANCE FIX: Clean for-loop iteration
-            for (let i = 0; i < game.entities.length; i++) {
-                let e = game.entities[i];
-                if (e.infectedTimer > 0) {
-                    e.infectedTimer--;
-                    
-                    e.hp -= 3; // Acid DoT
-                    game.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 2});
-                    
-                    // CHESTBURSTER EFFECT: If it dies from infection!
-                    if (e.hp <= 0 && e.role !== 'parasite') {
-                        // JUICE: Vicious camera shake when the parasite bursts out!
-                        if (game.triggerShake) game.triggerShake(5);
+    patch: (game) => {
+        // 5. GLOBAL DEBUFF MANAGER: INFECTION (Moved from preDraw to Update)
+        game.expansions.patchClass(game.constructor, 'update', function(original) {
+            
+            // Run DoT logic BEFORE the main game update so dead units are cleaned up instantly!
+            if (this.gameState === 'playing' && this.tick % 30 === 0) {
+                for (let i = 0; i < this.entities.length; i++) {
+                    let e = this.entities[i];
+                    if (e.infectedTimer > 0) {
+                        e.infectedTimer--;
                         
-                        game.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 30});
-                        game.bus.emit('playSound', 'death');
-                        game.bus.emit('spawnSpider', {x: e.x, y: e.y, team: e.infectedByTeam, role: 'parasite'});
+                        e.hp -= 3; // Acid DoT
+                        this.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 2});
+                        
+                        // CHESTBURSTER EFFECT: If it dies from infection!
+                        if (e.hp <= 0 && e.role !== 'parasite') {
+                            if (this.triggerShake) this.triggerShake(5);
+                            this.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 30});
+                            this.bus.emit('playSound', 'death');
+                            this.bus.emit('spawnSpider', {x: e.x, y: e.y, team: e.infectedByTeam, role: 'parasite'});
+                        }
                     }
                 }
             }
-        });
-    },
 
-    patch: (game) => {
+            // Now run the rest of the game loop, which will instantly delete the dead units!
+            original.call(this); 
+        });
+
         // 6. STRUCTURE AI: THE INCUBATOR
         game.expansions.patchClass(Structure, 'update', function(original, gameObj) {
             original.call(this, gameObj);
