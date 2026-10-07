@@ -16,8 +16,6 @@ const SPECIAL_CONFIG = {
     }
 };
 
-const TWO_PI = Math.PI * 2;
-
 export const SpecialUnitsExpansion = {
     init: (game) => {
         // --- 1. ASSET REGISTRY ---
@@ -104,8 +102,8 @@ export const SpecialUnitsExpansion = {
                         
                         // Smooth rotation
                         let diff = targetAngle - entity.angle;
-                        while (diff > Math.PI) diff -= TWO_PI;
-                        while (diff < -Math.PI) diff += TWO_PI;
+                        while (diff > Math.PI) diff -= MathUtils.TWO_PI;
+                        while (diff < -Math.PI) diff += MathUtils.TWO_PI;
                         entity.angle += (diff * 0.15); 
                         
                         entity.x += Math.cos(entity.angle) * currentSpeed; 
@@ -137,7 +135,9 @@ export const SpecialUnitsExpansion = {
                     let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
                     
                     if (data.role === 'spitter') {
+                        // Inherits from Spider, but we ensure it uses the specific asset
                         s.sprite = game.assets.get(data.team === 'black' ? 'assets/spitter_black.png' : 'assets/spitter_red.png');
+                        
                         // Inject configuration stats into the entity so the Trait can read them
                         if (s.hasTrait('ranged_attacker')) {
                             s.range = config.range; 
@@ -156,7 +156,31 @@ export const SpecialUnitsExpansion = {
     },
 
     patch: (game) => {
-        // NOTE: Spider.update patch is entirely deleted from this file!
-        // All ranged logic is cleanly handled by the Trait Manager!
+        // --- 5. RANGED ATTACK ANIMATION ---
+        game.expansions.patchClass(Spider, 'draw', function(original, ctx) {
+            
+            // JUICE: If the unit is a ranged attacker and just fired (cooldown is high),
+            // slightly squish and stretch its sprite to simulate "spitting" recoil!
+            if (this.hasTrait('ranged_attacker') && this.cooldown && this.cooldown > (this.attackSpeed || 45) - 5) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                
+                // Squish on X, Stretch on Y
+                ctx.scale(0.8, 1.2); 
+                
+                if (this.imageLoaded && this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) { 
+                    const aspect = this.sprite.naturalWidth / this.sprite.naturalHeight;
+                    const drawH = this.size * 2;
+                    const drawW = drawH * aspect;
+                    ctx.drawImage(this.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
+                }
+                
+                ctx.restore();
+            } else {
+                // Not firing, draw normally
+                original.call(this, ctx);
+            }
+        });
     }
 };
