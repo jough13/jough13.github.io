@@ -34,6 +34,7 @@ export const MinimapExpansion = {
     init: (game) => {
         game.minimap = UI_CONFIG.minimap; 
         game.isMinimapDragging = false;
+        game.minimapPings = []; // JUICE: Array to hold radar pings!
         
         const getMinimapWorldPos = (localX, localY) => {
             const pctX = MathUtils.clamp(localX / game.minimap.size, 0, 1); 
@@ -48,14 +49,24 @@ export const MinimapExpansion = {
         };
 
         const commandUnits = (localX, localY) => {
-            let validUnits = game.selectedUnits ? game.selectedUnits.filter(u => u.team === 'black' && u.hp > 0) : [];
+            // PERFORMANCE FIX: Native loop instead of .filter
+            let validUnits = [];
+            if (game.selectedUnits) {
+                for (let i = 0; i < game.selectedUnits.length; i++) {
+                    if (game.selectedUnits[i].team === 'black' && game.selectedUnits[i].hp > 0) validUnits.push(game.selectedUnits[i]);
+                }
+            }
+
             if (validUnits.length > 0) {
                 const pos = getMinimapWorldPos(localX, localY);
                 game.bus.emit('particles', {x: pos.x, y: pos.y, color: '#aa00ff', count: 20});
                 game.bus.emit('playSound', 'shoot');
                 
+                // Add a visual ping to the minimap
+                game.minimapPings.push({ x: localX, y: localY, age: 0 });
+                
                 validUnits.forEach(u => {
-                    u.commandTarget = { x: pos.x, y: pos.y }; // Removed random offset!
+                    u.commandTarget = { x: pos.x, y: pos.y }; 
                     u.isManual = true; 
                 });
             }
@@ -134,27 +145,43 @@ export const MinimapExpansion = {
             const startX = game.canvas.width - size - pad; 
             const startY = game.canvas.height - size - pad - game.minimap.offsetY; 
             
-            ctx.fillStyle = UI_CONFIG.minimap.bgColor; 
-            ctx.fillRect(startX, startY, size, size);
-            
             const scaleX = size / game.world.width; 
             const scaleY = size / game.world.height;
-            
-            if (game.mapGrid) {
-                ctx.fillStyle = UI_CONFIG.minimap.waterColor;
+
+            // 🚀 PERFORMANCE FIX: Off-Screen Canvas Minimap Caching!
+            // Instead of looping over thousands of tiles every frame, we draw it once to an invisible canvas and stamp it!
+            if (!game.minimapCache && game.mapGrid) {
+                game.minimapCache = document.createElement('canvas');
+                game.minimapCache.width = size;
+                game.minimapCache.height = size;
+                const mCtx = game.minimapCache.getContext('2d');
+                
+                mCtx.fillStyle = UI_CONFIG.minimap.bgColor; 
+                mCtx.fillRect(0, 0, size, size);
+                
+                mCtx.fillStyle = UI_CONFIG.minimap.waterColor;
                 for (let y = 0; y < game.mapGrid.length; y++) {
                     for (let x = 0; x < game.mapGrid[y].length; x++) {
                         if (game.mapGrid[y][x].type === 'water') {
-                            ctx.fillRect(startX + (x * game.tileSize * scaleX), startY + (y * game.tileSize * scaleY), (game.tileSize * scaleX)+0.5, (game.tileSize * scaleY)+0.5);
+                            mCtx.fillRect((x * game.tileSize * scaleX)|0, (y * game.tileSize * scaleY)|0, (game.tileSize * scaleX)+1, (game.tileSize * scaleY)+1);
                         }
                     }
                 }
             }
 
+            // Draw the cached background instantly!
+            if (game.minimapCache) {
+                ctx.drawImage(game.minimapCache, startX, startY);
+            } else {
+                ctx.fillStyle = UI_CONFIG.minimap.bgColor; 
+                ctx.fillRect(startX, startY, size, size);
+            }
+
+            // Draw Dot Helper (Optimized with Bitwise Math)
             const drawDot = (ent, color, r, hideIfInvisible, hideIfUndiscovered) => { 
                 if (game.mapGrid) {
-                    const tX = Math.floor(ent.x / game.tileSize); 
-                    const tY = Math.floor(ent.y / game.tileSize);
+                    const tX = (ent.x / game.tileSize) | 0; 
+                    const tY = (ent.y / game.tileSize) | 0;
                     if (tY >= 0 && tY < game.mapGrid.length && tX >= 0 && tX < game.mapGrid[0].length) {
                         const tile = game.mapGrid[tY][tX];
                         if (hideIfUndiscovered && !tile.discovered) return;
@@ -179,12 +206,29 @@ export const MinimapExpansion = {
                 else if (ent.constructor.name === 'CentipedeBoss') drawDot(ent, UI_CONFIG.colors.boss, 4, true, false);
             }
 
+            // Draw Fog of War Overlay
             if (game.fowCanvas) {
                 ctx.save(); ctx.filter = 'blur(4px)'; 
                 ctx.drawImage(game.fowCanvas, startX, startY, size, size);
                 ctx.restore();
             }
+
+            // JUICE: Draw Minimap Pings
+            for (let i = game.minimapPings.length - 1; i >= 0; i--) {
+                let p = game.minimapPings[i];
+                p.age++;
+                if (p.age > 30) {
+                    game.minimapPings.splice(i, 1);
+                    continue;
+                }
+                ctx.strokeStyle = `rgba(170, 0, 255, ${1 - (p.age/30)})`; // Fading purple
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(startX + p.x, startY + p.y, p.age * 0.5, 0, TWO_PI);
+                ctx.stroke();
+            }
             
+            // Draw Camera Viewport Box
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; ctx.lineWidth = 1.5; 
             ctx.strokeRect(
                 MathUtils.clamp(startX + (game.camera.x * scaleX), startX, startX + size), 
@@ -217,7 +261,8 @@ export const ContextUIExpansion = {
                 font-size: 16px; font-weight: bold; text-shadow: 1px 1px 0 #000;
             }
             .res-item { display: flex; align-items: center; gap: 8px; }
-            .res-value { color: #ff9d00; }
+            .res-value { color: #ff9d00; transition: color 0.3s; }
+            .res-flash { color: #ffffff !important; text-shadow: 0 0 10px #ffffff; }
 
             #rtsUI {
                 position: fixed; bottom: 0; left: 0; width: 100%; height: 180px;
@@ -254,12 +299,9 @@ export const ContextUIExpansion = {
                 scrollbar-width: thin; scrollbar-color: rgba(255, 157, 0, 0.4) rgba(0,0,0,0.2);
             }
             
-            /* Dimmed scrollbar when not interacting */
             #ui-actions::-webkit-scrollbar { width: 8px; }
             #ui-actions::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
             #ui-actions::-webkit-scrollbar-thumb { background: rgba(255, 157, 0, 0.3); border-radius: 4px; border: 1px solid rgba(0,0,0,0.3); }
-            
-            /* Bright scrollbar when hovered */
             #ui-actions:hover::-webkit-scrollbar-track { background: rgba(0,0,0,0.5); }
             #ui-actions:hover::-webkit-scrollbar-thumb { background: rgba(255, 157, 0, 1.0); border: 1px solid #000; }
             
@@ -268,13 +310,10 @@ export const ContextUIExpansion = {
             .cmd-btn:active { transform: scale(0.95); }
             .cmd-btn.active-tool { background: rgba(255, 157, 0, 0.9); color: #000; font-weight: bold; }
             
-            /* --- CUSTOM ICON SUPPORT --- */
             .cmd-icon { font-size: 20px; display: flex; justify-content: center; align-items: center; height: 24px; }
             .cmd-icon img { width: 24px; height: 24px; image-rendering: pixelated; }
             .cmd-text { font-size: 10px; margin-top: 2px; }
             .cmd-cost { font-size: 10px; color: #ff5555; font-weight: bold; letter-spacing: -0.5px; }
-
-            /* --- TECH GATING CSS --- */
             .cmd-btn.locked { filter: grayscale(100%) brightness(0.5); cursor: not-allowed; border-color: #555; }
             .cmd-btn.locked:hover { transform: none; background: rgba(34, 17, 0, 0.8); }
             .cmd-btn.locked .cmd-cost { color: #ff3333; }
@@ -309,10 +348,9 @@ export const ContextUIExpansion = {
         });
 
         // ==========================================
-        // MASTER DICTIONARY (WITH TECH REQS & IMAGES)
+        // MASTER DICTIONARY
         // ==========================================
         game.uiActions = {
-            // -- BUILDINGS --
             'nest':      { reqTech: 0, icon: '🕸️', img: 'assets/nest_black.png', name: 'Nest', cost: '150🎃', type: 'tool', val: 'nest' },
             'eggsac':    { reqTech: 0, icon: '🥚', img: 'assets/eggsac_black.png', name: 'Sac', cost: '50🎃', type: 'tool', val: 'eggsac' },
             'pylon':     { reqTech: 0, icon: '🗼', img: 'assets/pylon_black.png', name: 'Pylon', cost: '25🎃', type: 'tool', val: 'pylon' },
@@ -326,7 +364,6 @@ export const ContextUIExpansion = {
             'incubator': { reqTech: 2, icon: '🍄', img: 'assets/incubator_black.png', name: 'Incubate', cost: '200🎃', type: 'tool', val: 'incubator' }, 
             'maw':       { reqTech: 3, icon: '🕳️', img: 'assets/maw_black.png', name: 'The Maw', cost: '150🎃', type: 'tool', val: 'maw' }, 
             
-            // -- SPELLS --
             'trap':      { reqTech: 0, icon: '🕸️', img: 'assets/icon_trap.png', name: 'Trap', cost: '25💧', type: 'tool', val: 'silkTrap' },
             'strike':    { reqTech: 1, icon: '☠️', img: 'assets/icon_strike.png', name: 'Strike', cost: '50💧', type: 'tool', val: 'venomStrike' },
             'raise':     { reqTech: 1, icon: '🧟', img: 'assets/icon_reanimate.png', name: 'Raise', cost: '40💧', type: 'tool', val: 'reanimate' },
@@ -337,7 +374,6 @@ export const ContextUIExpansion = {
             'eclipse':   { reqTech: 3, icon: '🌑', img: 'assets/icon_eclipse.png', name: 'Eclipse', cost: '150💧', type: 'tool', val: 'eclipse' }, 
             'vortex':    { reqTech: 3, icon: '🌀', img: 'assets/icon_vortex.png', name: 'Vortex', cost: '90💧', type: 'tool', val: 'vortex' }, 
             
-            // -- UNITS --
             'harv':      { reqTech: 0, icon: '🕷️', img: 'assets/black_spider.png', name: 'Harvester', cost: '10🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'harvester'}) },
             'sold':      { reqTech: 0, icon: '🐜', img: 'assets/soldier_black.png', name: 'Soldier', cost: '25🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'soldier'}) },
             'tick':      { reqTech: 0, icon: '💣', img: 'assets/tick_black.png', name: 'Tick', cost: '30🎃', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'tick'}) }, 
@@ -350,7 +386,6 @@ export const ContextUIExpansion = {
             'voidweaver':{ reqTech: 3, icon: '👁️', img: 'assets/voidweaver_black.png', name: 'Weaver', cost: '100🎃30💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'voidweaver'}) }, 
             'goliath':   { reqTech: 3, icon: '🔥', name: 'Goliath', cost: '400🎃150💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'goliath'}) }, 
             
-            // -- UTILITY --
             'tech':      { reqTech: 0, icon: '🧬', img: 'assets/icon_tech.png', name: 'Evolve', cost: '250🎃', type: 'instant', fn: (t) => { if(game.eco.black.pumpkins>=250){ game.eco.black.pumpkins-=250; game.techLevel.black++; game.bus.emit('playSound','spell');} } },
             'cancel':    { reqTech: 0, icon: '🛑', img: 'assets/icon_cancel.png', name: 'Stop', cost: '', type: 'instant', fn: () => { 
                 game.activeTool = 'select'; game.bus.emit('toolChanged', 'select');
@@ -369,6 +404,10 @@ export const ContextUIExpansion = {
         };
 
         game.lastSelection = 'INIT'; 
+        
+        // PERFORMANCE FIX: DOM Caching Variables
+        game.uiCache = { pump: -1, dew: -1, popB: -1, maxP: -1, tech: -1 };
+        game.uiEls = null; 
     },
 
     patch: (game) => {
@@ -380,10 +419,29 @@ export const ContextUIExpansion = {
         game.expansions.patchClass(game.constructor, 'update', function(original) {
             original.call(this);
 
-            document.getElementById('top-pumpkins').innerText = Math.floor(this.eco.black.pumpkins);
-            document.getElementById('top-dew').innerText = Math.floor(this.eco.black.dew);
-            document.getElementById('top-pop').innerText = `${this.pop.black}/${this.maxPop.black}`;
-            document.getElementById('top-tech').innerText = this.techLevel.black;
+            // 🚀 PERFORMANCE FIX: DOM Dirty Checking!
+            // We only fetch the elements once, and we only update the HTML string if the number actually changed.
+            // This prevents massive browser layout thrashing every frame.
+            if (!this.uiEls) {
+                this.uiEls = {
+                    pump: document.getElementById('top-pumpkins'),
+                    dew: document.getElementById('top-dew'),
+                    pop: document.getElementById('top-pop'),
+                    tech: document.getElementById('top-tech')
+                };
+            }
+
+            const p = Math.floor(this.eco.black.pumpkins);
+            const d = Math.floor(this.eco.black.dew);
+            
+            if (p !== this.uiCache.pump) { this.uiEls.pump.innerText = p; this.uiCache.pump = p; }
+            if (d !== this.uiCache.dew) { this.uiEls.dew.innerText = d; this.uiCache.dew = d; }
+            if (this.techLevel.black !== this.uiCache.tech) { this.uiEls.tech.innerText = this.techLevel.black; this.uiCache.tech = this.techLevel.black; }
+            
+            if (this.pop.black !== this.uiCache.popB || this.maxPop.black !== this.uiCache.maxP) {
+                this.uiEls.pop.innerText = `${this.pop.black}/${this.maxPop.black}`;
+                this.uiCache.popB = this.pop.black; this.uiCache.maxP = this.maxPop.black;
+            }
 
             if (this.selectedUnits && this.selectedUnits.length > 0) {
                 let aliveUnits = [];
@@ -400,7 +458,6 @@ export const ContextUIExpansion = {
                 currentSelection = this.selectedStructure;
             }
 
-            // REBUILD UI ONLY IF SELECTION CHANGED OR TECH LEVEL CHANGED
             const stateString = (currentSelection ? (currentSelection.id || currentSelection.type || 'group') : 'none') + '_' + this.techLevel.black;
 
             if (this.lastSelection !== stateString) {
@@ -431,7 +488,11 @@ export const ContextUIExpansion = {
                     `;
                     
                     btn.onclick = () => {
-                        if (isLocked) return; 
+                        if (isLocked) {
+                            // JUICE: Bzzzt sound when clicking a locked button
+                            this.bus.emit('playSound', 'error');
+                            return; 
+                        }
                         if (cmd.type === 'tool') {
                             this.activeTool = cmd.val;
                             this.bus.emit('toolChanged', cmd.val);
@@ -487,7 +548,6 @@ export const ContextUIExpansion = {
                 }
             }
 
-            // HP BAR UPDATE (Optimized)
             const statsContainer = document.getElementById('ui-stats-container');
             
             if (currentSelection && currentSelection.hp !== undefined) {
@@ -524,7 +584,6 @@ export const ContextUIExpansion = {
                 if (statsContainer.innerHTML !== defaultMsg) statsContainer.innerHTML = defaultMsg;
             }
 
-            // Sync Tool Highlights
             document.querySelectorAll('.cmd-btn').forEach(b => {
                 if (b.getAttribute('data-tool') === this.activeTool) b.classList.add('active-tool');
                 else b.classList.remove('active-tool');
@@ -584,6 +643,11 @@ export const GameLoopExpansion = {
                         goModal.style.borderColor = '#ff0000';
                         goModal.innerHTML = `<h1 style="color:#ff0000; text-shadow: 0 0 10px #ff0000;">DEFEAT</h1><p>The Obsidian Queen has fallen to the Crimson Swarm.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
                         goModal.style.display = 'block';
+                        
+                        // JUICE: Catastrophic screen shake and explosions when Queen dies
+                        if (this.triggerShake) this.triggerShake(30);
+                        this.bus.emit('playSound', 'roar');
+                        this.bus.emit('particles', {x: blackQueen.x, y: blackQueen.y, color: '#ff0000', count: 500});
                     } 
                     else if (redQueen.hp <= 0) { 
                         this.gameState = 'win'; 
@@ -592,6 +656,10 @@ export const GameLoopExpansion = {
                         goModal.style.borderColor = '#aa00ff';
                         goModal.innerHTML = `<h1 style="color:#aa00ff; text-shadow: 0 0 10px #aa00ff;">VICTORY</h1><p>The Pumpkin Patch belongs to the Obsidian Brood.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
                         goModal.style.display = 'block';
+                        
+                        if (this.triggerShake) this.triggerShake(30);
+                        this.bus.emit('playSound', 'roar');
+                        this.bus.emit('particles', {x: redQueen.x, y: redQueen.y, color: '#aa00ff', count: 500});
                     }
                 }
             }
