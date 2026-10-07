@@ -5,7 +5,8 @@ import { Queen } from './Queen.js';
 // ==========================================
 // 1. CONFIGURATION & TUNING
 // ==========================================
-const CONTROLS_CONFIG = {
+// [EXPANDABILITY] Exported so other mods can tweak control feel
+export const CONTROLS_CONFIG = {
     doubleClickMs: 300,        // Max time between clicks to trigger "Select All of Type"
     dragBoxThresholdSq: 100,   // Minimum pixels dragged to count as a box vs a single click
     clickHitboxPadding: 15,    // Extra pixels around a unit to make it easier to click on mobile
@@ -14,6 +15,14 @@ const CONTROLS_CONFIG = {
     buildResumeRangeSq: 3600,  // 60px squared - How close Queen must be to auto-resume paused building
     buildSpeed: 0.001,         // Takes ~1000 ticks (30s) to build
     autoResumeDelay: 45        // 1.5 seconds of idling before auto-resuming a paused building
+};
+
+// [EXPANDABILITY] Centralized costs so AI and Player use the same exact economy rules
+export const BUILD_COSTS = { 
+    'nest': {p: 150, d: 0}, 'eggsac': {p: 50, d: 0}, 'pylon': {p: 25, d: 0}, 
+    'turret': {p: 100, d: 0}, 'wall': {p: 25, d: 0}, 'extractor': {p: 100, d: 0},
+    'mortar': {p: 200, d: 50}, 'shrine': {p: 150, d: 100}, 'monolith': {p: 150, d: 50},
+    'obelisk': {p: 150, d: 80}, 'incubator': {p: 200, d: 0}, 'maw': {p: 150, d: 0}
 };
 
 // ==========================================
@@ -37,6 +46,7 @@ export const AdvancedUnitControlExpansion = {
                 game.selectedStructure = null; 
                 game.activeTool = 'select';
                 game.bus.emit('toolChanged', 'select');
+                game.bus.emit('selectionChanged'); // [EXPANDABILITY] Let UI know selection cleared
             } 
             
             if (['1','2','3','4','5','6','7','8','9'].includes(key)) {
@@ -58,6 +68,7 @@ export const AdvancedUnitControlExpansion = {
                             game.selectedUnits = [...aliveGroup];
                             game.selectedStructure = null;
                             game.bus.emit('playSound', 'harvest');
+                            game.bus.emit('selectionChanged');
                             
                             // Center camera on the group leader
                             let centerU = aliveGroup[0];
@@ -167,7 +178,10 @@ export const AdvancedUnitControlExpansion = {
                 if (validCount > 0) {
                     game.bus.emit('particles', {x: worldX, y: worldY, color: '#ffffff', count: 12});
                     
-                    // JUICE: Crisp ping sound for issuing a command!
+                    // [JUICE] Expanding tactical Sonar Ring at the destination!
+                    game.bus.emit('particles', {x: worldX, y: worldY, color: 'rgba(0, 255, 0, 0.6)', count: 1, type: 'ring'});
+                    
+                    // Crisp ping sound for issuing a command
                     game.bus.emit('playSound', 'ping');
                     
                     for (let i = 0; i < game.selectedUnits.length; i++) {
@@ -201,6 +215,7 @@ export const AdvancedUnitControlExpansion = {
                     }
                     game.selectedStructure = null;
                     if (game.selectedUnits.length > 0) game.bus.emit('playSound', 'harvest');
+                    game.bus.emit('selectionChanged');
                 } 
                 // Single Click Selection
                 else {
@@ -243,14 +258,17 @@ export const AdvancedUnitControlExpansion = {
                         lastClickTime = now;
                         lastClickedUnit = clickedUnit;
                         game.selectedStructure = null;
+                        game.bus.emit('selectionChanged');
                         
                     } else if (clickedStruct) {
                         game.selectedStructure = clickedStruct;
                         game.selectedUnits = [];
+                        game.bus.emit('selectionChanged');
                     } else {
                         // Clicked bare dirt, clear selection
                         game.selectedUnits = [];
                         game.selectedStructure = null;
+                        game.bus.emit('selectionChanged');
                     }
                 }
             }
@@ -297,34 +315,49 @@ export const AdvancedUnitControlExpansion = {
             
             // Optimize by precalculating the dash offset once per frame
             const dashOffset = -game.tick * 0.5;
+            // [JUICE] Gently pulse the selection rings so they feel alive
+            const pulse = 1 + Math.sin(game.tick * 0.1) * 0.05;
             
             for (let i = 0; i < game.selectedUnits.length; i++) {
                 let u = game.selectedUnits[i];
                 if (u.hp > 0) {
-                    ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 2; 
-                    ctx.setLineDash([4, 4]); ctx.lineDashOffset = dashOffset;
-                    ctx.beginPath(); ctx.arc(u.x, u.y, u.size + 8, 0, MathUtils.TWO_PI); ctx.stroke(); 
+                    ctx.save();
+                    ctx.translate(u.x, u.y);
+                    ctx.scale(pulse, pulse);
+                    
+                    ctx.strokeStyle = '#00ff00'; 
+                    ctx.lineWidth = 2; 
+                    ctx.setLineDash([4, 4]); 
+                    ctx.lineDashOffset = dashOffset;
+                    
+                    ctx.beginPath(); 
+                    ctx.arc(0, 0, u.size + 8, 0, MathUtils.TWO_PI); 
+                    ctx.stroke(); 
+                    
+                    ctx.restore();
                 }
             }
             ctx.setLineDash([]);
         });
 
-        // Custom Queen rotation handling (Smoothing her turns!)
+        // [FIX] Custom Queen rotation handling (Smoothing her turns!)
         game.expansions.patchClass(Queen, 'update', function(original, gameObj) {
             const prevAngle = this.angle || 0;
             original.call(this, gameObj);
+            
             if (this.commandTarget) {
                 let targetAngle = Math.atan2(this.commandTarget.y - this.y, this.commandTarget.x - this.x);
-                let diff = targetAngle - prevAngle;
-                while (diff > Math.PI) diff -= MathUtils.TWO_PI; 
-                while (diff < -Math.PI) diff += MathUtils.TWO_PI;
+                let diff = MathUtils.angleWrap(targetAngle - prevAngle);
                 this.angle = prevAngle + (diff * 0.10);
             }
         });
         
-        game.expansions.patchClass(Queen, 'draw', function(original, ctx) {
+        game.expansions.patchClass(Queen, 'draw', function(original, ctx, gameObj) {
             // Offset sprite drawing angle by 90 degrees if the sprite isn't facing perfectly right
-            const tempAngle = this.angle; this.angle -= (Math.PI / 2); original.call(this, ctx); this.angle = tempAngle;
+            const tempAngle = this.angle; 
+            this.angle -= (Math.PI / 2); 
+            original.call(this, ctx, gameObj); 
+            this.angle = tempAngle;
         });
     }
 };
@@ -338,12 +371,22 @@ export const ConstructionExpansion = {
         
         game.bus.on('buildStructure', (data) => {
             
-            // Find Queen safely without generating array garbage
-            let queen = null;
+            // [FIX/QoL] Find the *closest* idle Queen, not just the first one in the array!
+            let bestQueen = null;
+            let minQueenDistSq = Infinity;
             const queens = game.queens; // Cache
+            
             for (let i = 0; i < queens.length; i++) {
-                if (queens[i].team === data.team) { queen = queens[i]; break; }
+                if (queens[i].team === data.team && queens[i].hp > 0) { 
+                    let dSq = MathUtils.distSq(queens[i].x, queens[i].y, data.x, data.y);
+                    if (dSq < minQueenDistSq) {
+                        minQueenDistSq = dSq;
+                        bestQueen = queens[i];
+                    }
+                }
             }
+            
+            let queen = bestQueen;
             if (!queen) return; 
             
             // --- FIX 2: RESTORE TERRITORY & OVERLAP CHECK ---
@@ -373,13 +416,7 @@ export const ConstructionExpansion = {
                 }
             }
 
-            const costs = { 
-                'nest': {p: 150, d: 0}, 'eggsac': {p: 50, d: 0}, 'pylon': {p: 25, d: 0}, 
-                'turret': {p: 100, d: 0}, 'wall': {p: 25, d: 0}, 'extractor': {p: 100, d: 0},
-                'mortar': {p: 200, d: 50}, 'shrine': {p: 150, d: 100}, 'monolith': {p: 150, d: 50},
-                'obelisk': {p: 150, d: 80}, 'incubator': {p: 200, d: 0}, 'maw': {p: 150, d: 0}
-            };
-            let cost = costs[data.type];
+            let cost = BUILD_COSTS[data.type];
             
             // Verify player can afford it
             if (!cost || game.eco[data.team].pumpkins < cost.p || game.eco[data.team].dew < cost.d) {
@@ -418,15 +455,22 @@ export const ConstructionExpansion = {
                     this.activeConstruction.buildProgress += CONTROLS_CONFIG.buildSpeed;
                     this.activeConstruction.isPaused = false;
                     
-                    if (gameObj.tick % 15 === 0) gameObj.bus.emit('particles', {x: this.activeConstruction.x, y: this.activeConstruction.y, color: '#ff9d00', count: 2});
+                    // [JUICE] Emit sparks/magic from the Queen to the building!
+                    if (gameObj.tick % 10 === 0) {
+                        gameObj.bus.emit('particles', {x: this.activeConstruction.x, y: this.activeConstruction.y, color: '#ff9d00', count: 2, type: 'magic'});
+                    }
                     
                     if (this.activeConstruction.buildProgress >= 1) {
                         this.activeConstruction.isConstructing = false;
                         this.activeConstruction.buildProgress = 1;
                         this.activeConstruction.territory = this.activeConstruction.originalTerritory; 
                         
+                        // [JUICE] Massive visual pop when a building finishes!
                         gameObj.bus.emit('particles', {x: this.activeConstruction.x, y: this.activeConstruction.y, color: '#ffffff', count: 40});
-                        gameObj.bus.emit('playSound', 'build'); // Building finished thud!
+                        gameObj.bus.emit('particles', {x: this.activeConstruction.x, y: this.activeConstruction.y, color: '#3d2817', count: 30}); // Dirt clods
+                        
+                        if (gameObj.triggerShake) gameObj.triggerShake(5);
+                        gameObj.bus.emit('playSound', 'build'); 
                         this.activeConstruction = null;
                     }
                     return; 
@@ -460,6 +504,9 @@ export const ConstructionExpansion = {
                             s.buildProgress = 0;
                             s.originalTerritory = s.territory;
                             s.territory = 0; // No territory control until finished building!
+                            
+                            // [JUICE] Foundation placed!
+                            gameObj.bus.emit('particles', {x: s.x, y: s.y, color: '#3d2817', count: 15});
                             
                             gameObj.addEntity(s);
                             this.activeConstruction = s; 
@@ -501,13 +548,19 @@ export const ConstructionExpansion = {
         });
 
         // Custom Construction Overlay Drawing
-        game.expansions.patchClass(Structure, 'draw', function(original, ctx) {
+        game.expansions.patchClass(Structure, 'draw', function(original, ctx, gameObj) {
             if (this.isConstructing) {
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 
+                const tick = gameObj ? gameObj.tick : 0;
+                
                 // Pulsing animation unless paused
-                const pulse = this.isPaused ? 0 : Math.sin(game.tick * 0.1) * 2;
+                const pulse = this.isPaused ? 0 : Math.sin(tick * 0.1) * 2;
+                
+                // [JUICE] Draw a dark "foundation hole" on the ground
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.beginPath(); ctx.ellipse(0, 0, this.size, this.size * 0.7, 0, 0, MathUtils.TWO_PI); ctx.fill();
                 
                 // Base
                 ctx.fillStyle = '#221100';
@@ -517,7 +570,7 @@ export const ConstructionExpansion = {
                 ctx.strokeStyle = this.isPaused ? '#885500' : '#ff9d00';
                 ctx.lineWidth = 2;
                 ctx.setLineDash([8, 8]);
-                ctx.lineDashOffset = this.isPaused ? 0 : -game.tick * 0.5;
+                ctx.lineDashOffset = this.isPaused ? 0 : -tick * 0.5;
                 ctx.beginPath(); ctx.arc(0, 0, this.size * 0.8, 0, MathUtils.TWO_PI); ctx.stroke();
                 
                 // Build Progress Bar
@@ -528,7 +581,7 @@ export const ConstructionExpansion = {
                 
                 ctx.restore();
             } else {
-                original.call(this, ctx); 
+                original.call(this, ctx, gameObj); 
             }
         });
     }
