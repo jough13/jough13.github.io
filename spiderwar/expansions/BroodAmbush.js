@@ -4,16 +4,20 @@ import { MathUtils, Spider } from '../game.js';
 // ==========================================
 // 1. CONFIGURATION & BALANCING
 // ==========================================
-const AMBUSH_CONFIG = {
+// [EXPANDABILITY] Exported config so other mods can tweak the trap stats!
+export const AMBUSH_CONFIG = {
     spellCost: 50,
     trapHp: 50,
-    armingTimer: 30,              // 1-second incubation before it can detonate
-    triggerRadius: 80,            // 80px radius
-    triggerRadiusSq: 6400,        // 80^2 for distance checks
-    explosionDamageUnit: 40,      // High explosive venom damage to units
-    explosionDamageStruct: 20,    // 50% damage to buildings
-    broodlingCount: 3,            // Number of babies hatched
-    broodlingLife: 600            // 20 seconds of life
+    armingTimer: 30,              // 1-second incubation before it can detect enemies
+    fuseTimer: 15,                // 0.5-second fuse delay after triggered before it explodes
+    triggerRadius: 80,            
+    triggerRadiusSq: 6400,        
+    splashRadius: 100,            // Splash damage reaches slightly further than trigger radius
+    splashRadiusSq: 10000,        
+    explosionDamageUnit: 40,      
+    explosionDamageStruct: 20,    
+    broodlingCount: 3,            
+    broodlingLife: 600            
 };
 
 // ==========================================
@@ -26,90 +30,133 @@ export class EggTrap {
         this.maxHp = AMBUSH_CONFIG.trapHp;
         this.size = 14;
         
-        this.isCloaked = true; // Leverages the stealth patch so enemies ignore it!
-        this.armingTimer = AMBUSH_CONFIG.armingTimer; 
-        this.age = 0;          // Used for deterministic pulsing animations
+        this.isCloaked = true; 
         
-        // Sprite will be pulled instantly from RAM cache on Tick 1 of its life
+        // State Timers
+        this.armingTimer = AMBUSH_CONFIG.armingTimer; 
+        this.fuseTimer = 0;
+        this.detonating = false;
+        this.age = 0;          
+        
         this.sprite = null;
     }
 
     update(game) {
-        // --- ASSET MANAGER CACHE LINKING ---
         if (!this.sprite && game.assets) {
             this.sprite = game.assets.get(this.team === 'black' ? 'assets/eggtrap_black.png' : 'assets/eggtrap_red.png');
         }
 
         this.age++;
         
-        // Trap cannot detonate while still incubating
+        // 1. Detonation Fuse Phase
+        if (this.detonating) {
+            this.fuseTimer--;
+            
+            // [JUICE] Suck in particles while about to explode!
+            if (this.fuseTimer % 3 === 0) {
+                const magicColor = this.team === 'black' ? '#aa00ff' : '#ff0000';
+                game.bus.emit('particles', {x: this.x, y: this.y, color: magicColor, count: 2, type: 'magic'});
+            }
+
+            if (this.fuseTimer <= 0) {
+                this.explode(game);
+            }
+            return; 
+        }
+
+        // 2. Arming Phase
         if (this.armingTimer > 0) {
             this.armingTimer--;
             return; 
         }
 
-        // PERFORMANCE FIX: Use the zero-allocation Spatial Grid to check for triggers!
-        // This prevents the trap from looping through 2000 entities every single frame.
+        // 3. Detection Phase
         let triggerTarget = game.getNearestEnemy(this.x, this.y, this.team, AMBUSH_CONFIG.triggerRadius);
 
-        // 2. Detonation Sequence
         if (triggerTarget) {
-            this.hp = 0; // Destroy self
-            
-            // JUICE: Explosion Screen Shake!
-            if (game.triggerShake) game.triggerShake(8);
-            game.bus.emit('playSound', 'death'); // Viscous pop sound
-            
-            const magicColor = this.team === 'black' ? '#aa00ff' : '#ff0000';
-            game.bus.emit('particles', {x: this.x, y: this.y, color: '#ffffff', count: 30});
-            game.bus.emit('particles', {x: this.x, y: this.y, color: magicColor, count: 20});
-            
-            // Deal Splash Damage to EVERYTHING in the radius
-            for (let i = 0; i < game.entities.length; i++) {
-                let e = game.entities[i];
-                
-                // Deal damage to all non-allied physical entities (including CentipedeBoss!)
-                if (e.team && e.team !== this.team && e.hp !== undefined && e.hp > 0) {
-                    
-                    // Fast AABB check to save CPU
-                    if (Math.abs(this.x - e.x) > AMBUSH_CONFIG.triggerRadius || Math.abs(this.y - e.y) > AMBUSH_CONFIG.triggerRadius) continue;
+            // [JUICE] Trigger the "Click" of the mine!
+            this.detonating = true;
+            this.fuseTimer = AMBUSH_CONFIG.fuseTimer;
+            game.bus.emit('playSound', 'ping'); // High pitched warning!
+        }
+    }
 
-                    if (MathUtils.distSq(this.x, this.y, e.x, e.y) < AMBUSH_CONFIG.triggerRadiusSq) {
-                        if (e.role || e.constructor.name === 'CentipedeBoss') {
-                            e.hp -= AMBUSH_CONFIG.explosionDamageUnit; 
-                        } else {
-                            e.hp -= AMBUSH_CONFIG.explosionDamageStruct; 
+    explode(game) {
+        this.hp = 0; // Destroy self
+        
+        // [JUICE] Heavy Explosion Screen Shake!
+        if (game.triggerShake) game.triggerShake(12);
+        game.bus.emit('playSound', 'death'); // Viscous pop sound
+        
+        const magicColor = this.team === 'black' ? '#aa00ff' : '#ff0000';
+        game.bus.emit('particles', {x: this.x, y: this.y, color: '#ffffff', count: 40});
+        game.bus.emit('particles', {x: this.x, y: this.y, color: magicColor, count: 30, type: 'splatter'});
+        
+        // [PERFORMANCE] Deal Splash Damage using O(1) Spatial Grid instead of checking all entities!
+        const CELL_SIZE = 250;
+        const cx = Math.max(0, (this.x / CELL_SIZE) | 0);
+        const cy = Math.max(0, (this.y / CELL_SIZE) | 0);
+        const radiusSq = AMBUSH_CONFIG.splashRadiusSq;
+
+        for (let nx = cx - 1; nx <= cx + 1; nx++) {
+            if (nx < 0) continue;
+            for (let ny = cy - 1; ny <= cy + 1; ny++) {
+                if (ny < 0) continue;
+                
+                const key = (nx << 16) | ny;
+                const cell = game.spatialGrid.get(key);
+                if (!cell) continue;
+
+                for (let i = 0; i < cell.length; i++) {
+                    let e = cell[i];
+                    
+                    if (e.team && e.team !== this.team && e.hp !== undefined && e.hp > 0) {
+                        // Fast AABB early exit
+                        if (Math.abs(this.x - e.x) > AMBUSH_CONFIG.splashRadius || Math.abs(this.y - e.y) > AMBUSH_CONFIG.splashRadius) continue;
+
+                        if (MathUtils.distSq(this.x, this.y, e.x, e.y) < radiusSq) {
+                            if (e.role || e.constructor.name === 'CentipedeBoss') {
+                                e.hp -= AMBUSH_CONFIG.explosionDamageUnit; 
+                            } else {
+                                e.hp -= AMBUSH_CONFIG.explosionDamageStruct; 
+                            }
                         }
                     }
                 }
             }
-            
-            // Hatch angry Broodlings!
-            for (let i = 0; i < AMBUSH_CONFIG.broodlingCount; i++) {
-                let bx = this.x + MathUtils.randomRange(-30, 30);
-                let by = this.y + MathUtils.randomRange(-30, 30);
-                game.addEntity(new Broodling(bx, by, this.team));
-            }
+        }
+        
+        // Hatch angry Broodlings!
+        for (let i = 0; i < AMBUSH_CONFIG.broodlingCount; i++) {
+            let bx = this.x + MathUtils.randomRange(-30, 30);
+            let by = this.y + MathUtils.randomRange(-30, 30);
+            game.addEntity(new Broodling(bx, by, this.team));
         }
     }
 
     draw(ctx) {
-        // Tactical Stealth: Invisible to the enemy team (The Red AI can't see this anyway, but if you add multiplayer, this hides it!)
-        if (this.team !== 'black') return;
+        if (this.team !== 'black') return; // Invisible to enemy team
 
         ctx.save();
         ctx.translate(this.x, this.y);
         
-        // Gentle, deterministic pulsating animation based on age
-        const pulse = 1 + Math.sin(this.age * 0.1) * 0.08;
-        ctx.scale(pulse, pulse);
-        
-        ctx.globalAlpha = 0.6; // Slightly ghosted so the player knows it's stealthed
+        // [JUICE] Fuse Detonation Animation
+        if (this.detonating) {
+            // Swell up rapidly and flash bright white!
+            const swell = 1 + (1 - (this.fuseTimer / AMBUSH_CONFIG.fuseTimer)) * 0.5;
+            ctx.scale(swell, swell);
+            ctx.filter = 'brightness(2.5)';
+            ctx.globalAlpha = 1.0;
+        } else {
+            // Gentle, deterministic pulsating animation based on age
+            const pulse = 1 + Math.sin(this.age * 0.1) * 0.08;
+            ctx.scale(pulse, pulse);
+            ctx.globalAlpha = 0.6; // Slightly ghosted to indicate stealth
+        }
 
         if (this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) {
             ctx.drawImage(this.sprite, -this.size, -this.size, this.size*2, this.size*2);
         } else {
-            // Fallback drawing if asset is missing
             ctx.fillStyle = '#dddddd'; 
             ctx.beginPath(); ctx.arc(0, 0, this.size, 0, Math.PI*2); ctx.fill();
             ctx.strokeStyle = this.team === 'black' ? '#aa00ff' : '#ff0000'; 
@@ -124,9 +171,8 @@ export class EggTrap {
 // ==========================================
 export class Broodling extends Spider {
     constructor(x, y, team) {
-        super(x, y, team, 'soldier'); // Pull base stats
+        super(x, y, team, 'soldier'); 
         
-        // Override base stats to be a hyper-fast, fragile swarmer
         this.role = 'broodling';
         this.hp = 25; this.maxHp = 25; 
         this.damage = 15; 
@@ -134,41 +180,53 @@ export class Broodling extends Spider {
         this.speed = this.baseSpeed;
         this.size = 7; 
         
-        // AI POLISH FIX: Overwrite inherited 'escort' trait so they don't run away to guard the Queen!
         this.traits = ['melee']; 
         
         this.life = AMBUSH_CONFIG.broodlingLife; 
         this.ramSpriteLoaded = false;
+        
+        // [JUICE] Pop-in scale animation
+        this.spawnScale = 0.1;
     }
 
     update(game) {
-        // --- ASSET MANAGER CACHE LINKING ---
         if (!this.ramSpriteLoaded && game.assets) {
             this.sprite = game.assets.get(this.team === 'black' ? 'assets/broodling_black.png' : 'assets/broodling_red.png');
-            this.imageLoaded = true; // Tell base class it's ready to draw
+            this.imageLoaded = true; 
             this.ramSpriteLoaded = true;
+        }
+
+        // [JUICE] Scale up rapidly on spawn
+        if (this.spawnScale < 1.0) {
+            this.spawnScale = Math.min(1.0, this.spawnScale + 0.15);
         }
 
         this.life--;
         
         if (this.life <= 0) {
-            this.hp = 0; // Natural death
+            this.hp = 0; 
             const magicColor = this.team === 'black' ? '#aa00ff' : '#ff0000';
             game.bus.emit('particles', {x: this.x, y: this.y, color: magicColor, count: 10});
         }
         
-        super.update(game); // Execute normal soldier combat AI
+        super.update(game); 
     }
 
-    draw(ctx) {
+    // [FIX] Pass `game` to draw so the new breathing animations inherit properly!
+    draw(ctx, game) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.scale(this.spawnScale, this.spawnScale);
+        ctx.translate(-this.x, -this.y);
+        
         // Visual polish: Fade out into ghosts during the last 3 seconds of their life
         if (this.life < 90) { 
             ctx.globalAlpha = Math.max(0, this.life / 90);
         }
         
-        super.draw(ctx);
+        super.draw(ctx, game);
         
-        ctx.globalAlpha = 1.0;
+        ctx.restore();
     }
 }
 
@@ -177,7 +235,9 @@ export class Broodling extends Spider {
 // ==========================================
 export const BroodAmbushExpansion = {
     init: (game) => {
-        // --- ASSET REGISTRY ---
+        // [EXPANDABILITY] Hook config
+        game.ambushConfig = AMBUSH_CONFIG;
+
         game.assets.register('assets/eggtrap_black.png');
         game.assets.register('assets/eggtrap_red.png');
         game.assets.register('assets/broodling_black.png');
@@ -191,9 +251,13 @@ export const BroodAmbushExpansion = {
                     game.addEntity(new EggTrap(data.x, data.y, data.team));
                     
                     game.bus.emit('playSound', 'spell');
-                    // Add a tiny dirt kickup to show the egg "burrowing"
-                    game.bus.emit('particles', {x: data.x, y: data.y, color: '#3d2817', count: 10});
-                    game.bus.emit('particles', {x: data.x, y: data.y, color: '#ffffff', count: 15});
+                    
+                    // [JUICE] Dirt burrowing visual + Range Indicator Ring!
+                    game.bus.emit('particles', {x: data.x, y: data.y, color: '#3d2817', count: 15});
+                    game.bus.emit('particles', {x: data.x, y: data.y, color: '#aa00ff', count: 10, type: 'magic'});
+                    
+                    // Flash the trigger ring to the player briefly
+                    game.bus.emit('particles', {x: data.x, y: data.y, color: 'rgba(170, 0, 255, 0.5)', count: 1, type: 'ring'});
                 }
             }
         });
