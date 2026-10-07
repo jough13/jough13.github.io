@@ -15,19 +15,39 @@ class ToxicPuddle {
     update(game) {
         this.life--;
         
-        // Damage and slow enemies walking through the puddle
-        for (let i = 0; i < game.entities.length; i++) {
-            let e = game.entities[i];
-            if (e.team && e.team !== this.team && e.hp > 0 && (e instanceof Spider || e.constructor.name === 'CentipedeBoss')) {
-                // Fast AABB check
-                if (Math.abs(this.x - e.x) > this.radius || Math.abs(this.y - e.y) > this.radius) continue;
+        // PERFORMANCE FIX: Spatial Grid Lookup!
+        // Puddles no longer loop through every unit on the map. They just check the tile they are sitting on.
+        const CELL_SIZE = 250;
+        const cx = Math.max(0, (this.x / CELL_SIZE) | 0);
+        const cy = Math.max(0, (this.y / CELL_SIZE) | 0);
 
-                if (MathUtils.distSq(this.x, this.y, e.x, e.y) < this.radiusSq) {
-                    if (game.tick % 15 === 0) {
-                        e.hp -= 2; // Acid DoT
-                        game.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 1});
+        for (let nx = cx - 1; nx <= cx + 1; nx++) {
+            if (nx < 0) continue;
+            for (let ny = cy - 1; ny <= cy + 1; ny++) {
+                if (ny < 0) continue;
+                
+                const key = (nx << 16) | ny;
+                const cell = game.spatialGrid.get(key);
+                if (!cell) continue;
+
+                for (let i = 0; i < cell.length; i++) {
+                    let e = cell[i];
+                    
+                    // Fast early exits
+                    if (!e.team || e.team === this.team || e.hp === undefined || e.hp <= 0) continue;
+                    if (!(e instanceof Spider || e.constructor.name === 'CentipedeBoss')) continue;
+                    
+                    // Fast AABB check
+                    if (Math.abs(this.x - e.x) > this.radius || Math.abs(this.y - e.y) > this.radius) continue;
+
+                    // Circle Collision
+                    if (MathUtils.distSq(this.x, this.y, e.x, e.y) < this.radiusSq) {
+                        if (game.tick % 15 === 0) {
+                            e.hp -= 2; // Acid DoT
+                            game.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 1});
+                        }
+                        e.isSlowed = true; // Melts their legs!
                     }
-                    e.isSlowed = true; // Melts their legs!
                 }
             }
         }
@@ -41,13 +61,13 @@ class ToxicPuddle {
         ctx.fillStyle = this.team === 'black' ? '#55ff00' : '#ffff00'; // Green for black team, yellow for red
         ctx.beginPath();
         // Draw an organic blob shape
-        ctx.ellipse(0, 0, this.radius, this.radius * 0.7, Math.sin(this.life * 0.05), 0, Math.PI * 2);
+        ctx.ellipse(0, 0, this.radius, this.radius * 0.7, Math.sin(this.life * 0.05), 0, MathUtils.TWO_PI);
         ctx.fill();
         
         // Random bubbling
         if (Math.random() < 0.1) {
             ctx.fillStyle = '#ffffff';
-            ctx.beginPath(); ctx.arc(MathUtils.randomRange(-10, 10), MathUtils.randomRange(-10, 10), 3, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(MathUtils.randomRange(-10, 10), MathUtils.randomRange(-10, 10), 3, 0, MathUtils.TWO_PI); ctx.fill();
         }
         
         ctx.restore();
@@ -79,14 +99,12 @@ export const ToxicPlagueExpansion = {
         UNIT_DATA['parasite'] = { 
             size: 8, hp: 15, damage: 8, attackSpeed: 15, 
             baseSpeedMin: 2.5, baseSpeedMax: 3.2, 
-            traits: ['parasite_ai'] // Removed 'melee' because parasite_ai overrides everything!
+            traits: ['parasite_ai'] 
         };
 
         STRUCTURE_DATA['incubator'] = { 
             hp: 300, size: 26, territory: 0 
         };
-
-        // Note: UI Buttons are handled centrally in UI.js!
 
         // ==========================================
         // 3. ECS TRAIT REGISTRATION
@@ -95,19 +113,13 @@ export const ToxicPlagueExpansion = {
         // Toxic Trail Trait
         game.registerTrait('toxic_trail', {
             update: (entity, gameObj) => {
-                // Drop a puddle every 15 frames while moving
                 if (!entity.puddleTimer) entity.puddleTimer = 0;
                 entity.puddleTimer++;
                 
-                // We assume the spider is moving if the timer increments.
-                // In a perfect world we'd check velocity, but this is a great, cheap approximation!
                 if (entity.puddleTimer > 15) {
                     entity.puddleTimer = 0;
                     gameObj.addEntity(new ToxicPuddle(entity.x, entity.y, entity.team));
                 }
-                
-                // RETURN FALSE: This is a passive trait. We want the spider to still run its 
-                // normal 'melee' AI so it actually attacks things while dropping puddles!
                 return false; 
             }
         });
@@ -115,18 +127,16 @@ export const ToxicPlagueExpansion = {
         // Parasite AI Trait
         game.registerTrait('parasite_ai', {
             update: (entity, gameObj) => {
-                // Parasites are hyper-aggressive and will wander randomly to seek out targets far away
-                let enemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, 500); // Massive detection radius
+                let enemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, 500); 
                 
                 if (enemy) {
-                    entity.state = SPIDER_STATE.COMBAT;
+                    entity.state = 1; // SPIDER_STATE.COMBAT
                     entity.angle = Math.atan2(enemy.y - entity.y, enemy.x - entity.x);
                     
                     if (MathUtils.distSq(entity.x, entity.y, enemy.x, enemy.y) > 400) { 
                         entity.x += Math.cos(entity.angle) * entity.baseSpeed; 
                         entity.y += Math.sin(entity.angle) * entity.baseSpeed;
                     } else {
-                        // Attack!
                         entity.cooldown--;
                         if (entity.cooldown <= 0) {
                             enemy.hp -= entity.damage;
@@ -136,13 +146,10 @@ export const ToxicPlagueExpansion = {
                         }
                     }
                 } else {
-                    // No enemies? Run around erratically looking for them
                     if (Math.random() < 0.2) entity.angle += MathUtils.randomRange(-1, 1);
                     entity.x += Math.cos(entity.angle) * entity.baseSpeed;
                     entity.y += Math.sin(entity.angle) * entity.baseSpeed;
                 }
-
-                // RETURN TRUE: The parasite handles its own movement and attacking. Do not run standard AI!
                 return true; 
             }
         });
@@ -156,15 +163,34 @@ export const ToxicPlagueExpansion = {
                     game.bus.emit('playSound', 'spell'); 
                     game.bus.emit('particles', {x: data.x, y: data.y, color: '#55ff00', count: 100});
                     
-                    const radiusSq = 22500; // 150px radius
+                    const radius = 150;
+                    const radiusSq = 22500; 
                     
-                    for (let i = 0; i < game.entities.length; i++) {
-                        let e = game.entities[i];
-                        if (e.team && e.team !== data.team && e.hp > 0 && (e instanceof Spider || e.constructor.name === 'CentipedeBoss')) {
-                            if (MathUtils.distSq(e.x, e.y, data.x, data.y) < radiusSq) {
-                                e.infectedTimer = 600; // Infected for 20 seconds
-                                e.infectedByTeam = data.team; // Track who cast it
-                                game.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 10});
+                    // PERFORMANCE FIX: Spatial Grid Lookup for AoE Spell!
+                    const CELL_SIZE = 250;
+                    const minCx = Math.max(0, ((data.x - radius) / CELL_SIZE) | 0);
+                    const maxCx = Math.max(0, ((data.x + radius) / CELL_SIZE) | 0);
+                    const minCy = Math.max(0, ((data.y - radius) / CELL_SIZE) | 0);
+                    const maxCy = Math.max(0, ((data.y + radius) / CELL_SIZE) | 0);
+
+                    for (let cx = minCx; cx <= maxCx; cx++) {
+                        for (let cy = minCy; cy <= maxCy; cy++) {
+                            const key = (cx << 16) | cy;
+                            const cell = game.spatialGrid.get(key);
+                            if (!cell) continue;
+
+                            for (let i = 0; i < cell.length; i++) {
+                                let e = cell[i];
+                                
+                                if (e.team && e.team !== data.team && e.hp > 0 && (e instanceof Spider || e.constructor.name === 'CentipedeBoss')) {
+                                    if (Math.abs(e.x - data.x) > radius || Math.abs(e.y - data.y) > radius) continue;
+                                    
+                                    if (MathUtils.distSq(e.x, e.y, data.x, data.y) < radiusSq) {
+                                        e.infectedTimer = 600; // Infected for 20 seconds
+                                        e.infectedByTeam = data.team; // Track who cast it
+                                        game.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 10});
+                                    }
+                                }
                             }
                         }
                     }
@@ -177,7 +203,6 @@ export const ToxicPlagueExpansion = {
             if (data.role === 'defiler' || data.role === 'parasite') {
                 let canSpawn = true;
                 
-                // Only charge resources/pop for the Defiler. Parasites are FREE!
                 if (data.role === 'defiler') {
                     if (game.eco[data.team].pumpkins >= 120 && game.eco[data.team].dew >= 40 && game.pop[data.team] < game.maxPop[data.team]) {
                         game.eco[data.team].pumpkins -= 120;
@@ -193,7 +218,7 @@ export const ToxicPlagueExpansion = {
                     if (data.role === 'defiler') s.sprite = game.assets.get(data.team === 'black' ? 'assets/defiler_black.png' : 'assets/defiler_red.png');
                     if (data.role === 'parasite') {
                         s.sprite = game.assets.get(data.team === 'black' ? 'assets/parasite_black.png' : 'assets/parasite_red.png');
-                        s.isZombie = true; // Hack to ensure Necromancy.js doesn't spawn corpses for parasites
+                        s.isZombie = true; // Prevents Necromancy.js from dropping corpses for parasites
                     }
                     
                     s.imageLoaded = true; 
@@ -204,10 +229,10 @@ export const ToxicPlagueExpansion = {
         });
 
         // 5. GLOBAL DEBUFF MANAGER: INFECTION
-        // We handle this via a bus listener on the main loop so it applies to ANY unit that gets infected!
         game.bus.on('preDraw', () => {
             if (game.tick % 30 !== 0) return; // Only process DoT damage once a second
 
+            // PERFORMANCE FIX: Clean for-loop iteration
             for (let i = 0; i < game.entities.length; i++) {
                 let e = game.entities[i];
                 if (e.infectedTimer > 0) {
@@ -218,6 +243,9 @@ export const ToxicPlagueExpansion = {
                     
                     // CHESTBURSTER EFFECT: If it dies from infection!
                     if (e.hp <= 0 && e.role !== 'parasite') {
+                        // JUICE: Vicious camera shake when the parasite bursts out!
+                        if (game.triggerShake) game.triggerShake(5);
+                        
                         game.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 30});
                         game.bus.emit('playSound', 'death');
                         game.bus.emit('spawnSpider', {x: e.x, y: e.y, team: e.infectedByTeam, role: 'parasite'});
@@ -228,14 +256,11 @@ export const ToxicPlagueExpansion = {
     },
 
     patch: (game) => {
-        // NOTE: The entire Spider.update patch is gone!
-
         // 6. STRUCTURE AI: THE INCUBATOR
         game.expansions.patchClass(Structure, 'update', function(original, gameObj) {
             original.call(this, gameObj);
             
             if (this.type === 'incubator' && !this.isConstructing && this.hp > 0) {
-                // Spawn a free Parasite every 5 seconds (150 ticks)
                 if (gameObj.tick % 150 === 0) {
                     gameObj.bus.emit('particles', {x: this.x, y: this.y + 15, color: '#55ff00', count: 10});
                     gameObj.bus.emit('playSound', 'harvest'); 
@@ -250,7 +275,7 @@ export const ToxicPlagueExpansion = {
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 ctx.fillStyle = `rgba(85, 255, 0, 0.4)`;
-                ctx.beginPath(); ctx.arc(0, 0, this.size + 4, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(0, 0, this.size + 4, 0, MathUtils.TWO_PI); ctx.fill();
                 ctx.restore();
             }
             original.call(this, ctx);
@@ -258,14 +283,20 @@ export const ToxicPlagueExpansion = {
         
         // Structure fallback drawing
         game.expansions.patchClass(Structure, 'draw', function(original, ctx) {
+            // Sprite Caching Link
+            if (this.type === 'incubator' && !this.spriteLoaded && game.assets) {
+                this.sprite = game.assets.get(`assets/${this.type}_${this.team}.png`);
+                if (this.sprite) this.spriteLoaded = true;
+            }
+
             original.call(this, ctx);
 
             if (this.type === 'incubator' && (!this.sprite || !this.sprite.complete || this.sprite.naturalHeight === 0)) {
                 ctx.save(); ctx.translate(this.x, this.y);
-                ctx.fillStyle = '#112211'; ctx.beginPath(); ctx.arc(0, 0, this.size, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#112211'; ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
                 ctx.fillStyle = '#55ff00'; 
                 const throb = Math.sin(game.tick * 0.1) * 3;
-                ctx.beginPath(); ctx.arc(0, 0, 10 + throb, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(0, 0, 10 + throb, 0, MathUtils.TWO_PI); ctx.fill();
                 ctx.restore();
             }
         });
