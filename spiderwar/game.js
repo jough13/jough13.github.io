@@ -84,6 +84,7 @@ export const STRUCTURE_DATA = {
 
 export class Spider {
     constructor(x, y, team, role = 'harvester') {
+        this.id = Math.random().toString(36).substring(2, 11); // <-- ADDED ID HERE
         this.x = x; this.y = y; this.team = team; this.role = role;
         
         const stats = UNIT_DATA[role] || UNIT_DATA['harvester'];
