@@ -19,8 +19,6 @@ const TITAN_CONFIG = {
     }
 };
 
-const TWO_PI = Math.PI * 2;
-
 // ==========================================
 // 2. GOLIATH SIEGE PROJECTILE
 // ==========================================
@@ -46,6 +44,9 @@ export class ExplosiveProjectile {
         
         if (distSq < 225) { 
             this.active = false; 
+            
+            // JUICE: Heavy impact shake!
+            if (game.triggerShake) game.triggerShake(5);
             game.bus.emit('playSound', 'death'); 
             
             const magicColor = this.team === 'black' ? '#aa00ff' : '#ff0000';
@@ -55,14 +56,34 @@ export class ExplosiveProjectile {
             const splashRad = TITAN_CONFIG.goliath.splashRadius;
             const splashRadSq = TITAN_CONFIG.goliath.splashRadiusSq;
 
-            for (let i = 0; i < game.entities.length; i++) {
-                let e = game.entities[i];
-                if (!e.team || e.team === this.team || e.team === 'nature' || e.hp === undefined || e.hp <= 0) continue;
-                if (Math.abs(this.x - e.x) > splashRad || Math.abs(this.y - e.y) > splashRad) continue;
+            // PERFORMANCE FIX: Spatial Grid Lookup for Splash Damage
+            const CELL_SIZE = 250;
+            const cx = Math.max(0, (this.x / CELL_SIZE) | 0);
+            const cy = Math.max(0, (this.y / CELL_SIZE) | 0);
 
-                if (MathUtils.distSq(this.x, this.y, e.x, e.y) < splashRadSq) { 
-                    if (e instanceof Spider || e.constructor.name === 'CentipedeBoss') e.hp -= this.damage;
-                    else e.hp -= (this.damage * 0.5); 
+            for (let nx = cx - 1; nx <= cx + 1; nx++) {
+                if (nx < 0) continue;
+                for (let ny = cy - 1; ny <= cy + 1; ny++) {
+                    if (ny < 0) continue;
+                    
+                    const key = (nx << 16) | ny;
+                    const cell = game.spatialGrid.get(key);
+                    if (!cell) continue;
+
+                    for (let i = 0; i < cell.length; i++) {
+                        let e = cell[i];
+                        
+                        // Fast early-exit checks
+                        if (!e.team || e.team === this.team || e.team === 'nature' || e.hp === undefined || e.hp <= 0) continue;
+                        
+                        // Fast AABB check to avoid heavy circle math for distant units
+                        if (Math.abs(this.x - e.x) > splashRad || Math.abs(this.y - e.y) > splashRad) continue;
+
+                        if (MathUtils.distSq(this.x, this.y, e.x, e.y) < splashRadSq) { 
+                            if (e instanceof Spider || e.constructor.name === 'CentipedeBoss') e.hp -= this.damage;
+                            else e.hp -= (this.damage * 0.5); 
+                        }
+                    }
                 }
             }
         } else {
@@ -70,16 +91,31 @@ export class ExplosiveProjectile {
             if (dist > 0) {
                 this.x += (dx/dist) * this.speed; 
                 this.y += (dy/dist) * this.speed; 
+                
+                // JUICE: Particle trail
+                if (game.tick % 3 === 0) {
+                    game.bus.emit('particles', {x: this.x, y: this.y, color: this.team==='black'?'#aa00ff':'#ffaa00', count: 1});
+                }
             }
         }
     }
 
     draw(ctx) { 
+        ctx.save();
         const magicColor = this.team === 'black' ? '#aa00ff' : '#ff0000';
+        
+        // JUICE: Glowing aura
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = magicColor;
+        
         ctx.fillStyle = magicColor; 
-        ctx.beginPath(); ctx.arc(this.x, this.y, 8, 0, TWO_PI); ctx.fill(); 
+        ctx.beginPath(); ctx.arc(this.x, this.y, 8, 0, MathUtils.TWO_PI); ctx.fill(); 
+        
+        ctx.shadowBlur = 0; // Turn off glow for the core
         ctx.fillStyle = '#ffaa00'; 
-        ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, TWO_PI); ctx.fill(); 
+        ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, MathUtils.TWO_PI); ctx.fill(); 
+        
+        ctx.restore();
     }
 }
 
