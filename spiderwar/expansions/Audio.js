@@ -14,6 +14,10 @@ export const AudioExpansion = {
         
         // PERFORMANCE: Polyphony throttle tracker
         const soundThrottle = {};
+        
+        // Settings State
+        let currentVolume = 0.4;
+        let isMuted = false;
 
         // 1. Audio Context Initialization & Browser Unlocking
         try {
@@ -22,7 +26,7 @@ export const AudioExpansion = {
             
             // Master Volume Mixer (Prevents distortion during massive swarm fights)
             masterGain = ctx.createGain();
-            masterGain.gain.value = 0.4; 
+            masterGain.gain.value = currentVolume; 
             masterGain.connect(ctx.destination);
 
             // Pre-compute a 2-second white noise buffer for splats and impacts
@@ -33,14 +37,14 @@ export const AudioExpansion = {
                 output[i] = Math.random() * 2 - 1;
             }
 
-            // Browsers lock audio until user interaction. This unlocks it cleanly.
+            // [FIX] Bulletproof Audio Unlocker
+            // Browsers lock audio until user interaction. Added keydown and {once: true} for clean memory.
             const unlock = () => { 
                 if(ctx && ctx.state === 'suspended') ctx.resume(); 
-                window.removeEventListener('click', unlock); 
-                window.removeEventListener('touchstart', unlock);
             };
-            window.addEventListener('click', unlock); 
-            window.addEventListener('touchstart', unlock);
+            window.addEventListener('click', unlock, { once: true }); 
+            window.addEventListener('touchstart', unlock, { once: true });
+            window.addEventListener('keydown', unlock, { once: true });
         } catch (e) { 
             console.warn('[AudioEngine] Web Audio API not supported/disabled.', e); 
         }
@@ -66,7 +70,8 @@ export const AudioExpansion = {
             // "SPLAT!" - Heavy low-end crunch with extended noise decay
             'death': [
                 { type: 'square', freqStart: 120, freqEnd: 40, attack: 0.01, decay: 0.3, vol: 0.05, pitchVar: 15 },
-                { type: 'noise', filterFreq: 600, filterType: 'lowpass', attack: 0.01, decay: 0.4, vol: 0.08 }
+                // [JUICE] Pitch-shifted noise for a deeper, heavier splat!
+                { type: 'noise', filterFreq: 600, filterType: 'lowpass', attack: 0.01, decay: 0.4, vol: 0.08, noisePlaybackRate: 0.5 }
             ],
             
             // "Wub-wub-wub" - Ethereal, layered magical frequencies
@@ -79,10 +84,8 @@ export const AudioExpansion = {
             // "Thud" - Building dropping onto the dirt
             'build': [
                 { type: 'triangle', freqStart: 200, freqEnd: 80, attack: 0.02, decay: 0.25, vol: 0.06, pitchVar: 30 },
-                { type: 'noise', filterFreq: 400, filterType: 'lowpass', attack: 0.01, decay: 0.15, vol: 0.03 }
+                { type: 'noise', filterFreq: 400, filterType: 'lowpass', attack: 0.01, decay: 0.15, vol: 0.03, noisePlaybackRate: 0.2 }
             ],
-
-            // --- NEW SOUNDS ADDED FOR UI & BOSSES ---
 
             // "Bzzzt" - Low negative buzz for invalid actions/cannot afford
             'error': [
@@ -98,15 +101,15 @@ export const AudioExpansion = {
             'roar': [
                 { type: 'sawtooth', freqStart: 150, freqEnd: 40, attack: 0.1, decay: 1.5, vol: 0.1, pitchVar: 20 },
                 { type: 'square', freqStart: 100, freqEnd: 30, attack: 0.2, decay: 1.5, vol: 0.08, pitchVar: 20 },
-                { type: 'noise', filterFreq: 400, filterType: 'lowpass', attack: 0.1, decay: 1.5, vol: 0.12 }
+                { type: 'noise', filterFreq: 400, filterType: 'lowpass', attack: 0.1, decay: 1.5, vol: 0.12, noisePlaybackRate: 0.4 }
             ]
         };
 
         // ==========================================
         // 3. SYNTHESIZER PLAYBACK ENGINE
         // ==========================================
-        const playSynthRecipe = (recipeName) => {
-            if(!ctx || ctx.state === 'suspended') return;
+        const playSynthRecipe = (recipeName, panValue = 0) => {
+            if(!ctx || ctx.state === 'suspended' || isMuted) return;
             const layers = SOUND_LIBRARY[recipeName];
             if (!layers) return;
 
@@ -114,7 +117,7 @@ export const AudioExpansion = {
 
             // PERFORMANCE FIX: Polyphony Throttling
             if (soundThrottle[recipeName] && now - soundThrottle[recipeName] < 0.03) {
-                return;
+                return; // Prevent deafening volume stacking if 50 spiders shoot on the exact same frame
             }
             soundThrottle[recipeName] = now;
 
@@ -143,6 +146,8 @@ export const AudioExpansion = {
                 if (layer.type === 'noise') {
                     sourceNode = ctx.createBufferSource();
                     sourceNode.buffer = noiseBuffer;
+                    // [EXPANDABILITY] Pitch-shift noise for deep rumbles
+                    if (layer.noisePlaybackRate) sourceNode.playbackRate.value = layer.noisePlaybackRate;
                 } else {
                     sourceNode = ctx.createOscillator();
                     sourceNode.type = layer.type;
@@ -157,16 +162,29 @@ export const AudioExpansion = {
                     }
                 }
 
-                // 4. Audio Routing (Source -> [Filter] -> Envelope -> Master Mixer)
-                if (filterNode) {
-                    sourceNode.connect(filterNode);
-                    filterNode.connect(gainNode);
-                } else {
-                    sourceNode.connect(gainNode);
+                // 4. [JUICE] Spatial Stereo Panning!
+                let pannerNode = null;
+                if (panValue !== 0 && ctx.createStereoPanner) {
+                    pannerNode = ctx.createStereoPanner();
+                    pannerNode.pan.value = Math.max(-1, Math.min(1, panValue));
                 }
+
+                // 5. Audio Routing (Source -> [Filter] -> [Panner] -> Envelope -> Master Mixer)
+                let currentNode = sourceNode;
+                
+                if (filterNode) {
+                    currentNode.connect(filterNode);
+                    currentNode = filterNode;
+                }
+                if (pannerNode) {
+                    currentNode.connect(pannerNode);
+                    currentNode = pannerNode;
+                }
+                
+                currentNode.connect(gainNode);
                 gainNode.connect(masterGain);
 
-                // 5. Play and Cleanup
+                // 6. Play and Cleanup
                 sourceNode.start(now);
                 sourceNode.stop(now + layer.attack + layer.decay);
             });
@@ -176,23 +194,42 @@ export const AudioExpansion = {
         // 4. GLOBAL AUDIO API EXPORT
         // ==========================================
         game.audio = {
-            // Allows external files/UI to change the volume (0.0 to 1.0)
             setVolume: (val) => { 
-                if (masterGain) masterGain.gain.value = Math.max(0, Math.min(1, val)); 
+                currentVolume = Math.max(0, Math.min(1, val));
+                if (masterGain && !isMuted) masterGain.gain.value = currentVolume; 
             },
-            
-            // Allows new Expansion Packs to add custom synth recipes!
+            getVolume: () => currentVolume,
+            mute: () => {
+                isMuted = true;
+                if (masterGain) masterGain.gain.value = 0;
+            },
+            unmute: () => {
+                isMuted = false;
+                if (masterGain) masterGain.gain.value = currentVolume;
+            },
             registerSound: (name, recipeArray) => {
                 SOUND_LIBRARY[name] = recipeArray;
             },
-            
-            // Direct playback hook
             play: playSynthRecipe
         };
 
-        // Hook up the GameBus listener
-        game.bus.on('playSound', (type) => {
-            playSynthRecipe(type);
+        // ==========================================
+        // 5. EVENT BUS HOOK
+        // ==========================================
+        game.bus.on('playSound', (data) => {
+            // [EXPANDABILITY] Backward compatible with strings, but accepts objects for spatial audio
+            if (typeof data === 'string') {
+                playSynthRecipe(data);
+            } else if (data && data.id) {
+                let pan = 0;
+                // Calculate stereo pan based on screen position if X is provided
+                if (data.x !== undefined && game.camera && game.canvas) {
+                    const screenCenterX = game.camera.x + (game.canvas.width / 2);
+                    // Value between -1.0 (Left) and 1.0 (Right)
+                    pan = (data.x - screenCenterX) / (game.canvas.width / 2);
+                }
+                playSynthRecipe(data.id, pan);
+            }
         });
     }
 };
