@@ -338,7 +338,7 @@ export const ConstructionExpansion = {
         
         game.bus.on('buildStructure', (data) => {
             
-            // PERFORMANCE FIX: Find Queen safely without generating array garbage
+            // Find Queen safely without generating array garbage
             let queen = null;
             const queens = game.queens; // Cache
             for (let i = 0; i < queens.length; i++) {
@@ -346,16 +346,26 @@ export const ConstructionExpansion = {
             }
             if (!queen) return; 
             
-            // --- FIX 2: RESTORE TERRITORY CHECK ---
-            // Ensure the player is only building inside their own Web Network!
+            // --- FIX 2: RESTORE TERRITORY & OVERLAP CHECK ---
+            // Ensure the player is only building inside their own Web Network AND not stacking!
             if (data.team === 'black') {
                 let hasBase = false;
+                let isOverlapping = false;
                 const structs = game.structures; // Cache
+                
                 for (let i = 0; i < structs.length; i++) {
-                    if (structs[i].team === 'black') { hasBase = true; break; }
+                    let s = structs[i];
+                    if (s.team === 'black') hasBase = true;
+                    
+                    // Prevent Stacking: Check if the new click is too close to an existing building
+                    // We use (size * 2) squared for a generous, safe bounding box
+                    if (MathUtils.distSq(s.x, s.y, data.x, data.y) < (s.size * 2) * (s.size * 2)) {
+                        isOverlapping = true;
+                        break; // Stop checking, we already know it's an illegal spot
+                    }
                 }
                 
-                if (hasBase && !game.checkTerritory(data.x, data.y, data.team)) {
+                if (isOverlapping || (hasBase && !game.checkTerritory(data.x, data.y, data.team))) {
                     // Flash red particles to indicate invalid placement
                     game.bus.emit('particles', {x: data.x, y: data.y, color: '#ff0000', count: 10});
                     game.bus.emit('playSound', 'error'); // JUICE: Rejection sound!
