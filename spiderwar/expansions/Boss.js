@@ -2,22 +2,49 @@
 import { MathUtils, Spider, Structure, ResourceNode } from '../game.js';
 
 // ==========================================
-// 1. THE BOSS ENTITY
+// 1. CONFIGURATION & BALANCING
+// ==========================================
+// [EXPANDABILITY] Exported so other mods can easily adjust boss stats or spawn times
+export const BOSS_CONFIG = {
+    spawnTick: 10800,       // 3 minutes at 60fps (or 6 minutes at 30fps)
+    maxHp: 3000,
+    damage: 50,
+    speed: 1.8,
+    aggroRange: 800,
+    attackCooldown: 20,
+    segmentCount: 15,
+    lootDrops: 10           // Drops 10 pumpkins and 10 dew upon death
+};
+
+// ==========================================
+// 2. THE BOSS ENTITY
 // ==========================================
 export class CentipedeBoss {
     constructor(x, y) {
+        this.id = Math.random().toString(36).substring(2, 11);
         this.x = x; this.y = y; 
         this.team = 'nature'; 
-        this.hp = 3000; this.maxHp = 3000; 
-        this.damage = 50; this.speed = 1.8;
+        
+        this.hp = BOSS_CONFIG.maxHp; 
+        this.maxHp = BOSS_CONFIG.maxHp; 
+        this.damage = BOSS_CONFIG.damage; 
+        this.speed = BOSS_CONFIG.speed;
         this.angle = Math.random() * MathUtils.TWO_PI; 
         
         // Segmented Body Mechanics
-        this.segmentCount = 15; 
+        this.segmentCount = BOSS_CONFIG.segmentCount; 
         this.history = []; 
         this.historyLength = this.segmentCount * 4; // Keep exactly enough history for the segments
         
+        // AI State & Timers
         this.cooldown = 0;
+        this.target = null;
+        this.repathTimer = 0;
+        
+        // [JUICE] Animation States
+        this.spawnPhase = 60; // Takes 1 second (60 frames) to unburrow
+        this.flashFrames = 0;
+        this._lastHp = this.hp;
         
         // Sprites will be pulled instantly from RAM cache on Tick 1 of its life
         this.headSprite = null; 
@@ -30,6 +57,26 @@ export class CentipedeBoss {
             this.headSprite = game.assets.get('assets/centipede_head.png');
             this.bodySprite = game.assets.get('assets/centipede_body.png');
         }
+
+        // [JUICE] Spawn-in Unburrowing Sequence
+        if (this.spawnPhase > 0) {
+            this.spawnPhase--;
+            if (game.tick % 5 === 0) {
+                game.bus.emit('particles', {x: this.x, y: this.y, color: '#3d2817', count: 5}); // Dirt kicking up
+            }
+            // Record initial history so segments don't pop in from 0,0
+            if (this.history.length === 0) {
+                for (let i = 0; i < this.historyLength; i++) {
+                    this.history.push({ x: this.x, y: this.y, angle: this.angle });
+                }
+            }
+            return; // Cannot move or attack while unburrowing!
+        }
+
+        // [JUICE] Damage Flashing Tracker
+        if (this.hp < this._lastHp) this.flashFrames = 4;
+        this._lastHp = this.hp;
+        if (this.flashFrames > 0) this.flashFrames--;
 
         // 1. Manage Movement History (Fixed length array for performance)
         const lastPos = this.history[0];
@@ -48,22 +95,23 @@ export class CentipedeBoss {
             game.bus.emit('particles', {x: this.x, y: this.y, color: '#3d2817', count: 2}); // Kick up dirt
         }
 
-        // 2. Target Acquisition (Using the ultra-fast Spatial Grid!)
-        // The Boss is team 'nature', so it will automatically target 'red' and 'black' units
-        let nearest = game.getNearestEnemy(this.x, this.y, this.team, 800); // 800px aggro range
+        // 2. Target Acquisition ([PERFORMANCE FIX]: Throttled Spatial Grid Lookups!)
+        this.repathTimer--;
+        if (this.repathTimer <= 0 || !this.target || this.target.hp <= 0) {
+            this.target = game.getNearestEnemy(this.x, this.y, this.team, BOSS_CONFIG.aggroRange);
+            this.repathTimer = 15; // Only scan the massive 800px grid 4 times a second instead of 60!
+        }
         
         // 3. Movement & Combat
-        if (nearest) {
-            const targetAngle = Math.atan2(nearest.y - this.y, nearest.x - this.x);
+        if (this.target) {
+            const targetAngle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
             
-            // Smooth Rotation (Lerp) for organic, snake-like turning
-            let diff = targetAngle - this.angle;
-            while (diff > Math.PI) diff -= MathUtils.TWO_PI;
-            while (diff < -Math.PI) diff += MathUtils.TWO_PI;
+            // [FIX] Use the MathUtils angle wrapper for flawless, glitch-free turning
+            let diff = MathUtils.angleWrap(targetAngle - this.angle);
             this.angle += (diff * 0.05);
 
-            const distSq = MathUtils.distSq(this.x, this.y, nearest.x, nearest.y);
-            const combatRangeSq = (nearest.size ? nearest.size + 20 : 30) ** 2;
+            const distSq = MathUtils.distSq(this.x, this.y, this.target.x, this.target.y);
+            const combatRangeSq = (this.target.size ? this.target.size + 20 : 30) ** 2;
 
             if (distSq > combatRangeSq) { 
                 // Move towards target
@@ -73,13 +121,13 @@ export class CentipedeBoss {
                 // Melee Attack
                 this.cooldown--; 
                 if (this.cooldown <= 0) { 
-                    nearest.hp -= this.damage; 
-                    this.cooldown = 20; 
+                    this.target.hp -= this.damage; 
+                    this.cooldown = BOSS_CONFIG.attackCooldown; 
                     
-                    // JUICE: Vicious bite impact
-                    if (game.triggerShake) game.triggerShake(6); 
-                    game.bus.emit('particles', {x: nearest.x, y: nearest.y, color: '#00ff00', count: 10}); 
-                    game.bus.emit('particles', {x: nearest.x, y: nearest.y, color: '#ff0000', count: 5, type: 'splatter'}); 
+                    // JUICE: Vicious bite impact & Hit Stop
+                    if (game.triggerShake) game.triggerShake(8); 
+                    game.bus.emit('particles', {x: this.target.x, y: this.target.y, color: '#00ff00', count: 10}); 
+                    game.bus.emit('particles', {x: this.target.x, y: this.target.y, color: '#ff0000', count: 5, type: 'splatter'}); 
                     game.bus.emit('playSound', 'harvest'); 
                 } 
             }
@@ -103,25 +151,52 @@ export class CentipedeBoss {
             game.bus.emit('particles', {x: this.x, y: this.y, color: '#00ff00', count: 200});
             game.bus.emit('particles', {x: this.x, y: this.y, color: '#ffea00', count: 50});
             
-            // Drop a massive ring of loot for the player that slayed it
-            for (let i = 0; i < 10; i++) {
-                const dropAngle = (MathUtils.TWO_PI / 10) * i;
-                const dist = 100;
-                game.addEntity(new ResourceNode(this.x + Math.cos(dropAngle)*dist, this.y + Math.sin(dropAngle)*dist, 'pumpkin'));
-                game.addEntity(new ResourceNode(this.x + Math.cos(dropAngle)*(dist+50), this.y + Math.sin(dropAngle)*(dist+50), 'dew'));
+            // Drop a massive ring of loot, [FIX] ensuring drops stay safely inside map boundaries
+            for (let i = 0; i < BOSS_CONFIG.lootDrops; i++) {
+                const dropAngle = (MathUtils.TWO_PI / BOSS_CONFIG.lootDrops) * i;
+                
+                const pX = MathUtils.clamp(this.x + Math.cos(dropAngle) * 100, 50, game.world.width - 50);
+                const pY = MathUtils.clamp(this.y + Math.sin(dropAngle) * 100, 50, game.world.height - 50);
+                
+                const dX = MathUtils.clamp(this.x + Math.cos(dropAngle) * 150, 50, game.world.width - 50);
+                const dY = MathUtils.clamp(this.y + Math.sin(dropAngle) * 150, 50, game.world.height - 50);
+                
+                game.addEntity(new ResourceNode(pX, pY, 'pumpkin'));
+                game.addEntity(new ResourceNode(dX, dY, 'dew'));
             }
         }
     }
 
-    draw(ctx) {
+    draw(ctx, game) {
+        ctx.save();
+        
+        // [JUICE] Spawn Unburrow Scale
+        if (this.spawnPhase > 0) {
+            const spawnProgress = 1 - (this.spawnPhase / 60);
+            ctx.translate(this.x, this.y);
+            ctx.scale(spawnProgress, spawnProgress);
+            ctx.translate(-this.x, -this.y);
+        }
+
+        // [JUICE] Damage Flash Filter
+        if (this.flashFrames > 0) ctx.filter = 'brightness(2.5)';
+
+        const tick = game ? game.tick : 0;
+
         // 1. Draw Body Segments from History
         for (let i = 1; i < this.segmentCount; i++) {
             let histIndex = i * 4; 
             if (this.history[histIndex]) {
                 let pos = this.history[histIndex]; 
+                
                 ctx.save(); 
+                
+                // [JUICE] Wriggle Offset! Adds an organic sine wave to the segments as it moves
+                const wriggleOffset = Math.sin(tick * 0.2 + i) * 3;
+                // Move to position, apply rotation, THEN apply local Y offset for the wriggle
                 ctx.translate(pos.x, pos.y); 
                 ctx.rotate(pos.angle);
+                ctx.translate(0, wriggleOffset);
                 
                 if (this.bodySprite && this.bodySprite.complete && this.bodySprite.naturalHeight !== 0) { 
                     ctx.drawImage(this.bodySprite, -15, -15, 30, 30); 
@@ -138,6 +213,11 @@ export class CentipedeBoss {
         ctx.translate(this.x, this.y); 
         ctx.rotate(this.angle);
         
+        // [JUICE] Head lunges forward slightly during attack cooldown
+        if (this.cooldown > BOSS_CONFIG.attackCooldown - 5) {
+            ctx.translate(5, 0); 
+        }
+        
         if (this.headSprite && this.headSprite.complete && this.headSprite.naturalHeight !== 0) { 
             ctx.drawImage(this.headSprite, -20, -20, 40, 40); 
         } else { 
@@ -148,9 +228,11 @@ export class CentipedeBoss {
             ctx.arc(8, 8, 4, 0, MathUtils.TWO_PI); ctx.fill(); 
         }
         ctx.restore();
+        
+        ctx.restore(); // Restore global context (removes filters/spawn scaling)
 
-        // 3. Boss Health Bar (Only draw if damaged)
-        if (this.hp < this.maxHp && this.hp > 0) { 
+        // 3. Boss Health Bar (Only draw if damaged and fully spawned)
+        if (this.hp < this.maxHp && this.hp > 0 && this.spawnPhase === 0) { 
             ctx.fillStyle = 'black'; ctx.fillRect(this.x - 30, this.y - 35, 60, 8); 
             ctx.fillStyle = 'red'; ctx.fillRect(this.x - 29, this.y - 34, 58, 6); 
             ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - 29, this.y - 34, 58 * (Math.max(0, this.hp) / this.maxHp), 6); 
@@ -159,10 +241,13 @@ export class CentipedeBoss {
 }
 
 // ==========================================
-// 2. EXPANSION LOGIC
+// 3. EXPANSION LOGIC
 // ==========================================
 export const GodUnitExpansion = {
     init: (game) => {
+        // [EXPANDABILITY] Inject config into game so other mods can read/write to it
+        game.bossConfig = BOSS_CONFIG;
+
         // --- ASSET REGISTRY ---
         game.assets.register('assets/centipede_head.png');
         game.assets.register('assets/centipede_body.png');
@@ -195,8 +280,8 @@ export const GodUnitExpansion = {
         game.expansions.patchClass(game.constructor, 'update', function(original) {
             original.call(this);
             
-            // Spawn the Boss precisely at the 6-minute mark (10800 ticks)
-            if (this.tick === 10800) { 
+            // Spawn the Boss dynamically based on the injected configuration
+            if (this.tick === this.bossConfig.spawnTick) { 
                 const spawnX = this.world.width / 2;
                 const spawnY = this.world.height / 2;
 
