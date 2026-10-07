@@ -32,15 +32,37 @@ export const SpectralSwarmExpansion = {
                 // Every 1 second, drain 2 HP from all nearby enemies and heal self
                 if (gameObj.tick % 30 === 0) {
                     let healed = false;
-                    for (let i = 0; i < gameObj.entities.length; i++) {
-                        let e = gameObj.entities[i];
-                        if (e.team && e.team !== entity.team && e.hp > 0) {
-                            if (MathUtils.distSq(entity.x, entity.y, e.x, e.y) < 10000) { // 100px range
-                                e.hp -= 2;
-                                entity.hp = Math.min(entity.maxHp, entity.hp + 2);
-                                healed = true;
-                                // Visual soul-leech effect
-                                gameObj.bus.emit('particles', {x: e.x, y: e.y, color: '#00ffff', count: 1});
+                    
+                    // PERFORMANCE FIX: Spatial Grid Lookup for Life Drain
+                    const CELL_SIZE = 250;
+                    const cx = Math.max(0, (entity.x / CELL_SIZE) | 0);
+                    const cy = Math.max(0, (entity.y / CELL_SIZE) | 0);
+                    const radius = 100;
+                    const radiusSq = 10000; 
+
+                    for (let nx = cx - 1; nx <= cx + 1; nx++) {
+                        if (nx < 0) continue;
+                        for (let ny = cy - 1; ny <= cy + 1; ny++) {
+                            if (ny < 0) continue;
+                            
+                            const key = (nx << 16) | ny;
+                            const cell = gameObj.spatialGrid.get(key);
+                            if (!cell) continue;
+
+                            for (let i = 0; i < cell.length; i++) {
+                                let e = cell[i];
+                                if (e.team && e.team !== entity.team && e.hp > 0) {
+                                    // Fast AABB check to skip circle math
+                                    if (Math.abs(entity.x - e.x) > radius || Math.abs(entity.y - e.y) > radius) continue;
+                                    
+                                    if (MathUtils.distSq(entity.x, entity.y, e.x, e.y) < radiusSq) {
+                                        e.hp -= 2;
+                                        entity.hp = Math.min(entity.maxHp, entity.hp + 2);
+                                        healed = true;
+                                        // Visual soul-leech effect
+                                        gameObj.bus.emit('particles', {x: e.x, y: e.y, color: '#00ffff', count: 1});
+                                    }
+                                }
                             }
                         }
                     }
@@ -57,18 +79,40 @@ export const SpectralSwarmExpansion = {
                 if (game.eco[data.team].dew >= 75) {
                     game.eco[data.team].dew -= 75;
                     
+                    // JUICE: The Deep Freeze!
+                    if (game.triggerShake) game.triggerShake(8);
                     game.bus.emit('playSound', 'spell');
                     game.bus.emit('particles', {x: data.x, y: data.y, color: '#00ffff', count: 100});
+                    game.bus.emit('particles', {x: data.x, y: data.y, color: '#ffffff', count: 50});
                     
-                    const radiusSq = 22500; // 150px radius
+                    const radius = 150;
+                    const radiusSq = 22500; 
                     
-                    for (let i = 0; i < game.entities.length; i++) {
-                        let e = game.entities[i];
-                        // Target LIVING ENEMIES
-                        if (e.team && e.team !== data.team && e.hp > 0 && (e instanceof Spider || e.constructor.name === 'CentipedeBoss')) {
-                            if (MathUtils.distSq(e.x, e.y, data.x, data.y) < radiusSq) {
-                                e.stunTimer = 150; // 5 seconds of stun (30 ticks * 5)
-                                game.bus.emit('particles', {x: e.x, y: e.y, color: '#00ffff', count: 5});
+                    // PERFORMANCE FIX: Spatial Grid Lookup for AoE Spell!
+                    const CELL_SIZE = 250;
+                    const minCx = Math.max(0, ((data.x - radius) / CELL_SIZE) | 0);
+                    const maxCx = Math.max(0, ((data.x + radius) / CELL_SIZE) | 0);
+                    const minCy = Math.max(0, ((data.y - radius) / CELL_SIZE) | 0);
+                    const maxCy = Math.max(0, ((data.y + radius) / CELL_SIZE) | 0);
+
+                    for (let cx = minCx; cx <= maxCx; cx++) {
+                        for (let cy = minCy; cy <= maxCy; cy++) {
+                            const key = (cx << 16) | cy;
+                            const cell = game.spatialGrid.get(key);
+                            if (!cell) continue;
+
+                            for (let i = 0; i < cell.length; i++) {
+                                let e = cell[i];
+                                // Target LIVING ENEMIES
+                                if (e.team && e.team !== data.team && e.hp > 0 && (e instanceof Spider || e.constructor.name === 'CentipedeBoss')) {
+                                    // Fast AABB check
+                                    if (Math.abs(e.x - data.x) > radius || Math.abs(e.y - data.y) > radius) continue;
+                                    
+                                    if (MathUtils.distSq(e.x, e.y, data.x, data.y) < radiusSq) {
+                                        e.stunTimer = 150; // 5 seconds of stun (30 ticks * 5)
+                                        game.bus.emit('particles', {x: e.x, y: e.y, color: '#00ffff', count: 5});
+                                    }
+                                }
                             }
                         }
                     }
@@ -115,7 +159,7 @@ export const SpectralSwarmExpansion = {
 
         // 6. STRUCTURE AI: THE MONOLITH STEALTH FIELD
         const STEALTH_RADIUS = 250;
-        const STEALTH_RADIUS_SQ = STEALTH_RADIUS * STEALTH_RADIUS;
+        const STEALTH_RADIUS_SQ = 62500; // 250^2
 
         game.expansions.patchClass(Structure, 'update', function(original, gameObj) {
             original.call(this, gameObj);
@@ -123,13 +167,33 @@ export const SpectralSwarmExpansion = {
             if (this.type === 'monolith' && !this.isConstructing && this.hp > 0) {
                 // Pulse every 5 frames to keep nearby allies cloaked
                 if (gameObj.tick % 5 === 0) {
-                    for (let i = 0; i < gameObj.entities.length; i++) {
-                        let e = gameObj.entities[i];
-                        // Only cloak friendly units (Spiders)
-                        if (e.team === this.team && e.hp > 0 && e instanceof Spider) {
-                            if (MathUtils.distSq(this.x, this.y, e.x, e.y) < STEALTH_RADIUS_SQ) {
-                                e.isCloaked = true;
-                                e.stealthAuraTimer = 10; // Gives them 10 frames of stealth
+                    
+                    // PERFORMANCE FIX: Spatial Grid Lookup for Cloaking!
+                    const CELL_SIZE = 250;
+                    const cx = Math.max(0, (this.x / CELL_SIZE) | 0);
+                    const cy = Math.max(0, (this.y / CELL_SIZE) | 0);
+
+                    for (let nx = cx - 1; nx <= cx + 1; nx++) {
+                        if (nx < 0) continue;
+                        for (let ny = cy - 1; ny <= cy + 1; ny++) {
+                            if (ny < 0) continue;
+                            
+                            const key = (nx << 16) | ny;
+                            const cell = gameObj.spatialGrid.get(key);
+                            if (!cell) continue;
+
+                            for (let i = 0; i < cell.length; i++) {
+                                let e = cell[i];
+                                // Only cloak friendly units (Spiders)
+                                if (e.team === this.team && e.hp > 0 && e instanceof Spider) {
+                                    // Fast AABB check
+                                    if (Math.abs(this.x - e.x) > STEALTH_RADIUS || Math.abs(this.y - e.y) > STEALTH_RADIUS) continue;
+                                    
+                                    if (MathUtils.distSq(this.x, this.y, e.x, e.y) < STEALTH_RADIUS_SQ) {
+                                        e.isCloaked = true;
+                                        e.stealthAuraTimer = 10; // Gives them 10 frames of stealth
+                                    }
+                                }
                             }
                         }
                     }
@@ -164,13 +228,19 @@ export const SpectralSwarmExpansion = {
         });
         
         game.expansions.patchClass(Structure, 'draw', function(original, ctx) {
+            // Sprite Caching Link
+            if (this.type === 'monolith' && !this.spriteLoaded && game.assets) {
+                this.sprite = game.assets.get(`assets/${this.type}_${this.team}.png`);
+                if (this.sprite) this.spriteLoaded = true;
+            }
+
             // Draw the Stealth Field Aura under the Monolith
             if (this.type === 'monolith' && !this.isConstructing && this.hp > 0) {
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 const pulse = Math.sin(game.tick * 0.05) * 0.1;
                 ctx.fillStyle = this.team === 'black' ? `rgba(100, 0, 255, ${0.1 + pulse})` : `rgba(255, 0, 0, ${0.1 + pulse})`;
-                ctx.beginPath(); ctx.arc(0, 0, STEALTH_RADIUS, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(0, 0, STEALTH_RADIUS, 0, MathUtils.TWO_PI); ctx.fill();
                 ctx.restore();
             }
 
@@ -180,7 +250,7 @@ export const SpectralSwarmExpansion = {
             if (this.type === 'monolith' && (!this.sprite || !this.sprite.complete || this.sprite.naturalHeight === 0)) {
                 ctx.save(); ctx.translate(this.x, this.y);
                 ctx.fillStyle = '#222'; ctx.beginPath(); ctx.moveTo(-15, 20); ctx.lineTo(15, 20); ctx.lineTo(5, -30); ctx.lineTo(-5, -30); ctx.fill();
-                ctx.fillStyle = '#00ffff'; ctx.beginPath(); ctx.arc(0, -10, 4, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#00ffff'; ctx.beginPath(); ctx.arc(0, -10, 4, 0, MathUtils.TWO_PI); ctx.fill();
                 ctx.restore();
             }
         });
