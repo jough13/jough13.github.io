@@ -15,8 +15,8 @@ export const DarkRitualsExpansion = {
         UNIT_DATA['tick'] = { 
             size: 10, hp: 20, damage: 100, attackSpeed: 45, 
             baseSpeedMin: 2.2, baseSpeedMax: 2.8, 
-            range: 250, rangeSq: 62500, // Added for siege_attacker
-            traits: ['siege_attacker'] // Replaced 'kamikaze'
+            range: 250, rangeSq: 62500, // Used by siege_attacker trait
+            traits: ['siege_attacker'] 
         };
 
         STRUCTURE_DATA['extractor'] = { 
@@ -30,15 +30,42 @@ export const DarkRitualsExpansion = {
             if (data.type === 'bloodlust') {
                 if (game.eco[data.team].dew >= 60) {
                     game.eco[data.team].dew -= 60;
+                    
+                    // JUICE: Heavy camera shake for the massive surge of power!
+                    if (game.triggerShake) game.triggerShake(8);
                     game.bus.emit('playSound', 'spell');
                     game.bus.emit('particles', {x: data.x, y: data.y, color: '#ff0000', count: 80});
                     
-                    for (let i = 0; i < game.entities.length; i++) {
-                        let e = game.entities[i];
-                        if (e.team === data.team && e.hp > 0 && (e instanceof Spider)) {
-                            if (MathUtils.distSq(e.x, e.y, data.x, data.y) < 40000) {
-                                e.bloodlustTimer = 300; 
-                                game.bus.emit('particles', {x: e.x, y: e.y, color: '#ff0000', count: 5});
+                    const radius = 200;
+                    const radiusSq = 40000; 
+                    
+                    // PERFORMANCE FIX: Spatial Grid Lookup for AoE Buffs!
+                    const CELL_SIZE = 250;
+                    const minCx = Math.max(0, ((data.x - radius) / CELL_SIZE) | 0);
+                    const maxCx = Math.max(0, ((data.x + radius) / CELL_SIZE) | 0);
+                    const minCy = Math.max(0, ((data.y - radius) / CELL_SIZE) | 0);
+                    const maxCy = Math.max(0, ((data.y + radius) / CELL_SIZE) | 0);
+
+                    for (let cx = minCx; cx <= maxCx; cx++) {
+                        for (let cy = minCy; cy <= maxCy; cy++) {
+                            const key = (cx << 16) | cy;
+                            const cell = game.spatialGrid.get(key);
+                            if (!cell) continue;
+
+                            for (let i = 0; i < cell.length; i++) {
+                                let e = cell[i];
+                                
+                                // Target friendly, living spiders
+                                if (e.team === data.team && e.hp > 0 && (e instanceof Spider)) {
+                                    
+                                    // Fast AABB early exit
+                                    if (Math.abs(e.x - data.x) > radius || Math.abs(e.y - data.y) > radius) continue;
+                                    
+                                    if (MathUtils.distSq(e.x, e.y, data.x, data.y) < radiusSq) {
+                                        e.bloodlustTimer = 300; // 10 seconds of frenzy
+                                        game.bus.emit('particles', {x: e.x, y: e.y, color: '#ff0000', count: 10});
+                                    }
+                                }
                             }
                         }
                     }
@@ -55,7 +82,7 @@ export const DarkRitualsExpansion = {
                     let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
                     s.sprite = game.assets.get(data.team === 'black' ? 'assets/tick_black.png' : 'assets/tick_red.png');
                     
-                    // ECS Trait Setup for Tick's new Siege capabilities
+                    // ECS Trait Setup for Tick's Siege capabilities
                     if (s.hasTrait('siege_attacker')) {
                         s.range = UNIT_DATA['tick'].range;
                         s.rangeSq = UNIT_DATA['tick'].rangeSq;
@@ -79,11 +106,12 @@ export const DarkRitualsExpansion = {
             let originalDamage = this.damage;
             
             // --- BUFF: BLOODLUST ---
-            // Much cleaner now! Only handles the temporary stat boost.
             if (this.bloodlustTimer > 0) {
                 this.bloodlustTimer--;
                 this.baseSpeed *= 1.8; 
                 this.damage += 15;     
+                
+                // Bloody particle trail
                 if (gameObj.tick % 5 === 0) gameObj.bus.emit('particles', {x: this.x, y: this.y, color: '#ff0000', count: 1});
             }
 
@@ -106,6 +134,22 @@ export const DarkRitualsExpansion = {
         });
 
         // 6. DRAWING INJECTIONS
+        
+        // JUICE: The Bloodlust Aura!
+        game.expansions.patchClass(Spider, 'draw', function(original, ctx) {
+            // Draw a glowing, pulsating red ring under Frenzied units
+            if (this.bloodlustTimer > 0) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                const pulse = Math.sin(game.tick * 0.2) * 2;
+                ctx.fillStyle = `rgba(255, 0, 0, 0.3)`;
+                ctx.beginPath(); ctx.arc(0, 0, this.size + 4 + pulse, 0, MathUtils.TWO_PI); ctx.fill();
+                ctx.restore();
+            }
+
+            original.call(this, ctx); // Draw the spider normally on top of the aura
+        });
+
         game.expansions.patchClass(Structure, 'draw', function(original, ctx) {
             if (this.type === 'extractor' && !this.spriteLoaded && game.assets) {
                 this.sprite = game.assets.get(this.team === 'black' ? 'assets/extractor_black.png' : 'assets/extractor_red.png');
@@ -114,6 +158,7 @@ export const DarkRitualsExpansion = {
 
             original.call(this, ctx); 
 
+            // Canvas Fallback
             if (this.type === 'extractor' && (!this.sprite || !this.sprite.complete || this.sprite.naturalHeight === 0)) {
                 ctx.save(); ctx.translate(this.x, this.y);
                 ctx.fillStyle = '#333'; ctx.fillRect(-15, -10, 30, 20);
