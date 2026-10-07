@@ -15,17 +15,17 @@ export const SplashScreenExpansion = {
         style.innerHTML = `
             #preGameUI {
                 position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-                background: var(--color-void, #050200); font-family: var(--font-primary, 'Courier New', monospace);
+                background: var(--color-void); font-family: var(--font-primary);
                 z-index: 10000; transition: opacity 0.8s ease;
                 display: flex; align-items: center; justify-content: center; flex-direction: column;
-                color: var(--color-pumpkin, #ff9d00); user-select: none;
+                color: var(--color-pumpkin); user-select: none;
             }
 
             /* --- INTRO VIDEO VIEW --- */
             #introView {
                 position: absolute; top: 0; left: 0; width: 100%; height: 100%;
                 display: flex; align-items: flex-end; justify-content: flex-end;
-                cursor: pointer;
+                cursor: pointer; z-index: 50;
             }
             #introView video {
                 position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -43,7 +43,7 @@ export const SplashScreenExpansion = {
                 text-shadow: 0 0 15px rgba(255, 157, 0, 0.8), 3px 3px 0px #000;
                 pointer-events: none;
             }
-            #splashText h1 { font-size: 6rem; margin: 0; letter-spacing: 4px; text-transform: uppercase; color: var(--color-pumpkin, #ff9d00);}
+            #splashText h1 { font-size: 6rem; margin: 0; letter-spacing: 4px; text-transform: uppercase; color: var(--color-pumpkin);}
             #splashText p { font-size: 1.5rem; margin-top: 20px; color: #ffffff; animation: splashPulse 1.5s infinite; }
             
             @keyframes splashPulse { 
@@ -56,41 +56,41 @@ export const SplashScreenExpansion = {
             #menuView {
                 position: relative; z-index: 10; display: none; flex-direction: column; align-items: center;
                 background: rgba(18, 10, 5, 0.9); padding: 40px 60px;
-                border: 4px solid var(--color-pumpkin, #ff9d00); border-radius: 12px;
+                border: 4px solid var(--color-pumpkin); border-radius: 12px;
                 box-shadow: 0 0 50px rgba(255, 157, 0, 0.2), inset 0 0 20px rgba(0,0,0,1);
                 backdrop-filter: blur(8px);
             }
             #menuView h1 { 
                 font-size: 4rem; margin: 0 0 30px 0; 
-                text-shadow: 2px 2px 0px #000, 0 0 15px var(--color-pumpkin, #ff9d00); 
+                text-shadow: 2px 2px 0px #000, 0 0 15px var(--color-pumpkin); 
                 text-align: center; 
             }
             
             .menu-btn {
-                background: rgba(34, 17, 0, 0.9); border: 2px solid var(--color-pumpkin, #ff9d00); color: white;
+                background: rgba(34, 17, 0, 0.9); border: 2px solid var(--color-pumpkin); color: white;
                 padding: 15px 40px; font-size: 1.5rem; font-family: inherit;
                 margin: 10px 0; cursor: pointer; transition: 0.2s; width: 100%; font-weight: bold;
             }
-            .menu-btn:hover:not(:disabled) { background: var(--color-pumpkin, #ff9d00); color: #000; transform: scale(1.05); }
+            .menu-btn:hover:not(:disabled) { background: var(--color-pumpkin); color: #000; transform: scale(1.05); }
             .menu-btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: #555; }
 
             /* --- SETTINGS MODAL --- */
             #settingsView {
                 position: absolute; z-index: 20; display: none; flex-direction: column;
-                background: rgba(0,0,0,0.95); padding: 30px; border: 2px solid var(--color-pumpkin, #ff9d00);
+                background: rgba(0,0,0,0.95); padding: 30px; border: 2px solid var(--color-pumpkin);
                 border-radius: 8px; box-shadow: 0 0 30px #000; min-width: 300px;
             }
             .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 15px; font-size: 1.2rem; margin-bottom: 20px; color: #fff;}
-            .setting-row input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; accent-color: var(--color-pumpkin, #ff9d00); }
-            .setting-row select { background: #111; color: #ff9d00; border: 1px solid #ff9d00; padding: 5px 10px; font-family: inherit; font-size: 1rem; cursor: pointer; }
+            .setting-row input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; accent-color: var(--color-pumpkin); }
+            .setting-row select { background: #111; color: var(--color-pumpkin); border: 1px solid var(--color-pumpkin); padding: 5px 10px; font-family: inherit; font-size: 1rem; cursor: pointer; }
 
             /* --- LOADING VIEW --- */
             #loadingView {
                 position: relative; z-index: 10; display: none; flex-direction: column; align-items: center;
             }
             
-            #loadBarContainer { width: 400px; height: 30px; border: 3px solid var(--color-pumpkin, #ff9d00); background: #111; padding: 3px; margin-bottom: 15px; box-shadow: 0 0 20px rgba(255, 157, 0, 0.3);}
-            #loadBarFill { width: 0%; height: 100%; background: var(--color-pumpkin, #ff9d00); transition: width 0.1s; }
+            #loadBarContainer { width: 400px; height: 30px; border: 3px solid var(--color-pumpkin); background: #111; padding: 3px; margin-bottom: 15px; box-shadow: 0 0 20px rgba(255, 157, 0, 0.3);}
+            #loadBarFill { width: 0%; height: 100%; background: var(--color-pumpkin); transition: width 0.1s; }
             #loadText { color: #fff; font-weight: bold; font-size: 1.2rem; letter-spacing: 2px; text-transform: uppercase;}
         `;
         document.head.appendChild(style);
@@ -116,7 +116,7 @@ export const SplashScreenExpansion = {
             </div>
 
             <div id="settingsView">
-                <h2 style="margin-top:0; color: var(--color-pumpkin, #ff9d00); text-align: center;">BROOD SETTINGS</h2>
+                <h2 style="margin-top:0; color: var(--color-pumpkin); text-align: center;">BROOD SETTINGS</h2>
                 
                 <div class="setting-row">
                     <label for="difficultySelect">AI Difficulty:</label>
@@ -151,50 +151,78 @@ export const SplashScreenExpansion = {
         const introVideo = document.getElementById('introVideo');
 
         // JS Fallback to force video play if autoplay is acting stubborn
-        introVideo.play().catch(e => console.log("[Intro] Autoplay blocked by browser. Awaiting interaction."));
+        if (introVideo) introVideo.play().catch(e => console.log("[Intro] Autoplay blocked by browser. Awaiting interaction."));
+
+        // JUICE: Menu Hover Sounds
+        const menuButtons = document.querySelectorAll('.menu-btn');
+        menuButtons.forEach(btn => {
+            btn.addEventListener('mouseenter', () => {
+                if (!btn.disabled) game.bus.emit('playSound', 'ping');
+            });
+        });
 
         // Load Player Preferences
-        const hasSaveData = localStorage.getItem('spiderRTS_saveData') !== null;
-        if (hasSaveData) document.getElementById('btnLoadGame').disabled = false;
+        // SAFETY FIX: Try/Catch just in case the JSON data got corrupted so it doesn't crash the boot!
+        try {
+            const rawSaveData = localStorage.getItem('spiderRTS_saveData');
+            if (rawSaveData) {
+                const parsedData = JSON.parse(rawSaveData);
+                if (parsedData && parsedData.eco) {
+                    document.getElementById('btnLoadGame').disabled = false;
+                }
+            }
+        } catch (e) {
+            console.warn("[SaveData] Corrupted save file detected and ignored.");
+            localStorage.removeItem('spiderRTS_saveData');
+        }
 
         const skipPref = localStorage.getItem('spiderRTS_skipIntro') === 'true';
         document.getElementById('chkSkipIntro').checked = skipPref;
 
         const diffPref = localStorage.getItem('spiderRTS_difficulty') || 'normal';
         document.getElementById('difficultySelect').value = diffPref;
-        game.aiDifficulty = diffPref; // EXPANDABILITY: Link to AdvancedBase.js AI Profiles!
+        game.aiDifficulty = diffPref; 
 
         // --- 4. NAVIGATION LOGIC ---
-        let menuShown = false; // Safety lock
+        let menuShown = false; 
 
         const showMenu = () => {
             if (menuShown) return;
             menuShown = true;
             
-            // CLEANUP FIX: Remove listener so it doesn't leak memory
+            // CLEANUP FIX: Remove listeners so they don't leak memory
             viewIntro.removeEventListener('click', showMenu);
-            introVideo.removeEventListener('ended', showMenu);
+            if (introVideo) introVideo.removeEventListener('ended', showMenu);
             
             viewIntro.style.display = 'none';
             viewMenu.style.display = 'flex';
             
-            // PERFORMANCE: Completely wipe the video from RAM so gameplay doesn't stutter!
-            introVideo.pause(); 
-            introVideo.removeAttribute('src'); 
-            introVideo.load(); 
+            // PERFORMANCE FIX: Completely wipe the video from the DOM to free up RAM!
+            if (introVideo) {
+                introVideo.pause(); 
+                introVideo.removeAttribute('src'); 
+                introVideo.load(); 
+                introVideo.remove();
+            }
             
-            game.bus.emit('playSound', 'spell'); // Unlock audio context!
+            game.bus.emit('playSound', 'spell'); 
         };
 
-        if (skipPref) { showMenu(); } // Jump straight to menu if user prefers
+        if (skipPref) { showMenu(); } 
 
-        // Intro Video Click / End Events
         viewIntro.addEventListener('click', showMenu);
-        introVideo.addEventListener('ended', showMenu); 
+        if (introVideo) introVideo.addEventListener('ended', showMenu); 
 
         // Settings Menu Logic
-        document.getElementById('btnSettings').addEventListener('click', () => { viewSettings.style.display = 'flex'; });
-        document.getElementById('btnCloseSettings').addEventListener('click', () => { viewSettings.style.display = 'none'; });
+        document.getElementById('btnSettings').addEventListener('click', () => { 
+            viewSettings.style.display = 'flex'; 
+            game.bus.emit('playSound', 'shoot');
+        });
+        
+        document.getElementById('btnCloseSettings').addEventListener('click', () => { 
+            viewSettings.style.display = 'none'; 
+            game.bus.emit('playSound', 'shoot');
+        });
         
         document.getElementById('chkSkipIntro').addEventListener('change', (e) => {
             localStorage.setItem('spiderRTS_skipIntro', e.target.checked);
@@ -203,15 +231,15 @@ export const SplashScreenExpansion = {
         document.getElementById('difficultySelect').addEventListener('change', (e) => {
             const diff = e.target.value;
             localStorage.setItem('spiderRTS_difficulty', diff);
-            game.aiDifficulty = diff; // Live update the game engine object
+            game.aiDifficulty = diff; 
         });
 
         // --- 5. DYNAMIC PRELOADING ENGINE ---
         const startPreload = (isLoadGame) => {
+            game.bus.emit('playSound', 'shoot');
             viewMenu.style.display = 'none';
             viewLoading.style.display = 'flex';
             
-            // Extract the dynamic list from the Central Asset Manager
             const manifest = Array.from(game.assets.queue);
             
             let loadedCount = 0;
@@ -221,39 +249,33 @@ export const SplashScreenExpansion = {
             const checkComplete = () => {
                 loadedCount++;
                 
-                // PERFORMANCE: Batch DOM updates to prevent layout thrashing
                 requestAnimationFrame(() => {
                     const pct = manifest.length > 0 ? Math.floor((loadedCount / manifest.length) * 100) : 100;
                     barFill.style.width = pct + '%';
                     loadText.innerText = `Awakening the Obsidian Brood... ${pct}%`;
 
                     if (loadedCount >= manifest.length) {
-                        // Preloading Finished! Tiny delay so the player actually sees 100%
                         setTimeout(() => {
                             ui.style.opacity = '0';
                             
                             setTimeout(() => {
                                 ui.remove();
-                                game.gameState = 'playing'; // Unpause the game engine!
+                                game.gameState = 'playing'; 
                                 
-                                // Route to systems.js if loading a save
                                 if (isLoadGame) game.bus.emit('triggerLoadGame');
                                 
-                            }, 800); // Wait for CSS opacity fade
-                        }, 500); // 0.5s pause on 100%
+                            }, 800); 
+                        }, 500); 
                     }
                 });
             };
 
-            // Safety catch: If an expansion didn't queue anything, instantly boot
             if (manifest.length === 0) { 
                 checkComplete(); 
                 return; 
             }
 
-            // Instantiate image requests and push them straight to the RAM cache
             manifest.forEach(src => {
-                // PERFORMANCE FIX: Check if asset is already cached (Prevents duplicate fetches on hot-reload)
                 if (game.assets.cache[src]) {
                     checkComplete();
                     return;
@@ -261,13 +283,12 @@ export const SplashScreenExpansion = {
 
                 const img = new Image();
                 img.onload = () => {
-                    // STORE IN THE CENTRAL CACHE!
                     game.assets.cache[src] = img;
                     checkComplete();
                 };
                 img.onerror = () => {
                     console.warn(`[AssetManager] Missing asset: ${src}`);
-                    checkComplete(); // Prevent game from hanging if a single file is missing
+                    checkComplete(); 
                 };
                 img.src = src;
             });
