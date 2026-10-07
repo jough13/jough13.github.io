@@ -16,34 +16,50 @@ class VortexEntity {
     update(game) {
         this.life--;
         
-        // Drag ALL units (except Bosses) towards the center
-        for (let i = 0; i < game.entities.length; i++) {
-            let e = game.entities[i];
-            // Only affect living spiders
-            if (e.hp > 0 && e instanceof Spider && e.role !== 'queen') {
-                
-                // Fast AABB check
-                if (Math.abs(this.x - e.x) > this.radius || Math.abs(this.y - e.y) > this.radius) continue;
+        // PERFORMANCE FIX: Spatial Grid Lookup!
+        const CELL_SIZE = 250;
+        const minCx = Math.max(0, ((this.x - this.radius) / CELL_SIZE) | 0);
+        const maxCx = Math.max(0, ((this.x + this.radius) / CELL_SIZE) | 0);
+        const minCy = Math.max(0, ((this.y - this.radius) / CELL_SIZE) | 0);
+        const maxCy = Math.max(0, ((this.y + this.radius) / CELL_SIZE) | 0);
 
-                const distSq = MathUtils.distSq(this.x, this.y, e.x, e.y);
-                if (distSq < this.radiusSq && distSq > 100) { // Stop pulling if they are exactly in the center
-                    const angle = Math.atan2(this.y - e.y, this.x - e.x);
+        for (let cx = minCx; cx <= maxCx; cx++) {
+            for (let cy = minCy; cy <= maxCy; cy++) {
+                
+                const key = (cx << 16) | cy;
+                const cell = game.spatialGrid.get(key);
+                if (!cell) continue; 
+
+                for (let i = 0; i < cell.length; i++) {
+                    let e = cell[i];
                     
-                    // The closer they get to the center, the harder it pulls (Event Horizon effect)
-                    const intensity = 1 + (1 - (Math.sqrt(distSq) / this.radius));
-                    
-                    e.x += Math.cos(angle) * (this.pullStrength * intensity);
-                    e.y += Math.sin(angle) * (this.pullStrength * intensity);
-                    
-                    // Disrupt their current movement
-                    e.isSlowed = true;
+                    // Only affect living spiders (not buildings, bosses, or dead things)
+                    if (e.hp > 0 && e instanceof Spider && e.role !== 'queen') {
+                        
+                        // Fast AABB check
+                        if (Math.abs(this.x - e.x) > this.radius || Math.abs(this.y - e.y) > this.radius) continue;
+
+                        const distSq = MathUtils.distSq(this.x, this.y, e.x, e.y);
+                        if (distSq < this.radiusSq && distSq > 100) { // Stop pulling if they are exactly in the center
+                            const angle = Math.atan2(this.y - e.y, this.x - e.x);
+                            
+                            // The closer they get to the center, the harder it pulls (Event Horizon effect)
+                            const intensity = 1 + (1 - (Math.sqrt(distSq) / this.radius));
+                            
+                            e.x += Math.cos(angle) * (this.pullStrength * intensity);
+                            e.y += Math.sin(angle) * (this.pullStrength * intensity);
+                            
+                            // Disrupt their current movement
+                            e.isSlowed = true;
+                        }
+                    }
                 }
             }
         }
 
         // Suck in particles for visual flair
         if (game.tick % 2 === 0) {
-            const spawnAngle = Math.random() * Math.PI * 2;
+            const spawnAngle = Math.random() * MathUtils.TWO_PI;
             const spawnDist = MathUtils.randomRange(100, this.radius);
             const px = this.x + Math.cos(spawnAngle) * spawnDist;
             const py = this.y + Math.sin(spawnAngle) * spawnDist;
@@ -70,11 +86,11 @@ class VortexEntity {
         grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
         
         ctx.fillStyle = grad;
-        ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, MathUtils.TWO_PI); ctx.fill();
         
         // The Singularity (Pure black center)
         ctx.fillStyle = '#000000';
-        ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(0, 0, 15, 0, MathUtils.TWO_PI); ctx.fill();
         
         ctx.restore();
     }
@@ -157,6 +173,7 @@ export const VoidWhispersExpansion = {
                 if (game.eco[data.team].dew >= 90) {
                     game.eco[data.team].dew -= 90;
                     game.bus.emit('playSound', 'death'); // Ominous rumble
+                    if (game.triggerShake) game.triggerShake(10); // Massive rumble
                     game.addEntity(new VortexEntity(data.x, data.y, data.team));
                 }
             }
@@ -199,33 +216,49 @@ export const VoidWhispersExpansion = {
                 if (!this.biteCooldown) this.biteCooldown = 0;
                 if (this.biteCooldown > 0) this.biteCooldown--;
 
-                // Constant gentle vacuum effect on nearby enemies
-                for (let i = 0; i < gameObj.entities.length; i++) {
-                    let e = gameObj.entities[i];
-                    
-                    // Only pull enemies (Units and Bosses)
-                    if (e.team && e.team !== this.team && e.hp > 0 && (e instanceof Spider || e.constructor.name === 'CentipedeBoss')) {
-                        if (Math.abs(this.x - e.x) > MAW_PULL_RADIUS || Math.abs(this.y - e.y) > MAW_PULL_RADIUS) continue;
+                // PERFORMANCE FIX: Spatial Grid Lookup!
+                const CELL_SIZE = 250;
+                const cx = Math.max(0, (this.x / CELL_SIZE) | 0);
+                const cy = Math.max(0, (this.y / CELL_SIZE) | 0);
 
-                        const distSq = MathUtils.distSq(this.x, this.y, e.x, e.y);
+                for (let nx = cx - 1; nx <= cx + 1; nx++) {
+                    if (nx < 0) continue;
+                    for (let ny = cy - 1; ny <= cy + 1; ny++) {
+                        if (ny < 0) continue;
                         
-                        if (distSq < MAW_PULL_RADIUS_SQ) {
-                            // Pull them in
-                            const pullAngle = Math.atan2(this.y - e.y, this.x - e.x);
-                            e.x += Math.cos(pullAngle) * 0.8;
-                            e.y += Math.sin(pullAngle) * 0.8;
+                        const key = (nx << 16) | ny;
+                        const cell = gameObj.spatialGrid.get(key);
+                        if (!cell) continue;
+
+                        for (let i = 0; i < cell.length; i++) {
+                            let e = cell[i];
                             
-                            // If they reach the center, CHOMP!
-                            if (distSq < MAW_BITE_RADIUS_SQ && this.biteCooldown <= 0) {
-                                e.hp -= 200; // Massive damage
-                                this.biteCooldown = 90; // 3 seconds to chew
+                            // Only pull enemies (Units and Bosses)
+                            if (e.team && e.team !== this.team && e.hp > 0 && (e instanceof Spider || e.constructor.name === 'CentipedeBoss')) {
+                                if (Math.abs(this.x - e.x) > MAW_PULL_RADIUS || Math.abs(this.y - e.y) > MAW_PULL_RADIUS) continue;
+
+                                const distSq = MathUtils.distSq(this.x, this.y, e.x, e.y);
                                 
-                                gameObj.bus.emit('playSound', 'death');
-                                gameObj.bus.emit('particles', {x: this.x, y: this.y, color: '#ff0000', count: 30});
-                                
-                                // Bosses are too big, they damage the maw when bitten
-                                if (e.constructor.name === 'CentipedeBoss') {
-                                    this.hp -= 50; 
+                                if (distSq < MAW_PULL_RADIUS_SQ) {
+                                    // Pull them in
+                                    const pullAngle = Math.atan2(this.y - e.y, this.x - e.x);
+                                    e.x += Math.cos(pullAngle) * 0.8;
+                                    e.y += Math.sin(pullAngle) * 0.8;
+                                    
+                                    // If they reach the center, CHOMP!
+                                    if (distSq < MAW_BITE_RADIUS_SQ && this.biteCooldown <= 0) {
+                                        e.hp -= 200; // Massive damage
+                                        this.biteCooldown = 90; // 3 seconds to chew
+                                        
+                                        if (gameObj.triggerShake) gameObj.triggerShake(5);
+                                        gameObj.bus.emit('playSound', 'death');
+                                        gameObj.bus.emit('particles', {x: this.x, y: this.y, color: '#ff0000', count: 30});
+                                        
+                                        // Bosses are too big, they damage the maw when bitten
+                                        if (e.constructor.name === 'CentipedeBoss') {
+                                            this.hp -= 50; 
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -252,6 +285,12 @@ export const VoidWhispersExpansion = {
         });
         
         game.expansions.patchClass(Structure, 'draw', function(original, ctx) {
+            // Sprite Caching Link
+            if (this.type === 'maw' && !this.spriteLoaded && game.assets) {
+                this.sprite = game.assets.get(`assets/${this.type}_${this.team}.png`);
+                if (this.sprite) this.spriteLoaded = true;
+            }
+
             original.call(this, ctx);
 
             // Canvas fallback for The Maw
@@ -261,7 +300,7 @@ export const VoidWhispersExpansion = {
                 // Pulsing outer flesh ring
                 const pulse = Math.sin(game.tick * 0.1) * 3;
                 ctx.fillStyle = '#220022'; 
-                ctx.beginPath(); ctx.arc(0, 0, this.size + pulse, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(0, 0, this.size + pulse, 0, MathUtils.TWO_PI); ctx.fill();
                 
                 // Teeth/Spikes pointing inwards
                 ctx.fillStyle = '#dddddd';
@@ -272,7 +311,7 @@ export const VoidWhispersExpansion = {
                 
                 // Black hole center
                 ctx.fillStyle = '#000000';
-                ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(0, 0, 15, 0, MathUtils.TWO_PI); ctx.fill();
                 
                 ctx.restore();
             }
