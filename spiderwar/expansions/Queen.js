@@ -9,15 +9,13 @@ const QUEEN_CONFIG = {
     damage: 40,
     speed: 0.8,
     size: 28,
-    attackSpeed: 30, // Swings once per second
-    aggroRadius: 200, // Will defend herself if enemies get this close
+    attackSpeed: 30,  // Swings once per second
+    aggroRadius: 100, // PERFORMANCE FIX: Reduced from 200. She only bites if you get right in her face!
     
     // Crimson Swarm AI Triggers
     aiAttackTick: 9000, // ~5 mins (When she decides to lead the charge)
     aiAttackPop: 40     // If her swarm gets this big, she attacks early
 };
-
-const TWO_PI = Math.PI * 2;
 
 // ==========================================
 // 2. THE QUEEN ENTITY
@@ -59,10 +57,10 @@ export class Queen extends Spider {
             // Face the enemy
             this.angle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
             
-            const combatRange = nearestEnemy.size ? nearestEnemy.size + this.size : this.size + 10;
+            const combatRangeSq = (nearestEnemy.size ? nearestEnemy.size + this.size : this.size + 10) ** 2;
             const distSq = MathUtils.distSq(this.x, this.y, nearestEnemy.x, nearestEnemy.y);
             
-            if (distSq <= combatRange * combatRange) {
+            if (distSq <= combatRangeSq) {
                 if (this.cooldown <= 0) {
                     nearestEnemy.hp -= this.damage + (game.techLevel[this.team] * 5 || 0);
                     this.cooldown = QUEEN_CONFIG.attackSpeed;
@@ -71,8 +69,11 @@ export class Queen extends Spider {
                     this.x -= Math.cos(this.angle) * 15; 
                     this.y -= Math.sin(this.angle) * 15; 
                     
+                    // JUICE: Massive hit impact!
+                    if (game.triggerShake) game.triggerShake(5);
                     const magicColor = this.team === 'black' ? '#aa00ff' : '#ff0000';
-                    game.bus.emit('particles', {x: nearestEnemy.x, y: nearestEnemy.y, color: magicColor, count: 10}); 
+                    game.bus.emit('particles', {x: nearestEnemy.x, y: nearestEnemy.y, color: magicColor, count: 15}); 
+                    game.bus.emit('particles', {x: nearestEnemy.x, y: nearestEnemy.y, color: '#ff0000', count: 10, type: 'splatter'}); 
                     game.bus.emit('playSound', 'harvest'); // Squish
                 }
                 return; // Stop moving if locked in melee combat
@@ -92,8 +93,9 @@ export class Queen extends Spider {
                     
                     // Lead the final assault! (PERFORMANCE FIX: No .filter allocation)
                     let targetNest = null;
-                    for (let i = 0; i < game.structures.length; i++) {
-                        let s = game.structures[i];
+                    const structs = game.structures; // Cache getter
+                    for (let i = 0; i < structs.length; i++) {
+                        let s = structs[i];
                         if (s.team === 'black' && s.type === 'nest' && s.hp > 0) {
                             targetNest = s; break;
                         }
@@ -104,8 +106,9 @@ export class Queen extends Spider {
                     
                     // Defend own base - Patrol around the Red Nest (PERFORMANCE FIX: No .filter allocation)
                     let homeNest = null;
-                    for (let i = 0; i < game.structures.length; i++) {
-                        let s = game.structures[i];
+                    const structs = game.structures; // Cache getter
+                    for (let i = 0; i < structs.length; i++) {
+                        let s = structs[i];
                         if (s.team === 'red' && s.type === 'nest' && s.hp > 0) {
                             homeNest = s; break;
                         }
@@ -150,12 +153,28 @@ export class Queen extends Spider {
         this.isSlowed = false; 
         
         // Ensure the Queen never walks off the map
-        this.x = MathUtils.clamp(this.x, this.size, game.world.width - this.size);
-        this.y = MathUtils.clamp(this.y, this.size, game.world.height - this.size);
+        const bnd = this.size * 2;
+        this.x = MathUtils.clamp(this.x, bnd, game.world.width - bnd);
+        this.y = MathUtils.clamp(this.y, bnd, game.world.height - bnd);
     }
 
     draw(ctx) {
-        super.draw(ctx);
+        ctx.save(); 
+        ctx.translate(this.x, this.y); 
+        ctx.rotate(this.angle); 
+        
+        // ASPECT RATIO FIX: Queen sprites can now be rectangular!
+        if (this.imageLoaded && this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) { 
+            const aspect = this.sprite.naturalWidth / this.sprite.naturalHeight;
+            const drawH = this.size * 2;
+            const drawW = drawH * aspect;
+            ctx.drawImage(this.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
+        } else {
+            // Fallback drawing
+            ctx.fillStyle = this.team; ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
+            ctx.fillStyle = 'white'; ctx.fillRect(this.size/2, -3, 4, 6);
+        }
+        ctx.restore();
         
         // Draw the tactical command line for the player (Obsidian Brood)
         if (this.team === 'black' && this.commandTarget) {
@@ -175,7 +194,7 @@ export class Queen extends Spider {
             // Target Reticle
             ctx.setLineDash([]); 
             ctx.beginPath(); 
-            ctx.arc(this.commandTarget.x, this.commandTarget.y, 10, 0, TWO_PI); 
+            ctx.arc(this.commandTarget.x, this.commandTarget.y, 10, 0, MathUtils.TWO_PI); 
             ctx.stroke();
             
             ctx.restore();
@@ -196,11 +215,11 @@ export const QueenExpansion = {
 
         // Hook for UI/Control Commands
         game.bus.on('commandQueen', (data) => {
-            // PERFORMANCE FIX: Loop instead of .find()
+            // PERFORMANCE FIX: Clean loop instead of array GC allocation
             let targetQueen = null;
-            for (let i = 0; i < game.queens.length; i++) {
-                if (game.queens[i].team === data.team) {
-                    targetQueen = game.queens[i];
+            for (let i = 0; i < game.entities.length; i++) {
+                if (game.entities[i].role === 'queen' && game.entities[i].team === data.team) {
+                    targetQueen = game.entities[i];
                     break;
                 }
             }
@@ -216,11 +235,13 @@ export const QueenExpansion = {
             if (this.gameState === 'playing' && this.tick === 2 && !this.queensSpawned) {
                 this.queensSpawned = true;
                 
-                // PERFORMANCE FIX: Loop instead of multiple .find() calls
+                // PERFORMANCE FIX: Clean loop instead of multiple filter/find allocations
                 let bNest = null;
                 let rNest = null;
-                for (let i = 0; i < this.structures.length; i++) {
-                    let s = this.structures[i];
+                
+                const structs = this.structures; // Cache
+                for (let i = 0; i < structs.length; i++) {
+                    let s = structs[i];
                     if (s.type === 'nest') {
                         if (s.team === 'black' && !bNest) bNest = s;
                         else if (s.team === 'red' && !rNest) rNest = s;
