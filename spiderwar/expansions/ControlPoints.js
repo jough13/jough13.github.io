@@ -4,7 +4,8 @@ import { MathUtils, Structure } from '../game.js';
 // ==========================================
 // 1. CONFIGURATION & BALANCING
 // ==========================================
-const CP_CONFIG = {
+// [EXPANDABILITY] Exported so other mods can tweak the point values and capture logic
+export const CP_CONFIG = {
     size: 45,
     captureRadius: 350,
     captureRadiusSq: 122500,  // 350^2 precalculated for fast math
@@ -34,13 +35,17 @@ const TWO_PI = Math.PI * 2;
 // ==========================================
 export class JackOLantern {
     constructor(x, y) {
+        this.id = Math.random().toString(36).substring(2, 11);
         this.x = x; this.y = y; 
         this.size = CP_CONFIG.size; 
         this.captureRadius = CP_CONFIG.captureRadius;
         
         this.controllingTeam = null; 
         this.captureProgress = 0; // 0 to 100
-        this.age = 0; // Deterministic animation timer
+        this.isContested = false; // [FIX] Tracks stalemate states
+        this.age = parseInt(this.id, 36) % 100; // Deterministic animation offset
+        
+        this.tethers = []; // [JUICE] Stores linked structures for visual beams
         
         // Sprite will be pulled instantly from RAM cache on Tick 1 of its life
         this.sprite = null;
@@ -53,12 +58,13 @@ export class JackOLantern {
         }
 
         this.age++;
+        this.tethers.length = 0; // Reset visual links every frame
 
         // 1. Calculate structural dominance inside the capture radius
         let blackScore = 0;
         let redScore = 0;
 
-        // PERFORMANCE FIX: Cache the getter so we don't run an array filter 60 times a second!
+        // [PERFORMANCE] Cache the getter so we don't run an array filter 60 times a second!
         const structs = game.structures;
 
         for (let i = 0; i < structs.length; i++) {
@@ -67,7 +73,7 @@ export class JackOLantern {
             // Fast early exits: Structure must be alive and fully built
             if (s.hp <= 0 || s.isConstructing) continue;
             
-            // PERFORMANCE FIX: Fast AABB check skips expensive math for distant buildings
+            // Fast AABB check skips expensive math for distant buildings
             if (Math.abs(this.x - s.x) > this.captureRadius || Math.abs(this.y - s.y) > this.captureRadius) continue;
 
             if (MathUtils.distSq(this.x, this.y, s.x, s.y) <= CP_CONFIG.captureRadiusSq) {
@@ -77,13 +83,19 @@ export class JackOLantern {
 
                 if (s.team === 'black') blackScore += weight;
                 if (s.team === 'red') redScore += weight;
+                
+                // [JUICE] Store reference to draw a magical tether to this building!
+                this.tethers.push(s);
             }
         }
 
         // 2. Determine dominance
         let dominantTeam = null;
+        this.isContested = false;
+        
         if (blackScore > redScore) dominantTeam = 'black';
         else if (redScore > blackScore) dominantTeam = 'red';
+        else if (blackScore > 0 && redScore > 0) this.isContested = true; // [FIX] Detect exact stalemates
 
         // 3. Capture Logic
         if (dominantTeam) {
@@ -94,12 +106,15 @@ export class JackOLantern {
                     this.controllingTeam = dominantTeam;
                     this.captureProgress = 100;
                     
-                    // JUICE: Massive visual feedback when a point is secured!
-                    if (game.triggerShake) game.triggerShake(5); 
+                    // [JUICE] Massive visual feedback when a point is secured!
+                    if (game.triggerShake) game.triggerShake(8); 
                     game.bus.emit('playSound', 'spell');
                     const magicColor = dominantTeam === 'black' ? '#aa00ff' : '#ff0000';
                     game.bus.emit('particles', {x: this.x, y: this.y, color: magicColor, count: 50});
                     game.bus.emit('particles', {x: this.x, y: this.y, color: '#ffffff', count: 20});
+                    
+                    // Spawn a ring effect to signify capture wave
+                    game.bus.emit('particles', {x: this.x, y: this.y, color: magicColor, count: 1, type: 'ring'});
                 }
             }
         } else if (blackScore === 0 && redScore === 0) {
@@ -113,29 +128,57 @@ export class JackOLantern {
             game.eco[this.controllingTeam].pumpkins += CP_CONFIG.incomePumpkins;
             game.eco[this.controllingTeam].dew += CP_CONFIG.incomeDew;
             
-            // Visual indicator of income
-            game.bus.emit('particles', {x: this.x, y: this.y - this.size, color: '#ff9d00', count: 2});
+            // [JUICE] Visual indicator of income popping out of the pumpkin
+            game.bus.emit('particles', {x: this.x, y: this.y - this.size, color: '#ff9d00', count: 3, type: 'magic'});
         }
     }
 
-    draw(ctx) {
+    draw(ctx, game) {
         ctx.save(); 
-        ctx.translate(this.x, this.y);
+        
+        // [JUICE] Draw magical tethers connecting to capturing structures FIRST (so they render under the pumpkin)
+        if (this.tethers.length > 0) {
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.lineDashOffset = -this.age * 0.5; // Flowing energy effect
+            
+            for (let i = 0; i < this.tethers.length; i++) {
+                let s = this.tethers[i];
+                ctx.strokeStyle = s.team === 'black' ? 'rgba(170, 0, 255, 0.4)' : 'rgba(255, 0, 0, 0.4)';
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(s.x, s.y);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]); // Reset
+        }
+        
+        // [JUICE] Smooth hovering animation
+        const floatY = Math.sin(this.age * 0.05) * 4;
+        ctx.translate(this.x, this.y + floatY);
 
         // 1. Draw Capture Radius Ring
         ctx.strokeStyle = 'rgba(255, 157, 0, 0.2)'; // Neutral
         if (this.controllingTeam === 'black') ctx.strokeStyle = 'rgba(170, 0, 255, 0.4)';
         if (this.controllingTeam === 'red') ctx.strokeStyle = 'rgba(255, 0, 0, 0.4)';
         
+        // [JUICE] Flash the ring aggressively if the point is actively contested!
+        if (this.isContested && this.age % 20 < 10) {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        }
+        
         ctx.lineWidth = 4;
         ctx.setLineDash([15, 15]);
         ctx.lineDashOffset = -this.age * 0.5; // Deterministic rotating dash effect
-        ctx.beginPath(); ctx.arc(0, 0, this.captureRadius, 0, TWO_PI); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, -floatY, this.captureRadius, 0, TWO_PI); ctx.stroke();
         ctx.setLineDash([]); // Reset for other draw calls
 
         // 2. Draw the Jack-O'-Lantern
         if (this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) {
+            // [JUICE] Add a dark drop shadow so it pops off the map
+            ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 5;
             ctx.drawImage(this.sprite, -this.size, -this.size, this.size*2, this.size*2);
+            ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; // Reset
         } else {
             // Fallback Drawing
             ctx.fillStyle = '#cc5500'; 
@@ -174,6 +217,9 @@ export const ControlPointsExpansion = {
     init: (game) => {
         game.controlPointsSpawned = false;
         
+        // [EXPANDABILITY] Export config to the engine
+        game.cpConfig = CP_CONFIG;
+        
         // --- ASSET REGISTRY ---
         game.assets.register('assets/jackolantern.png');
     },
@@ -206,7 +252,7 @@ export const ControlPointsExpansion = {
 
         // Minimap Integration
         game.bus.on('uiDraw', (ctx) => {
-            // SAFETY FIX: Decouple from UI/Minimap expansions so it doesn't crash if they are missing
+            // [FIX] Decouple from UI/Minimap expansions so it doesn't crash if they are missing
             if (game.gameState !== 'playing' || !game.mapGrid || !game.minimap) return;
             
             const size = game.minimap.size; 
@@ -225,10 +271,19 @@ export const ControlPointsExpansion = {
                     if (j.controllingTeam === 'black') color = '#aa00ff'; // Obsidian Brood
                     if (j.controllingTeam === 'red') color = '#ff0000';   // Crimson Swarm
                     
+                    const drawX = startX + (j.x * scaleX);
+                    const drawY = startY + (j.y * scaleY);
+
+                    // [JUICE] Active capturing pulses on the minimap!
+                    if (j.captureProgress > 0 && j.captureProgress < 100) {
+                        const pulseRad = 5 + Math.sin(game.tick * 0.2) * 3;
+                        ctx.fillStyle = j.isContested ? 'rgba(255,255,255,0.5)' : `rgba(255, 157, 0, 0.5)`;
+                        ctx.beginPath(); ctx.arc(drawX, drawY, pulseRad, 0, TWO_PI); ctx.fill();
+                    }
+                    
                     ctx.fillStyle = color;
                     ctx.beginPath();
-                    // Using pre-calculated startX/startY instead of doing the math over and over!
-                    ctx.arc(startX + (j.x * scaleX), startY + (j.y * scaleY), 5, 0, TWO_PI);
+                    ctx.arc(drawX, drawY, 5, 0, TWO_PI);
                     ctx.fill();
                     ctx.strokeStyle = '#000'; 
                     ctx.lineWidth = 1; 
