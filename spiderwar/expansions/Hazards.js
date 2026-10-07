@@ -8,12 +8,10 @@ const HAZARD_CONFIG = {
     flytrapCount: 30,
     flytrapDamage: 200,      // Massive damage, instantly kills most basic units
     flytrapCooldown: 300,    // 10 seconds of "digestion" sleep
-    flytrapRadius: 50,       // Pre-calculated for fast AABB math
+    flytrapRadius: 50,       // Used for Spatial Grid lookup
     flytrapRadiusSq: 2500,   // 50px trigger radius
     flytrapHp: 300           // Tough enough to require a small squad to clear
 };
-
-const TWO_PI = Math.PI * 2;
 
 // ==========================================
 // 2. THE VENUS FLYTRAP ENTITY
@@ -36,7 +34,7 @@ export class VenusFlytrap {
 
     update(game) {
         // --- ASSET MANAGER CACHE LINKING ---
-        if (!this.spriteOpen) {
+        if (!this.spriteOpen && game.assets) {
             this.spriteOpen = game.assets.get('assets/flytrap_open.png');
             this.spriteClosed = game.assets.get('assets/flytrap_closed.png');
         }
@@ -55,31 +53,23 @@ export class VenusFlytrap {
         }
         
         // 2. Ambush / Hunting Phase
-        const radius = HAZARD_CONFIG.flytrapRadius;
+        // PERFORMANCE FIX: Use the Spatial Grid to only check units physically nearby!
+        let prey = game.getNearestEnemy(this.x, this.y, this.team, HAZARD_CONFIG.flytrapRadius);
         
-        for (let i = 0; i < game.entities.length; i++) {
-            let e = game.entities[i];
-            
-            // Fast early exits: Ignore dead, un-targetable, nature team, and non-spider entities
-            if (!e.team || e.team === 'nature' || e.hp === undefined || e.hp <= 0) continue;
-            
-            if (e instanceof Spider) { 
+        if (prey && prey instanceof Spider) {
+            // Check exact circle collision for the bite
+            if (MathUtils.distSq(this.x, this.y, prey.x, prey.y) < HAZARD_CONFIG.flytrapRadiusSq) {
                 
-                // PERFORMANCE FIX: Fast AABB check skips expensive circle math for distant bugs
-                if (Math.abs(this.x - e.x) > radius || Math.abs(this.y - e.y) > radius) continue;
-
-                if (MathUtils.distSq(this.x, this.y, e.x, e.y) < HAZARD_CONFIG.flytrapRadiusSq) { 
-                    
-                    e.hp -= HAZARD_CONFIG.flytrapDamage; // CHOMP!
-                    this.cooldown = HAZARD_CONFIG.flytrapCooldown; // Go to sleep
-                    
-                    // Violent blood and acid splatter
-                    game.bus.emit('particles', {x: this.x, y: this.y, color: '#ff0000', count: 15});
-                    game.bus.emit('particles', {x: this.x, y: this.y, color: '#55ff55', count: 10});
-                    game.bus.emit('playSound', 'death');
-                    
-                    break; // Only eat one bug at a time!
-                }
+                prey.hp -= HAZARD_CONFIG.flytrapDamage; // CHOMP!
+                this.cooldown = HAZARD_CONFIG.flytrapCooldown; // Go to sleep
+                
+                // JUICE: The snap of the jaw shakes the screen!
+                if (game.triggerShake) game.triggerShake(4);
+                game.bus.emit('playSound', 'death');
+                
+                // Violent blood and acid splatter
+                game.bus.emit('particles', {x: this.x, y: this.y, color: '#ff0000', count: 15});
+                game.bus.emit('particles', {x: this.x, y: this.y, color: '#55ff55', count: 10});
             }
         }
     }
@@ -110,10 +100,10 @@ export class VenusFlytrap {
         } else {
             // Fallback drawing if sprites are missing
             ctx.fillStyle = isOpen ? '#55ff55' : '#335533';
-            ctx.beginPath(); ctx.arc(0, 0, this.size, 0, TWO_PI); ctx.fill();
+            ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
             if (isOpen) { 
                 ctx.fillStyle = 'red'; 
-                ctx.beginPath(); ctx.arc(0, 0, 8, 0, TWO_PI); ctx.fill(); 
+                ctx.beginPath(); ctx.arc(0, 0, 8, 0, MathUtils.TWO_PI); ctx.fill(); 
             }
         }
         ctx.restore();
