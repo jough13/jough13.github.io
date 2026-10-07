@@ -6,7 +6,6 @@ import { Aphid, GoldenBug } from './Critters.js';
 // 1. CONFIGURATION & AI BALANCING
 // ==========================================
 
-// Global Map Setup Constants
 const MAP_CONFIG = {
     pad: 600,                 // Safe distance from map edges for base spawning
     exclusionRadiusSq: 90000  // 300px squared exclusion zone for resource spawning around bases
@@ -31,7 +30,6 @@ export const AI_PROFILES = {
     }
 };
 
-// AI Escalation Pools (Incorporating all the new DLC Units and Buildings!)
 const AI_POOLS = {
     units: {
         phase1: ['harvester', 'harvester', 'soldier', 'tick'],
@@ -47,7 +45,6 @@ const AI_POOLS = {
     }
 };
 
-// Centralized building costs for AI budget checks
 const BUILD_COSTS = {
     'nest': {p: 150, d: 0}, 'eggsac': {p: 50, d: 0}, 'pylon': {p: 25, d: 0}, 
     'turret': {p: 100, d: 0}, 'wall': {p: 25, d: 0}, 'extractor': {p: 100, d: 0},
@@ -59,6 +56,15 @@ export const AdvancedBaseExpansion = {
     init: (game) => {
         game.basesInitialized = false;
         if (!game.aiDifficulty) game.aiDifficulty = 'normal'; 
+        
+        // [EXPANDABILITY] Expose configuration to the game instance so other mods can inject into the AI!
+        game.aiConfig = {
+            profiles: AI_PROFILES,
+            pools: AI_POOLS,
+            buildCosts: BUILD_COSTS,
+            activeUnitPool: [...AI_POOLS.units.phase1],
+            activeBuildPool: [...AI_POOLS.buildings.phase1]
+        };
     },
 
     patch: (game) => {
@@ -67,7 +73,7 @@ export const AdvancedBaseExpansion = {
 
             if (this.gameState !== 'playing') return;
 
-            const ai = AI_PROFILES[this.aiDifficulty] || AI_PROFILES.normal;
+            const ai = this.aiConfig.profiles[this.aiDifficulty] || this.aiConfig.profiles.normal;
 
             // ==========================================
             // 2. ONE-TIME BASE & MAP GENERATION (Tick 1)
@@ -89,8 +95,19 @@ export const AdvancedBaseExpansion = {
                     const tRX = Math.max(0, (rX / tileSize) | 0); 
                     const tRY = Math.max(0, (rY / tileSize) | 0);
                     
-                    if(this.mapGrid[tBY] && this.mapGrid[tBY][tBX]) this.mapGrid[tBY][tBX] = { type: 'dirt', sprite: 'dirt', angle: 0 };
-                    if(this.mapGrid[tRY] && this.mapGrid[tRY][tRX]) this.mapGrid[tRY][tRX] = { type: 'dirt', sprite: 'dirt', angle: 0 };
+                    // [JUICE/FIX] Carve out a 2x2 grid of solid dirt for the bases so they don't clip water edges
+                    const carveDirt = (tx, ty) => {
+                        for(let x=0; x<=1; x++) {
+                            for(let y=0; y<=1; y++) {
+                                if(this.mapGrid[ty+y] && this.mapGrid[ty+y][tx+x]) {
+                                    this.mapGrid[ty+y][tx+x] = { type: 'dirt', sprite: 'dirt', angle: 0, drawX: (tx+x)*tileSize, drawY: (ty+y)*tileSize };
+                                }
+                            }
+                        }
+                    };
+                    
+                    carveDirt(tBX, tBY);
+                    carveDirt(tRX, tRY);
                     
                     if (this.updateBitmasks) this.updateBitmasks();
                 }
@@ -121,15 +138,15 @@ export const AdvancedBaseExpansion = {
                     for (let attempts = 0; attempts < 5 && !valid; attempts++) {
                         pX = 600 + Math.random() * (this.world.width - 1200); 
                         pY = 600 + Math.random() * (this.world.height - 1200);
-                        if (!isTooCloseToBase(pX, pY)) valid = true;
+                        if (!isTooCloseToBase(pX, pY) && this.getTerrainAt(pX, pY) !== 'water') valid = true;
                     }
 
                     if (valid) {
                         let clusterSize = MathUtils.randomInt(5, 10);
                         for (let p = 0; p < clusterSize; p++) {
                             this.addEntity(new ResourceNode(
-                                pX + MathUtils.randomRange(-150, 150), 
-                                pY + MathUtils.randomRange(-150, 150), 
+                                MathUtils.clamp(pX + MathUtils.randomRange(-150, 150), 0, this.world.width), 
+                                MathUtils.clamp(pY + MathUtils.randomRange(-150, 150), 0, this.world.height), 
                                 'pumpkin'
                             ));
                         }
@@ -142,7 +159,7 @@ export const AdvancedBaseExpansion = {
                     for (let attempts = 0; attempts < 5 && !valid; attempts++) {
                         dX = Math.random() * this.world.width; 
                         dY = Math.random() * this.world.height;
-                        if (!isTooCloseToBase(dX, dY)) valid = true;
+                        if (!isTooCloseToBase(dX, dY) && this.getTerrainAt(dX, dY) !== 'water') valid = true;
                     }
                     if (valid) this.addEntity(new ResourceNode(dX, dY, 'dew')); 
                 }
@@ -164,6 +181,20 @@ export const AdvancedBaseExpansion = {
             // 3. CRIMSON SWARM AI: DYNAMIC ESCALATION
             // ==========================================
             
+            // Phase Escalation (Triggers once per phase transition)
+            if (this.tick === ai.phase2Tick) {
+                this.aiConfig.activeUnitPool.push(...this.aiConfig.pools.units.phase2);
+                this.aiConfig.activeBuildPool.push(...this.aiConfig.pools.buildings.phase2);
+            }
+            if (this.tick === ai.phase3Tick) {
+                this.aiConfig.activeUnitPool.push(...this.aiConfig.pools.units.phase3);
+                this.aiConfig.activeBuildPool.push(...this.aiConfig.pools.buildings.phase3);
+            }
+            if (this.tick === ai.phase4Tick) {
+                this.aiConfig.activeUnitPool.push(...this.aiConfig.pools.units.phase4);
+                this.aiConfig.activeBuildPool.push(...this.aiConfig.pools.buildings.phase4);
+            }
+
             // Unit Spawning Loop
             if (this.tick % ai.unitTickRate === 0) {
                 
@@ -176,14 +207,7 @@ export const AdvancedBaseExpansion = {
                 
                 if (redNests.length > 0 && this.pop.red < this.maxPop.red) {
                     let nest = redNests[MathUtils.randomInt(0, redNests.length - 1)];
-                    
-                    // Build active pool based on current phase
-                    let activePool = [...AI_POOLS.units.phase1];
-                    if (this.tick > ai.phase2Tick) activePool.push(...AI_POOLS.units.phase2);
-                    if (this.tick > ai.phase3Tick) activePool.push(...AI_POOLS.units.phase3);
-                    if (this.tick > ai.phase4Tick) activePool.push(...AI_POOLS.units.phase4);
-                    
-                    let chosenRole = activePool[MathUtils.randomInt(0, activePool.length - 1)];
+                    let chosenRole = this.aiConfig.activeUnitPool[MathUtils.randomInt(0, this.aiConfig.activeUnitPool.length - 1)];
 
                     this.bus.emit('spawnSpider', {
                         x: nest.x, y: nest.y, 
@@ -218,7 +242,7 @@ export const AdvancedBaseExpansion = {
                 }
 
                 if (!upgradedTech) {
-                    // PERFORMANCE FIX: Clean for-loop instead of .find()
+                    // PERFORMANCE FIX: Clean for-loop
                     let redQueen = null;
                     for (let i = 0; i < this.entities.length; i++) {
                         if (this.entities[i].team === 'red' && this.entities[i].role === 'queen') {
@@ -228,30 +252,36 @@ export const AdvancedBaseExpansion = {
                     
                     if (redQueen && redQueen.hp > 0 && !redQueen.activeConstruction && !redQueen.buildTarget) {
                         
-                        // Build active building pool based on current phase
-                        let activeBuildPool = [...AI_POOLS.buildings.phase1];
-                        if (this.tick > ai.phase2Tick) activeBuildPool.push(...AI_POOLS.buildings.phase2);
-                        if (this.tick > ai.phase3Tick) activeBuildPool.push(...AI_POOLS.buildings.phase3);
-                        if (this.tick > ai.phase4Tick) activeBuildPool.push(...AI_POOLS.buildings.phase4);
-                        
-                        const type = activeBuildPool[MathUtils.randomInt(0, activeBuildPool.length - 1)];
-                        let cost = BUILD_COSTS[type];
+                        const type = this.aiConfig.activeBuildPool[MathUtils.randomInt(0, this.aiConfig.activeBuildPool.length - 1)];
+                        let cost = this.aiConfig.buildCosts[type];
                         
                         if (cost && this.eco.red.pumpkins >= cost.p && this.eco.red.dew >= cost.d) {
                             
-                            const bX = MathUtils.clamp(redQueen.x + MathUtils.randomRange(-350, 350), 100, this.world.width - 100);
-                            const bY = MathUtils.clamp(redQueen.y + MathUtils.randomRange(-350, 350), 100, this.world.height - 100);
+                            // [FIX] Give the AI 5 attempts to find a valid spot (Not overlapping, not in water)
+                            let bX, bY, validSpot = false;
                             
-                            // PERFORMANCE FIX: Clean for-loop instead of .some()
-                            let isOverlapping = false;
-                            for (let i = 0; i < this.structures.length; i++) {
-                                let s = this.structures[i];
-                                if (MathUtils.distSq(s.x, s.y, bX, bY) < ((s.size * 2) * (s.size * 2))) {
-                                    isOverlapping = true; break;
+                            for (let attempts = 0; attempts < 5; attempts++) {
+                                bX = MathUtils.clamp(redQueen.x + MathUtils.randomRange(-350, 350), 100, this.world.width - 100);
+                                bY = MathUtils.clamp(redQueen.y + MathUtils.randomRange(-350, 350), 100, this.world.height - 100);
+                                
+                                // Red AI cannot build in water
+                                if (this.getTerrainAt(bX, bY) === 'water') continue;
+
+                                let isOverlapping = false;
+                                for (let i = 0; i < this.structures.length; i++) {
+                                    let s = this.structures[i];
+                                    if (MathUtils.distSq(s.x, s.y, bX, bY) < ((s.size * 2) * (s.size * 2))) {
+                                        isOverlapping = true; break;
+                                    }
+                                }
+
+                                if (!isOverlapping) {
+                                    validSpot = true;
+                                    break;
                                 }
                             }
 
-                            if (!isOverlapping) {
+                            if (validSpot) {
                                 this.bus.emit('buildStructure', { x: bX, y: bY, team: 'red', type: type });
                             }
                         }
