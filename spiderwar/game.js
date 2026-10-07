@@ -77,7 +77,6 @@ export const UNIT_DATA = {
 export const STRUCTURE_DATA = {
     nest:   { hp: 200, size: 40, territory: 400 },
     eggsac: { hp: 200, size: 25, territory: 0 },
-    // WE ADDED THE TRAIT TO THE TURRET!
     turret: { hp: 200, size: 20, territory: 0, traits: ['siege_attacker'] }, 
     wall:   { hp: 500, size: 35, territory: 0 },
     pylon:  { hp: 200, size: 18, territory: 250 }
@@ -202,7 +201,7 @@ export class Projectile {
             game.bus.emit('particles', {x: this.target.x, y: this.target.y, color: this.team==='black'?'#aa00ff':'#ffaa00', count: 10});
         } else {
             const dist = Math.sqrt(distSq);
-            if (dist > 0) { // Safety to prevent NaN interpolation
+            if (dist > 0) { 
                 this.x += (dx/dist) * this.speed; this.y += (dy/dist) * this.speed; 
                 
                 // JUICE: Small particle trail for projectiles!
@@ -232,7 +231,6 @@ export class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas'); 
         this.ctx = this.canvas.getContext('2d', { alpha: false }); 
-
         this.ctx.imageSmoothingEnabled = false; 
 
         this.bus = new GameBus(); 
@@ -490,11 +488,9 @@ export class Game {
                 
                 // --- PILLAR 1: POPULATE SPATIAL GRID ---
                 if (e.team) {
-                    // PERFORMANCE FIX: Swapped Math.floor for bitwise | 0
                     const cx = Math.max(0, (e.x / CELL_SIZE) | 0);
                     const cy = Math.max(0, (e.y / CELL_SIZE) | 0);
                     
-                    // MASSIVE PERFORMANCE FIX: Using bitwise integers for grid map keys entirely eliminates string GC thrashing!
                     const key = (cx << 16) | cy;
                     
                     let cell = this.spatialGrid.get(key);
@@ -504,23 +500,20 @@ export class Game {
             }
         }
 
-        // PERFORMANCE FIX: GC Leak cleanup before trimming length
-        for (let i = aliveCount; i < this.entities.length; i++) {
-            this.entities[i] = null; 
-        }
-
+        // Copy spawned entities over correctly
         let spawnedCount = this.entities.length - originalLength;
         for (let i = 0; i < spawnedCount; i++) {
             this.entities[aliveCount] = this.entities[originalLength + i];
             aliveCount++;
         }
+        
+        // Let JS native GC handle memory cleanup securely!
         this.entities.length = aliveCount;
     }
 
     getNearestEnemy(x, y, team, maxDist) {
         const CELL_SIZE = 250;
         
-        // PERFORMANCE FIX: Swapped Math.floor for bitwise | 0
         const minCx = ((x - maxDist) / CELL_SIZE) | 0;
         const maxCx = ((x + maxDist) / CELL_SIZE) | 0;
         const minCy = ((y - maxDist) / CELL_SIZE) | 0;
@@ -532,7 +525,6 @@ export class Game {
         for (let cx = minCx; cx <= maxCx; cx++) {
             for (let cy = minCy; cy <= maxCy; cy++) {
                 
-                // GC FIX: Same integer-based lookup matches the new populator above.
                 const key = (Math.max(0, cx) << 16) | Math.max(0, cy);
                 const cell = this.spatialGrid.get(key);
                 if (!cell) continue; 
@@ -579,7 +571,6 @@ export class Game {
         const viewT = this.camera.y - padding;
         const viewB = this.camera.y + this.canvas.height + padding;
 
-        // FIX: Reused renderList array to prevent GC (Garbage Collection) memory thrashing every frame!
         this.renderList.length = 0;
         
         for (let i = 0; i < this.entities.length; i++) {
