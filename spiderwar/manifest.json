@@ -1,0 +1,22 @@
+{
+  "name": "SpiderWars!",
+  "short_name": "SpiderWars",
+  "description": "Command the Obsidian Brood to victory against the Crimson Swarm!",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#050200",
+  "theme_color": "#050200",
+  "icons": [
+    {
+      "src": "assets/queen_black.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/queen_black.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
