@@ -25,6 +25,9 @@ export const SwarmDynamicsExpansion = {
             
             if (this.gameState !== 'playing') return;
 
+            // PERFORMANCE FIX: Cache object property locally for the massive loop
+            const cellSize = SWARM_CONFIG.cellSize;
+
             // 2. THE SWARM PHYSICS PASS
             for (let i = 0; i < this.entities.length; i++) {
                 let e = this.entities[i];
@@ -32,16 +35,16 @@ export const SwarmDynamicsExpansion = {
                 // Fast Early Exits: 
                 // Don't apply physics to dead things, buildings, projectiles, spells, or particles.
                 // We only want to move living, physical units (Spiders, Queens, Bosses, Critters)
-                if (!e.hp || e.hp <= 0 || e instanceof Structure || e.isConstructing) continue;
-                if (!e.size || e.damage === undefined && !e.fleeMultiplier) continue; 
+                if (e.hp === undefined || e.hp <= 0 || e instanceof Structure || e.isConstructing) continue;
+                if (!e.size || (e.damage === undefined && !e.fleeMultiplier)) continue; 
                 
                 let repX = 0;
                 let repY = 0;
                 let pushCount = 0;
 
-                // Find which spatial cell this unit is currently in
-                const cx = Math.max(0, Math.floor(e.x / SWARM_CONFIG.cellSize));
-                const cy = Math.max(0, Math.floor(e.y / SWARM_CONFIG.cellSize));
+                // PERFORMANCE FIX: Swapped Math.floor for Bitwise | 0
+                const cx = Math.max(0, (e.x / cellSize) | 0);
+                const cy = Math.max(0, (e.y / cellSize) | 0);
 
                 // 9-Cell Grid Scan (Checks current cell + all 8 surrounding neighbors)
                 for (let nx = cx - 1; nx <= cx + 1; nx++) {
@@ -61,18 +64,27 @@ export const SwarmDynamicsExpansion = {
                             // Don't collide with self, dead things, or non-physical spells/projectiles
                             if (other === e || !other.size || other.hp <= 0) continue;
                             if (other.active !== undefined && other.speed && !other.role) continue; // Skips projectiles
-                            if (other.captureRadius) continue; // Skips Control Points
+                            if (other.captureRadius !== undefined) continue; // Skips Control Points
 
-                            const dx = e.x - other.x;
-                            const dy = e.y - other.y;
-                            const distSq = (dx * dx) + (dy * dy);
+                            let dx = e.x - other.x;
+                            let dy = e.y - other.y;
+                            let distSq = (dx * dx) + (dy * dy);
                             
                             // Calculate exact touching distance
                             const desiredDist = e.size + other.size;
                             const desiredDistSq = desiredDist * desiredDist;
 
                             // If overlapping, calculate the repulsive force!
-                            if (distSq < desiredDistSq && distSq > 0.01) {
+                            if (distSq < desiredDistSq) {
+                                
+                                // PHYSICS POLISH (ANTI-STACKING): 
+                                // If units spawn on the exact same pixel (distSq is 0), push them apart randomly!
+                                if (distSq < 0.01) {
+                                    dx = (Math.random() - 0.5) * 2;
+                                    dy = (Math.random() - 0.5) * 2;
+                                    distSq = (dx * dx) + (dy * dy);
+                                }
+
                                 const dist = Math.sqrt(distSq);
                                 const overlap = desiredDist - dist;
                                 
