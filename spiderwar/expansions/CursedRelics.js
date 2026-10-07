@@ -111,15 +111,26 @@ export const CursedRelicsExpansion = {
                 if (this.zapCooldown <= 0) {
                     let enemy = gameObj.getNearestEnemy(this.x, this.y, this.team, 300);
                     if (enemy) {
-                        // Instant ZAP damage
-                        enemy.hp -= 75 + ((gameObj.techLevel[this.team]||0) * 10);
+                        const baseDamage = 75 + ((gameObj.techLevel[this.team]||0) * 10);
+                        enemy.hp -= baseDamage;
                         this.zapCooldown = 90; // 3 second reload
                         
                         gameObj.bus.emit('playSound', 'shoot');
                         gameObj.bus.emit('particles', {x: enemy.x, y: enemy.y, color: '#ffffff', count: 10});
                         
+                        // JUICE: Chain Lightning! Find a secondary target near the primary target
+                        let secondaryEnemy = gameObj.getNearestEnemy(enemy.x, enemy.y, this.team, 100);
+                        let chainVisual = null;
+                        
+                        // Ensure it doesn't just hit the exact same bug twice
+                        if (secondaryEnemy && secondaryEnemy !== enemy) {
+                            secondaryEnemy.hp -= (baseDamage * 0.5); // Half damage on the bounce
+                            gameObj.bus.emit('particles', {x: secondaryEnemy.x, y: secondaryEnemy.y, color: '#aa00ff', count: 5});
+                            chainVisual = { x: secondaryEnemy.x, y: secondaryEnemy.y };
+                        }
+
                         // Store the target coordinate briefly so the draw function can render the lightning bolt!
-                        this.zapVisual = { x: enemy.x, y: enemy.y, timer: 8 }; 
+                        this.zapVisual = { x: enemy.x, y: enemy.y, timer: 8, chain: chainVisual }; 
                     }
                 }
             }
@@ -127,6 +138,13 @@ export const CursedRelicsExpansion = {
 
         // 6. DRAWING LOGIC: JAGGED LIGHTNING
         game.expansions.patchClass(Structure, 'draw', function(original, ctx) {
+            
+            // Sprite Caching Link
+            if (this.type === 'obelisk' && !this.spriteLoaded && game.assets) {
+                this.sprite = game.assets.get(`assets/${this.type}_${this.team}.png`);
+                if (this.sprite) this.spriteLoaded = true;
+            }
+
             original.call(this, ctx); // Draw base structure first
             
             // Draw Lightning Strike
@@ -139,16 +157,26 @@ export const CursedRelicsExpansion = {
                 ctx.shadowColor = '#ffffff';
                 ctx.shadowBlur = 10;
                 
+                // Primary Bolt
                 ctx.beginPath();
                 ctx.moveTo(this.x, this.y - this.size); // Shoot from top of obelisk
-                
-                // Add a randomized "kink" in the middle of the line so it looks like electricity
                 let midX = (this.x + this.zapVisual.x) / 2 + MathUtils.randomRange(-25, 25);
                 let midY = (this.y - this.size + this.zapVisual.y) / 2 + MathUtils.randomRange(-25, 25);
-                
                 ctx.lineTo(midX, midY);
                 ctx.lineTo(this.zapVisual.x, this.zapVisual.y); // Connect to enemy
                 ctx.stroke();
+
+                // Secondary Chain Lightning Bolt
+                if (this.zapVisual.chain) {
+                    ctx.lineWidth = 2; // Thinner for the bounce
+                    ctx.beginPath();
+                    ctx.moveTo(this.zapVisual.x, this.zapVisual.y); // Shoot from first enemy
+                    let chainMidX = (this.zapVisual.x + this.zapVisual.chain.x) / 2 + MathUtils.randomRange(-15, 15);
+                    let chainMidY = (this.zapVisual.y + this.zapVisual.chain.y) / 2 + MathUtils.randomRange(-15, 15);
+                    ctx.lineTo(chainMidX, chainMidY);
+                    ctx.lineTo(this.zapVisual.chain.x, this.zapVisual.chain.y); // Connect to second enemy
+                    ctx.stroke();
+                }
                 
                 ctx.restore();
             }
@@ -157,7 +185,7 @@ export const CursedRelicsExpansion = {
             if (this.type === 'obelisk' && (!this.sprite || !this.sprite.complete || this.sprite.naturalHeight === 0)) {
                 ctx.save(); ctx.translate(this.x, this.y);
                 ctx.fillStyle = '#222'; ctx.beginPath(); ctx.moveTo(-10, 15); ctx.lineTo(10, 15); ctx.lineTo(0, -30); ctx.fill();
-                ctx.fillStyle = '#aa00ff'; ctx.beginPath(); ctx.arc(0, -30, 6, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#aa00ff'; ctx.beginPath(); ctx.arc(0, -30, 6, 0, MathUtils.TWO_PI); ctx.fill();
                 ctx.restore();
             }
         });
