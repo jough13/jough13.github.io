@@ -51,9 +51,8 @@ body, html {
     
     /* Prevents the ugly blue flash when tapping UI on mobile iOS/Android */
     -webkit-tap-highlight-color: transparent;
-    
-    /* JUICE: Custom RTS cursor support! (Falls back to crosshair if image is missing) */
-    cursor: url('assets/cursor.png') 16 16, crosshair; 
+
+    cursor: crosshair;
 }
 
 /* Prevent accidental image dragging in the HTML UI layer (Portraits, Icons) */
