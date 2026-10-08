@@ -4,15 +4,19 @@ import { MathUtils, Structure } from '../game.js';
 // ==========================================
 // 1. SWARM PHYSICS CONFIGURATION
 // ==========================================
-const SWARM_CONFIG = {
+// [EXPANDABILITY] Exported config so other mods can tweak the physics engine feel
+export const SWARM_CONFIG = {
     separationForce: 0.4, // How bouncy/squishy the bugs feel when pushing each other
     structureMass: 1.0,   // Buildings don't move, so they push bugs away with 100% force
     unitMass: 0.5,        // Bugs push each other equally (50% force each)
-    cellSize: 250         // MUST match the CELL_SIZE in game.js spatialGrid!
+    cellSize: 250,        // MUST match the CELL_SIZE in game.js spatialGrid!
+    scrambleWobble: 0.05  // How much rotation gets disrupted when crammed together
 };
 
 export const SwarmDynamicsExpansion = {
     init: (game) => {
+        // Expose to game object
+        game.swarmConfig = SWARM_CONFIG;
         console.log("%c[Engine] Swarm Dynamics (Boids Separation) Online.", "color: #00ffcc;");
     },
 
@@ -25,8 +29,10 @@ export const SwarmDynamicsExpansion = {
             
             if (this.gameState !== 'playing') return;
 
-            // PERFORMANCE FIX: Cache object property locally for the massive loop
+            // [PERFORMANCE] Cache object properties locally for the massive loop
             const cellSize = SWARM_CONFIG.cellSize;
+            const maxGridX = Math.ceil(this.world.width / cellSize);
+            const maxGridY = Math.ceil(this.world.height / cellSize);
 
             // 2. THE SWARM PHYSICS PASS
             for (let i = 0; i < this.entities.length; i++) {
@@ -42,15 +48,15 @@ export const SwarmDynamicsExpansion = {
                 let repY = 0;
                 let pushCount = 0;
 
-                // PERFORMANCE FIX: Swapped Math.floor for Bitwise | 0
-                const cx = Math.max(0, (e.x / cellSize) | 0);
-                const cy = Math.max(0, (e.y / cellSize) | 0);
+                // [PERFORMANCE] Clamped bitwise lookup
+                const cx = MathUtils.clamp((e.x / cellSize) | 0, 0, maxGridX);
+                const cy = MathUtils.clamp((e.y / cellSize) | 0, 0, maxGridY);
 
                 // 9-Cell Grid Scan (Checks current cell + all 8 surrounding neighbors)
                 for (let nx = cx - 1; nx <= cx + 1; nx++) {
-                    if (nx < 0) continue;
+                    if (nx < 0 || nx > maxGridX) continue;
                     for (let ny = cy - 1; ny <= cy + 1; ny++) {
-                        if (ny < 0) continue;
+                        if (ny < 0 || ny > maxGridY) continue;
                         
                         // ZERO-ALLOCATION BITWISE LOOKUP
                         const key = (nx << 16) | ny;
@@ -68,10 +74,15 @@ export const SwarmDynamicsExpansion = {
 
                             let dx = e.x - other.x;
                             let dy = e.y - other.y;
-                            let distSq = (dx * dx) + (dy * dy);
                             
                             // Calculate exact touching distance
                             const desiredDist = e.size + other.size;
+                            
+                            // [PERFORMANCE] Fast AABB Check!
+                            // Skips the expensive distance/sqrt math completely if they aren't even close
+                            if (Math.abs(dx) > desiredDist || Math.abs(dy) > desiredDist) continue;
+
+                            let distSq = (dx * dx) + (dy * dy);
                             const desiredDistSq = desiredDist * desiredDist;
 
                             // If overlapping, calculate the repulsive force!
@@ -103,6 +114,13 @@ export const SwarmDynamicsExpansion = {
                 if (pushCount > 0) {
                     e.x += repX * SWARM_CONFIG.separationForce;
                     e.y += repY * SWARM_CONFIG.separationForce;
+                    
+                    // [JUICE] The "Scramble" effect!
+                    // If a spider is being crushed by multiple bugs around it, it visually scrambles/wobbles!
+                    if (pushCount > 1 && e.angle !== undefined) {
+                        e.angle += (Math.random() - 0.5) * SWARM_CONFIG.scrambleWobble * pushCount;
+                        e.angle = MathUtils.angleWrap(e.angle);
+                    }
                     
                     // Ensure physics explosions don't knock units off the edge of the world
                     const bnd = e.size * 2;
