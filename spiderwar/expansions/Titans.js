@@ -4,7 +4,8 @@ import { Spider, MathUtils, UNIT_DATA, SPIDER_STATE } from '../game.js';
 // ==========================================
 // 1. CONFIGURATION & BALANCING
 // ==========================================
-const TITAN_CONFIG = {
+// [EXPANDABILITY] Exported so other mods can tweak the heavy endgame units!
+export const TITAN_CONFIG = {
     widow: { 
         hp: 150, damage: 100, attackSpeed: 20, size: 16, 
         baseSpeedMin: 1.8, baseSpeedMax: 2.1, costP: 150, costD: 50, 
@@ -40,23 +41,25 @@ export class ExplosiveProjectile {
 
         const dx = this.target.x - this.x; 
         const dy = this.target.y - this.y;
-        const distSq = MathUtils.distSq(this.x, this.y, this.target.x, this.target.y);
+        
+        // [PERFORMANCE] Fast inline distance math
+        const distSq = (dx * dx + dy * dy);
         
         if (distSq < 225) { 
             this.active = false; 
             
-            // JUICE: Heavy impact shake!
-            if (game.triggerShake) game.triggerShake(5);
+            // [JUICE] Heavy impact shake!
+            if (game.triggerShake) game.triggerShake(8);
             game.bus.emit('playSound', 'death'); 
             
             const magicColor = this.team === 'black' ? '#aa00ff' : '#ff0000';
-            game.bus.emit('particles', {x: this.target.x, y: this.target.y, color: magicColor, count: 40});
+            game.bus.emit('particles', {x: this.target.x, y: this.target.y, color: magicColor, count: 40, type: 'magic'});
             game.bus.emit('particles', {x: this.target.x, y: this.target.y, color: '#ffaa00', count: 20, type: 'splatter'});
             
             const splashRad = TITAN_CONFIG.goliath.splashRadius;
             const splashRadSq = TITAN_CONFIG.goliath.splashRadiusSq;
 
-            // PERFORMANCE FIX: Spatial Grid Lookup for Splash Damage
+            // [PERFORMANCE] Spatial Grid Lookup for Splash Damage!
             const CELL_SIZE = 250;
             const cx = Math.max(0, (this.x / CELL_SIZE) | 0);
             const cy = Math.max(0, (this.y / CELL_SIZE) | 0);
@@ -92,9 +95,10 @@ export class ExplosiveProjectile {
                 this.x += (dx/dist) * this.speed; 
                 this.y += (dy/dist) * this.speed; 
                 
-                // JUICE: Particle trail
-                if (game.tick % 3 === 0) {
-                    game.bus.emit('particles', {x: this.x, y: this.y, color: this.team==='black'?'#aa00ff':'#ffaa00', count: 1});
+                // [JUICE] Dense, fiery particle trail!
+                if (game.tick % 2 === 0) {
+                    const magicColor = this.team === 'black' ? '#aa00ff' : '#ffaa00';
+                    game.bus.emit('particles', {x: this.x, y: this.y, color: magicColor, count: 2, type: 'magic'});
                 }
             }
         }
@@ -104,7 +108,7 @@ export class ExplosiveProjectile {
         ctx.save();
         const magicColor = this.team === 'black' ? '#aa00ff' : '#ff0000';
         
-        // JUICE: Glowing aura
+        // [JUICE] Glowing aura
         ctx.shadowBlur = 15;
         ctx.shadowColor = magicColor;
         
@@ -124,6 +128,9 @@ export class ExplosiveProjectile {
 // ==========================================
 export const TitansExpansion = {
     init: (game) => {
+        // [EXPANDABILITY] Hook config
+        game.titanConfig = TITAN_CONFIG;
+
         // --- 1. ASSET REGISTRY ---
         game.assets.register('assets/widow_black.png');
         game.assets.register('assets/widow_red.png');
@@ -153,8 +160,10 @@ export const TitansExpansion = {
                 // Handle stealth cooldown and visual effects
                 if (entity.cloakCooldown > 0) {
                     entity.cloakCooldown--;
-                    if (entity.cloakCooldown <= 0) {
-                        gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#333333', count: 15});
+                    
+                    // [JUICE] Re-cloak puff of smoke
+                    if (entity.cloakCooldown === 1) {
+                        gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#333333', count: 15, type: 'magic'});
                         gameObj.bus.emit('playSound', 'spell'); 
                     }
                 }
@@ -162,6 +171,12 @@ export const TitansExpansion = {
 
                 // Strip stealth instantly if the unit just attacked!
                 if (entity.cooldown >= entity.attackSpeed - 1 && entity.cooldown > 0) {
+                    
+                    // [JUICE] De-cloak puff of smoke
+                    if (entity.isCloaked) {
+                        gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#333333', count: 15, type: 'magic'});
+                    }
+                    
                     entity.cloakCooldown = TITAN_CONFIG.widow.decloakTime; 
                     entity.isCloaked = false;
                 }
@@ -192,8 +207,17 @@ export const TitansExpansion = {
 
                 // COMBAT OVERRIDE
                 if (nearestEnemy) {
-                    entity.state = 1; // SPIDER_STATE.COMBAT
-                    entity.angle = Math.atan2(nearestEnemy.y - entity.y, nearestEnemy.x - entity.x);
+                    // [JUICE] Alert targeting indicator
+                    if (entity.state !== SPIDER_STATE.COMBAT) {
+                        gameObj.bus.emit('particles', {x: entity.x, y: entity.y - 10, color: '#ff0000', count: 1});
+                    }
+
+                    entity.state = SPIDER_STATE.COMBAT; 
+                    
+                    // [JUICE] Smooth organic turning towards the target
+                    const targetAngle = Math.atan2(nearestEnemy.y - entity.y, nearestEnemy.x - entity.x);
+                    entity.angle += MathUtils.angleWrap(targetAngle - entity.angle) * 0.10;
+
                     const distSq = MathUtils.distSq(entity.x, entity.y, nearestEnemy.x, nearestEnemy.y);
 
                     if (distSq > effectiveRangeSq && currentSpeed > 0) {
@@ -203,13 +227,18 @@ export const TitansExpansion = {
                     } else {
                         entity.cooldown = (entity.cooldown || 0) - 1;
                         if (entity.cooldown <= 0) {
-                            gameObj.addEntity(new ExplosiveProjectile(entity.x, entity.y, nearestEnemy, currentDamage, entity.team));
+                            
+                            // [JUICE] Offset spawn so the projectile comes from the 'mouth/cannon'
+                            const pX = entity.x + Math.cos(entity.angle) * entity.size;
+                            const pY = entity.y + Math.sin(entity.angle) * entity.size;
+
+                            gameObj.addEntity(new ExplosiveProjectile(pX, pY, nearestEnemy, currentDamage, entity.team));
                             gameObj.bus.emit('playSound', 'shoot');
                             
                             // Only apply recoil to mobile units
                             if (currentSpeed > 0) {
-                                entity.x -= Math.cos(entity.angle) * 5; 
-                                entity.y -= Math.sin(entity.angle) * 5; 
+                                entity.x -= Math.cos(entity.angle) * 8; 
+                                entity.y -= Math.sin(entity.angle) * 8; 
                             }
                             // Default to 60 attack speed if the entity doesn't have one defined
                             entity.cooldown = entity.attackSpeed || 60;
@@ -223,12 +252,10 @@ export const TitansExpansion = {
                     const dx = entity.commandTarget.x - entity.x; 
                     const dy = entity.commandTarget.y - entity.y;
                     
-                    if (MathUtils.distSq(0, 0, dx, dy) > 225) { 
+                    if ((dx * dx + dy * dy) > 225) { 
+                        // [JUICE] Smooth Turn
                         const targetAngle = Math.atan2(dy, dx);
-                        let diff = targetAngle - entity.angle;
-                        while (diff > Math.PI) diff -= MathUtils.TWO_PI;
-                        while (diff < -Math.PI) diff += MathUtils.TWO_PI;
-                        entity.angle += (diff * 0.05); 
+                        entity.angle += MathUtils.angleWrap(targetAngle - entity.angle) * 0.10;
                         
                         entity.x += Math.cos(entity.angle) * currentSpeed; 
                         entity.y += Math.sin(entity.angle) * currentSpeed;
@@ -278,13 +305,21 @@ export const TitansExpansion = {
     },
 
     patch: (game) => {
-        // 4. RENDERING POLISH (The only patch remaining!)
-        game.expansions.patchClass(Spider, 'draw', function(original, ctx) {
+        // [FIX] Updated rendering signature to (original, ctx, gameObj)
+        game.expansions.patchClass(Spider, 'draw', function(original, ctx, gameObj) {
+            
+            let oldAlpha = ctx.globalAlpha;
+            let restoreAlpha = false;
+
             if (this.hasTrait('stealth') && this.isCloaked) {
                 ctx.globalAlpha = 0.35; // Highly transparent to the player
+                restoreAlpha = true;
             }
-            original.call(this, ctx);
-            ctx.globalAlpha = 1.0;
+            
+            // Call original to preserve health bars and breathing animation!
+            original.call(this, ctx, gameObj);
+            
+            if (restoreAlpha) ctx.globalAlpha = oldAlpha;
         });
     }
 };
