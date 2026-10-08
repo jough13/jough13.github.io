@@ -4,7 +4,8 @@ import { MathUtils, Spider } from '../game.js';
 // ==========================================
 // 1. CONFIGURATION & BALANCING
 // ==========================================
-const QUEEN_CONFIG = {
+// [EXPANDABILITY] Exported config so other mods can tweak the commander's stats
+export const QUEEN_CONFIG = {
     hp: 2500,
     damage: 40,
     speed: 0.8,
@@ -33,7 +34,10 @@ export class Queen extends Spider {
         
         this.commandTarget = null; 
         this.thinkTimer = 0; // Used for Red AI throttling
-        this.age = 0;        // Used for deterministic drawing animations
+        
+        // [JUICE] Animation Offsets
+        this.animOffset = parseInt(this.id, 36) % 100;
+        this.age = 0;
 
         this.ramSpriteLoaded = false; // Prevents reloading the image outside of RAM cache
     }
@@ -54,8 +58,9 @@ export class Queen extends Spider {
         let nearestEnemy = game.getNearestEnemy(this.x, this.y, this.team, QUEEN_CONFIG.aggroRadius);
         
         if (nearestEnemy) {
-            // Face the enemy
-            this.angle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
+            // [JUICE] Smooth organic turning towards the enemy
+            const targetAngle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
+            this.angle += MathUtils.angleWrap(targetAngle - this.angle) * 0.15;
             
             const combatRangeSq = (nearestEnemy.size ? nearestEnemy.size + this.size : this.size + 10) ** 2;
             const distSq = MathUtils.distSq(this.x, this.y, nearestEnemy.x, nearestEnemy.y);
@@ -69,7 +74,7 @@ export class Queen extends Spider {
                     this.x -= Math.cos(this.angle) * 15; 
                     this.y -= Math.sin(this.angle) * 15; 
                     
-                    // JUICE: Massive hit impact!
+                    // [JUICE] Massive hit impact!
                     if (game.triggerShake) game.triggerShake(5);
                     const magicColor = this.team === 'black' ? '#aa00ff' : '#ff0000';
                     game.bus.emit('particles', {x: nearestEnemy.x, y: nearestEnemy.y, color: magicColor, count: 15}); 
@@ -85,7 +90,7 @@ export class Queen extends Spider {
             this.thinkTimer--;
             
             if (this.thinkTimer <= 0) {
-                this.thinkTimer = 60; // Think once every 2 seconds
+                this.thinkTimer = 90; // [FIX] Think once every 1.5 seconds so she doesn't jitter while leading an attack
                 
                 // Tactical Evaluation: Don't charge the player immediately!
                 // Wait until late game OR we have a massive army
@@ -140,8 +145,13 @@ export class Queen extends Spider {
             
             const currentSpeed = Math.max(0.1, (this.baseSpeed + techSpeed)) * tMod;
 
-            if (MathUtils.distSq(0,0, dx, dy) > 100) { 
-                this.angle = Math.atan2(dy, dx); 
+            // [PERFORMANCE] Avoid square root lookup for distance
+            if ((dx * dx + dy * dy) > 100) { 
+                
+                // [JUICE] Smooth organic turning towards target
+                const targetAngle = Math.atan2(dy, dx); 
+                this.angle += MathUtils.angleWrap(targetAngle - this.angle) * 0.10;
+                
                 this.x += Math.cos(this.angle) * currentSpeed; 
                 this.y += Math.sin(this.angle) * currentSpeed; 
             } else {
@@ -158,10 +168,17 @@ export class Queen extends Spider {
         this.y = MathUtils.clamp(this.y, bnd, game.world.height - bnd);
     }
 
-    draw(ctx) {
+    // [FIX] Added game parameter so breathing animation inherits correctly
+    draw(ctx, game) {
         ctx.save(); 
         ctx.translate(this.x, this.y); 
         ctx.rotate(this.angle); 
+        
+        // [JUICE] Organic breathing animation! Faster when walking or fighting.
+        const tick = game ? game.tick : 0;
+        const breathSpeed = (this.commandTarget || this.cooldown > 0) ? 0.2 : 0.05;
+        const breath = 1 + Math.sin(tick * breathSpeed + this.animOffset) * 0.05;
+        ctx.scale(breath, 1 / breath);
         
         // ASPECT RATIO FIX: Queen sprites can now be rectangular!
         if (this.imageLoaded && this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) { 
@@ -170,8 +187,12 @@ export class Queen extends Spider {
             const drawW = drawH * aspect;
             ctx.drawImage(this.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
         } else {
-            // Fallback drawing
+            // [JUICE] Add drop shadow to fallback graphics
+            ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2;
+            
             ctx.fillStyle = this.team; ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
+            
+            ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; // Reset
             ctx.fillStyle = 'white'; ctx.fillRect(this.size/2, -3, 4, 6);
         }
         ctx.restore();
@@ -209,6 +230,9 @@ export const QueenExpansion = {
     init: (game) => {
         game.queensSpawned = false;
         
+        // [EXPANDABILITY] Export config to the game engine
+        game.queenConfig = QUEEN_CONFIG;
+
         // --- ASSET REGISTRY ---
         game.assets.register('assets/queen_black.png');
         game.assets.register('assets/queen_red.png');
