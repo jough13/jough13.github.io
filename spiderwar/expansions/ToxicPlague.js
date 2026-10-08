@@ -2,28 +2,50 @@
 import { Spider, Structure, MathUtils, UNIT_DATA, STRUCTURE_DATA, SPIDER_STATE } from '../game.js';
 
 // ==========================================
-// 1. TOXIC PUDDLE ENTITY (Area Denial)
+// 1. CONFIGURATION & BALANCING
+// ==========================================
+// [EXPANDABILITY] Exported so other mods can tweak plague damage and durations!
+export const PLAGUE_CONFIG = {
+    spellCost: 80,
+    spellRadius: 150,
+    spellRadiusSq: 22500,     // 150^2
+    infectionDuration: 600,   // 20 seconds
+    infectionDot: 3,          // Damage per second
+    
+    puddleLife: 150,          // 5 seconds
+    puddleRadius: 25,
+    puddleRadiusSq: 625,      // 25^2
+    puddleDamage: 2
+};
+
+// ==========================================
+// 2. TOXIC PUDDLE ENTITY (Area Denial)
 // ==========================================
 class ToxicPuddle {
     constructor(x, y, team) {
+        this.id = Math.random().toString(36).substring(2, 11);
         this.x = x; this.y = y; this.team = team;
-        this.life = 150; // Lasts 5 seconds
-        this.radius = 25; 
-        this.radiusSq = this.radius * this.radius;
+        this.life = PLAGUE_CONFIG.puddleLife; 
+        this.radius = PLAGUE_CONFIG.puddleRadius; 
+        this.radiusSq = PLAGUE_CONFIG.puddleRadiusSq;
+        this.animOffset = parseInt(this.id, 36) % 100;
     }
 
     update(game) {
         this.life--;
         
-        // PERFORMANCE FIX: Spatial Grid Lookup!
+        // [PERFORMANCE] Clamped Spatial Grid Lookup!
         const CELL_SIZE = 250;
-        const cx = Math.max(0, (this.x / CELL_SIZE) | 0);
-        const cy = Math.max(0, (this.y / CELL_SIZE) | 0);
+        const maxGridX = Math.ceil(game.world.width / CELL_SIZE);
+        const maxGridY = Math.ceil(game.world.height / CELL_SIZE);
+        
+        const cx = MathUtils.clamp((this.x / CELL_SIZE) | 0, 0, maxGridX);
+        const cy = MathUtils.clamp((this.y / CELL_SIZE) | 0, 0, maxGridY);
 
         for (let nx = cx - 1; nx <= cx + 1; nx++) {
-            if (nx < 0) continue;
+            if (nx < 0 || nx > maxGridX) continue;
             for (let ny = cy - 1; ny <= cy + 1; ny++) {
-                if (ny < 0) continue;
+                if (ny < 0 || ny > maxGridY) continue;
                 
                 const key = (nx << 16) | ny;
                 const cell = game.spatialGrid.get(key);
@@ -42,8 +64,8 @@ class ToxicPuddle {
                     // Circle Collision
                     if (MathUtils.distSq(this.x, this.y, e.x, e.y) < this.radiusSq) {
                         if (game.tick % 15 === 0) {
-                            e.hp -= 2; // Acid DoT
-                            game.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 1});
+                            e.hp -= PLAGUE_CONFIG.puddleDamage; // Acid DoT
+                            game.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 1, type: 'magic'});
                         }
                         e.isSlowed = true; // Melts their legs!
                     }
@@ -52,16 +74,26 @@ class ToxicPuddle {
         }
     }
 
-    draw(ctx) {
+    draw(ctx, game) {
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.globalAlpha = Math.min(this.life / 30, 0.5); // Fades in/out smoothly
         
-        ctx.fillStyle = this.team === 'black' ? '#55ff00' : '#ffff00'; // Green for black team, yellow for red
+        // [JUICE] Sickly green glow
+        ctx.shadowColor = this.team === 'black' ? '#55ff00' : '#ffff00';
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = ctx.shadowColor; 
+        
         ctx.beginPath();
-        // Draw an organic blob shape
-        ctx.ellipse(0, 0, this.radius, this.radius * 0.7, Math.sin(this.life * 0.05), 0, MathUtils.TWO_PI);
+        // [JUICE] Organic pulsating blob shape
+        const tick = game ? game.tick : 0;
+        const pulseX = 1 + Math.sin(tick * 0.05 + this.animOffset) * 0.1;
+        const pulseY = 1 + Math.cos(tick * 0.05 + this.animOffset) * 0.1;
+        
+        ctx.ellipse(0, 0, this.radius * pulseX, this.radius * 0.7 * pulseY, Math.sin(this.life * 0.05), 0, MathUtils.TWO_PI);
         ctx.fill();
+        
+        ctx.shadowBlur = 0; // Reset
         
         // Random bubbling
         if (Math.random() < 0.1) {
@@ -74,11 +106,14 @@ class ToxicPuddle {
 }
 
 // ==========================================
-// 2. EXPANSION LOGIC
+// 3. EXPANSION LOGIC
 // ==========================================
 export const ToxicPlagueExpansion = {
     init: (game) => {
         console.log("%c[DLC] Toxic Plague Expansion Loaded!", "color: #55ff00;");
+        
+        // [EXPANDABILITY] Expose config
+        game.plagueConfig = PLAGUE_CONFIG;
 
         // 1. REGISTER ASSETS
         game.assets.register('assets/defiler_black.png');
@@ -113,11 +148,16 @@ export const ToxicPlagueExpansion = {
         game.registerTrait('toxic_trail', {
             update: (entity, gameObj) => {
                 if (!entity.puddleTimer) entity.puddleTimer = 0;
-                entity.puddleTimer++;
                 
-                if (entity.puddleTimer > 15) {
-                    entity.puddleTimer = 0;
-                    gameObj.addEntity(new ToxicPuddle(entity.x, entity.y, entity.team));
+                // Only drop puddles while actively moving
+                if (entity.speed > 0) {
+                    entity.puddleTimer++;
+                    if (entity.puddleTimer > 25) {
+                        entity.puddleTimer = 0;
+                        gameObj.addEntity(new ToxicPuddle(entity.x, entity.y, entity.team));
+                        // [JUICE] Tiny squelch particle
+                        gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#55ff00', count: 2});
+                    }
                 }
                 return false; 
             }
@@ -129,10 +169,15 @@ export const ToxicPlagueExpansion = {
                 let enemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, 500); 
                 
                 if (enemy) {
-                    entity.state = 1; // SPIDER_STATE.COMBAT
-                    entity.angle = Math.atan2(enemy.y - entity.y, enemy.x - entity.x);
+                    entity.state = SPIDER_STATE.COMBAT;
                     
-                    if (MathUtils.distSq(entity.x, entity.y, enemy.x, enemy.y) > 400) { 
+                    // [JUICE] Smooth Turn
+                    const targetAngle = Math.atan2(enemy.y - entity.y, enemy.x - entity.x);
+                    entity.angle += MathUtils.angleWrap(targetAngle - entity.angle) * 0.2;
+                    
+                    // [PERFORMANCE] Fast inline distance math
+                    const dx = enemy.x - entity.x; const dy = enemy.y - entity.y;
+                    if ((dx*dx + dy*dy) > 400) { 
                         entity.x += Math.cos(entity.angle) * entity.baseSpeed; 
                         entity.y += Math.sin(entity.angle) * entity.baseSpeed;
                     } else {
@@ -142,13 +187,21 @@ export const ToxicPlagueExpansion = {
                             entity.cooldown = entity.attackSpeed;
                             entity.x -= Math.cos(entity.angle) * 5; entity.y -= Math.sin(entity.angle) * 5;
                             gameObj.bus.emit('playSound', 'harvest');
+                            gameObj.bus.emit('particles', {x: enemy.x, y: enemy.y, color: '#55ff00', count: 3, type: 'splatter'});
                         }
                     }
                 } else {
-                    if (Math.random() < 0.2) entity.angle += MathUtils.randomRange(-1, 1);
+                    if (Math.random() < 0.2) entity.angle += MathUtils.randomRange(-0.5, 0.5);
+                    entity.angle = MathUtils.angleWrap(entity.angle);
                     entity.x += Math.cos(entity.angle) * entity.baseSpeed;
                     entity.y += Math.sin(entity.angle) * entity.baseSpeed;
                 }
+                
+                // Keep parasites on the map
+                const bnd = entity.size * 2;
+                entity.x = MathUtils.clamp(entity.x, bnd, gameObj.world.width - bnd);
+                entity.y = MathUtils.clamp(entity.y, bnd, gameObj.world.height - bnd);
+                
                 return true; 
             }
         });
@@ -156,21 +209,26 @@ export const ToxicPlagueExpansion = {
         // 4. SPELL LOGIC: CONTAGION
         game.bus.on('castSpell', (data) => {
             if (data.type === 'contagion') {
-                if (game.eco[data.team].dew >= 80) {
-                    game.eco[data.team].dew -= 80;
+                if (game.eco[data.team].dew >= PLAGUE_CONFIG.spellCost) {
+                    game.eco[data.team].dew -= PLAGUE_CONFIG.spellCost;
                     
+                    if (game.triggerShake) game.triggerShake(5);
                     game.bus.emit('playSound', 'spell'); 
-                    game.bus.emit('particles', {x: data.x, y: data.y, color: '#55ff00', count: 100});
+                    game.bus.emit('particles', {x: data.x, y: data.y, color: '#55ff00', count: 100, type: 'magic'});
+                    game.bus.emit('particles', {x: data.x, y: data.y, color: 'rgba(85, 255, 0, 0.6)', count: 1, type: 'ring'});
                     
-                    const radius = 150;
-                    const radiusSq = 22500; 
+                    const radius = PLAGUE_CONFIG.spellRadius;
+                    const radiusSq = PLAGUE_CONFIG.spellRadiusSq; 
                     
-                    // PERFORMANCE FIX: Spatial Grid Lookup for AoE Spell!
+                    // [PERFORMANCE] Clamped Spatial Grid Lookup
                     const CELL_SIZE = 250;
-                    const minCx = Math.max(0, ((data.x - radius) / CELL_SIZE) | 0);
-                    const maxCx = Math.max(0, ((data.x + radius) / CELL_SIZE) | 0);
-                    const minCy = Math.max(0, ((data.y - radius) / CELL_SIZE) | 0);
-                    const maxCy = Math.max(0, ((data.y + radius) / CELL_SIZE) | 0);
+                    const maxGridX = Math.ceil(game.world.width / CELL_SIZE);
+                    const maxGridY = Math.ceil(game.world.height / CELL_SIZE);
+                    
+                    const minCx = MathUtils.clamp(((data.x - radius) / CELL_SIZE) | 0, 0, maxGridX);
+                    const maxCx = MathUtils.clamp(((data.x + radius) / CELL_SIZE) | 0, 0, maxGridX);
+                    const minCy = MathUtils.clamp(((data.y - radius) / CELL_SIZE) | 0, 0, maxGridY);
+                    const maxCy = MathUtils.clamp(((data.y + radius) / CELL_SIZE) | 0, 0, maxGridY);
 
                     for (let cx = minCx; cx <= maxCx; cx++) {
                         for (let cy = minCy; cy <= maxCy; cy++) {
@@ -185,9 +243,9 @@ export const ToxicPlagueExpansion = {
                                     if (Math.abs(e.x - data.x) > radius || Math.abs(e.y - data.y) > radius) continue;
                                     
                                     if (MathUtils.distSq(e.x, e.y, data.x, data.y) < radiusSq) {
-                                        e.infectedTimer = 600; // Infected for 20 seconds
+                                        e.infectedTimer = PLAGUE_CONFIG.infectionDuration; 
                                         e.infectedByTeam = data.team; // Track who cast it
-                                        game.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 10});
+                                        game.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 10, type: 'magic'});
                                     }
                                 }
                             }
@@ -226,10 +284,10 @@ export const ToxicPlagueExpansion = {
                 }
             }
         });
-    }, // <-- Notice this closes the init() block safely!
+    },
 
     patch: (game) => {
-        // 5. GLOBAL DEBUFF MANAGER: INFECTION (Moved from preDraw to Update)
+        // 5. GLOBAL DEBUFF MANAGER: INFECTION (Properly hooked into Update)
         game.expansions.patchClass(game.constructor, 'update', function(original) {
             
             // Run DoT logic BEFORE the main game update so dead units are cleaned up instantly!
@@ -239,13 +297,13 @@ export const ToxicPlagueExpansion = {
                     if (e.infectedTimer > 0) {
                         e.infectedTimer--;
                         
-                        e.hp -= 3; // Acid DoT
-                        this.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 2});
+                        e.hp -= PLAGUE_CONFIG.infectionDot; 
+                        this.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 2, type: 'magic'});
                         
                         // CHESTBURSTER EFFECT: If it dies from infection!
                         if (e.hp <= 0 && e.role !== 'parasite') {
                             if (this.triggerShake) this.triggerShake(5);
-                            this.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 30});
+                            this.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 30, type: 'splatter'});
                             this.bus.emit('playSound', 'death');
                             this.bus.emit('spawnSpider', {x: e.x, y: e.y, team: e.infectedByTeam, role: 'parasite'});
                         }
@@ -253,7 +311,7 @@ export const ToxicPlagueExpansion = {
                 }
             }
 
-            // Now run the rest of the game loop, which will instantly delete the dead units!
+            // Now run the rest of the game loop
             original.call(this); 
         });
 
@@ -262,44 +320,83 @@ export const ToxicPlagueExpansion = {
             original.call(this, gameObj);
             
             if (this.type === 'incubator' && !this.isConstructing && this.hp > 0) {
+                // [JUICE] Animation Decay
+                if (this.spawnAnim > 0) this.spawnAnim--;
+                
                 if (gameObj.tick % 150 === 0) {
-                    gameObj.bus.emit('particles', {x: this.x, y: this.y + 15, color: '#55ff00', count: 10});
+                    gameObj.bus.emit('particles', {x: this.x, y: this.y + 15, color: '#55ff00', count: 10, type: 'magic'});
                     gameObj.bus.emit('playSound', 'harvest'); 
                     gameObj.bus.emit('spawnSpider', {x: this.x, y: this.y + 20, team: this.team, role: 'parasite'});
+                    
+                    // [JUICE] Trigger birthing animation
+                    this.spawnAnim = 15;
                 }
             }
         });
 
         // 7. DRAWING LOGIC: INFECTED AURA
-        game.expansions.patchClass(Spider, 'draw', function(original, ctx) {
+        // [FIX] Signature updated to accept (original, ctx, gameObj)
+        game.expansions.patchClass(Spider, 'draw', function(original, ctx, gameObj) {
+            // [JUICE] A sickly, pulsing green tint over the whole spider
             if (this.infectedTimer > 0) {
                 ctx.save();
                 ctx.translate(this.x, this.y);
-                ctx.fillStyle = `rgba(85, 255, 0, 0.4)`;
-                ctx.beginPath(); ctx.arc(0, 0, this.size + 4, 0, MathUtils.TWO_PI); ctx.fill();
+                
+                const tick = gameObj ? gameObj.tick : 0;
+                const pulse = Math.sin(tick * 0.2) * 2;
+                
+                ctx.fillStyle = `rgba(85, 255, 0, 0.3)`;
+                ctx.beginPath(); ctx.arc(0, 0, this.size + 4 + pulse, 0, MathUtils.TWO_PI); ctx.fill();
+                
+                ctx.globalCompositeOperation = 'source-atop';
+                ctx.fillStyle = 'rgba(85, 255, 0, 0.4)';
+                ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
+                ctx.globalCompositeOperation = 'source-over';
+                
                 ctx.restore();
             }
-            original.call(this, ctx);
+            
+            original.call(this, ctx, gameObj);
         });
         
-        // Structure fallback drawing
-        game.expansions.patchClass(Structure, 'draw', function(original, ctx) {
+        // Structure fallback drawing & animations
+        game.expansions.patchClass(Structure, 'draw', function(original, ctx, gameObj) {
             // Sprite Caching Link
-            if (this.type === 'incubator' && !this.spriteLoaded && game.assets) {
-                this.sprite = game.assets.get(`assets/${this.type}_${this.team}.png`);
+            if (this.type === 'incubator' && !this.spriteLoaded && gameObj.assets) {
+                this.sprite = gameObj.assets.get(`assets/${this.type}_${this.team}.png`);
                 if (this.sprite) this.spriteLoaded = true;
             }
 
-            original.call(this, ctx);
+            // [JUICE] Birthing Squash & Stretch
+            let restoreScale = false;
+            if (this.type === 'incubator' && this.spawnAnim > 0) {
+                const stretch = 1 + Math.sin((this.spawnAnim / 15) * Math.PI) * 0.2;
+                ctx.save();
+                ctx.translate(this.x, this.y + this.size/2); // Pin to ground
+                ctx.scale(1 / stretch, stretch);
+                ctx.translate(-this.x, -(this.y + this.size/2));
+                restoreScale = true;
+            }
+
+            original.call(this, ctx, gameObj);
 
             if (this.type === 'incubator' && (!this.sprite || !this.sprite.complete || this.sprite.naturalHeight === 0)) {
                 ctx.save(); ctx.translate(this.x, this.y);
-                ctx.fillStyle = '#112211'; ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
+                
+                ctx.fillStyle = '#112211'; 
+                ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
+                
+                ctx.shadowColor = '#55ff00'; ctx.shadowBlur = 15;
                 ctx.fillStyle = '#55ff00'; 
-                const throb = Math.sin(game.tick * 0.1) * 3;
+                
+                const tick = gameObj ? gameObj.tick : 0;
+                const throb = Math.sin(tick * 0.1) * 3;
+                
                 ctx.beginPath(); ctx.arc(0, 0, 10 + throb, 0, MathUtils.TWO_PI); ctx.fill();
                 ctx.restore();
             }
+            
+            if (restoreScale) ctx.restore();
         });
     }
 };
