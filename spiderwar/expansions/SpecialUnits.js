@@ -1,14 +1,16 @@
 // expansions/SpecialUnits.js
-import { Spider, Projectile, MathUtils, UNIT_DATA } from '../game.js';
+import { Spider, Projectile, MathUtils, UNIT_DATA, SPIDER_STATE } from '../game.js';
 
 // ==========================================
 // 1. CONFIGURATION & BALANCING
 // ==========================================
-const SPECIAL_CONFIG = {
+// [EXPANDABILITY] Exported so other mods can tweak the special unit stats
+export const SPECIAL_CONFIG = {
     spitter: { 
         hp: 75, damage: 25, attackSpeed: 45, size: 12, 
         baseSpeedMin: 0.8, baseSpeedMax: 1.2, cost: 40,
-        range: 250, rangeSq: 62500 // Pre-calculated for fast MathUtils.distSq comparisons
+        range: 250, rangeSq: 62500, // Pre-calculated for fast MathUtils.distSq comparisons
+        turnSpeed: 0.2              // Aiming speed
     },
     tarantula: { 
         hp: 400, damage: 45, attackSpeed: 40, size: 22, 
@@ -18,6 +20,9 @@ const SPECIAL_CONFIG = {
 
 export const SpecialUnitsExpansion = {
     init: (game) => {
+        // [EXPANDABILITY] Hook config to the game engine
+        game.specialConfig = SPECIAL_CONFIG;
+
         // --- 1. ASSET REGISTRY ---
         game.assets.register('assets/spitter_black.png');
         game.assets.register('assets/spitter_red.png');
@@ -62,10 +67,19 @@ export const SpecialUnitsExpansion = {
 
                 // COMBAT OVERRIDE: Prioritize shooting over everything else!
                 if (nearestEnemy) {
-                    entity.state = 1; // SPIDER_STATE.COMBAT
-                    entity.angle = Math.atan2(nearestEnemy.y - entity.y, nearestEnemy.x - entity.x);
-                    const distSq = MathUtils.distSq(entity.x, entity.y, nearestEnemy.x, nearestEnemy.y);
                     
+                    // [JUICE] Alert indicator when spotting an enemy
+                    if (entity.state !== SPIDER_STATE.COMBAT) {
+                        gameObj.bus.emit('particles', {x: entity.x, y: entity.y - 10, color: '#ff0000', count: 1});
+                    }
+
+                    entity.state = SPIDER_STATE.COMBAT;
+                    
+                    // [JUICE] Smooth organic turning towards the enemy for aiming
+                    const targetAngle = Math.atan2(nearestEnemy.y - entity.y, nearestEnemy.x - entity.x);
+                    entity.angle += MathUtils.angleWrap(targetAngle - entity.angle) * SPECIAL_CONFIG.spitter.turnSpeed;
+
+                    const distSq = MathUtils.distSq(entity.x, entity.y, nearestEnemy.x, nearestEnemy.y);
                     const effectiveRangeSq = entity.rangeSq || 40000;
 
                     if (distSq > effectiveRangeSq && currentSpeed > 0) {
@@ -76,7 +90,12 @@ export const SpecialUnitsExpansion = {
                         // In range, open fire!
                         entity.cooldown = (entity.cooldown || 0) - 1;
                         if (entity.cooldown <= 0) {
-                            gameObj.addEntity(new Projectile(entity.x, entity.y, nearestEnemy, currentDamage, entity.team));
+                            
+                            // [JUICE] Offset the projectile so it shoots from the 'mouth', not the center
+                            const pX = entity.x + Math.cos(entity.angle) * entity.size;
+                            const pY = entity.y + Math.sin(entity.angle) * entity.size;
+                            
+                            gameObj.addEntity(new Projectile(pX, pY, nearestEnemy, currentDamage, entity.team));
                             gameObj.bus.emit('playSound', 'shoot');
                             
                             // Ranged Recoil Effect (only for mobile units)
@@ -97,14 +116,11 @@ export const SpecialUnitsExpansion = {
                     const dx = entity.commandTarget.x - entity.x; 
                     const dy = entity.commandTarget.y - entity.y;
                     
-                    if (MathUtils.distSq(0, 0, dx, dy) > 225) { 
+                    // [PERFORMANCE] Fast inline distance math
+                    if ((dx * dx + dy * dy) > 225) { 
+                        // [JUICE] Smooth rotation
                         const targetAngle = Math.atan2(dy, dx);
-                        
-                        // Smooth rotation
-                        let diff = targetAngle - entity.angle;
-                        while (diff > Math.PI) diff -= MathUtils.TWO_PI;
-                        while (diff < -Math.PI) diff += MathUtils.TWO_PI;
-                        entity.angle += (diff * 0.15); 
+                        entity.angle += MathUtils.angleWrap(targetAngle - entity.angle) * 0.15; 
                         
                         entity.x += Math.cos(entity.angle) * currentSpeed; 
                         entity.y += Math.sin(entity.angle) * currentSpeed;
@@ -157,11 +173,18 @@ export const SpecialUnitsExpansion = {
 
     patch: (game) => {
         // --- 5. RANGED ATTACK ANIMATION ---
-        game.expansions.patchClass(Spider, 'draw', function(original, ctx) {
+        // [FIX] Updated signature to accept gameObj
+        game.expansions.patchClass(Spider, 'draw', function(original, ctx, gameObj) {
+            
+            let restoreScale = false;
             
             // JUICE: If the unit is a ranged attacker and just fired (cooldown is high),
             // slightly squish and stretch its sprite to simulate "spitting" recoil!
             if (this.hasTrait('ranged_attacker') && this.cooldown && this.cooldown > (this.attackSpeed || 45) - 5) {
+                
+                // [FIX] Matrix transform trick! 
+                // This applies the stretch locally, but allows the original drawing method 
+                // to handle positioning, health bars, and breathing animations seamlessly.
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 ctx.rotate(this.angle);
@@ -169,18 +192,16 @@ export const SpecialUnitsExpansion = {
                 // Squish on X, Stretch on Y
                 ctx.scale(0.8, 1.2); 
                 
-                if (this.imageLoaded && this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) { 
-                    const aspect = this.sprite.naturalWidth / this.sprite.naturalHeight;
-                    const drawH = this.size * 2;
-                    const drawW = drawH * aspect;
-                    ctx.drawImage(this.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
-                }
+                ctx.rotate(-this.angle);
+                ctx.translate(-this.x, -this.y);
                 
-                ctx.restore();
-            } else {
-                // Not firing, draw normally
-                original.call(this, ctx);
+                restoreScale = true;
             }
+            
+            // Always call the original so healthbars and core animations run
+            original.call(this, ctx, gameObj);
+            
+            if (restoreScale) ctx.restore();
         });
     }
 };
