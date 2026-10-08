@@ -1,9 +1,30 @@
 // expansions/SpectralSwarm.js
 import { Spider, Structure, MathUtils, UNIT_DATA, STRUCTURE_DATA } from '../game.js';
 
+// ==========================================
+// 1. CONFIGURATION & BALANCING
+// ==========================================
+// [EXPANDABILITY] Exported config so other mods can tweak stealth radii and spell durations!
+export const SPECTRAL_CONFIG = {
+    spellCost: 75,
+    spellRadius: 150,
+    spellRadiusSq: 22500,     // 150^2 pre-calculated
+    stunDuration: 150,        // 5 seconds (at 30 updates/sec)
+    
+    lifestealAmount: 2,
+    lifestealRadius: 100,
+    lifestealRadiusSq: 10000,
+    
+    stealthRadius: 250,
+    stealthRadiusSq: 62500
+};
+
 export const SpectralSwarmExpansion = {
     init: (game) => {
         console.log("%c[DLC] Spectral Swarm Expansion Loaded!", "color: #00ffff;");
+
+        // [EXPANDABILITY] Hook config to the game engine
+        game.spectralConfig = SPECTRAL_CONFIG;
 
         // 1. REGISTER ASSETS
         game.assets.register('assets/phantom_black.png');
@@ -15,35 +36,37 @@ export const SpectralSwarmExpansion = {
         UNIT_DATA['phantom'] = { 
             size: 14, hp: 80, damage: 15, attackSpeed: 30, 
             baseSpeedMin: 1.5, baseSpeedMax: 1.9, 
-            traits: ['ethereal'] // Now seamlessly handled by TraitManager!
+            traits: ['ethereal'] // Handled by TraitManager!
         };
 
         STRUCTURE_DATA['monolith'] = { 
             hp: 400, size: 28, territory: 0 
         };
 
-        // Note: UI Buttons are handled centrally in UI.js!
-
         // ==========================================
         // 3. ECS TRAIT REGISTRATION
         // ==========================================
         game.registerTrait('ethereal', {
             update: (entity, gameObj) => {
-                // Every 1 second, drain 2 HP from all nearby enemies and heal self
+                // Every 1 second, drain HP from all nearby enemies and heal self
                 if (gameObj.tick % 30 === 0) {
                     let healed = false;
                     
-                    // PERFORMANCE FIX: Spatial Grid Lookup for Life Drain
+                    // [PERFORMANCE] Spatial Grid Lookup for Life Drain
                     const CELL_SIZE = 250;
-                    const cx = Math.max(0, (entity.x / CELL_SIZE) | 0);
-                    const cy = Math.max(0, (entity.y / CELL_SIZE) | 0);
-                    const radius = 100;
-                    const radiusSq = 10000; 
+                    const maxGridX = Math.ceil(gameObj.world.width / CELL_SIZE);
+                    const maxGridY = Math.ceil(gameObj.world.height / CELL_SIZE);
+                    
+                    const cx = MathUtils.clamp((entity.x / CELL_SIZE) | 0, 0, maxGridX);
+                    const cy = MathUtils.clamp((entity.y / CELL_SIZE) | 0, 0, maxGridY);
+                    
+                    const radius = SPECTRAL_CONFIG.lifestealRadius;
+                    const radiusSq = SPECTRAL_CONFIG.lifestealRadiusSq; 
 
                     for (let nx = cx - 1; nx <= cx + 1; nx++) {
-                        if (nx < 0) continue;
+                        if (nx < 0 || nx > maxGridX) continue;
                         for (let ny = cy - 1; ny <= cy + 1; ny++) {
-                            if (ny < 0) continue;
+                            if (ny < 0 || ny > maxGridY) continue;
                             
                             const key = (nx << 16) | ny;
                             const cell = gameObj.spatialGrid.get(key);
@@ -56,17 +79,23 @@ export const SpectralSwarmExpansion = {
                                     if (Math.abs(entity.x - e.x) > radius || Math.abs(entity.y - e.y) > radius) continue;
                                     
                                     if (MathUtils.distSq(entity.x, entity.y, e.x, e.y) < radiusSq) {
-                                        e.hp -= 2;
-                                        entity.hp = Math.min(entity.maxHp, entity.hp + 2);
+                                        e.hp -= SPECTRAL_CONFIG.lifestealAmount;
+                                        
+                                        // [FIX] Dynamically calculate absolute max HP based on current Tech Level!
+                                        const techBoost = (gameObj.techLevel[entity.team] || 0) * 20;
+                                        entity.hp = Math.min(entity.maxHp + techBoost, entity.hp + SPECTRAL_CONFIG.lifestealAmount);
                                         healed = true;
+                                        
                                         // Visual soul-leech effect
-                                        gameObj.bus.emit('particles', {x: e.x, y: e.y, color: '#00ffff', count: 1});
+                                        gameObj.bus.emit('particles', {x: e.x, y: e.y, color: '#00ffff', count: 1, type: 'magic'});
                                     }
                                 }
                             }
                         }
                     }
-                    if (healed) gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#00ff00', count: 2});
+                    if (healed) {
+                        gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#00ff00', count: 3, type: 'magic'});
+                    }
                 }
                 
                 return false; // Return false because this is a passive ability (keep moving/attacking normally)
@@ -76,24 +105,30 @@ export const SpectralSwarmExpansion = {
         // 4. SPELL LOGIC: PARALYZE
         game.bus.on('castSpell', (data) => {
             if (data.type === 'paralyze') {
-                if (game.eco[data.team].dew >= 75) {
-                    game.eco[data.team].dew -= 75;
+                if (game.eco[data.team].dew >= SPECTRAL_CONFIG.spellCost) {
+                    game.eco[data.team].dew -= SPECTRAL_CONFIG.spellCost;
                     
-                    // JUICE: The Deep Freeze!
+                    // [JUICE] The Deep Freeze!
                     if (game.triggerShake) game.triggerShake(8);
                     game.bus.emit('playSound', 'spell');
                     game.bus.emit('particles', {x: data.x, y: data.y, color: '#00ffff', count: 100});
-                    game.bus.emit('particles', {x: data.x, y: data.y, color: '#ffffff', count: 50});
+                    game.bus.emit('particles', {x: data.x, y: data.y, color: '#ffffff', count: 50, type: 'magic'});
                     
-                    const radius = 150;
-                    const radiusSq = 22500; 
+                    // Spawn a massive expanding ice ring
+                    game.bus.emit('particles', {x: data.x, y: data.y, color: 'rgba(0, 255, 255, 0.6)', count: 1, type: 'ring'});
                     
-                    // PERFORMANCE FIX: Spatial Grid Lookup for AoE Spell!
+                    const radius = SPECTRAL_CONFIG.spellRadius;
+                    const radiusSq = SPECTRAL_CONFIG.spellRadiusSq; 
+                    
+                    // [PERFORMANCE] Spatial Grid Lookup for AoE Spell!
                     const CELL_SIZE = 250;
-                    const minCx = Math.max(0, ((data.x - radius) / CELL_SIZE) | 0);
-                    const maxCx = Math.max(0, ((data.x + radius) / CELL_SIZE) | 0);
-                    const minCy = Math.max(0, ((data.y - radius) / CELL_SIZE) | 0);
-                    const maxCy = Math.max(0, ((data.y + radius) / CELL_SIZE) | 0);
+                    const maxGridX = Math.ceil(game.world.width / CELL_SIZE);
+                    const maxGridY = Math.ceil(game.world.height / CELL_SIZE);
+                    
+                    const minCx = MathUtils.clamp(((data.x - radius) / CELL_SIZE) | 0, 0, maxGridX);
+                    const maxCx = MathUtils.clamp(((data.x + radius) / CELL_SIZE) | 0, 0, maxGridX);
+                    const minCy = MathUtils.clamp(((data.y - radius) / CELL_SIZE) | 0, 0, maxGridY);
+                    const maxCy = MathUtils.clamp(((data.y + radius) / CELL_SIZE) | 0, 0, maxGridY);
 
                     for (let cx = minCx; cx <= maxCx; cx++) {
                         for (let cy = minCy; cy <= maxCy; cy++) {
@@ -109,7 +144,7 @@ export const SpectralSwarmExpansion = {
                                     if (Math.abs(e.x - data.x) > radius || Math.abs(e.y - data.y) > radius) continue;
                                     
                                     if (MathUtils.distSq(e.x, e.y, data.x, data.y) < radiusSq) {
-                                        e.stunTimer = 150; // 5 seconds of stun (30 ticks * 5)
+                                        e.stunTimer = SPECTRAL_CONFIG.stunDuration; 
                                         game.bus.emit('particles', {x: e.x, y: e.y, color: '#00ffff', count: 5});
                                     }
                                 }
@@ -147,8 +182,11 @@ export const SpectralSwarmExpansion = {
             // Because ANY unit can be stunned, this stays as a patch to intercept the AI!
             if (this.stunTimer > 0) {
                 this.stunTimer--;
-                // Emit freeze particles while stunned
-                if (gameObj.tick % 10 === 0) gameObj.bus.emit('particles', {x: this.x, y: this.y - 10, color: '#00ffff', count: 1});
+                
+                // [JUICE] Emit freeze particles while stunned
+                if (gameObj.tick % 15 === 0) {
+                    gameObj.bus.emit('particles', {x: this.x, y: this.y - 10, color: '#00ffff', count: 1, type: 'magic'});
+                }
                 
                 // RETURN IMMEDIATELY! This completely bypasses all traits and AI, freezing them in place!
                 return; 
@@ -158,9 +196,6 @@ export const SpectralSwarmExpansion = {
         });
 
         // 6. STRUCTURE AI: THE MONOLITH STEALTH FIELD
-        const STEALTH_RADIUS = 250;
-        const STEALTH_RADIUS_SQ = 62500; // 250^2
-
         game.expansions.patchClass(Structure, 'update', function(original, gameObj) {
             original.call(this, gameObj);
             
@@ -168,15 +203,21 @@ export const SpectralSwarmExpansion = {
                 // Pulse every 5 frames to keep nearby allies cloaked
                 if (gameObj.tick % 5 === 0) {
                     
-                    // PERFORMANCE FIX: Spatial Grid Lookup for Cloaking!
+                    // [PERFORMANCE] Spatial Grid Lookup for Cloaking!
                     const CELL_SIZE = 250;
-                    const cx = Math.max(0, (this.x / CELL_SIZE) | 0);
-                    const cy = Math.max(0, (this.y / CELL_SIZE) | 0);
+                    const maxGridX = Math.ceil(gameObj.world.width / CELL_SIZE);
+                    const maxGridY = Math.ceil(gameObj.world.height / CELL_SIZE);
+                    
+                    const cx = MathUtils.clamp((this.x / CELL_SIZE) | 0, 0, maxGridX);
+                    const cy = MathUtils.clamp((this.y / CELL_SIZE) | 0, 0, maxGridY);
+                    
+                    const radius = SPECTRAL_CONFIG.stealthRadius;
+                    const radiusSq = SPECTRAL_CONFIG.stealthRadiusSq;
 
                     for (let nx = cx - 1; nx <= cx + 1; nx++) {
-                        if (nx < 0) continue;
+                        if (nx < 0 || nx > maxGridX) continue;
                         for (let ny = cy - 1; ny <= cy + 1; ny++) {
-                            if (ny < 0) continue;
+                            if (ny < 0 || ny > maxGridY) continue;
                             
                             const key = (nx << 16) | ny;
                             const cell = gameObj.spatialGrid.get(key);
@@ -187,9 +228,9 @@ export const SpectralSwarmExpansion = {
                                 // Only cloak friendly units (Spiders)
                                 if (e.team === this.team && e.hp > 0 && e instanceof Spider) {
                                     // Fast AABB check
-                                    if (Math.abs(this.x - e.x) > STEALTH_RADIUS || Math.abs(this.y - e.y) > STEALTH_RADIUS) continue;
+                                    if (Math.abs(this.x - e.x) > radius || Math.abs(this.y - e.y) > radius) continue;
                                     
-                                    if (MathUtils.distSq(this.x, this.y, e.x, e.y) < STEALTH_RADIUS_SQ) {
+                                    if (MathUtils.distSq(this.x, this.y, e.x, e.y) < radiusSq) {
                                         e.isCloaked = true;
                                         e.stealthAuraTimer = 10; // Gives them 10 frames of stealth
                                     }
@@ -202,55 +243,112 @@ export const SpectralSwarmExpansion = {
         });
 
         // 7. DRAWING MODIFICATIONS
-        game.expansions.patchClass(Spider, 'draw', function(original, ctx) {
+        // [FIX] Signature updated to accept (original, ctx, gameObj)
+        game.expansions.patchClass(Spider, 'draw', function(original, ctx, gameObj) {
             
-            // Handle Monolith Stealth Transparency
+            // [JUICE] Shiver animation while stunned!
+            let shiverX = 0;
+            if (this.stunTimer > 0) {
+                shiverX = (this.stunTimer % 4 < 2) ? 1 : -1;
+                ctx.save();
+                ctx.translate(shiverX, 0);
+            }
+            
+            // Handle Monolith Stealth Transparency & Phantom passive transparency
+            let oldAlpha = ctx.globalAlpha;
+            let restoreAlpha = false;
+
             if (this.stealthAuraTimer > 0) {
                 this.stealthAuraTimer--;
                 ctx.globalAlpha = 0.35; // Ghostly transparent
+                restoreAlpha = true;
                 if (this.stealthAuraTimer <= 0) this.isCloaked = false; // Uncloak when leaving aura
+            } else if (this.role === 'phantom' && ctx.globalAlpha === 1.0) {
+                ctx.globalAlpha = 0.7; // Phantoms are naturally semi-transparent
+                restoreAlpha = true;
             }
-            
-            // Phantoms are naturally semi-transparent
-            if (this.role === 'phantom' && ctx.globalAlpha === 1.0) ctx.globalAlpha = 0.7;
 
-            original.call(this, ctx);
+            // Draw the spider normally (respecting the shiver translation and alpha state)
+            original.call(this, ctx, gameObj);
             
-            // Draw an icy/webbed cage over stunned units
+            if (restoreAlpha) ctx.globalAlpha = oldAlpha;
+
+            // [JUICE] Draw an icy crystal block over stunned units
             if (this.stunTimer > 0) {
-                ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 2;
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                
+                ctx.fillStyle = 'rgba(0, 255, 255, 0.4)';
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                
+                // Jagged ice crystal shape
                 ctx.beginPath();
-                ctx.moveTo(this.x - this.size, this.y - this.size); ctx.lineTo(this.x + this.size, this.y + this.size);
-                ctx.moveTo(this.x + this.size, this.y - this.size); ctx.lineTo(this.x - this.size, this.y + this.size);
+                ctx.moveTo(0, -this.size - 4);
+                ctx.lineTo(this.size + 2, -2);
+                ctx.lineTo(this.size + 4, this.size + 2);
+                ctx.lineTo(-2, this.size + 4);
+                ctx.lineTo(-this.size - 4, 2);
+                ctx.closePath();
+                
+                ctx.fill(); 
                 ctx.stroke();
+                
+                ctx.restore();
+                ctx.restore(); // Restore the shiver translation
             }
-            ctx.globalAlpha = 1.0; // Reset
         });
         
-        game.expansions.patchClass(Structure, 'draw', function(original, ctx) {
+        game.expansions.patchClass(Structure, 'draw', function(original, ctx, gameObj) {
             // Sprite Caching Link
-            if (this.type === 'monolith' && !this.spriteLoaded && game.assets) {
-                this.sprite = game.assets.get(`assets/${this.type}_${this.team}.png`);
+            if (this.type === 'monolith' && !this.spriteLoaded && gameObj.assets) {
+                this.sprite = gameObj.assets.get(`assets/${this.type}_${this.team}.png`);
                 if (this.sprite) this.spriteLoaded = true;
             }
 
-            // Draw the Stealth Field Aura under the Monolith
+            // [JUICE] Draw the ethereal Stealth Field Aura under the Monolith
             if (this.type === 'monolith' && !this.isConstructing && this.hp > 0) {
                 ctx.save();
                 ctx.translate(this.x, this.y);
-                const pulse = Math.sin(game.tick * 0.05) * 0.1;
-                ctx.fillStyle = this.team === 'black' ? `rgba(100, 0, 255, ${0.1 + pulse})` : `rgba(255, 0, 0, ${0.1 + pulse})`;
-                ctx.beginPath(); ctx.arc(0, 0, STEALTH_RADIUS, 0, MathUtils.TWO_PI); ctx.fill();
+                
+                const tick = gameObj ? gameObj.tick : 0;
+                const pulse = Math.sin(tick * 0.05) * 0.1;
+                
+                // Create a smooth fading radial gradient
+                let grad = ctx.createRadialGradient(0, 0, 0, 0, 0, SPECTRAL_CONFIG.stealthRadius);
+                const rgb = this.team === 'black' ? '100, 0, 255' : '255, 0, 0';
+                
+                grad.addColorStop(0, `rgba(${rgb}, ${0.1 + pulse})`);
+                grad.addColorStop(0.8, `rgba(${rgb}, ${0.05})`);
+                grad.addColorStop(1, `rgba(${rgb}, 0)`);
+                
+                ctx.fillStyle = grad;
+                ctx.beginPath(); 
+                ctx.arc(0, 0, SPECTRAL_CONFIG.stealthRadius, 0, MathUtils.TWO_PI); 
+                ctx.fill();
                 ctx.restore();
             }
 
-            original.call(this, ctx);
+            // ALWAYS call original to guarantee base scaling and health bars draw properly!
+            original.call(this, ctx, gameObj);
 
             // Chunk fallback for testing before you add art
             if (this.type === 'monolith' && (!this.sprite || !this.sprite.complete || this.sprite.naturalHeight === 0)) {
                 ctx.save(); ctx.translate(this.x, this.y);
-                ctx.fillStyle = '#222'; ctx.beginPath(); ctx.moveTo(-15, 20); ctx.lineTo(15, 20); ctx.lineTo(5, -30); ctx.lineTo(-5, -30); ctx.fill();
-                ctx.fillStyle = '#00ffff'; ctx.beginPath(); ctx.arc(0, -10, 4, 0, MathUtils.TWO_PI); ctx.fill();
+                
+                // Base
+                ctx.fillStyle = '#222'; 
+                ctx.beginPath(); ctx.moveTo(-15, 20); ctx.lineTo(15, 20); ctx.lineTo(5, -30); ctx.lineTo(-5, -30); ctx.fill();
+                
+                // Hovering, pulsing crystal
+                const tick = gameObj ? gameObj.tick : 0;
+                const floatY = Math.sin(tick * 0.1) * 3;
+                
+                ctx.shadowColor = '#00ffff';
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = '#00ffff'; 
+                ctx.beginPath(); ctx.arc(0, -15 + floatY, 4, 0, MathUtils.TWO_PI); ctx.fill();
+                
                 ctx.restore();
             }
         });
