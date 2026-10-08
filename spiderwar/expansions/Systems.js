@@ -12,6 +12,22 @@ import { EggTrap, Broodling } from './BroodAmbush.js';
 import { ExplosiveProjectile } from './Titans.js'; 
 import { MortarShell } from './Fortress.js';       
 
+// ==========================================
+// 1. CONFIGURATION
+// ==========================================
+// [EXPANDABILITY] Exported so other mods can tweak visual atmosphere
+export const SYSTEM_CONFIG = {
+    fowBlur: 'blur(30px)',
+    // RGB for "discovered but out of sight" fog (Deep purple/blue)
+    fowTintR: 15,
+    fowTintG: 5,
+    fowTintB: 30,
+    fowTintAlpha: 160 // out of 255
+};
+
+// ==========================================
+// 2. ATMOSPHERE & LIGHTING
+// ==========================================
 export const AtmosphereExpansion = {
     patch: (game) => {
         game.bus.on('atmosphereDraw', (ctx) => {
@@ -34,29 +50,47 @@ export const AtmosphereExpansion = {
         });
 
         // Pulsing glow effects for bases during the night cycle
-        game.expansions.patchClass(Structure, 'draw', function(original, ctx) {
-            const cycle = Math.sin(game.tick / 1800);
+        // [FIX] Signature updated to accept gameObj
+        game.expansions.patchClass(Structure, 'draw', function(original, ctx, gameObj) {
+            const tick = gameObj ? gameObj.tick : 0;
+            const cycle = Math.sin(tick / 1800);
+            
             if (cycle > 0 && (this.type === 'nest' || this.type === 'turret') && !this.isConstructing) { 
+                ctx.save();
                 ctx.shadowBlur = 30 * cycle; 
                 ctx.shadowColor = this.team === 'black' ? '#aa00ff' : '#ff3300'; 
+                original.call(this, ctx, gameObj); 
+                ctx.restore();
+            } else {
+                original.call(this, ctx, gameObj);
             }
-            original.call(this, ctx); 
-            ctx.shadowBlur = 0; 
         });
 
-        game.expansions.patchClass(Queen, 'draw', function(original, ctx) {
-            const cycle = Math.sin(game.tick / 1800);
+        game.expansions.patchClass(Queen, 'draw', function(original, ctx, gameObj) {
+            const tick = gameObj ? gameObj.tick : 0;
+            const cycle = Math.sin(tick / 1800);
+            
             if (cycle > 0) { 
+                ctx.save();
                 ctx.shadowBlur = 40 * cycle; 
                 ctx.shadowColor = this.team === 'black' ? '#ffffff' : '#ff0000'; 
+                original.call(this, ctx, gameObj); 
+                ctx.restore();
+            } else {
+                original.call(this, ctx, gameObj); 
             }
-            original.call(this, ctx); 
-            ctx.shadowBlur = 0;
         });
     }
 }
 
+// ==========================================
+// 3. FOG OF WAR
+// ==========================================
 export const FogOfWarExpansion = {
+    init: (game) => {
+        game.systemConfig = SYSTEM_CONFIG;
+    },
+    
     patch: (game) => {
         game.expansions.patchClass(Game, 'update', function(original) {
             original.call(this);
@@ -123,20 +157,24 @@ export const FogOfWarExpansion = {
                 const data = imgData.data;
 
                 let index = 0;
+                const cfg = game.systemConfig;
+                
                 for (let y = 0; y < h; y++) {
                     for (let x = 0; x < w; x++) {
                         const tile = this.mapGrid[y][x];
                         
-                        data[index] = 0;     // R
-                        data[index+1] = 0;   // G
-                        data[index+2] = 0;   // B
-                        
                         if (!tile.discovered) {
-                            data[index+3] = 255; // 100% Black
+                            // Pitch Black
+                            data[index] = 0; data[index+1] = 0; data[index+2] = 0; data[index+3] = 255;
                         } else if (!tile.visible) {
-                            data[index+3] = 153; // 60% Black (153/255)
+                            // [JUICE] Deep, moody purple/blue tint for discovered but unlit areas
+                            data[index] = cfg.fowTintR; 
+                            data[index+1] = cfg.fowTintG; 
+                            data[index+2] = cfg.fowTintB; 
+                            data[index+3] = cfg.fowTintAlpha; 
                         } else {
-                            data[index+3] = 0;   // Fully Transparent
+                            // Fully Transparent
+                            data[index] = 0; data[index+1] = 0; data[index+2] = 0; data[index+3] = 0;   
                         }
                         
                         index += 4;
@@ -147,8 +185,9 @@ export const FogOfWarExpansion = {
         });
 
         // Hooks visibility logic directly into the base drawing routines of all classes
+        // [FIX] Updated to pass down gameObj for animations
         const applyFoWToClass = (ClassRef, hideIfInvisible, hideIfUndiscovered) => {
-            game.expansions.patchClass(ClassRef, 'draw', function(original, ctx) {
+            game.expansions.patchClass(ClassRef, 'draw', function(original, ctx, gameObj) {
                 if (game.mapGrid) {
                     const tileSize = game.tileSize || 256;
                     const tX = (this.x / tileSize) | 0; 
@@ -159,7 +198,7 @@ export const FogOfWarExpansion = {
                         if (hideIfInvisible && !tile.visible && this.team !== 'black') return;
                     }
                 }
-                original.call(this, ctx);
+                original.call(this, ctx, gameObj);
             });
         };
         
@@ -182,7 +221,7 @@ export const FogOfWarExpansion = {
         game.bus.on('postDraw', (ctx) => {
             if (!game.fowCanvas) return;
             ctx.save();
-            ctx.filter = 'blur(30px)'; 
+            ctx.filter = game.systemConfig.fowBlur; 
             ctx.drawImage(
                 game.fowCanvas, 
                 0, 0, 
@@ -194,12 +233,39 @@ export const FogOfWarExpansion = {
     }
 };
 
+// ==========================================
+// 4. SAVE & LOAD SYSTEM
+// ==========================================
 export const SaveLoadExpansion = {
+    init: (game) => {
+        // [JUICE] Add an elegant system message UI for saving/loading instead of ugly browser alerts
+        game.showSystemMessage = (msg, color) => {
+            const el = document.createElement('div');
+            el.innerText = msg;
+            el.style.cssText = `
+                position: fixed; top: 15%; left: 50%; transform: translateX(-50%);
+                color: ${color}; font-family: 'Courier New', monospace; font-size: 2rem; font-weight: bold;
+                z-index: 9999; text-shadow: 0 0 15px ${color}, 2px 2px 0 #000;
+                pointer-events: none; transition: opacity 1.5s ease-in, top 1.5s ease-out;
+            `;
+            document.body.appendChild(el);
+            
+            // Force reflow then animate up and fade out
+            void el.offsetWidth; 
+            setTimeout(() => { el.style.opacity = '0'; el.style.top = '10%'; }, 500);
+            setTimeout(() => el.remove(), 2000);
+        };
+    },
+    
     patch: (game) => {
         
         const performLoad = () => {
             const data = localStorage.getItem('spiderRTS_saveData'); 
-            if(!data) return alert("No save found!");
+            if(!data) {
+                game.showSystemMessage("NO SAVE DATA FOUND", "#ff0000");
+                game.bus.emit('playSound', 'error');
+                return;
+            }
             
             const state = JSON.parse(data);
             game.eco = state.eco; game.pop = state.pop; game.maxPop = state.maxPop; 
@@ -259,6 +325,9 @@ export const SaveLoadExpansion = {
                         o.imageLoaded = true;
                     }
                 }
+                
+                // [FIX] Restore ID so animation offsets and network links remain stable!
+                if (s.id) o.id = s.id;
                 o.hp = s.hp; 
                 o.cargo = s.cargo; 
                 if (s.life !== undefined) o.life = s.life; 
@@ -274,12 +343,23 @@ export const SaveLoadExpansion = {
                 game.addEntity(o); 
             });
             
-            state.resourceNodes.forEach(p => { let o = new ResourceNode(p.x, p.y, p.type); o.resources = p.resources; game.addEntity(o); });
-            state.queens.forEach(q => { let o = new Queen(q.x, q.y, q.team); o.hp = q.hp; game.addEntity(o); });
+            state.resourceNodes.forEach(p => { 
+                let o = new ResourceNode(p.x, p.y, p.type); 
+                if (p.id) o.id = p.id;
+                o.resources = p.resources; 
+                game.addEntity(o); 
+            });
+            state.queens.forEach(q => { 
+                let o = new Queen(q.x, q.y, q.team); 
+                if (q.id) o.id = q.id;
+                o.hp = q.hp; 
+                game.addEntity(o); 
+            });
             
             if (state.critters) {
                 state.critters.forEach(c => { 
                     let o = c.type === 'GoldenBug' ? new GoldenBug(c.x, c.y) : new Aphid(c.x, c.y);
+                    if (c.id) o.id = c.id;
                     o.hp = c.hp; o.color = c.color;
                     game.addEntity(o); 
                 });
@@ -287,6 +367,7 @@ export const SaveLoadExpansion = {
             if (state.bosses) {
                 state.bosses.forEach(b => {
                     let o = new CentipedeBoss(b.x, b.y);
+                    if (b.id) o.id = b.id;
                     o.hp = b.hp;
                     game.addEntity(o);
                 });
@@ -294,6 +375,7 @@ export const SaveLoadExpansion = {
             if (state.hazards) {
                 state.hazards.forEach(h => {
                     let f = new VenusFlytrap(h.x, h.y);
+                    if (h.id) f.id = h.id;
                     f.hp = h.hp; f.cooldown = h.cooldown;
                     game.addEntity(f);
                 });
@@ -301,6 +383,7 @@ export const SaveLoadExpansion = {
             if (state.controlPoints) {
                 state.controlPoints.forEach(c => {
                     let o = new JackOLantern(c.x, c.y);
+                    if (c.id) o.id = c.id;
                     o.controllingTeam = c.team; o.captureProgress = c.prog;
                     game.addEntity(o);
                 });
@@ -308,6 +391,7 @@ export const SaveLoadExpansion = {
             if (state.corpses) {
                 state.corpses.forEach(c => {
                     let o = new Corpse(c.x, c.y, c.size);
+                    if (c.id) o.id = c.id;
                     o.life = c.life;
                     game.addEntity(o);
                 });
@@ -320,6 +404,7 @@ export const SaveLoadExpansion = {
                 });
             }
             
+            game.showSystemMessage("GAME LOADED", "#00aaff");
             game.bus.emit('playSound', 'spell');
             console.log("Game Successfully Loaded!");
         };
@@ -337,7 +422,8 @@ export const SaveLoadExpansion = {
                 for (let i = 0; i < game.entities.length; i++) {
                     let u = game.entities[i];
                     if (u instanceof Spider && u.role !== 'queen') {
-                        const sData = { x: u.x, y: u.y, team: u.team, role: u.role, hp: u.hp, cargo: u.cargo, size: u.size };
+                        // [FIX] Save ID!
+                        const sData = { id: u.id, x: u.x, y: u.y, team: u.team, role: u.role, hp: u.hp, cargo: u.cargo, size: u.size };
                         if (u.isZombie) sData.isZombie = true;
                         if (u.isCloaked !== undefined) { sData.isCloaked = u.isCloaked; sData.cloakCooldown = u.cloakCooldown; }
                         if (u.life !== undefined) sData.life = u.life;
@@ -350,13 +436,13 @@ export const SaveLoadExpansion = {
                             territory: u.territory, originalTerritory: u.originalTerritory, cooldown: u.cooldown
                         });
                     }
-                    else if (u instanceof ResourceNode) resNodes.push({x: u.x, y: u.y, type: u.type, resources: u.resources});
-                    else if (u instanceof Queen) queens.push({x: u.x, y: u.y, team: u.team, hp: u.hp});
-                    else if (u.team === 'nature' && u.constructor.name !== 'CentipedeBoss') critters.push({x: u.x, y: u.y, hp: u.hp, color: u.color, type: u.type || u.constructor.name});
-                    else if (u.constructor.name === 'CentipedeBoss') bosses.push({x: u.x, y: u.y, hp: u.hp});
-                    else if (u instanceof VenusFlytrap) hazards.push({x: u.x, y: u.y, hp: u.hp, cooldown: u.cooldown});
-                    else if (u instanceof JackOLantern) cps.push({x: u.x, y: u.y, team: u.controllingTeam, prog: u.captureProgress});
-                    else if (u instanceof Corpse) corpses.push({x: u.x, y: u.y, life: u.life, size: u.size});
+                    else if (u instanceof ResourceNode) resNodes.push({id: u.id, x: u.x, y: u.y, type: u.type, resources: u.resources});
+                    else if (u instanceof Queen) queens.push({id: u.id, x: u.x, y: u.y, team: u.team, hp: u.hp});
+                    else if (u.team === 'nature' && u.constructor.name !== 'CentipedeBoss') critters.push({id: u.id, x: u.x, y: u.y, hp: u.hp, color: u.color, type: u.type || u.constructor.name});
+                    else if (u.constructor.name === 'CentipedeBoss') bosses.push({id: u.id, x: u.x, y: u.y, hp: u.hp});
+                    else if (u instanceof VenusFlytrap) hazards.push({id: u.id, x: u.x, y: u.y, hp: u.hp, cooldown: u.cooldown});
+                    else if (u instanceof JackOLantern) cps.push({id: u.id, x: u.x, y: u.y, team: u.controllingTeam, prog: u.captureProgress});
+                    else if (u instanceof Corpse) corpses.push({id: u.id, x: u.x, y: u.y, life: u.life, size: u.size});
                     else if (u instanceof EggTrap) eggTraps.push({x: u.x, y: u.y, team: u.team, hp: u.hp});
                 }
 
@@ -380,7 +466,7 @@ export const SaveLoadExpansion = {
                 
                 localStorage.setItem('spiderRTS_saveData', JSON.stringify(state)); 
                 
-                game.bus.emit('particles', {x: game.camera.x + game.canvas.width/2, y: game.camera.y + game.canvas.height/2, color: '#00ff00', count: 50});
+                game.showSystemMessage("GAME SAVED", "#00ff00");
                 game.bus.emit('playSound', 'ping');
                 console.log("Game Saved!");
             }
