@@ -4,7 +4,8 @@ import { MathUtils, Spider } from '../game.js';
 // ==========================================
 // 1. CONFIGURATION & BALANCING
 // ==========================================
-const SPELL_CONFIG = {
+// [EXPANDABILITY] Exported so other mods can tweak spell parameters
+export const SPELL_CONFIG = {
     venomStrike: { 
         cost: 50, 
         radius: 100, 
@@ -38,20 +39,28 @@ export class Spell {
         this.radius = config.radius; 
         this.radiusSq = config.radiusSq;
         
-        this.age = 0; // Deterministic animation timer
+        // [JUICE] Pop-in scale animation
+        this.spawnScale = 0.1;
     }
 
     update(game) {
         this.life--;
-        this.age++;
 
-        // PERFORMANCE FIX: Spatial Grid Lookup!
-        // Instead of looping through all 2000 entities, we only check the grid cells that the spell overlaps!
-        const CELL_SIZE = 250; // Sync with game.js
-        const minCx = Math.max(0, ((this.x - this.radius) / CELL_SIZE) | 0);
-        const maxCx = Math.max(0, ((this.x + this.radius) / CELL_SIZE) | 0);
-        const minCy = Math.max(0, ((this.y - this.radius) / CELL_SIZE) | 0);
-        const maxCy = Math.max(0, ((this.y + this.radius) / CELL_SIZE) | 0);
+        // [JUICE] Scale up rapidly on spawn
+        if (this.spawnScale < 1.0) {
+            this.spawnScale = Math.min(1.0, this.spawnScale + 0.15);
+        }
+
+        // PERFORMANCE FIX: Clamped Spatial Grid Lookup!
+        // Prevents OOB (Out-of-Bounds) lookups if spells are cast near the edge of the map.
+        const CELL_SIZE = 250; 
+        const maxGridX = Math.ceil(game.world.width / CELL_SIZE);
+        const maxGridY = Math.ceil(game.world.height / CELL_SIZE);
+
+        const minCx = MathUtils.clamp(((this.x - this.radius) / CELL_SIZE) | 0, 0, maxGridX);
+        const maxCx = MathUtils.clamp(((this.x + this.radius) / CELL_SIZE) | 0, 0, maxGridX);
+        const minCy = MathUtils.clamp(((this.y - this.radius) / CELL_SIZE) | 0, 0, maxGridY);
+        const maxCy = MathUtils.clamp(((this.y + this.radius) / CELL_SIZE) | 0, 0, maxGridY);
 
         for (let cx = minCx; cx <= maxCx; cx++) {
             for (let cy = minCy; cy <= maxCy; cy++) {
@@ -77,7 +86,7 @@ export class Spell {
                         if (this.type === 'venomStrike') {
                             if (game.tick % SPELL_CONFIG.venomStrike.tickRate === 0) { 
                                 e.hp -= SPELL_CONFIG.venomStrike.dps; 
-                                game.bus.emit('particles', {x: e.x, y: e.y, color: SPELL_CONFIG.venomStrike.color, count: 2}); 
+                                game.bus.emit('particles', {x: e.x, y: e.y, color: SPELL_CONFIG.venomStrike.color, count: 2, type: 'magic'}); 
                             }
                         } 
                         // Silk Trap: Movement Debuff
@@ -90,22 +99,38 @@ export class Spell {
         }
     }
 
-    draw(ctx) {
+    // [FIX] Update signature to accept game object for Hit-Stop syncing
+    draw(ctx, game) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        
+        // Apply the pop-in scaling
+        ctx.scale(this.spawnScale, this.spawnScale);
+        
         // Fade in at the start, fade out at the end
         ctx.globalAlpha = Math.min(this.life / 60, 0.4); 
+        
+        const tick = game ? game.tick : 0;
         
         if (this.type === 'venomStrike') {
             // Animated bubbling acid pool
             ctx.fillStyle = SPELL_CONFIG.venomStrike.color; 
+            
+            // [JUICE] Glowing acid aura
+            ctx.shadowColor = SPELL_CONFIG.venomStrike.color;
+            ctx.shadowBlur = 20;
+            
             ctx.beginPath(); 
-            ctx.arc(this.x, this.y, this.radius, 0, MathUtils.TWO_PI); 
+            ctx.arc(0, 0, this.radius, 0, MathUtils.TWO_PI); 
             ctx.fill();
             
-            // Caustic ripple effect
-            const ripple = this.radius * (0.8 + Math.sin(this.age * 0.1) * 0.1);
+            ctx.shadowBlur = 0; // Reset
+            
+            // Caustic ripple effect synced to global tick
+            const ripple = this.radius * (0.8 + Math.sin(tick * 0.1) * 0.1);
             ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
             ctx.beginPath(); 
-            ctx.arc(this.x, this.y, ripple, 0, MathUtils.TWO_PI); 
+            ctx.arc(0, 0, ripple, 0, MathUtils.TWO_PI); 
             ctx.fill();
 
             // Random bubbling splashes
@@ -113,21 +138,23 @@ export class Spell {
                 ctx.fillStyle = '#fff'; 
                 ctx.beginPath(); 
                 
-                const rx = this.x + (Math.random() * 2 - 1) * this.radius;
-                const ry = this.y + (Math.random() * 2 - 1) * this.radius;
+                const rx = (Math.random() * 2 - 1) * this.radius;
+                const ry = (Math.random() * 2 - 1) * this.radius;
                 
                 ctx.arc(rx, ry, Math.random() * 5, 0, MathUtils.TWO_PI); 
                 ctx.fill(); 
             }
         } 
         else if (this.type === 'silkTrap') {
-            ctx.save();
-            ctx.translate(this.x, this.y);
-            
-            // Mesmerizing, slow rotation animation
-            ctx.rotate(this.age * 0.01);
+            // Mesmerizing, slow rotation animation synced to global tick
+            ctx.rotate(tick * 0.01);
             
             ctx.fillStyle = '#ffffff'; 
+            
+            // [JUICE] Ethereal web glow
+            ctx.shadowColor = '#ffffff';
+            ctx.shadowBlur = 10;
+            
             ctx.beginPath();
             
             // 8-point star web
@@ -145,10 +172,10 @@ export class Spell {
             ctx.beginPath(); ctx.arc(0, 0, this.radius * 0.6, 0, MathUtils.TWO_PI); ctx.stroke();
             ctx.beginPath(); ctx.arc(0, 0, this.radius * 0.3, 0, MathUtils.TWO_PI); ctx.stroke();
             
-            ctx.restore();
+            ctx.shadowBlur = 0; // Reset
         }
         
-        ctx.globalAlpha = 1.0;
+        ctx.restore();
     }
 }
 
@@ -157,6 +184,9 @@ export class Spell {
 // ==========================================
 export const SpellExpansion = {
     init: (game) => {
+        // [EXPANDABILITY] Export config to the game engine
+        game.spellConfig = SPELL_CONFIG;
+
         game.bus.on('castSpell', (data) => {
             const config = SPELL_CONFIG[data.type];
             if (!config) return;
@@ -166,7 +196,9 @@ export const SpellExpansion = {
                 
                 game.addEntity(new Spell(data.x, data.y, data.team, data.type));
                 
-                game.bus.emit('particles', {x: data.x, y: data.y, color: config.color, count: 100});
+                // [JUICE] Trigger the expanding sonar ring particle!
+                game.bus.emit('particles', {x: data.x, y: data.y, color: config.color, count: 1, type: 'ring'});
+                game.bus.emit('particles', {x: data.x, y: data.y, color: config.color, count: 50, type: 'magic'});
                 
                 // JUICE: Camera shake for heavy offensive spells!
                 if (data.type === 'venomStrike') {
