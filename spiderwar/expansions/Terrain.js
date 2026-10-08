@@ -4,7 +4,8 @@ import { MathUtils } from '../game.js';
 // ==========================================
 // 1. CONFIGURATION & DATA DICTIONARIES
 // ==========================================
-const TERRAIN_CONFIG = {
+// [EXPANDABILITY] Exported so mods can add custom biomes and textures!
+export const TERRAIN_CONFIG = {
     tileSize: 256,
     
     // Base Biomes (Weights determine spawn probability out of 100)
@@ -47,6 +48,9 @@ const WATER_BITMASK = {
 // ==========================================
 export const TerrainExpansion = {
     init: (game) => {
+        // [EXPANDABILITY] Expose configuration
+        game.terrainConfig = TERRAIN_CONFIG;
+        
         game.tileSize = TERRAIN_CONFIG.tileSize; 
         game.bakedTiles = {};
         game.terrainBaked = false;
@@ -80,7 +84,7 @@ export const TerrainExpansion = {
                     let type = 'dirt';
                     const roll = Math.random() * 100;
                     let cumulative = 0;
-                    for (const [biome, config] of Object.entries(TERRAIN_CONFIG.biomes)) {
+                    for (const [biome, config] of Object.entries(this.terrainConfig.biomes)) {
                         cumulative += config.weight;
                         if (roll <= cumulative) {
                             type = biome;
@@ -90,7 +94,7 @@ export const TerrainExpansion = {
 
                     const randomRotation = MathUtils.randomInt(0, 3) * HALF_PI;
                     
-                    // PERFORMANCE FIX: Pre-calculate the physical X/Y render coordinates during map generation
+                    // [PERFORMANCE] Pre-calculate the physical X/Y render coordinates during map generation
                     // so the engine doesn't have to multiply (x * tileSize) 200 times a frame!
                     this.mapGrid[y][x] = { 
                         type: type, 
@@ -110,6 +114,7 @@ export const TerrainExpansion = {
                 
                 if (Math.random() > 0.5 && rY < rows - 1) {
                     const dir = Math.random() > 0.5 ? 1 : -1;
+                    // [FIX] Clamp firmly to prevent array-out-of-bounds crashes
                     rX = MathUtils.clamp(rX + dir, 1, cols - 2);
                     this.mapGrid[rY][rX].type = 'water';
                     this.mapGrid[rY][rX].angle = 0;
@@ -148,11 +153,13 @@ export const TerrainExpansion = {
         game.generateMap();
 
         game.getTerrainAt = function(x, y) {
-            // PERFORMANCE FIX: Bitwise | 0 instead of Math.floor
-            const tX = (x / this.tileSize) | 0; 
-            const tY = (y / this.tileSize) | 0;
-            if (this.mapGrid[tY] && this.mapGrid[tY][tX]) return this.mapGrid[tY][tX].type;
-            return 'dirt'; 
+            // [PERFORMANCE] Fast bitwise clamp
+            const maxGridX = Math.ceil(this.world.width / this.tileSize) - 1;
+            const maxGridY = Math.ceil(this.world.height / this.tileSize) - 1;
+            const tX = MathUtils.clamp((x / this.tileSize) | 0, 0, maxGridX); 
+            const tY = MathUtils.clamp((y / this.tileSize) | 0, 0, maxGridY);
+            
+            return this.mapGrid[tY][tX].type;
         };
     },
 
@@ -199,7 +206,6 @@ export const TerrainExpansion = {
             if (!game.mapGrid) return;
             
             // Viewport Culling Bounds (Prevents rendering the entire map)
-            // PERFORMANCE FIX: Fast bitwise math for map bounds
             const startCol = Math.max(0, (game.camera.x / game.tileSize) | 0); 
             const endCol = Math.min(game.mapGrid[0].length - 1, startCol + Math.ceil(game.canvas.width / game.tileSize) + 1);
             
@@ -209,18 +215,16 @@ export const TerrainExpansion = {
             const halfSize = game.tileSize / 2;
             
             const dirtTile = game.bakedTiles['dirt'];
-            const fallbackDirtColor = TERRAIN_CONFIG.biomes.dirt.fallback;
+            const fallbackDirtColor = game.terrainConfig.biomes.dirt.fallback;
 
             for (let y = startRow; y <= endRow; y++) {
                 for (let x = startCol; x <= endCol; x++) {
                     
                     const tileData = game.mapGrid[y][x];
-                    
-                    // Uses our pre-calculated X/Y from Map Generation!
                     const drawX = tileData.drawX;
                     const drawY = tileData.drawY;
 
-                    // 1. Draw solid dirt foundation
+                    // 1. Draw solid dirt foundation (Everything sits on top of this)
                     if (dirtTile) ctx.drawImage(dirtTile, drawX, drawY); 
                     else { 
                         ctx.fillStyle = fallbackDirtColor; 
@@ -233,11 +237,17 @@ export const TerrainExpansion = {
                     const img = game.bakedTiles[tileData.sprite];
                     
                     if (img) {
-                        
-                        // JUICE: Subtle Water Rippling Animation!
                         let renderY = drawY;
+                        
                         if (tileData.type === 'water') {
-                            // Uses the tile's X coordinate to stagger the sine wave so they don't all bob simultaneously!
+                            // [JUICE] Inner shadow creates depth, making the river look carved into the dirt!
+                            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                            ctx.shadowBlur = 10;
+                            ctx.fillStyle = '#000';
+                            ctx.fillRect(drawX, drawY, game.tileSize, game.tileSize);
+                            ctx.shadowBlur = 0; // Reset
+                            
+                            // [JUICE] Rippling water animation
                             renderY += Math.sin(game.tick * 0.05 + x) * 2;
                         }
 
@@ -253,7 +263,7 @@ export const TerrainExpansion = {
                         }
                     } else {
                         // Safe fallback
-                        ctx.fillStyle = tileData.type === 'water' ? TERRAIN_CONFIG.waterFallback : TERRAIN_CONFIG.biomes[tileData.type].fallback;
+                        ctx.fillStyle = tileData.type === 'water' ? game.terrainConfig.waterFallback : game.terrainConfig.biomes[tileData.type].fallback;
                         ctx.fillRect(drawX, drawY, game.tileSize, game.tileSize);
                     }
                 }
