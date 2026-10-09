@@ -314,7 +314,7 @@ export const ContextUIExpansion = {
             .ui-stat { font-size: 14px; color: #ccc; margin-bottom: 5px; }
             
             #ui-hp-bar-bg { width: 100%; height: 12px; background: rgba(0,0,0,0.8); margin-top: 5px; border: 1px solid #ff9d00; border-radius: 4px; overflow: hidden;}
-            #ui-hp-bar-fill { width: var(--hp-pct, 100%); height: 100%; background: #00ff00; transition: width 0.2s; }
+            #ui-hp-bar-fill { width: 100%; height: 100%; background: #00ff00; transition: width 0.2s; }
             
             #ui-actions { 
                 flex-grow: 1; padding: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; 
@@ -587,10 +587,22 @@ export const ContextUIExpansion = {
                 if (this.customUIHooks) {
                     this.customUIHooks.forEach(hook => hook(currentSelection, addButton, nameEl, portrait));
                 }
+                
+                // 🚀 [PERFORMANCE FIX] Generate the DOM structure ONLY when the selection changes!
+                const initStatsContainer = document.getElementById('ui-stats-container');
+                if (currentSelection && currentSelection.hp !== undefined) {
+                    initStatsContainer.innerHTML = `
+                        <div class="ui-stat" id="ui-hp-text">HP: -- / --</div>
+                        <div id="ui-hp-bar-bg"><div id="ui-hp-bar-fill" style="width: 100%; background: #00ff00;"></div></div>
+                        <div class="ui-stat" id="ui-cargo-text" style="display: none;"></div>
+                        <div class="ui-stat" id="ui-dmg-text" style="display: none;"></div>
+                    `;
+                } else {
+                    initStatsContainer.innerHTML = `<div class="ui-stat">Select a unit or building to command the swarm.</div>`;
+                }
             }
 
-            const statsContainer = document.getElementById('ui-stats-container');
-            
+            // 🚀 [PERFORMANCE FIX] Update the DOM nodes directly without recreating them!
             if (currentSelection && currentSelection.hp !== undefined) {
                 let max = currentSelection.maxHp;
                 if (currentSelection.team === 'black' && !(currentSelection instanceof Queen)) max += (this.techLevel.black * 20);
@@ -598,31 +610,38 @@ export const ContextUIExpansion = {
                 let pct = Math.max(0, currentSelection.hp / max) * 100;
                 let barColor = pct > 50 ? '#00ff00' : (pct > 25 ? '#ffff00' : '#ff0000');
                 
-                let extraStats = '';
-                if (currentSelection.cargo && currentSelection.cargo.amount > 0) extraStats = `<div class="ui-stat">Cargo: ${currentSelection.cargo.amount} ${currentSelection.cargo.type}</div>`;
-                if (currentSelection.damage) extraStats += `<div class="ui-stat">DMG: ${currentSelection.damage + (this.techLevel[currentSelection.team] * 5 || 0)}</div>`;
-
-                const newHTML = `
-                    <div class="ui-stat" id="ui-hp-text">HP: ${Math.ceil(currentSelection.hp)} / ${max}</div>
-                    <div id="ui-hp-bar-bg"><div id="ui-hp-bar-fill" style="background: ${barColor}; --hp-pct: ${pct}%"></div></div>
-                    ${extraStats}
-                `;
-                
+                // Grab the cached elements (created in the selection change block)
                 const fill = document.getElementById('ui-hp-bar-fill');
-                const text = document.getElementById('ui-hp-text');
-                
-                if (fill && text && statsContainer.dataset.extra === extraStats) {
-                    fill.style.setProperty('--hp-pct', `${pct}%`);
+                const hpText = document.getElementById('ui-hp-text');
+                const cargoText = document.getElementById('ui-cargo-text');
+                const dmgText = document.getElementById('ui-dmg-text');
+
+                // Update HP
+                if (fill && hpText) {
+                    fill.style.width = `${pct}%`;
                     fill.style.background = barColor;
-                    text.innerText = `HP: ${Math.ceil(currentSelection.hp)} / ${max}`;
-                } else {
-                    statsContainer.innerHTML = newHTML;
-                    statsContainer.dataset.extra = extraStats; 
+                    hpText.innerText = `HP: ${Math.ceil(currentSelection.hp)} / ${max}`;
                 }
-                
-            } else {
-                const defaultMsg = `<div class="ui-stat">Select a unit or building to command the swarm.</div>`;
-                if (statsContainer.innerHTML !== defaultMsg) statsContainer.innerHTML = defaultMsg;
+
+                // Update Cargo
+                if (cargoText) {
+                    if (currentSelection.cargo && currentSelection.cargo.amount > 0) {
+                        cargoText.innerText = `Cargo: ${currentSelection.cargo.amount} ${currentSelection.cargo.type}`;
+                        if (cargoText.style.display === 'none') cargoText.style.display = 'block';
+                    } else {
+                        if (cargoText.style.display !== 'none') cargoText.style.display = 'none';
+                    }
+                }
+
+                // Update Damage
+                if (dmgText) {
+                    if (currentSelection.damage) {
+                        dmgText.innerText = `DMG: ${currentSelection.damage + (this.techLevel[currentSelection.team] * 5 || 0)}`;
+                        if (dmgText.style.display === 'none') dmgText.style.display = 'block';
+                    } else {
+                        if (dmgText.style.display !== 'none') dmgText.style.display = 'none';
+                    }
+                }
             }
 
             document.querySelectorAll('.cmd-btn').forEach(b => {
