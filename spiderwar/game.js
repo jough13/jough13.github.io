@@ -115,17 +115,24 @@ export class Spider {
         // [PERFORMANCE] Convert ID string to a number once for animation offset
         this.animOffset = parseInt(this.id, 36) % 100;
         
-        this.sprite = new Image();
-        if (role === 'soldier') this.sprite.src = team === 'black' ? 'assets/soldier_black.png' : 'assets/soldier_red.png';
-        else this.sprite.src = team === 'black' ? 'assets/black_spider.png' : 'assets/red_spider.png';
+        // 🚀 [LOGIC FIX] Store the SRC target instead of creating a raw Image object
+        if (role === 'soldier') this.spriteSrc = team === 'black' ? 'assets/soldier_black.png' : 'assets/soldier_red.png';
+        else this.spriteSrc = team === 'black' ? 'assets/black_spider.png' : 'assets/red_spider.png';
         
-        this.imageLoaded = false; this.sprite.onload = () => { this.imageLoaded = true; };
+        this.sprite = null;
+        this.imageLoaded = false; 
     }
     
     hasTrait(traitName) { return this.traits.includes(traitName); }
     update(game) { }
     
     draw(ctx, game) {
+        // 🚀 [LOGIC FIX] Pull the preloaded image directly from the RAM Cache!
+        if (!this.imageLoaded && game && game.assets) {
+            this.sprite = game.assets.get(this.spriteSrc);
+            if (this.sprite) this.imageLoaded = true;
+        }
+
         ctx.save(); 
         ctx.translate(this.x, this.y); 
         ctx.rotate(this.angle); 
@@ -136,7 +143,7 @@ export class Spider {
         const breath = 1 + Math.sin(tick * breathSpeed + this.animOffset) * 0.05;
         ctx.scale(breath, 1 / breath); // Squish and stretch volume preservation
         
-        if (this.imageLoaded || (this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0)) { 
+        if (this.imageLoaded && this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) { 
             ctx.drawImage(this.sprite, -this.size, -this.size, this.size * 2, this.size * 2); 
         } else {
             // [JUICE] Added drop shadow to fallback graphics so they pop off the ground
@@ -164,12 +171,20 @@ export class ResourceNode {
         this.resources = type === 'pumpkin' ? 100 : 50; 
         this.animOffset = parseInt(this.id, 36) % 100;
         
-        this.sprite = new Image(); 
-        this.sprite.src = type === 'pumpkin' ? 'assets/pumpkin.png' : 'assets/dewdrop.png';
-        this.imageLoaded = false; this.sprite.onload = () => { this.imageLoaded = true; };
+        // 🚀 [LOGIC FIX] Store the SRC target
+        this.spriteSrc = type === 'pumpkin' ? 'assets/pumpkin.png' : 'assets/dewdrop.png';
+        this.sprite = null;
+        this.imageLoaded = false; 
     }
     draw(ctx, game) {
         if (this.resources <= 0) return; 
+
+        // 🚀 [LOGIC FIX] Pull the preloaded image directly from the RAM Cache!
+        if (!this.imageLoaded && game && game.assets) {
+            this.sprite = game.assets.get(this.spriteSrc);
+            if (this.sprite) this.imageLoaded = true;
+        }
+
         ctx.save(); 
         
         // [JUICE] Magical hovering animation for resources
@@ -185,7 +200,7 @@ export class ResourceNode {
         ctx.shadowColor = this.type === 'pumpkin' ? '#ff7b00' : '#00aaff';
         ctx.shadowBlur = 15;
         
-        if (this.imageLoaded) { 
+        if (this.imageLoaded && this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) { 
             ctx.drawImage(this.sprite, -this.size, -this.size, this.size * 2, this.size * 2); 
         } else { 
             ctx.fillStyle = this.type === 'pumpkin' ? '#ff7b00' : '#00aaff'; 
@@ -209,11 +224,21 @@ export class Structure {
         
         if(type === 'turret') this.cooldown = 0; 
 
-        this.sprite = new Image(); this.sprite.src = `assets/${type}_${team}.png`;
-        this.spriteLoaded = false; this.sprite.onload = () => { this.spriteLoaded = true; };
+        // 🚀 [LOGIC FIX] Store the SRC target
+        this.spriteSrc = `assets/${type}_${team}.png`;
+        this.sprite = null;
+        this.spriteLoaded = false; 
     }
     update(game) {} 
-    draw(ctx) {
+    
+    // [FIX] Ensure structure accepts 'game' so it can access the cache
+    draw(ctx, game) {
+        // 🚀 [LOGIC FIX] Pull the preloaded image directly from the RAM Cache!
+        if (!this.spriteLoaded && game && game.assets) {
+            this.sprite = game.assets.get(this.spriteSrc);
+            if (this.sprite) this.spriteLoaded = true;
+        }
+
         ctx.save();
         ctx.translate(this.x, this.y);
         
@@ -224,7 +249,7 @@ export class Structure {
         }
         ctx.scale(this.spawnScale, this.spawnScale);
         
-        if(this.spriteLoaded) { 
+        if(this.spriteLoaded && this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) { 
             ctx.drawImage(this.sprite, -this.size, -this.size, this.size * 2, this.size * 2); 
         } else {
             // [JUICE] Add drop shadows to fallback structures
@@ -534,7 +559,7 @@ export class Game {
             this.pop.red = redPop;
         }
 
-        // Array Pooling! 
+        // 🚀 [PERFORMANCE FIX] Array Pooling! 
         // Instead of destroying arrays and triggering Garbage Collection, 
         // we simply empty them out by setting length to 0 and reuse the memory!
         for (let cell of this.spatialGrid.values()) {
@@ -542,8 +567,8 @@ export class Game {
         }
         
         const CELL_SIZE = 250;
-                
-                // [PERFORMANCE] Fast spatial map bounds caching
+        
+        // [PERFORMANCE] Fast spatial map bounds caching
         const maxGridX = Math.ceil(this.world.width / CELL_SIZE);
         const maxGridY = Math.ceil(this.world.height / CELL_SIZE);
 
