@@ -1,5 +1,5 @@
 // expansions/TraitManager.js
-import { Spider, Structure, MathUtils } from '../game.js';
+import { Spider, Structure, MathUtils, STRUCTURE_DATA } from '../game.js';
 
 // ==========================================
 // THE TRAIT MANAGER (Entity-Component System)
@@ -26,7 +26,7 @@ export const TraitManagerExpansion = {
             update: (entity, gameObj) => {
                 if (entity.hp < entity.maxHp && gameObj.tick % 60 === 0) {
                     entity.hp = Math.min(entity.maxHp, entity.hp + 5);
-                    gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#00ff00', count: 2});
+                    gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#00ff00', count: 2, type: 'magic'});
                 }
                 return false; 
             }
@@ -38,16 +38,20 @@ export const TraitManagerExpansion = {
                 if (gameObj.tick % 30 === 0) { // Every 1 second
                     let burned = false;
                     
-                    // PERFORMANCE FIX: Spatial Grid Lookup for AoE Burn
+                    // [PERFORMANCE] Clamped Spatial Grid Lookup for AoE Burn
                     const CELL_SIZE = 250;
-                    const cx = Math.max(0, (entity.x / CELL_SIZE) | 0);
-                    const cy = Math.max(0, (entity.y / CELL_SIZE) | 0);
+                    const maxGridX = Math.ceil(gameObj.world.width / CELL_SIZE);
+                    const maxGridY = Math.ceil(gameObj.world.height / CELL_SIZE);
+                    
+                    const cx = MathUtils.clamp((entity.x / CELL_SIZE) | 0, 0, maxGridX);
+                    const cy = MathUtils.clamp((entity.y / CELL_SIZE) | 0, 0, maxGridY);
                     const radiusSq = 2500; // 50px radius
 
                     for (let nx = cx - 1; nx <= cx + 1; nx++) {
-                        if (nx < 0) continue;
+                        if (nx < 0 || nx > maxGridX) continue;
                         for (let ny = cy - 1; ny <= cy + 1; ny++) {
-                            if (ny < 0) continue;
+                            if (ny < 0 || ny > maxGridY) continue;
+                            
                             const key = (nx << 16) | ny;
                             const cell = gameObj.spatialGrid.get(key);
                             if (!cell) continue;
@@ -63,7 +67,7 @@ export const TraitManagerExpansion = {
                             }
                         }
                     }
-                    if (burned) gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#ff5500', count: 3});
+                    if (burned) gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#ff5500', count: 3, type: 'magic'});
                 }
                 return false; 
             },
@@ -72,10 +76,18 @@ export const TraitManagerExpansion = {
             draw: (entity, ctx, gameObj) => {
                 ctx.save();
                 ctx.translate(entity.x, entity.y);
-                const pulse = Math.sin(gameObj.tick * 0.1) * 2;
+                
+                const tick = gameObj ? gameObj.tick : 0;
+                const pulse = Math.sin(tick * 0.1) * 2;
+                
+                // [JUICE] Added a hot glowing shadow to the fire aura
+                ctx.shadowColor = '#ff5500';
+                ctx.shadowBlur = 10 + pulse;
+                
                 ctx.strokeStyle = `rgba(255, 85, 0, 0.4)`;
                 ctx.lineWidth = 2;
                 ctx.beginPath(); ctx.arc(0, 0, 50 + pulse, 0, MathUtils.TWO_PI); ctx.stroke();
+                
                 ctx.restore();
             }
         });
@@ -86,26 +98,35 @@ export const TraitManagerExpansion = {
                 let enemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, 200);
                 if (enemy) {
                     entity.state = 1; // SPIDER_STATE.COMBAT
-                    entity.angle = Math.atan2(enemy.y - entity.y, enemy.x - entity.x);
+                    
+                    // [JUICE] Smooth organic turning instead of snapping!
+                    const targetAngle = Math.atan2(enemy.y - entity.y, enemy.x - entity.x);
+                    entity.angle += MathUtils.angleWrap(targetAngle - entity.angle) * 0.2;
                     
                     if (MathUtils.distSq(entity.x, entity.y, enemy.x, enemy.y) < 900) { 
                         entity.hp = 0; // Kill self
                         
-                        // JUICE: Explosion Screen Shake!
-                        if (gameObj.triggerShake) gameObj.triggerShake(6);
+                        // [JUICE] Explosion Screen Shake!
+                        if (gameObj.triggerShake) gameObj.triggerShake(8);
                         gameObj.bus.emit('playSound', 'death');
-                        gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#ffaa00', count: 40});
                         
-                        // PERFORMANCE FIX: Spatial Grid Lookup for Splash Damage
+                        gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#ffaa00', count: 40, type: 'splatter'});
+                        gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#ffffff', count: 20, type: 'magic'});
+                        
+                        // [PERFORMANCE] Clamped Spatial Grid Lookup for Splash Damage
                         const CELL_SIZE = 250;
-                        const cx = Math.max(0, (entity.x / CELL_SIZE) | 0);
-                        const cy = Math.max(0, (entity.y / CELL_SIZE) | 0);
+                        const maxGridX = Math.ceil(gameObj.world.width / CELL_SIZE);
+                        const maxGridY = Math.ceil(gameObj.world.height / CELL_SIZE);
+                        
+                        const cx = MathUtils.clamp((entity.x / CELL_SIZE) | 0, 0, maxGridX);
+                        const cy = MathUtils.clamp((entity.y / CELL_SIZE) | 0, 0, maxGridY);
                         const splashRadiusSq = 10000; // 100px radius
 
                         for (let nx = cx - 1; nx <= cx + 1; nx++) {
-                            if (nx < 0) continue;
+                            if (nx < 0 || nx > maxGridX) continue;
                             for (let ny = cy - 1; ny <= cy + 1; ny++) {
-                                if (ny < 0) continue;
+                                if (ny < 0 || ny > maxGridY) continue;
+                                
                                 const key = (nx << 16) | ny;
                                 const cell = gameObj.spatialGrid.get(key);
                                 if (!cell) continue;
@@ -150,9 +171,10 @@ export const TraitManagerExpansion = {
             if (!skipDefaultAI) originalUpdate.call(entity, gameObj);
         };
 
+        // [FIX] Update signature to receive gameObj for animations
         const processTraitsDraw = function(entity, ctx, gameObj, originalDraw) {
             // Run the standard unit/building rendering first
-            originalDraw.call(entity, ctx);
+            originalDraw.call(entity, ctx, gameObj);
             
             // Allow traits to overlay their own custom graphics!
             if (entity.traits && entity.traits.length > 0) {
@@ -168,21 +190,22 @@ export const TraitManagerExpansion = {
             processTraitsUpdate(this, gameObj, original);
         });
         
-        game.expansions.patchClass(Spider, 'draw', function(original, ctx) {
-            processTraitsDraw(this, ctx, game, original);
+        game.expansions.patchClass(Spider, 'draw', function(original, ctx, gameObj) {
+            processTraitsDraw(this, ctx, gameObj, original);
         });
 
         // --- APPLY TO STRUCTURES ---
         game.expansions.patchClass(Structure, 'update', function(original, gameObj) {
             if (!this.traits) {
-                const stats = gameObj.constructor.STRUCTURE_DATA ? gameObj.constructor.STRUCTURE_DATA[this.type] : null;
+                // [FIX] Ensure we correctly read from the imported STRUCTURE_DATA dict
+                const stats = STRUCTURE_DATA[this.type];
                 this.traits = stats && stats.traits ? [...stats.traits] : [];
             }
             processTraitsUpdate(this, gameObj, original);
         });
 
-        game.expansions.patchClass(Structure, 'draw', function(original, ctx) {
-            processTraitsDraw(this, ctx, game, original);
+        game.expansions.patchClass(Structure, 'draw', function(original, ctx, gameObj) {
+            processTraitsDraw(this, ctx, gameObj, original);
         });
     }
 };
