@@ -5,7 +5,8 @@ import { Queen } from './Queen.js';
 // ==========================================
 // 1. CONFIGURATION & STYLING
 // ==========================================
-const UI_CONFIG = {
+// [EXPANDABILITY] Exported so other mods can tweak colors and sizes
+export const UI_CONFIG = {
     minimap: {
         size: 200,
         padding: 10,
@@ -32,6 +33,7 @@ const TWO_PI = Math.PI * 2;
 // ==========================================
 export const MinimapExpansion = {
     init: (game) => {
+        game.uiConfig = UI_CONFIG;
         game.minimap = UI_CONFIG.minimap; 
         game.isMinimapDragging = false;
         game.minimapPings = []; // JUICE: Array to hold radar pings!
@@ -149,7 +151,6 @@ export const MinimapExpansion = {
             const scaleY = size / game.world.height;
 
             // 🚀 PERFORMANCE FIX: Off-Screen Canvas Minimap Caching!
-            // Instead of looping over thousands of tiles every frame, we draw it once to an invisible canvas and stamp it!
             if (!game.minimapCache && game.mapGrid) {
                 game.minimapCache = document.createElement('canvas');
                 game.minimapCache.width = size;
@@ -177,8 +178,11 @@ export const MinimapExpansion = {
                 ctx.fillRect(startX, startY, size, size);
             }
 
-            // Draw Dot Helper (Optimized with Bitwise Math)
-            const drawDot = (ent, color, r, hideIfInvisible, hideIfUndiscovered) => { 
+            // [PERFORMANCE] Batched Minimap Rendering
+            // We group all dots by color and draw them simultaneously to prevent massive Canvas API overhead
+            const dotBatches = {};
+
+            const addDot = (ent, color, r, hideIfInvisible, hideIfUndiscovered) => { 
                 if (game.mapGrid) {
                     const tX = (ent.x / game.tileSize) | 0; 
                     const tY = (ent.y / game.tileSize) | 0;
@@ -188,8 +192,8 @@ export const MinimapExpansion = {
                         if (hideIfInvisible && !tile.visible && ent.team !== 'black') return; 
                     }
                 }
-                ctx.fillStyle = color; 
-                ctx.fillRect(startX + (ent.x * scaleX) - r, startY + (ent.y * scaleY) - r, r*2, r*2); 
+                if (!dotBatches[color]) dotBatches[color] = [];
+                dotBatches[color].push({ x: ent.x, y: ent.y, r: r });
             };
 
             for (let i = 0; i < game.entities.length; i++) {
@@ -197,13 +201,25 @@ export const MinimapExpansion = {
                 if (ent.hp !== undefined && ent.hp <= 0) continue;
 
                 if (ent instanceof Spider) {
-                    if (ent.role === 'queen') drawDot(ent, ent.team === 'black' ? UI_CONFIG.colors.blackTeam : UI_CONFIG.colors.redTeam, 4, true, false);
-                    else drawDot(ent, ent.team === 'black' ? UI_CONFIG.colors.blackSwarm : UI_CONFIG.colors.redSwarm, 1, true, false);
+                    if (ent.role === 'queen') addDot(ent, ent.team === 'black' ? UI_CONFIG.colors.blackTeam : UI_CONFIG.colors.redTeam, 4, true, false);
+                    else addDot(ent, ent.team === 'black' ? UI_CONFIG.colors.blackSwarm : UI_CONFIG.colors.redSwarm, 1.5, true, false);
                 } 
-                else if (ent instanceof Structure) drawDot(ent, ent.team === 'black' ? UI_CONFIG.colors.blackTeam : UI_CONFIG.colors.redTeam, 3, true, false);
-                else if (ent.type === 'pumpkin' || ent.type === 'dew') drawDot(ent, ent.type === 'pumpkin' ? UI_CONFIG.colors.pumpkin : UI_CONFIG.colors.dew, 1.5, false, true);
-                else if (ent.team === 'nature' && ent.constructor.name !== 'CentipedeBoss') drawDot(ent, ent.color || 'gold', 2, true, false);
-                else if (ent.constructor.name === 'CentipedeBoss') drawDot(ent, UI_CONFIG.colors.boss, 4, true, false);
+                else if (ent instanceof Structure) addDot(ent, ent.team === 'black' ? UI_CONFIG.colors.blackTeam : UI_CONFIG.colors.redTeam, 3, true, false);
+                else if (ent.type === 'pumpkin' || ent.type === 'dew') addDot(ent, ent.type === 'pumpkin' ? UI_CONFIG.colors.pumpkin : UI_CONFIG.colors.dew, 1.5, false, true);
+                else if (ent.team === 'nature' && ent.constructor.name !== 'CentipedeBoss') addDot(ent, ent.color || 'gold', 2, true, false);
+                else if (ent.constructor.name === 'CentipedeBoss') addDot(ent, UI_CONFIG.colors.boss, 4, true, false);
+            }
+
+            // Draw all batched dots
+            for (const color in dotBatches) {
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                const dots = dotBatches[color];
+                for (let i = 0; i < dots.length; i++) {
+                    let d = dots[i];
+                    ctx.rect(startX + (d.x * scaleX) - d.r, startY + (d.y * scaleY) - d.r, d.r*2, d.r*2);
+                }
+                ctx.fill();
             }
 
             // Draw Fog of War Overlay
@@ -217,14 +233,14 @@ export const MinimapExpansion = {
             for (let i = game.minimapPings.length - 1; i >= 0; i--) {
                 let p = game.minimapPings[i];
                 p.age++;
-                if (p.age > 30) {
+                if (p.age > 45) {
                     game.minimapPings.splice(i, 1);
                     continue;
                 }
-                ctx.strokeStyle = `rgba(170, 0, 255, ${1 - (p.age/30)})`; // Fading purple
+                ctx.strokeStyle = `rgba(170, 0, 255, ${1 - (p.age/45)})`; 
                 ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.arc(startX + p.x, startY + p.y, p.age * 0.5, 0, TWO_PI);
+                ctx.arc(startX + p.x, startY + p.y, p.age * 1.5, 0, TWO_PI); // Expands dynamically
                 ctx.stroke();
             }
             
@@ -248,8 +264,17 @@ export const ContextUIExpansion = {
     init: (game) => {
         if (document.getElementById('rtsUI')) return;
 
+        // [EXPANDABILITY] Hooks for external mods
+        game.customUIHooks = [];
+
         const style = document.createElement('style');
         style.innerHTML = `
+            /* [JUICE] Added reactive animations to resource counters */
+            @keyframes flashGreen { 0% { color: #00ff00; transform: scale(1.3); } 100% { color: #ff9d00; transform: scale(1); } }
+            @keyframes flashRed { 0% { color: #ff0000; transform: scale(0.8); } 100% { color: #ff9d00; transform: scale(1); } }
+            .flash-up { animation: flashGreen 0.3s ease-out; display: inline-block; }
+            .flash-down { animation: flashRed 0.3s ease-out; display: inline-block; }
+
             #topBar {
                 position: fixed; top: 10px; left: 10px; padding: 0px 15px; 
                 display: flex; justify-content: center; align-items: center; gap: 30px;
@@ -262,7 +287,6 @@ export const ContextUIExpansion = {
             }
             .res-item { display: flex; align-items: center; gap: 8px; }
             .res-value { color: #ff9d00; transition: color 0.3s; }
-            .res-flash { color: #ffffff !important; text-shadow: 0 0 10px #ffffff; }
 
             #rtsUI {
                 position: fixed; bottom: 0; left: 0; width: 100%; height: 180px;
@@ -292,18 +316,10 @@ export const ContextUIExpansion = {
             #ui-hp-bar-bg { width: 100%; height: 12px; background: rgba(0,0,0,0.8); margin-top: 5px; border: 1px solid #ff9d00; border-radius: 4px; overflow: hidden;}
             #ui-hp-bar-fill { width: var(--hp-pct, 100%); height: 100%; background: #00ff00; transition: width 0.2s; }
             
-            /* --- SCROLLBAR FIX FOR ACTIONS MENU --- */
             #ui-actions { 
                 flex-grow: 1; padding: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; 
                 overflow-y: auto; 
-                scrollbar-width: thin; scrollbar-color: rgba(255, 157, 0, 0.4) rgba(0,0,0,0.2);
             }
-            
-            #ui-actions::-webkit-scrollbar { width: 8px; }
-            #ui-actions::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
-            #ui-actions::-webkit-scrollbar-thumb { background: rgba(255, 157, 0, 0.3); border-radius: 4px; border: 1px solid rgba(0,0,0,0.3); }
-            #ui-actions:hover::-webkit-scrollbar-track { background: rgba(0,0,0,0.5); }
-            #ui-actions:hover::-webkit-scrollbar-thumb { background: rgba(255, 157, 0, 1.0); border: 1px solid #000; }
             
             .cmd-btn { width: 80px; height: 55px; background: rgba(34, 17, 0, 0.8); border: 2px solid #ff9d00; border-radius: 4px; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.1s; }
             .cmd-btn:hover { background: rgba(68, 34, 0, 0.9); transform: scale(1.05); }
@@ -416,12 +432,16 @@ export const ContextUIExpansion = {
         document.getElementById('topBar').addEventListener('mousedown', (e) => e.stopPropagation());
         document.getElementById('topBar').addEventListener('touchstart', (e) => e.stopPropagation(), {passive: false});
 
+        // Helper to flash resource numbers
+        const triggerFlash = (el, animClass) => {
+            el.classList.remove('flash-up', 'flash-down');
+            void el.offsetWidth; // Force reflow
+            el.classList.add(animClass);
+        };
+
         game.expansions.patchClass(game.constructor, 'update', function(original) {
             original.call(this);
 
-            // 🚀 PERFORMANCE FIX: DOM Dirty Checking!
-            // We only fetch the elements once, and we only update the HTML string if the number actually changed.
-            // This prevents massive browser layout thrashing every frame.
             if (!this.uiEls) {
                 this.uiEls = {
                     pump: document.getElementById('top-pumpkins'),
@@ -434,9 +454,22 @@ export const ContextUIExpansion = {
             const p = Math.floor(this.eco.black.pumpkins);
             const d = Math.floor(this.eco.black.dew);
             
-            if (p !== this.uiCache.pump) { this.uiEls.pump.innerText = p; this.uiCache.pump = p; }
-            if (d !== this.uiCache.dew) { this.uiEls.dew.innerText = d; this.uiCache.dew = d; }
-            if (this.techLevel.black !== this.uiCache.tech) { this.uiEls.tech.innerText = this.techLevel.black; this.uiCache.tech = this.techLevel.black; }
+            // [JUICE] Reactive HUD Animations!
+            if (p !== this.uiCache.pump) { 
+                if (this.uiCache.pump !== -1) triggerFlash(this.uiEls.pump, p > this.uiCache.pump ? 'flash-up' : 'flash-down');
+                this.uiEls.pump.innerText = p; 
+                this.uiCache.pump = p; 
+            }
+            if (d !== this.uiCache.dew) { 
+                if (this.uiCache.dew !== -1) triggerFlash(this.uiEls.dew, d > this.uiCache.dew ? 'flash-up' : 'flash-down');
+                this.uiEls.dew.innerText = d; 
+                this.uiCache.dew = d; 
+            }
+            if (this.techLevel.black !== this.uiCache.tech) { 
+                if (this.uiCache.tech !== -1) triggerFlash(this.uiEls.tech, 'flash-up');
+                this.uiEls.tech.innerText = this.techLevel.black; 
+                this.uiCache.tech = this.techLevel.black; 
+            }
             
             if (this.pop.black !== this.uiCache.popB || this.maxPop.black !== this.uiCache.maxP) {
                 this.uiEls.pop.innerText = `${this.pop.black}/${this.maxPop.black}`;
@@ -479,6 +512,10 @@ export const ContextUIExpansion = {
                     if (isLocked) btn.classList.add('locked');
                     btn.setAttribute('data-tool', cmd.type === 'tool' ? cmd.val : '');
                     
+                    // [JUICE] Native tooltips for UI elements
+                    const lockText = isLocked ? `[ LOCKED: Requires Tech ${reqTech} ]\n` : '';
+                    btn.title = `${lockText}${cmd.name}\nCost: ${cmd.cost || 'Free'}`;
+                    
                     const iconHtml = cmd.img ? `<img src="${cmd.img}" alt="${cmd.name}">` : cmd.icon;
                     
                     btn.innerHTML = `
@@ -489,7 +526,6 @@ export const ContextUIExpansion = {
                     
                     btn.onclick = () => {
                         if (isLocked) {
-                            // JUICE: Bzzzt sound when clicking a locked button
                             this.bus.emit('playSound', 'error');
                             return; 
                         }
@@ -545,6 +581,11 @@ export const ContextUIExpansion = {
                     addButton('bloodlust'); addButton('paralyze'); addButton('contagion');
                     addButton('eclipse'); addButton('vortex'); 
                     addButton('cancel');
+                }
+
+                // [EXPANDABILITY] Let other mods inject buttons!
+                if (this.customUIHooks) {
+                    this.customUIHooks.forEach(hook => hook(currentSelection, addButton, nameEl, portrait));
                 }
             }
 
@@ -606,10 +647,15 @@ export const GameLoopExpansion = {
                     background: rgba(10, 5, 0, 0.95); border: 4px solid; border-radius: 12px;
                     padding: 40px; color: white; font-family: 'Courier New', monospace; text-align: center;
                     display: none; z-index: 9999; box-shadow: 0 0 50px rgba(0,0,0,1);
+                    animation: modalDrop 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+                }
+                @keyframes modalDrop {
+                    0% { top: -50%; opacity: 0; }
+                    100% { top: 50%; opacity: 1; }
                 }
                 #gameOverModal h1 { font-size: 40px; margin: 0 0 20px 0; text-transform: uppercase; }
                 .restart-btn { background: #fff; color: #000; padding: 15px 30px; font-size: 20px; font-weight: bold; border: none; cursor: pointer; border-radius: 8px; margin-top: 20px; transition: 0.2s;}
-                .restart-btn:hover { background: #ff9d00; transform: scale(1.05); }
+                .restart-btn:hover { background: #ff9d00; transform: scale(1.05); box-shadow: 0 0 15px #ff9d00; }
             `;
             document.head.appendChild(style);
         }
@@ -638,28 +684,36 @@ export const GameLoopExpansion = {
                 if (blackQueen !== null && redQueen !== null) {
                     if (blackQueen.hp <= 0) { 
                         this.gameState = 'lose'; 
-                        const ui = document.getElementById('rtsUI'); 
-                        if (ui) ui.style.display = 'none'; 
-                        goModal.style.borderColor = '#ff0000';
-                        goModal.innerHTML = `<h1 style="color:#ff0000; text-shadow: 0 0 10px #ff0000;">DEFEAT</h1><p>The Obsidian Queen has fallen to the Crimson Swarm.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
-                        goModal.style.display = 'block';
                         
-                        // JUICE: Catastrophic screen shake and explosions when Queen dies
+                        // [JUICE] Cinematic Death Freeze
+                        this.freezeFrames = 99999; 
                         if (this.triggerShake) this.triggerShake(30);
                         this.bus.emit('playSound', 'roar');
                         this.bus.emit('particles', {x: blackQueen.x, y: blackQueen.y, color: '#ff0000', count: 500});
+                        
+                        setTimeout(() => {
+                            const ui = document.getElementById('rtsUI'); 
+                            if (ui) ui.style.display = 'none'; 
+                            goModal.style.borderColor = '#ff0000';
+                            goModal.innerHTML = `<h1 style="color:#ff0000; text-shadow: 0 0 10px #ff0000;">DEFEAT</h1><p>The Obsidian Queen has fallen to the Crimson Swarm.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
+                            goModal.style.display = 'block';
+                        }, 1500); // Dramatic pause
                     } 
                     else if (redQueen.hp <= 0) { 
                         this.gameState = 'win'; 
-                        const ui = document.getElementById('rtsUI'); 
-                        if (ui) ui.style.display = 'none'; 
-                        goModal.style.borderColor = '#aa00ff';
-                        goModal.innerHTML = `<h1 style="color:#aa00ff; text-shadow: 0 0 10px #aa00ff;">VICTORY</h1><p>The Pumpkin Patch belongs to the Obsidian Brood.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
-                        goModal.style.display = 'block';
                         
+                        this.freezeFrames = 99999;
                         if (this.triggerShake) this.triggerShake(30);
                         this.bus.emit('playSound', 'roar');
                         this.bus.emit('particles', {x: redQueen.x, y: redQueen.y, color: '#aa00ff', count: 500});
+                        
+                        setTimeout(() => {
+                            const ui = document.getElementById('rtsUI'); 
+                            if (ui) ui.style.display = 'none'; 
+                            goModal.style.borderColor = '#aa00ff';
+                            goModal.innerHTML = `<h1 style="color:#aa00ff; text-shadow: 0 0 10px #aa00ff;">VICTORY</h1><p>The Pumpkin Patch belongs to the Obsidian Brood.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
+                            goModal.style.display = 'block';
+                        }, 1500);
                     }
                 }
             }
@@ -669,6 +723,7 @@ export const GameLoopExpansion = {
 
         game.bus.on('uiDraw', (ctx) => {
             if (game.gameState === 'playing') return;
+            // Slow dramatic fade to black
             ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'; 
             ctx.fillRect(0, 0, game.canvas.width, game.canvas.height);
         });
