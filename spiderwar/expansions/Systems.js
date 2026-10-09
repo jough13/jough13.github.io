@@ -295,6 +295,46 @@ export const SaveLoadExpansion = {
 
             game.entities = []; 
             
+            // 🚀 [LOGIC FIX] 1. Restore Structures first so we can link Queens to them!
+            const structMap = {}; 
+            state.structures.forEach(s => { 
+                let o = new Structure(s.x, s.y, s.team, s.type); 
+                o.id = s.id || Math.random().toString(36).substring(2, 11);
+                o.hp = s.hp; o.isConstructing = s.isConstructing; o.buildProgress = s.buildProgress;
+                o.territory = s.territory; o.originalTerritory = s.originalTerritory;
+                if (s.cooldown !== undefined) o.cooldown = s.cooldown;
+                if (o.isConstructing) o.isPaused = true; // Safe default
+                
+                structMap[o.id] = o;
+                game.addEntity(o); 
+            });
+
+            // 🚀 [LOGIC FIX] 2. Shared Unit State Restorer
+            const restoreUnitState = (o, s) => {
+                if (s.id) o.id = s.id;
+                o.hp = s.hp; 
+                if (s.cargo) o.cargo = s.cargo; 
+                if (s.life !== undefined) o.life = s.life; 
+                
+                // Restore Commands & Targets
+                if (s.commandTarget) {
+                    o.commandTarget = s.commandTarget;
+                    o.isManual = true; // Ensure they keep following the order!
+                }
+                if (s.buildTarget) o.buildTarget = s.buildTarget;
+                
+                // Restore Active Construction link by searching the structMap we just built
+                if (s.activeConstructionId && structMap[s.activeConstructionId]) {
+                    o.activeConstruction = structMap[s.activeConstructionId];
+                    o.activeConstruction.isPaused = false; // Queen remembers she was building it
+                }
+                
+                // Restore Status effects
+                if (s.stunTimer) o.stunTimer = s.stunTimer;
+                if (s.infectedTimer) { o.infectedTimer = s.infectedTimer; o.infectedByTeam = s.infectedByTeam; }
+                if (s.bloodlustTimer) o.bloodlustTimer = s.bloodlustTimer;
+            };
+            
             state.spiders.forEach(s => { 
                 let o;
                 if (s.isZombie) { 
@@ -326,20 +366,13 @@ export const SaveLoadExpansion = {
                     }
                 }
                 
-                // [FIX] Restore ID so animation offsets and network links remain stable!
-                if (s.id) o.id = s.id;
-                o.hp = s.hp; 
-                o.cargo = s.cargo; 
-                if (s.life !== undefined) o.life = s.life; 
+                restoreUnitState(o, s);
                 game.addEntity(o); 
             });
 
-            state.structures.forEach(s => { 
-                let o = new Structure(s.x, s.y, s.team, s.type); 
-                o.hp = s.hp; o.isConstructing = s.isConstructing; o.buildProgress = s.buildProgress;
-                o.territory = s.territory; o.originalTerritory = s.originalTerritory;
-                if (s.cooldown !== undefined) o.cooldown = s.cooldown;
-                if(o.isConstructing) o.isPaused = true;
+            state.queens.forEach(q => { 
+                let o = new Queen(q.x, q.y, q.team); 
+                restoreUnitState(o, q);
                 game.addEntity(o); 
             });
             
@@ -347,12 +380,6 @@ export const SaveLoadExpansion = {
                 let o = new ResourceNode(p.x, p.y, p.type); 
                 if (p.id) o.id = p.id;
                 o.resources = p.resources; 
-                game.addEntity(o); 
-            });
-            state.queens.forEach(q => { 
-                let o = new Queen(q.x, q.y, q.team); 
-                if (q.id) o.id = q.id;
-                o.hp = q.hp; 
                 game.addEntity(o); 
             });
             
@@ -419,25 +446,50 @@ export const SaveLoadExpansion = {
                 const critters = []; const bosses = []; const hazards = []; const cps = [];
                 const corpses = []; const eggTraps = [];
 
+                // 🚀 [LOGIC FIX] Shared Unit Serialization
+                const saveUnitState = (u) => {
+                    const data = { 
+                        id: u.id, x: u.x, y: u.y, team: u.team, role: u.role, 
+                        hp: u.hp, cargo: u.cargo, size: u.size 
+                    };
+                    
+                    if (u.commandTarget) data.commandTarget = u.commandTarget;
+                    if (u.buildTarget) data.buildTarget = u.buildTarget;
+                    
+                    // Safely store a reference ID to the active structure so we avoid JSON circular errors
+                    if (u.activeConstruction) {
+                        if (!u.activeConstruction.id) u.activeConstruction.id = Math.random().toString(36).substring(2, 11);
+                        data.activeConstructionId = u.activeConstruction.id;
+                    }
+                    
+                    // Status effects
+                    if (u.stunTimer) data.stunTimer = u.stunTimer;
+                    if (u.infectedTimer) { data.infectedTimer = u.infectedTimer; data.infectedByTeam = u.infectedByTeam; }
+                    if (u.bloodlustTimer) data.bloodlustTimer = u.bloodlustTimer;
+                    
+                    if (u.isZombie) data.isZombie = true;
+                    if (u.isCloaked !== undefined) { data.isCloaked = u.isCloaked; data.cloakCooldown = u.cloakCooldown; }
+                    if (u.life !== undefined) data.life = u.life;
+                    
+                    return data;
+                };
+
                 for (let i = 0; i < game.entities.length; i++) {
                     let u = game.entities[i];
-                    if (u instanceof Spider && u.role !== 'queen') {
-                        // [FIX] Save ID!
-                        const sData = { id: u.id, x: u.x, y: u.y, team: u.team, role: u.role, hp: u.hp, cargo: u.cargo, size: u.size };
-                        if (u.isZombie) sData.isZombie = true;
-                        if (u.isCloaked !== undefined) { sData.isCloaked = u.isCloaked; sData.cloakCooldown = u.cloakCooldown; }
-                        if (u.life !== undefined) sData.life = u.life;
-                        spiders.push(sData);
-                    }
+                    
+                    if (u instanceof Spider && u.role !== 'queen') spiders.push(saveUnitState(u));
+                    else if (u instanceof Queen) queens.push(saveUnitState(u));
                     else if (u instanceof Structure) {
+                        // Ensure it has an ID before saving so Queens can link to it
+                        if (!u.id) u.id = Math.random().toString(36).substring(2, 11);
+                        
                         structures.push({
-                            x: u.x, y: u.y, team: u.team, type: u.type, hp: u.hp,
+                            id: u.id, x: u.x, y: u.y, team: u.team, type: u.type, hp: u.hp,
                             isConstructing: u.isConstructing, buildProgress: u.buildProgress,
                             territory: u.territory, originalTerritory: u.originalTerritory, cooldown: u.cooldown
                         });
                     }
                     else if (u instanceof ResourceNode) resNodes.push({id: u.id, x: u.x, y: u.y, type: u.type, resources: u.resources});
-                    else if (u instanceof Queen) queens.push({id: u.id, x: u.x, y: u.y, team: u.team, hp: u.hp});
                     else if (u.team === 'nature' && u.constructor.name !== 'CentipedeBoss') critters.push({id: u.id, x: u.x, y: u.y, hp: u.hp, color: u.color, type: u.type || u.constructor.name});
                     else if (u.constructor.name === 'CentipedeBoss') bosses.push({id: u.id, x: u.x, y: u.y, hp: u.hp});
                     else if (u instanceof VenusFlytrap) hazards.push({id: u.id, x: u.x, y: u.y, hp: u.hp, cooldown: u.cooldown});
