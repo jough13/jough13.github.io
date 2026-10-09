@@ -534,10 +534,16 @@ export class Game {
             this.pop.red = redPop;
         }
 
-        this.spatialGrid.clear();
-        const CELL_SIZE = 250;
+        // Array Pooling! 
+        // Instead of destroying arrays and triggering Garbage Collection, 
+        // we simply empty them out by setting length to 0 and reuse the memory!
+        for (let cell of this.spatialGrid.values()) {
+            cell.length = 0; 
+        }
         
-        // [PERFORMANCE] Fast spatial map bounds caching
+        const CELL_SIZE = 250;
+                
+                // [PERFORMANCE] Fast spatial map bounds caching
         const maxGridX = Math.ceil(this.world.width / CELL_SIZE);
         const maxGridY = Math.ceil(this.world.height / CELL_SIZE);
 
