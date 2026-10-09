@@ -301,7 +301,8 @@ export const ToxicPlagueExpansion = {
                         this.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 2, type: 'magic'});
                         
                         // CHESTBURSTER EFFECT: If it dies from infection!
-                        if (e.hp <= 0 && e.role !== 'parasite') {
+                        // 🚀 [LOGIC FIX] Prevent infinite parasite loops by explicitly banning suicide/temp units
+                        if (e.hp <= 0 && e.role !== 'parasite' && e.role !== 'broodling' && !e.isZombie) {
                             if (this.triggerShake) this.triggerShake(5);
                             this.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 30, type: 'splatter'});
                             this.bus.emit('playSound', 'death');
