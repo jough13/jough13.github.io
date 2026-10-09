@@ -39,6 +39,9 @@ export const AdvancedUnitControlExpansion = {
 
         // 1. Keyboard Shortcuts (Control Groups & Cancel)
         window.addEventListener('keydown', e => { 
+            // 🚀 [LOGIC FIX] Block keyboard commands if the game is over or paused
+            if (game.gameState !== 'playing' || game.freezeFrames > 0) return;
+
             const key = e.key.toLowerCase();
             
             if (key === 'escape') { 
@@ -85,6 +88,9 @@ export const AdvancedUnitControlExpansion = {
         let ticking = false; // Used for requestAnimationFrame throttling
         
         game.canvas.addEventListener('mousedown', e => {
+            // 🚀 [LOGIC FIX] Block drag box if the game is over or paused
+            if (game.gameState !== 'playing' || game.freezeFrames > 0) return;
+
             startX = e.clientX; startY = e.clientY;
             
             // Record the tool state the exact moment the click starts
@@ -113,6 +119,13 @@ export const AdvancedUnitControlExpansion = {
             const wasDraggingBox = isDraggingBox;
             isDraggingBox = false;
             
+            // 🚀 [LOGIC FIX] Strict Interaction Lockout!
+            // If a Queen just died (freezeFrames) or the menu is open, ignore clicks completely
+            if (game.gameState !== 'playing' || game.freezeFrames > 0) {
+                game.dragBox = null;
+                return;
+            }
+
             // If the user was placing a building or casting a spell, safely ignore this click 
             // so we don't accidentally deselect their Queen/Hive!
             if (game.toolAtClickStart !== 'select') {
@@ -279,6 +292,9 @@ export const AdvancedUnitControlExpansion = {
         
         // Touch events explicitly verify 1 finger to prevent pinch-zoom commands from firing moves
         game.canvas.addEventListener('touchstart', e => { 
+            // 🚀 [LOGIC FIX] Block touch tracking if the game is over or paused
+            if (game.gameState !== 'playing' || game.freezeFrames > 0) return;
+
             if(e.touches.length === 1) { 
                 startX = e.touches[0].clientX; 
                 startY = e.touches[0].clientY; 
