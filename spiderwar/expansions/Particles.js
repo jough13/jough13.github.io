@@ -109,6 +109,9 @@ class ParticleSystem {
             this.particles[i] = new PooledParticle();
         }
         this.index = 0; // The write head
+        
+        // 🚀 [PERFORMANCE FIX] Cache the batches globally to prevent GC allocations
+        this.batches = {}; 
     }
 
     emit(x, y, color, count, type) {
@@ -140,10 +143,10 @@ class ParticleSystem {
 
     draw(ctx, viewL, viewR, viewT, viewB) {
         // [PERFORMANCE] Flat-Array Canvas API Batching!
-        // We group particles by color/alpha, but push their data into a flat array [x, y, s, x, y, s]
-        // This COMPLETELY ELIMINATES object allocation ({x, y, s}) during the render loop, saving massive GC stutter!
-        
-        const batches = {};
+        // 🚀 [GC FIX] Reset existing batch arrays to length 0 instead of re-allocating them!
+        for (const key in this.batches) {
+            this.batches[key].data.length = 0;
+        }
 
         for (let i = 0; i < this.particles.length; i++) {
             let p = this.particles[i];
@@ -179,17 +182,24 @@ class ParticleSystem {
                 let alphaStep = Math.max(0.1, ((currentAlpha * 10) | 0) / 10); 
 
                 const batchKey = `${p.color}_${alphaStep}`;
-                if (!batches[batchKey]) batches[batchKey] = { color: p.color, alpha: alphaStep, data: [] };
+                
+                // Only create the array the very first time this specific color/alpha combo appears
+                if (!this.batches[batchKey]) {
+                    this.batches[batchKey] = { color: p.color, alpha: alphaStep, data: [] };
+                }
                 
                 // FLAT ARRAY PUSH: x, y, size (Zero GC allocation!)
-                batches[batchKey].data.push(p.x - currentSize/2, p.y - currentSize/2, currentSize);
+                this.batches[batchKey].data.push(p.x - currentSize/2, p.y - currentSize/2, currentSize);
             }
         }
         
         // Now, execute the batched draw calls!
-        for (const key in batches) {
-            const batch = batches[key];
+        for (const key in this.batches) {
+            const batch = this.batches[key];
             const data = batch.data;
+            
+            // 🚀 [GC FIX] Skip batches that had no particles this frame
+            if (data.length === 0) continue; 
             
             ctx.globalAlpha = batch.alpha;
             ctx.fillStyle = batch.color;
