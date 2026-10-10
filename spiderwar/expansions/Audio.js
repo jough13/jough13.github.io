@@ -1,10 +1,79 @@
 // expansions/Audio.js
 
+import { MathUtils } from '../game.js';
+
 // ==========================================
-// THE OBSIDIAN BROOD SOUNDTRACK & SYNTH
+// 1. DATA-DRIVEN SOUND LIBRARY
 // ==========================================
-// A custom multi-layered Web Audio API Synthesizer designed to 
-// create squishy bug noises, ethereal magic, and snappy web attacks.
+// Each sound is an array of "Layers". You can stack oscillators and noise!
+// 🔌 [EXPANDABILITY] Exported so other mods can modify base game sounds.
+export const SOUND_LIBRARY = {
+    
+    // "Thwip!" - High pitched sweeping triangle + sharp white noise burst
+    'shoot': [
+        { type: 'triangle', freqStart: 900, freqEnd: 200, attack: 0.01, decay: 0.15, vol: 0.06, pitchVar: 100 },
+        { type: 'noise', filterFreq: 2500, filterType: 'highpass', attack: 0.01, decay: 0.1, vol: 0.05 }
+    ],
+    
+    // "Schlorp" - Quick low crunch/squish for resource gathering
+    'harvest': [
+        { type: 'sawtooth', freqStart: 180, freqEnd: 80, attack: 0.01, decay: 0.12, vol: 0.03, pitchVar: 20 },
+        { type: 'noise', filterFreq: 800, filterType: 'lowpass', attack: 0.01, decay: 0.08, vol: 0.04 }
+    ],
+    
+    // "SPLAT!" - Heavy low-end crunch with extended noise decay
+    'death': [
+        { type: 'square', freqStart: 120, freqEnd: 40, attack: 0.01, decay: 0.3, vol: 0.05, pitchVar: 15 },
+        // 🧃 [JUICE] Pitch-shifted noise for a deeper, heavier splat!
+        { type: 'noise', filterFreq: 600, filterType: 'lowpass', attack: 0.01, decay: 0.4, vol: 0.08, noisePlaybackRate: 0.5 }
+    ],
+    
+    // "Wub-wub-wub" - Ethereal, layered magical frequencies
+    'spell': [
+        { type: 'sine', freqStart: 400, freqEnd: 600, attack: 0.1, decay: 0.7, vol: 0.08, pitchVar: 50 },
+        { type: 'sine', freqStart: 1200, freqEnd: 1600, attack: 0.2, decay: 0.9, vol: 0.04, pitchVar: 100 },
+        { type: 'triangle', freqStart: 200, freqEnd: 300, attack: 0.05, decay: 0.5, vol: 0.05, pitchVar: 20 }
+    ],
+
+    // 🧃 [JUICE] "Bwoooom" - Deep, hollow singularity drop for Void magic
+    'void': [
+        { type: 'sine', freqStart: 150, freqEnd: 20, attack: 0.2, decay: 1.2, vol: 0.1 },
+        { type: 'noise', filterFreq: 300, filterType: 'lowpass', attack: 0.5, decay: 1.0, vol: 0.08, noisePlaybackRate: 0.3 }
+    ],
+
+    // 🧃 [JUICE] "Shimmer" - Ascending gentle chime for Nectar Shrine healing
+    'heal': [
+        { type: 'sine', freqStart: 600, freqEnd: 1200, attack: 0.1, decay: 0.6, vol: 0.04 },
+        { type: 'triangle', freqStart: 800, freqEnd: 1600, attack: 0.2, decay: 0.8, vol: 0.03 }
+    ],
+    
+    // "Thud" - Building dropping onto the dirt
+    'build': [
+        { type: 'triangle', freqStart: 200, freqEnd: 80, attack: 0.02, decay: 0.25, vol: 0.06, pitchVar: 30 },
+        { type: 'noise', filterFreq: 400, filterType: 'lowpass', attack: 0.01, decay: 0.15, vol: 0.03, noisePlaybackRate: 0.2 }
+    ],
+
+    // "Bzzzt" - Low negative buzz for invalid actions/cannot afford
+    'error': [
+        { type: 'sawtooth', freqStart: 120, freqEnd: 100, attack: 0.01, decay: 0.15, vol: 0.05 }
+    ],
+
+    // "Ding" - High, clean chime for UI clicks and Minimap commands
+    'ping': [
+        { type: 'sine', freqStart: 1200, freqEnd: 1200, attack: 0.01, decay: 0.3, vol: 0.05, pitchVar: 50 }
+    ],
+
+    // "ROAR!" - Massive, low-frequency, layered monster scream
+    'roar': [
+        { type: 'sawtooth', freqStart: 150, freqEnd: 40, attack: 0.1, decay: 1.5, vol: 0.1, pitchVar: 20 },
+        { type: 'square', freqStart: 100, freqEnd: 30, attack: 0.2, decay: 1.5, vol: 0.08, pitchVar: 20 },
+        { type: 'noise', filterFreq: 400, filterType: 'lowpass', attack: 0.1, decay: 1.5, vol: 0.12, noisePlaybackRate: 0.4 }
+    ]
+};
+
+// ==========================================
+// 2. THE OBSIDIAN BROOD SOUNDTRACK & SYNTH
+// ==========================================
 
 export const AudioExpansion = {
     init: (game) => {
@@ -12,14 +81,17 @@ export const AudioExpansion = {
         let masterGain;
         let noiseBuffer;
         
-        // PERFORMANCE: Polyphony throttle tracker
+        // 🚀 PERFORMANCE: Polyphony throttle tracker
         const soundThrottle = {};
         
         // Settings State
         let currentVolume = 0.4;
         let isMuted = false;
 
-        // 1. Audio Context Initialization & Browser Unlocking
+        // 🔌 [EXPANDABILITY] Mount library to game instance so mods can inject or edit sounds
+        game.audioLibrary = SOUND_LIBRARY;
+
+        // 3. Audio Context Initialization & Browser Unlocking
         try {
             const AudioContext = window.AudioContext || window.webkitAudioContext; 
             ctx = new AudioContext();
@@ -37,11 +109,16 @@ export const AudioExpansion = {
                 output[i] = Math.random() * 2 - 1;
             }
 
-            // [FIX] Bulletproof Audio Unlocker
-            // Browsers lock audio until user interaction. Added keydown and {once: true} for clean memory.
+            // 🛡️ [FIX] Bulletproof Audio Unlocker
+            // Apple iOS strictly requires user interaction. .catch() prevents silent Promise failures if mashed.
             const unlock = () => { 
-                if(ctx && ctx.state === 'suspended') ctx.resume(); 
+                if(ctx && ctx.state === 'suspended') {
+                    ctx.resume().catch(() => { /* Ignore harmless focus errors */ });
+                }
             };
+            
+            // Listen to modern pointerdown as well as legacy touch/click
+            window.addEventListener('pointerdown', unlock, { once: true });
             window.addEventListener('click', unlock, { once: true }); 
             window.addEventListener('touchstart', unlock, { once: true });
             window.addEventListener('keydown', unlock, { once: true });
@@ -50,74 +127,19 @@ export const AudioExpansion = {
         }
 
         // ==========================================
-        // 2. DATA-DRIVEN SOUND LIBRARY
-        // ==========================================
-        // Each sound is an array of "Layers". You can stack oscillators and noise!
-        const SOUND_LIBRARY = {
-            
-            // "Thwip!" - High pitched sweeping triangle + sharp white noise burst
-            'shoot': [
-                { type: 'triangle', freqStart: 900, freqEnd: 200, attack: 0.01, decay: 0.15, vol: 0.06, pitchVar: 100 },
-                { type: 'noise', filterFreq: 2500, filterType: 'highpass', attack: 0.01, decay: 0.1, vol: 0.05 }
-            ],
-            
-            // "Schlorp" - Quick low crunch/squish for resource gathering
-            'harvest': [
-                { type: 'sawtooth', freqStart: 180, freqEnd: 80, attack: 0.01, decay: 0.12, vol: 0.03, pitchVar: 20 },
-                { type: 'noise', filterFreq: 800, filterType: 'lowpass', attack: 0.01, decay: 0.08, vol: 0.04 }
-            ],
-            
-            // "SPLAT!" - Heavy low-end crunch with extended noise decay
-            'death': [
-                { type: 'square', freqStart: 120, freqEnd: 40, attack: 0.01, decay: 0.3, vol: 0.05, pitchVar: 15 },
-                // [JUICE] Pitch-shifted noise for a deeper, heavier splat!
-                { type: 'noise', filterFreq: 600, filterType: 'lowpass', attack: 0.01, decay: 0.4, vol: 0.08, noisePlaybackRate: 0.5 }
-            ],
-            
-            // "Wub-wub-wub" - Ethereal, layered magical frequencies
-            'spell': [
-                { type: 'sine', freqStart: 400, freqEnd: 600, attack: 0.1, decay: 0.7, vol: 0.08, pitchVar: 50 },
-                { type: 'sine', freqStart: 1200, freqEnd: 1600, attack: 0.2, decay: 0.9, vol: 0.04, pitchVar: 100 },
-                { type: 'triangle', freqStart: 200, freqEnd: 300, attack: 0.05, decay: 0.5, vol: 0.05, pitchVar: 20 }
-            ],
-            
-            // "Thud" - Building dropping onto the dirt
-            'build': [
-                { type: 'triangle', freqStart: 200, freqEnd: 80, attack: 0.02, decay: 0.25, vol: 0.06, pitchVar: 30 },
-                { type: 'noise', filterFreq: 400, filterType: 'lowpass', attack: 0.01, decay: 0.15, vol: 0.03, noisePlaybackRate: 0.2 }
-            ],
-
-            // "Bzzzt" - Low negative buzz for invalid actions/cannot afford
-            'error': [
-                { type: 'sawtooth', freqStart: 120, freqEnd: 100, attack: 0.01, decay: 0.15, vol: 0.05 }
-            ],
-
-            // "Ding" - High, clean chime for UI clicks and Minimap commands
-            'ping': [
-                { type: 'sine', freqStart: 1200, freqEnd: 1200, attack: 0.01, decay: 0.3, vol: 0.05, pitchVar: 50 }
-            ],
-
-            // "ROAR!" - Massive, low-frequency, layered monster scream
-            'roar': [
-                { type: 'sawtooth', freqStart: 150, freqEnd: 40, attack: 0.1, decay: 1.5, vol: 0.1, pitchVar: 20 },
-                { type: 'square', freqStart: 100, freqEnd: 30, attack: 0.2, decay: 1.5, vol: 0.08, pitchVar: 20 },
-                { type: 'noise', filterFreq: 400, filterType: 'lowpass', attack: 0.1, decay: 1.5, vol: 0.12, noisePlaybackRate: 0.4 }
-            ]
-        };
-
-        // ==========================================
-        // 3. SYNTHESIZER PLAYBACK ENGINE
+        // 4. SYNTHESIZER PLAYBACK ENGINE
         // ==========================================
         const playSynthRecipe = (recipeName, panValue = 0) => {
             if(!ctx || ctx.state === 'suspended' || isMuted) return;
-            const layers = SOUND_LIBRARY[recipeName];
+            const layers = game.audioLibrary[recipeName];
             if (!layers) return;
 
             const now = ctx.currentTime;
 
-            // PERFORMANCE FIX: Polyphony Throttling
+            // 🚀 PERFORMANCE FIX: Polyphony Throttling
+            // Prevent deafening volume stacking if 50 spiders shoot on the exact same frame
             if (soundThrottle[recipeName] && now - soundThrottle[recipeName] < 0.03) {
-                return; // Prevent deafening volume stacking if 50 spiders shoot on the exact same frame
+                return; 
             }
             soundThrottle[recipeName] = now;
 
@@ -125,7 +147,7 @@ export const AudioExpansion = {
                 // 1. Setup Envelope (Gain Node)
                 const gainNode = ctx.createGain();
                 
-                // AUDIO ROBUSTNESS FIX: Explicitly pin values before ramping to prevent Webkit NaN glitches
+                // 🛡️ AUDIO ROBUSTNESS FIX: Explicitly pin values before ramping to prevent Webkit NaN glitches
                 gainNode.gain.setValueAtTime(0, now); 
                 gainNode.gain.linearRampToValueAtTime(layer.vol, now + layer.attack); 
                 gainNode.gain.setValueAtTime(layer.vol, now + layer.attack); // The Safety Pin!
@@ -146,7 +168,6 @@ export const AudioExpansion = {
                 if (layer.type === 'noise') {
                     sourceNode = ctx.createBufferSource();
                     sourceNode.buffer = noiseBuffer;
-                    // [EXPANDABILITY] Pitch-shift noise for deep rumbles
                     if (layer.noisePlaybackRate) sourceNode.playbackRate.value = layer.noisePlaybackRate;
                 } else {
                     sourceNode = ctx.createOscillator();
@@ -166,7 +187,8 @@ export const AudioExpansion = {
                 let pannerNode = null;
                 if (panValue !== 0 && ctx.createStereoPanner) {
                     pannerNode = ctx.createStereoPanner();
-                    pannerNode.pan.value = Math.max(-1, Math.min(1, panValue));
+                    // 🛡️ [FIX] Clamp panning strictly to [-1, 1] so off-screen sounds don't crash the node
+                    pannerNode.pan.value = MathUtils.clamp(panValue, -1.0, 1.0);
                 }
 
                 // 5. Audio Routing (Source -> [Filter] -> [Panner] -> Envelope -> Master Mixer)
@@ -185,17 +207,18 @@ export const AudioExpansion = {
                 gainNode.connect(masterGain);
 
                 // 6. Play and Cleanup
+                // Web Audio API handles garbage collection of these ephemeral nodes automatically once stopped
                 sourceNode.start(now);
                 sourceNode.stop(now + layer.attack + layer.decay);
             });
         };
 
         // ==========================================
-        // 4. GLOBAL AUDIO API EXPORT
+        // 5. GLOBAL AUDIO API EXPORT
         // ==========================================
         game.audio = {
             setVolume: (val) => { 
-                currentVolume = Math.max(0, Math.min(1, val));
+                currentVolume = MathUtils.clamp(val, 0, 1);
                 if (masterGain && !isMuted) masterGain.gain.value = currentVolume; 
             },
             getVolume: () => currentVolume,
@@ -208,13 +231,13 @@ export const AudioExpansion = {
                 if (masterGain) masterGain.gain.value = currentVolume;
             },
             registerSound: (name, recipeArray) => {
-                SOUND_LIBRARY[name] = recipeArray;
+                game.audioLibrary[name] = recipeArray;
             },
             play: playSynthRecipe
         };
 
         // ==========================================
-        // 5. EVENT BUS HOOK
+        // 6. EVENT BUS HOOK
         // ==========================================
         game.bus.on('playSound', (data) => {
             // [EXPANDABILITY] Backward compatible with strings, but accepts objects for spatial audio
