@@ -4,7 +4,7 @@
     <!-- Document Configuration -->
     <meta charset="UTF-8">
     
-    <!-- Mobile & PWA Optimization: Locks zooming, handles notches, and sets the OS bar color -->
+    <!-- 📱 Mobile & PWA Optimization: Locks zooming, handles notches (viewport-fit=cover), and sets OS bar color -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#050200">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,7 +16,7 @@
     <link rel="manifest" href="manifest.json" crossorigin="use-credentials">
     <link rel="apple-touch-icon" href="assets/queen_black.png">
     
-    <!-- Lore & SEO Metadata -->
+    <!-- 📖 Lore & SEO Metadata -->
     <meta name="description" content="Command the Obsidian Brood to victory against the Crimson Swarm in SpiderWars! A retro 16-bit RTS of webs, magic, and survival.">
     <meta name="author" content="SpiderWars Dev">
     <title>SpiderWars!</title>
@@ -49,14 +49,14 @@
     <!-- Dynamic SVG Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕷️</text></svg>">
     
-    <!-- Performance: Preload CSS and properly Module-Preload the JS Engine -->
+    <!-- 🚀 Performance: Preload CSS and properly Module-Preload the JS Engine -->
     <link rel="preload" href="style.css" as="style">
     <link rel="modulepreload" href="main.js">
 
     <!-- Stylesheets -->
     <link rel="stylesheet" href="style.css">
 
-    <!-- EXPANDABILITY: Global Modding API Initialization -->
+    <!-- 🔌 EXPANDABILITY: Global Modding API Initialization -->
     <script>
         // Any external JS mods loaded in this HTML file can push their modules into this array.
         // main.js will automatically detect and append them to the boot sequence!
@@ -64,19 +64,33 @@
     </script>
 
     <style>
-        /* Inline CSS for the Pre-Boot Loader to ensure it renders instantly */
+        /* Inline CSS for the Pre-Boot Loader to ensure it renders instantly without waiting for style.css */
         #preBootLoader {
             position: fixed; inset: 0; background: #050200; z-index: 999999;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             color: #ff9d00; font-family: 'Courier New', Courier, monospace;
             transition: opacity 0.5s ease, visibility 0.5s ease;
         }
-        .spinner {
-            width: 40px; height: 40px; border: 4px solid rgba(255, 157, 0, 0.3);
-            border-top: 4px solid #aa00ff; border-radius: 50%;
-            animation: spin 1s linear infinite; margin-bottom: 20px;
+        
+        /* 🧃 JUICE: Arcane Spider Glyph dual-ring spinner */
+        .spider-glyph {
+            position: relative; width: 60px; height: 60px; margin-bottom: 25px;
+            border: 4px solid transparent; border-top-color: #aa00ff; border-bottom-color: #aa00ff;
+            border-radius: 50%;
+            animation: spinEngine 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+            box-shadow: 0 0 15px rgba(170, 0, 255, 0.4);
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .spider-glyph::before {
+            content: ""; position: absolute; top: 6px; left: 6px; right: 6px; bottom: 6px;
+            border: 4px solid transparent; border-left-color: #ff9d00; border-right-color: #ff9d00;
+            border-radius: 50%;
+            animation: spinEngine 2s linear infinite reverse;
+        }
+        
+        @keyframes spinEngine { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes textPulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; text-shadow: 0 0 15px #ff9d00; } }
+        
+        .loader-text { animation: textPulse 2s infinite; font-weight: bold; font-size: 1.2rem; letter-spacing: 2px;}
     </style>
 </head>
 
@@ -84,8 +98,8 @@
 
     <!-- 1. INSTANT PRE-BOOT LOADER (Fades out when main.js finishes parsing) -->
     <div id="preBootLoader" aria-hidden="true">
-        <div class="spinner"></div>
-        <div style="text-shadow: 0 0 10px #ff9d00;">Weaving Engine...</div>
+        <div class="spider-glyph"></div>
+        <div class="loader-text">Weaving Engine...</div>
     </div>
 
     <!-- 2. NO-JS FALLBACK -->
@@ -99,19 +113,40 @@
     <!-- 3. MAIN GAME CANVAS -->
     <canvas id="gameCanvas" aria-label="SpiderWars Game Area" role="application" tabindex="0" oncontextmenu="return false;" style="touch-action: none; outline: none;"></canvas>
 
-    <!-- 4. ENGINE BOOT SCRIPT -->
+    <!-- 🔌 4. MODDING UI HOOK LAYER -->
+    <!-- Guaranteed top-level container for mods to inject custom UI without breaking canvas logic -->
+    <div id="mod-layer" style="position: absolute; inset: 0; pointer-events: none; z-index: 9000;"></div>
+
+    <!-- 5. ENGINE BOOT SCRIPT -->
     <script type="module" src="main.js"></script>
 
-    <!-- 5. PRE-BOOT CLEANUP LOGIC -->
+    <!-- 6. PRE-BOOT CLEANUP & FAIL-SAFE LOGIC -->
     <script>
         // Listens for the custom event we added to main.js earlier!
         window.addEventListener('SpiderWarsReady', () => {
             const loader = document.getElementById('preBootLoader');
             if (loader) {
                 loader.style.opacity = '0';
-                setTimeout(() => loader.remove(), 500); // Remove from DOM after fade
+                setTimeout(() => loader.remove(), 500); // Remove from DOM safely after fade
             }
         });
+
+        // 🛡️ [FIX] Engine Boot Fail-Safe!
+        // If 10 seconds pass and the engine hasn't broadcast its ready signal, display a fatal error
+        // instead of leaving the user trapped staring at a spinning web forever.
+        setTimeout(() => {
+            const loader = document.getElementById('preBootLoader');
+            if (loader && !window.SpiderWarsEngine) {
+                loader.style.animation = 'none'; // Stop spinning
+                loader.innerHTML = `
+                    <div style="color: #ff0000; text-align: center; background: rgba(20,0,0,0.8); padding: 20px; border: 2px solid #ff0000; border-radius: 8px;">
+                        <h2 style="margin: 0 0 10px 0; text-transform: uppercase;">🕸️ The Web Snapped</h2>
+                        <p style="margin: 0; color: #fff;">A fatal error prevented the engine from booting.</p>
+                        <p style="margin: 5px 0 0 0; font-size: 0.9em; color: #dfba96;">Please check the browser console (F12) for details.</p>
+                    </div>
+                `;
+            }
+        }, 10000);
     </script>
 
 </body>
