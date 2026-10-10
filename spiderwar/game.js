@@ -10,7 +10,7 @@ export const MathUtils = {
     lerp: (start, end, amt) => (1 - amt) * start + amt * end,
     randomRange: (min, max) => Math.random() * (max - min) + min,
     randomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
-    // [EXPANDABILITY] Added for mods to easily do smooth rotations
+    // [EXPANDABILITY] Smooth rotation wrapper for AI logic
     angleWrap: (angle) => {
         while (angle > Math.PI) angle -= MathUtils.TWO_PI;
         while (angle < -Math.PI) angle += MathUtils.TWO_PI;
@@ -24,7 +24,6 @@ export class GameBus {
         if (!this.listeners[event]) this.listeners[event] = []; 
         this.listeners[event].push(callback); 
     }
-    // [EXPANDABILITY] Allow mods to remove listeners to prevent memory leaks if they are toggled off
     off(event, callback) {
         if (!this.listeners[event]) return;
         this.listeners[event] = this.listeners[event].filter(cb => cb !== callback);
@@ -51,7 +50,7 @@ export class AssetManager {
 export class ExpansionManager {
     constructor(game) { this.game = game; this.expansions = {}; }
     load(name, expansion) {
-        // [FIX] Added try/catch error boundaries. If one mod has a syntax error, it won't crash the whole game!
+        // [FIX] Bulletproof error boundaries so one bad mod doesn't crash the engine!
         try {
             console.log(`%c[Plugin Loaded] ${name}`, 'color: #00aaff;');
             this.expansions[name] = expansion;
@@ -61,6 +60,7 @@ export class ExpansionManager {
             console.error(`%c[Plugin Error] Failed to load ${name}:`, 'color: #ff0000;', err);
         }
     }
+    // Deep prototype injection for modding
     patchClass(TargetClass, methodName, newMethod) {
         const originalMethod = TargetClass.prototype[methodName];
         TargetClass.prototype[methodName] = function(...args) {
@@ -80,6 +80,7 @@ export const SPIDER_STATE = {
     RETURNING_HOME: 3
 };
 
+// [EXPANDABILITY] Base stats for the Obsidian Brood and Crimson Swarm
 export const UNIT_DATA = {
     harvester: { size: 12, hp: 100, damage: 15, attackSpeed: 30, baseSpeedMin: 0.8, baseSpeedMax: 1.8, traits: ['gatherer'] },
     soldier:   { size: 16, hp: 200, damage: 30, attackSpeed: 20, baseSpeedMin: 1.2, baseSpeedMax: 2.2, traits: ['melee', 'escort'] }
@@ -112,7 +113,7 @@ export class Spider {
         this.cargo = { amount: 0, type: null };
         this.isCloaked = false; 
         
-        // [PERFORMANCE] Convert ID string to a number once for animation offset
+        // [PERFORMANCE] Convert ID string to a number once for deterministic animation offsets
         this.animOffset = parseInt(this.id, 36) % 100;
         
         // 🚀 [LOGIC FIX] Store the SRC target instead of creating a raw Image object
@@ -135,9 +136,17 @@ export class Spider {
 
         ctx.save(); 
         ctx.translate(this.x, this.y); 
+
+        // 🧃 [JUICE] High-Performance Drop Shadow (Drawn before rotation so it stays flat on the ground)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.beginPath();
+        // Dynamic ellipse shadow based on unit size
+        ctx.ellipse(0, this.size * 0.4, this.size * 0.9, this.size * 0.5, 0, 0, MathUtils.TWO_PI);
+        ctx.fill();
+
         ctx.rotate(this.angle); 
         
-        // [JUICE] Organic breathing animation! Faster when in combat or moving.
+        // 🧃 [JUICE] Organic breathing animation! Faster when in combat or moving.
         const tick = game ? game.tick : 0;
         const breathSpeed = (this.state === SPIDER_STATE.COMBAT || this.speed > 0.5) ? 0.2 : 0.05;
         const breath = 1 + Math.sin(tick * breathSpeed + this.animOffset) * 0.05;
@@ -146,15 +155,13 @@ export class Spider {
         if (this.imageLoaded && this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) { 
             ctx.drawImage(this.sprite, -this.size, -this.size, this.size * 2, this.size * 2); 
         } else {
-            // [JUICE] Added drop shadow to fallback graphics so they pop off the ground
-            ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2;
-            
+            // Fallback geometric rendering
             ctx.fillStyle = this.team; ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
-            
-            ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; // Reset shadow for eyes
             ctx.fillStyle = 'white'; ctx.fillRect(this.size/2, -3, 4, 6);
             if(this.role === 'soldier') { ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(0, 0, 4, 0, MathUtils.TWO_PI); ctx.fill(); }
         }
+
+        // Draw Cargo indicator
         if (this.cargo.amount > 0) { 
             ctx.fillStyle = this.cargo.type === 'pumpkin' ? '#ff7b00' : '#00aaff'; 
             ctx.beginPath(); ctx.arc(0, 0, 5, 0, MathUtils.TWO_PI); ctx.fill(); 
@@ -187,7 +194,7 @@ export class ResourceNode {
 
         ctx.save(); 
         
-        // [JUICE] Magical hovering animation for resources
+        // 🧃 [JUICE] Magical hovering animation for resources
         const tick = game ? game.tick : 0;
         const floatY = Math.sin(tick * 0.05 + this.animOffset) * 4;
         ctx.translate(this.x, this.y + floatY);
@@ -196,7 +203,7 @@ export class ResourceNode {
         const scale = Math.max(0.4, this.resources / maxRes); 
         ctx.scale(scale, scale);
         
-        // [JUICE] Add an ethereal glow matching the resource color
+        // 🧃 [JUICE] Add an ethereal glow matching the resource color
         ctx.shadowColor = this.type === 'pumpkin' ? '#ff7b00' : '#00aaff';
         ctx.shadowBlur = 15;
         
@@ -212,6 +219,8 @@ export class ResourceNode {
 
 export class Structure {
     constructor(x, y, team, type) {
+        // 🚀 [LOGIC FIX] Explicit ID generation ensures Save/Load system can relink construction targets!
+        this.id = Math.random().toString(36).substring(2, 11);
         this.x = x; this.y = y; this.team = team; this.type = type;
         
         const stats = STRUCTURE_DATA[type] || { hp: 200, size: 25, territory: 0 };
@@ -219,7 +228,7 @@ export class Structure {
         this.size = stats.size;
         this.territory = stats.territory;
         
-        // [JUICE] Spawn-in animation tracking
+        // 🧃 [JUICE] Spawn-in animation tracking
         this.spawnScale = 0.1;
         
         if(type === 'turret') this.cooldown = 0; 
@@ -242,27 +251,31 @@ export class Structure {
         ctx.save();
         ctx.translate(this.x, this.y);
         
-        // [JUICE] Pop-in scale animation when placed
+        // 🧃 [JUICE] Pop-in scale animation when placed
         if (this.spawnScale < 1.0) {
             this.spawnScale += 0.1;
             if (this.spawnScale > 1.0) this.spawnScale = 1.0;
         }
         ctx.scale(this.spawnScale, this.spawnScale);
+
+        // 🧃 [JUICE] High-Performance Drop Shadow (Grounds the building to the map)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.beginPath();
+        ctx.ellipse(0, this.size * 0.7, this.size * 1.1, this.size * 0.6, 0, 0, MathUtils.TWO_PI);
+        ctx.fill();
         
         if(this.spriteLoaded && this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) { 
             ctx.drawImage(this.sprite, -this.size, -this.size, this.size * 2, this.size * 2); 
         } else {
-            // [JUICE] Add drop shadows to fallback structures
-            ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 4;
+            // Fallback rendering
             ctx.fillStyle = this.team === 'black' ? '#222' : '#500';
-            
             if(this.type === 'nest') { ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill(); }
             else if(this.type === 'eggsac') { ctx.beginPath(); ctx.ellipse(0, 0, this.size, this.size-10, 0, 0, MathUtils.TWO_PI); ctx.fill(); }
-            else if(this.type === 'turret') { ctx.fillRect(-this.size, -this.size, this.size * 2, this.size * 2); ctx.shadowBlur = 0; ctx.fillStyle='purple'; ctx.beginPath(); ctx.arc(0, 0, 8, 0, MathUtils.TWO_PI); ctx.fill(); }
+            else if(this.type === 'turret') { ctx.fillRect(-this.size, -this.size, this.size * 2, this.size * 2); ctx.fillStyle='purple'; ctx.beginPath(); ctx.arc(0, 0, 8, 0, MathUtils.TWO_PI); ctx.fill(); }
             else if(this.type === 'wall') { ctx.fillRect(-this.size, -10, this.size * 2, 20); }
             else if(this.type === 'pylon') { ctx.beginPath(); ctx.moveTo(0, -this.size); ctx.lineTo(-this.size, this.size); ctx.lineTo(this.size, this.size); ctx.fill(); }
             
-            ctx.shadowBlur = 0; ctx.strokeStyle = this.team; ctx.lineWidth = 2; ctx.stroke();
+            ctx.strokeStyle = this.team; ctx.lineWidth = 2; ctx.stroke();
         }
         ctx.restore();
     }
@@ -278,7 +291,7 @@ export class Projectile {
         const dx = this.target.x - this.x; const dy = this.target.y - this.y;
         const distSq = MathUtils.distSq(this.x, this.y, this.target.x, this.target.y);
         
-        // [JUICE] Track angle for motion blur rendering
+        // 🧃 [JUICE] Track angle for motion blur rendering
         this.angle = Math.atan2(dy, dx);
         
         if (distSq < 100) { 
@@ -303,7 +316,7 @@ export class Projectile {
         ctx.shadowBlur = 10;
         ctx.shadowColor = ctx.fillStyle;
         
-        // [JUICE] Motion Blur: Draw as a stretched ellipse instead of a perfect circle!
+        // 🧃 [JUICE] Motion Blur: Draw as a stretched ellipse instead of a perfect circle!
         ctx.beginPath(); ctx.ellipse(0, 0, 8, 3, 0, 0, MathUtils.TWO_PI); ctx.fill(); 
         
         ctx.fillStyle = '#ffffff';
@@ -324,6 +337,10 @@ export class Game {
         this.expansions = new ExpansionManager(this);
         this.assets = new AssetManager();
         
+        // [EXPANDABILITY] Mount core data to the game instance for mods
+        this.unitData = UNIT_DATA;
+        this.structureData = STRUCTURE_DATA;
+        
         const baseAssets = [
             'assets/soldier_black.png', 'assets/soldier_red.png', 'assets/black_spider.png', 'assets/red_spider.png',
             'assets/pumpkin.png', 'assets/dewdrop.png', 'assets/ui_frame.png',
@@ -337,11 +354,11 @@ export class Game {
         this.camera = { x: 0, y: 0 }; 
         this.tick = 0; 
         
-        // Game Feel: Camera Shake & Hit-Stop
+        // 🧃 Game Feel: Camera Shake & Hit-Stop
         this.shakeX = 0;
         this.shakeY = 0;
         this.shakeIntensity = 0;
-        this.freezeFrames = 0; // [JUICE] Freezes game logic briefly on massive hits!
+        this.freezeFrames = 0; // Freezes game logic briefly on massive hits!
         
         this.lastTime = performance.now();
         this.accumulator = 0;
@@ -374,7 +391,7 @@ export class Game {
     
     addEntity(entity) { this.entities.push(entity); }
     
-    // [JUICE] Added hit-stop freeze frames for heavy impacts!
+    // 🧃 [JUICE] Hit-stop freeze frames for heavy impacts!
     triggerShake(power) { 
         this.shakeIntensity = Math.max(this.shakeIntensity, power); 
         if (power > 10) this.freezeFrames = Math.min(Math.floor(power / 2), 10);
@@ -431,6 +448,7 @@ export class Game {
         const endInteraction = (clientX, clientY, targetElem) => {
             if (isDragging) {
                 isDragging = false;
+                // Don't interact with the world if clicking on UI layers
                 if(targetElem && targetElem.closest && (targetElem.closest('#structureModal') || targetElem.closest('#mobileToolbar') || targetElem.closest('#rtsUI') || targetElem.closest('#gameOverModal'))) return;
 
                 if (!hasMoved && !this.isMinimapDragging) {
@@ -441,12 +459,13 @@ export class Game {
                         this.bus.emit('commandQueen', { x: worldX, y: worldY, team: 'black' });
                         this.activeTool = 'select'; this.bus.emit('toolChanged', 'select'); 
                     }
-                    else if (['venomStrike', 'silkTrap', 'reanimate', 'ambush'].includes(this.activeTool)) {
+                    else if (['venomStrike', 'silkTrap', 'reanimate', 'ambush', 'contagion', 'vortex'].includes(this.activeTool)) {
                         this.bus.emit('castSpell', { x: worldX, y: worldY, type: this.activeTool, team: 'black' });
                         this.activeTool = 'select'; this.bus.emit('toolChanged', 'select');
                     }
-                    else if (['nest', 'eggsac', 'turret', 'wall', 'pylon'].includes(this.activeTool)) {
+                    else if (['nest', 'eggsac', 'turret', 'wall', 'pylon', 'extractor', 'shrine', 'mortar', 'monolith', 'obelisk', 'incubator', 'maw'].includes(this.activeTool)) {
                         this.bus.emit('buildStructure', { x: worldX, y: worldY, team: 'black', type: this.activeTool });
+                        // Holding shift allows rapid-fire building queueing!
                         if (!this.keys['shift']) { this.activeTool = 'select'; this.bus.emit('toolChanged', 'select'); }
                     }
                     else {
@@ -455,7 +474,7 @@ export class Game {
                         if(clickedStruct) this.bus.emit('openModal', clickedStruct);
                         else this.bus.emit('closeModal'); 
                         
-                        // [JUICE] Visual click indicator on ground
+                        // 🧃 [JUICE] Visual click indicator on ground
                         if (!clickedStruct) this.bus.emit('particles', {x: worldX, y: worldY, color: 'rgba(255,255,255,0.5)', count: 5});
                     }
                 }
@@ -465,22 +484,32 @@ export class Game {
         this.canvas.addEventListener('mousedown', (e) => { if(e.button === 0 && !e.shiftKey) startInteraction(e.clientX, e.clientY); });
         window.addEventListener('mousemove', (e) => { moveInteraction(e.clientX, e.clientY); });
         window.addEventListener('mouseup', (e) => { if(e.button === 0) endInteraction(e.clientX, e.clientY, e.target); });
+        
+        // Touch support mapping
         this.canvas.addEventListener('touchstart', (e) => { if(e.touches.length === 1) startInteraction(e.touches[0].clientX, e.touches[0].clientY); }, {passive: false});
         window.addEventListener('touchmove', (e) => { if(e.touches.length === 1) moveInteraction(e.touches[0].clientX, e.touches[0].clientY); }, {passive: false});
         window.addEventListener('touchend', (e) => { if(e.changedTouches.length === 1) endInteraction(e.changedTouches[0].clientX, e.changedTouches[0].clientY, e.target); });
+        
         this.canvas.addEventListener('contextmenu', e => e.preventDefault());
 
         this.bus.on('spawnSpider', (data) => {
-            if (data.role !== 'harvester' && data.role !== 'soldier') return; 
+            // [FIX] Make sure role exists in our data dictionary before spawning
+            const stats = this.unitData[data.role] || this.unitData['harvester'];
+            
+            // Hardcoded basic unit costs (Special units handle their own costs in SpecialUnits.js)
             const cost = data.role === 'soldier' ? 25 : 10;
-            if (this.eco[data.team]?.pumpkins >= cost && this.pop[data.team] < this.maxPop[data.team]) {
-                this.eco[data.team].pumpkins -= cost; 
-                this.addEntity(new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role));
-                this.bus.emit('playSound', 'harvest'); 
+            
+            if (data.role === 'harvester' || data.role === 'soldier') {
+                if (this.eco[data.team]?.pumpkins >= cost && this.pop[data.team] < this.maxPop[data.team]) {
+                    this.eco[data.team].pumpkins -= cost; 
+                    this.addEntity(new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role));
+                    this.bus.emit('playSound', 'harvest'); 
+                }
             }
         });
         
         this.bus.on('buildStructure', (data) => {
+            // [EXPANDABILITY] Base fallback costs if Controls.js expansion is missing
             const costs = { 'nest': 150, 'eggsac': 50, 'turret': 100, 'wall': 25, 'pylon': 25 };
             if (!costs[data.type]) return; 
             
@@ -505,13 +534,14 @@ export class Game {
         let deltaTime = currentTime - this.lastTime;
         this.lastTime = currentTime;
         
+        // Prevent spiral of death if tab is backgrounded
         if (deltaTime > 250) deltaTime = 250;
         
         this.accumulator += deltaTime;
         
         let updated = false;
         while (this.accumulator >= this.timeStep) {
-            // [JUICE] Hit-Stop processing. Freezes game logic, but allows rendering to continue!
+            // 🧃 [JUICE] Hit-Stop processing. Freezes game logic, but allows rendering to continue!
             if (this.freezeFrames > 0) {
                 this.freezeFrames--;
             } else {
@@ -528,7 +558,7 @@ export class Game {
         if (this.gameState !== 'playing') return; 
         this.tick++;
 
-        // Camera Shake Physics
+        // 🧃 Camera Shake Physics
         if (this.shakeIntensity > 0.1) {
             this.shakeX = (Math.random() - 0.5) * this.shakeIntensity;
             this.shakeY = (Math.random() - 0.5) * this.shakeIntensity;
@@ -579,12 +609,14 @@ export class Game {
             let e = this.entities[i];
             let dead = false;
             
+            // Centralized Garbage Collection check
             if (e.hp !== undefined && e.hp <= 0) dead = true;
             else if (e.resources !== undefined && e.resources <= 0) dead = true;
             else if (e.active !== undefined && !e.active) dead = true;
             else if (e.life !== undefined && e.life <= 0) dead = true;
 
             if (dead) {
+                // 🧃 Death Particles & Sound
                 if (e instanceof Spider || e instanceof Structure || e.constructor.name === 'CentipedeBoss' || e.team === 'nature') {
                     this.bus.emit('particles', {x: e.x, y: e.y, color: e.color || e.team || '#888', count: e.constructor.name === 'CentipedeBoss' ? 100 : 30});
                     this.bus.emit('playSound', e.team === 'nature' ? 'harvest' : 'death');
@@ -592,7 +624,10 @@ export class Game {
                 if (this.selectedStructure === e) { this.selectedStructure = null; this.bus.emit('closeModal'); }
                 
             } else {
+                // Execute behavior
                 if (e.update) e.update(this);
+                
+                // Pack alive entities tightly into the start of the array
                 this.entities[aliveCount] = e; 
                 aliveCount++;
                 
@@ -611,14 +646,14 @@ export class Game {
             }
         }
 
-        // Copy spawned entities over correctly
+        // Copy new entities (spawned during this frame) over correctly
         let spawnedCount = this.entities.length - originalLength;
         for (let i = 0; i < spawnedCount; i++) {
             this.entities[aliveCount] = this.entities[originalLength + i];
             aliveCount++;
         }
         
-        // Let JS native GC handle memory cleanup securely!
+        // 🚀 [PERFORMANCE FIX] Truncate the array. Let JS native GC handle memory cleanup securely!
         this.entities.length = aliveCount;
     }
 
@@ -643,10 +678,13 @@ export class Game {
                 for (let i = 0; i < cell.length; i++) {
                     let e = cell[i];
                     
+                    // Fast early-exits
                     if (!e.team || e.team === team || e.hp <= 0 || e.isCloaked || e instanceof Projectile) continue;
                     
                     let dSq = MathUtils.distSq(x, y, e.x, e.y);
                     
+                    // Special logic: Walls take up huge space, so artificially reduce their distance 
+                    // so AI bites the wall instead of running endlessly into it trying to reach the center
                     if (e.type === 'wall' && dSq < 62500) dSq = Math.max(0, dSq - 10000); 
                     
                     if (dSq < minDistSq) {
@@ -670,6 +708,7 @@ export class Game {
         this.bus.emit('territoryDraw', this.ctx); 
         this.bus.emit('atmosphereDraw', this.ctx);
 
+        // Draw selection ring for clicked structure
         if(this.selectedStructure) {
             this.ctx.strokeStyle = '#ffffff'; this.ctx.lineWidth = 2; this.ctx.setLineDash([5, 5]);
             this.ctx.beginPath(); this.ctx.arc(this.selectedStructure.x, this.selectedStructure.y, this.selectedStructure.size + 10, 0, MathUtils.TWO_PI);
@@ -684,6 +723,7 @@ export class Game {
 
         this.renderList.length = 0;
         
+        // 🚀 [PERFORMANCE] Viewport Culling! Only process draw calls for entities on-screen
         for (let i = 0; i < this.entities.length; i++) {
             let e = this.entities[i];
             const renderSize = e.size || 0;
@@ -692,7 +732,8 @@ export class Game {
             }
         }
 
-        // [FIX] Sort by Y for depth, but give structures a tiny negative offset so bugs walk slightly *in front* of them
+        // [FIX] Sort by Y for 2.5D depth.
+        // We give structures a tiny negative offset so bugs walk slightly *in front* of the bases of buildings
         this.renderList.sort((a, b) => {
             const aY = (a instanceof Structure) ? a.y - 1 : a.y;
             const bY = (b instanceof Structure) ? b.y - 1 : b.y;
