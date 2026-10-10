@@ -47,9 +47,10 @@ import { MinimapExpansion, ContextUIExpansion, GameLoopExpansion } from './expan
 import { AtmosphereExpansion, FogOfWarExpansion, SaveLoadExpansion } from './expansions/Systems.js';
 
 // ==========================================
-// 3. EXPANSION MANIFEST
+// 3. EXPANSION MANIFEST (STRICT LOAD ORDER)
 // ==========================================
 // This array defines the exact load order of the vanilla game.
+// Dependencies (like the TraitManager) must load before units that use them.
 const expansionManifest = [
     { name: 'SplashScreen',         module: SplashScreenExpansion },
     { name: 'AudioSynth',           module: AudioExpansion },
@@ -103,12 +104,12 @@ const bootEngine = () => {
 
     // 2. GLOBAL CONFIGURATION
     window.SpiderWarsConfig = window.SpiderWarsConfig || {
-        version: '1.1.0',
+        version: '1.2.0',
         debugMode: false,
         cheatsEnabled: false
     };
     
-    // 3. DEVTOOLS JUICE (ASCII ART)
+    // 🧃 3. DEVTOOLS JUICE (ASCII ART)
     const spiderASCII = `
 %c
    / _ \\
@@ -122,7 +123,7 @@ SpiderWars! Engine v${window.SpiderWarsConfig.version}
 
     // Initialize core state
     const game = new Game();
-    window.SpiderWarsEngine = game; // Expose to global scope for DevTools
+    window.SpiderWarsEngine = game; // Expose to global scope for DevTools & Mods
 
     // 4. MODDING API (Expandability Win)
     // We use a Map to allow external mods to easily overwrite core modules by matching the name!
@@ -131,6 +132,10 @@ SpiderWars! Engine v${window.SpiderWarsConfig.version}
     
     if (Array.isArray(window.SpiderWarsMods)) {
         window.SpiderWarsMods.forEach(mod => {
+            if (!mod.name || !mod.module) {
+                console.error(`%c[Mod API] Invalid mod structure detected. Skipping.`, "color: #ff0000;");
+                return;
+            }
             if (activeManifest.has(mod.name)) {
                 console.warn(`%c[Mod API] External mod is overriding core expansion: ${mod.name}`, "color: #ffaa00; font-weight: bold;");
             }
@@ -171,9 +176,12 @@ SpiderWars! Engine v${window.SpiderWarsConfig.version}
         console.log(`%c[Engine] The Web is perfectly woven. Loaded ${loadedCount} Expansions in ${bootTime}ms.`, "color: #00ff00; font-family: monospace;");
     }
     
-    // 6. HOT-PLUGGABLE MOD API
+    // 🔌 6. HOT-PLUGGABLE MOD API
     // Allows devs (or Chrome Extensions) to inject scripts while the game is actively running!
     window.SpiderWarsAPI = {
+        getEngine: () => window.SpiderWarsEngine,
+        emit: (event, data) => window.SpiderWarsEngine?.bus.emit(event, data),
+        on: (event, callback) => window.SpiderWarsEngine?.bus.on(event, callback),
         loadMod: (modName, modModule) => {
             try {
                 game.expansions.load(modName, modModule);
@@ -197,9 +205,20 @@ SpiderWars! Engine v${window.SpiderWarsConfig.version}
 };
 
 // ==========================================
-// 5. SAFELY EXECUTE BOOT
+// 5. GLOBAL CATASTROPHE HANDLER
 // ==========================================
-// [FIX] Handles the race condition where DOMContentLoaded already fired before this script executed
+// 🛡️ [FIX] Prevents silent failures by catching unhandled exceptions and styling them beautifully
+window.addEventListener('error', (e) => {
+    console.error(`%c🕸️ [CATASTROPHE] The Web has snapped! \nFatal Error: ${e.message}`, "color: #ff0000; font-size: 14px; font-weight: bold; border: 1px solid #ff0000; padding: 5px; background: rgba(50,0,0,0.5);");
+});
+window.addEventListener('unhandledrejection', (e) => {
+    console.error(`%c🕸️ [VOID WHISPERS] Unhandled Promise Rejection! \nReason: ${e.reason}`, "color: #aa00ff; font-size: 14px; font-weight: bold; border: 1px solid #aa00ff; padding: 5px; background: rgba(20,0,50,0.5);");
+});
+
+// ==========================================
+// 6. SAFELY EXECUTE BOOT
+// ==========================================
+// Handles the race condition where DOMContentLoaded already fired before this script executed
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', bootEngine);
 } else {
