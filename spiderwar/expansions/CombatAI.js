@@ -5,7 +5,7 @@ import { Queen } from './Queen.js';
 // ==========================================
 // 1. CONFIGURATION & BALANCING
 // ==========================================
-// [EXPANDABILITY] Exported so other mods can tweak the global AI parameters
+// 🔌 [EXPANDABILITY] Exported so other mods can tweak the global AI parameters
 export const COMBAT_CONFIG = {
     gathererAggroRange: 150,
     meleeAggroRange: 150,
@@ -38,14 +38,14 @@ export const CombatAndHarvesterExpansion = {
                 let nearestEnemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, COMBAT_CONFIG.gathererAggroRange + (techLvl * 10));
                 
                 if (nearestEnemy) {
-                    // [JUICE] Alert indicator when spotting an enemy
+                    // 🧃 [JUICE] Alert indicator when spotting an enemy
                     if (entity.state !== SPIDER_STATE.COMBAT) {
                         gameObj.bus.emit('particles', {x: entity.x, y: entity.y - 10, color: '#ff0000', count: 1});
                     }
                     
                     entity.state = SPIDER_STATE.COMBAT; 
                     
-                    // [JUICE] Smooth organic turning towards the enemy
+                    // 🧃 [JUICE] Smooth organic turning towards the enemy
                     const targetAngle = Math.atan2(nearestEnemy.y - entity.y, nearestEnemy.x - entity.x);
                     entity.angle += MathUtils.angleWrap(targetAngle - entity.angle) * COMBAT_CONFIG.turnSpeed;
                     
@@ -59,7 +59,7 @@ export const CombatAndHarvesterExpansion = {
                             nearestEnemy.hp -= currentDamage; 
                             entity.cooldown = entity.attackSpeed;
                             
-                            // [FIX] Only recoil if the unit actually has movement speed
+                            // 🛡️ [FIX] Only recoil if the unit actually has movement speed
                             if (currentSpeed > 0) {
                                 entity.x -= Math.cos(entity.angle) * 10; 
                                 entity.y -= Math.sin(entity.angle) * 10; 
@@ -77,9 +77,9 @@ export const CombatAndHarvesterExpansion = {
                     const dx = entity.commandTarget.x - entity.x; 
                     const dy = entity.commandTarget.y - entity.y;
                     
-                    // [PERFORMANCE] Fast distSq inline
+                    // 🚀 [PERFORMANCE] Fast inline distSq calculation
                     if ((dx * dx + dy * dy) > 225) { 
-                        // [JUICE] Smooth turning for manual move orders
+                        // 🧃 [JUICE] Smooth turning for manual move orders
                         const targetAngle = Math.atan2(dy, dx);
                         entity.angle += MathUtils.angleWrap(targetAngle - entity.angle) * COMBAT_CONFIG.turnSpeed;
                         
@@ -109,7 +109,8 @@ export const CombatAndHarvesterExpansion = {
 
                         if (entity.state === SPIDER_STATE.SEEKING_RESOURCE) {
                             const nodes = gameObj.resourceNodes;
-                            for (let i = 0; i < nodes.length; i++) {
+                            const nodeLen = nodes.length;
+                            for (let i = 0; i < nodeLen; i++) {
                                 let r = nodes[i];
                                 if (r.resources > 0) {
                                     let dSq = MathUtils.distSq(r.x, r.y, entity.x, entity.y); 
@@ -118,7 +119,8 @@ export const CombatAndHarvesterExpansion = {
                             }
                         } else {
                             const structs = gameObj.structures;
-                            for (let i = 0; i < structs.length; i++) {
+                            const structLen = structs.length;
+                            for (let i = 0; i < structLen; i++) {
                                 let s = structs[i];
                                 if (s.team === entity.team && (s.type === 'nest' || s.type === 'pylon') && s.hp > 0 && !s.isConstructing) {
                                     let dSq = MathUtils.distSq(s.x, s.y, entity.x, entity.y); 
@@ -127,7 +129,8 @@ export const CombatAndHarvesterExpansion = {
                             }
                             
                             const queens = gameObj.queens;
-                            for (let i = 0; i < queens.length; i++) {
+                            const queenLen = queens.length;
+                            for (let i = 0; i < queenLen; i++) {
                                 let q = queens[i];
                                 if (q.team === entity.team && q.hp > 0) {
                                     let dSq = MathUtils.distSq(q.x, q.y, entity.x, entity.y); 
@@ -146,7 +149,7 @@ export const CombatAndHarvesterExpansion = {
                     const dy = entity.target.y - entity.y;
                     const distSq = (dx * dx + dy * dy); 
                     
-                    // [JUICE] Smooth organic turning towards the resource/base
+                    // 🧃 [JUICE] Smooth organic turning towards the resource/base
                     const targetAngle = Math.atan2(dy, dx);
                     entity.angle += MathUtils.angleWrap(targetAngle - entity.angle) * COMBAT_CONFIG.turnSpeed;
                     
@@ -157,7 +160,7 @@ export const CombatAndHarvesterExpansion = {
                         entity.y += Math.sin(entity.angle) * currentSpeed;
                     } else {
                         
-                        // [JUICE] Added a small delay/animation to harvesting so they don't instantly snap it up
+                        // 🧃 [JUICE] Added a small delay/animation to harvesting so they don't instantly snap it up
                         if (entity.state === SPIDER_STATE.SEEKING_RESOURCE && entity.target.resources > 0) {
                             entity.harvestTimer = (entity.harvestTimer || 0) + 1;
                             
@@ -173,12 +176,12 @@ export const CombatAndHarvesterExpansion = {
                                 gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: resColor, count: 5}); 
                                 gameObj.bus.emit('playSound', 'harvest');
                             } else {
-                                // Wiggle animation while mining
+                                // 🧃 [JUICE] Wiggle animation while mining
                                 entity.angle += Math.sin(gameObj.tick * 0.5) * 0.1;
                             }
                         } 
                         else if (entity.state === SPIDER_STATE.RETURNING_HOME) {
-                            // JUICE: Visual confirmation of resources being deposited
+                            // 🧃 [JUICE] Visual confirmation of resources being deposited
                             const resColor = entity.cargo.type === 'pumpkin' ? '#ff7b00' : '#00aaff';
                             gameObj.bus.emit('particles', {x: entity.x, y: entity.y - 15, color: resColor, count: 12, type: 'magic'}); 
                             
@@ -219,7 +222,7 @@ export const CombatAndHarvesterExpansion = {
                     
                     entity.state = SPIDER_STATE.COMBAT; 
                     
-                    // [JUICE] Smooth turn
+                    // 🧃 [JUICE] Smooth turn
                     const targetAngle = Math.atan2(nearestEnemy.y - entity.y, nearestEnemy.x - entity.x);
                     entity.angle += MathUtils.angleWrap(targetAngle - entity.angle) * COMBAT_CONFIG.turnSpeed;
                     
@@ -233,6 +236,7 @@ export const CombatAndHarvesterExpansion = {
                             nearestEnemy.hp -= currentDamage; 
                             entity.cooldown = entity.attackSpeed;
                             
+                            // 🛡️ [FIX] Only recoil if the unit actually has movement speed
                             if (currentSpeed > 0) {
                                 entity.x -= Math.cos(entity.angle) * 10; 
                                 entity.y -= Math.sin(entity.angle) * 10; 
@@ -249,7 +253,8 @@ export const CombatAndHarvesterExpansion = {
                 if (entity.hasTrait('escort') && !entity.isManual) {
                     let myQueen = null;
                     const queens = gameObj.queens; 
-                    for (let i = 0; i < queens.length; i++) {
+                    const queenLen = queens.length;
+                    for (let i = 0; i < queenLen; i++) {
                         if (queens[i].team === entity.team) { myQueen = queens[i]; break; }
                     }
 
@@ -257,8 +262,9 @@ export const CombatAndHarvesterExpansion = {
                         const dx = myQueen.x - entity.x; 
                         const dy = myQueen.y - entity.y;
                         
+                        // 🚀 [PERFORMANCE] Fast inline distance math
                         if ((dx * dx + dy * dy) > COMBAT_CONFIG.escortOrbitRadiusSq) { 
-                            // [JUICE] Smooth turn to follow queen
+                            // 🧃 [JUICE] Smooth turn to follow queen
                             const targetAngle = Math.atan2(dy, dx);
                             entity.angle += MathUtils.angleWrap(targetAngle - entity.angle) * COMBAT_CONFIG.turnSpeed;
                             
@@ -275,7 +281,7 @@ export const CombatAndHarvesterExpansion = {
                     const dy = entity.commandTarget.y - entity.y;
                     
                     if ((dx * dx + dy * dy) > 225) { 
-                        // [JUICE] Smooth turn
+                        // 🧃 [JUICE] Smooth turn
                         const targetAngle = Math.atan2(dy, dx);
                         entity.angle += MathUtils.angleWrap(targetAngle - entity.angle) * COMBAT_CONFIG.turnSpeed;
                         
