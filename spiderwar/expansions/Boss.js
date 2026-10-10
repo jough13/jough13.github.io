@@ -4,7 +4,7 @@ import { MathUtils, Spider, Structure, ResourceNode } from '../game.js';
 // ==========================================
 // 1. CONFIGURATION & BALANCING
 // ==========================================
-// [EXPANDABILITY] Exported so other mods can easily adjust boss stats or spawn times
+// 🔌 [EXPANDABILITY] Exported so other mods can easily adjust boss stats or spawn times
 export const BOSS_CONFIG = {
     spawnTick: 10800,       // 3 minutes at 60fps (or 6 minutes at 30fps)
     maxHp: 3000,
@@ -13,11 +13,12 @@ export const BOSS_CONFIG = {
     aggroRange: 800,
     attackCooldown: 20,
     segmentCount: 15,
+    segmentSpacing: 4,      // Frames between each segment
     lootDrops: 10           // Drops 10 pumpkins and 10 dew upon death
 };
 
 // ==========================================
-// 2. THE BOSS ENTITY
+// 2. THE BOSS ENTITY (The Rotwood Behemoth)
 // ==========================================
 export class CentipedeBoss {
     constructor(x, y) {
@@ -31,17 +32,23 @@ export class CentipedeBoss {
         this.speed = BOSS_CONFIG.speed;
         this.angle = Math.random() * MathUtils.TWO_PI; 
         
-        // Segmented Body Mechanics
+        // 🚀 [PERFORMANCE FIX] Segmented Body Ring Buffer!
+        // Instead of using unshift/pop (which triggers massive GC and re-indexing lag),
+        // we use a fixed-size array and just move a pointer (historyIndex).
         this.segmentCount = BOSS_CONFIG.segmentCount; 
-        this.history = []; 
-        this.historyLength = this.segmentCount * 4; // Keep exactly enough history for the segments
+        this.historyLength = this.segmentCount * BOSS_CONFIG.segmentSpacing; 
+        this.history = new Array(this.historyLength);
+        for (let i = 0; i < this.historyLength; i++) {
+            this.history[i] = { x: this.x, y: this.y, angle: this.angle };
+        }
+        this.historyIndex = 0; 
         
         // AI State & Timers
         this.cooldown = 0;
         this.target = null;
         this.repathTimer = 0;
         
-        // [JUICE] Animation States
+        // 🧃 [JUICE] Animation States
         this.spawnPhase = 60; // Takes 1 second (60 frames) to unburrow
         this.flashFrames = 0;
         this._lastHp = this.hp;
@@ -49,53 +56,51 @@ export class CentipedeBoss {
         // Sprites will be pulled instantly from RAM cache on Tick 1 of its life
         this.headSprite = null; 
         this.bodySprite = null; 
+        this.spritesLoaded = false;
     }
 
     update(game) {
         // --- ASSET MANAGER CACHE LINKING ---
-        if (!this.headSprite && game.assets) {
+        if (!this.spritesLoaded && game.assets) {
             this.headSprite = game.assets.get('assets/centipede_head.png');
             this.bodySprite = game.assets.get('assets/centipede_body.png');
+            this.spritesLoaded = true;
         }
 
-        // [JUICE] Spawn-in Unburrowing Sequence
+        // 🧃 [JUICE] Spawn-in Unburrowing Sequence
         if (this.spawnPhase > 0) {
             this.spawnPhase--;
             if (game.tick % 5 === 0) {
                 game.bus.emit('particles', {x: this.x, y: this.y, color: '#3d2817', count: 5}); // Dirt kicking up
             }
-            // Record initial history so segments don't pop in from 0,0
-            if (this.history.length === 0) {
-                for (let i = 0; i < this.historyLength; i++) {
-                    this.history.push({ x: this.x, y: this.y, angle: this.angle });
-                }
-            }
             return; // Cannot move or attack while unburrowing!
         }
 
-        // [JUICE] Damage Flashing Tracker
+        // 🧃 [JUICE] Damage Flashing Tracker
         if (this.hp < this._lastHp) this.flashFrames = 4;
         this._lastHp = this.hp;
         if (this.flashFrames > 0) this.flashFrames--;
 
-        // 1. Manage Movement History (Fixed length array for performance)
-        const lastPos = this.history[0];
+        // 1. Manage Movement History (The Ring Buffer)
+        const lastPos = this.history[this.historyIndex];
         
         // ACCORDION BUG FIX: Only record history if the boss has moved at least 5 pixels.
-        if (!lastPos || MathUtils.distSq(this.x, this.y, lastPos.x, lastPos.y) >= 25) {
-            this.history.unshift({ x: this.x, y: this.y, angle: this.angle }); 
-            if (this.history.length > this.historyLength) {
-                this.history.pop(); 
-            }
+        if (MathUtils.distSq(this.x, this.y, lastPos.x, lastPos.y) >= 25) {
+            // Move pointer backwards, wrapping around if it hits 0
+            this.historyIndex = (this.historyIndex - 1 + this.historyLength) % this.historyLength;
+            // Overwrite the oldest data
+            this.history[this.historyIndex].x = this.x;
+            this.history[this.historyIndex].y = this.y;
+            this.history[this.historyIndex].angle = this.angle;
         }
 
-        // JUICE: Heavy Footsteps!
+        // 🧃 [JUICE] Heavy Footsteps!
         if (game.tick % 15 === 0) {
             if (game.triggerShake) game.triggerShake(1.5); // Micro-shake for heavy slithering
             game.bus.emit('particles', {x: this.x, y: this.y, color: '#3d2817', count: 2}); // Kick up dirt
         }
 
-        // 2. Target Acquisition ([PERFORMANCE FIX]: Throttled Spatial Grid Lookups!)
+        // 2. Target Acquisition (Throttled Spatial Grid Lookups!)
         this.repathTimer--;
         if (this.repathTimer <= 0 || !this.target || this.target.hp <= 0) {
             this.target = game.getNearestEnemy(this.x, this.y, this.team, BOSS_CONFIG.aggroRange);
@@ -106,7 +111,7 @@ export class CentipedeBoss {
         if (this.target) {
             const targetAngle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
             
-            // [FIX] Use the MathUtils angle wrapper for flawless, glitch-free turning
+            // Safe, glitch-free turning
             let diff = MathUtils.angleWrap(targetAngle - this.angle);
             this.angle += (diff * 0.05);
 
@@ -124,7 +129,7 @@ export class CentipedeBoss {
                     this.target.hp -= this.damage; 
                     this.cooldown = BOSS_CONFIG.attackCooldown; 
                     
-                    // JUICE: Vicious bite impact & Hit Stop
+                    // 🧃 [JUICE] Vicious bite impact & Hit Stop
                     if (game.triggerShake) game.triggerShake(8); 
                     game.bus.emit('particles', {x: this.target.x, y: this.target.y, color: '#00ff00', count: 10}); 
                     game.bus.emit('particles', {x: this.target.x, y: this.target.y, color: '#ff0000', count: 5, type: 'splatter'}); 
@@ -144,14 +149,15 @@ export class CentipedeBoss {
 
         // 4. Boss Death Loot Splosion!
         if (this.hp <= 0) {
-            if (game.triggerShake) game.triggerShake(20); // Massive death throes
-            game.bus.emit('playSound', 'death'); 
-            setTimeout(() => game.bus.emit('playSound', 'spell'), 100);
+            // 🧃 [JUICE] Massive death throes
+            if (game.triggerShake) game.triggerShake(20); 
+            game.bus.emit('playSound', 'roar'); 
+            setTimeout(() => game.bus.emit('playSound', 'void'), 100);
             
             game.bus.emit('particles', {x: this.x, y: this.y, color: '#00ff00', count: 200});
             game.bus.emit('particles', {x: this.x, y: this.y, color: '#ffea00', count: 50});
             
-            // Drop a massive ring of loot, [FIX] ensuring drops stay safely inside map boundaries
+            // Drop a massive ring of loot, ensuring drops stay safely inside map boundaries
             for (let i = 0; i < BOSS_CONFIG.lootDrops; i++) {
                 const dropAngle = (MathUtils.TWO_PI / BOSS_CONFIG.lootDrops) * i;
                 
@@ -170,7 +176,7 @@ export class CentipedeBoss {
     draw(ctx, game) {
         ctx.save();
         
-        // [JUICE] Spawn Unburrow Scale
+        // 🧃 [JUICE] Spawn Unburrow Scale
         if (this.spawnPhase > 0) {
             const spawnProgress = 1 - (this.spawnPhase / 60);
             ctx.translate(this.x, this.y);
@@ -178,34 +184,38 @@ export class CentipedeBoss {
             ctx.translate(-this.x, -this.y);
         }
 
-        // [JUICE] Damage Flash Filter
+        // 🧃 [JUICE] Damage Flash Filter
         if (this.flashFrames > 0) ctx.filter = 'brightness(2.5)';
 
         const tick = game ? game.tick : 0;
 
-        // 1. Draw Body Segments from History
-        for (let i = 1; i < this.segmentCount; i++) {
-            let histIndex = i * 4; 
-            if (this.history[histIndex]) {
-                let pos = this.history[histIndex]; 
-                
-                ctx.save(); 
-                
-                // [JUICE] Wriggle Offset! Adds an organic sine wave to the segments as it moves
-                const wriggleOffset = Math.sin(tick * 0.2 + i) * 3;
-                // Move to position, apply rotation, THEN apply local Y offset for the wriggle
-                ctx.translate(pos.x, pos.y); 
-                ctx.rotate(pos.angle);
-                ctx.translate(0, wriggleOffset);
-                
-                if (this.bodySprite && this.bodySprite.complete && this.bodySprite.naturalHeight !== 0) { 
-                    ctx.drawImage(this.bodySprite, -15, -15, 30, 30); 
-                } else { 
-                    ctx.fillStyle = i % 2 === 0 ? '#113311' : '#225522'; 
-                    ctx.beginPath(); ctx.arc(0, 0, 15, 0, MathUtils.TWO_PI); ctx.fill(); 
-                }
-                ctx.restore();
+        // 1. Draw Body Segments from History (Iterating through the Ring Buffer)
+        for (let i = this.segmentCount - 1; i >= 1; i--) { // Draw from tail to head!
+            let rawIndex = this.historyIndex + (i * BOSS_CONFIG.segmentSpacing);
+            let safeIndex = rawIndex % this.historyLength; // Wrap around
+            
+            let pos = this.history[safeIndex]; 
+            
+            ctx.save(); 
+            
+            // 🧃 [JUICE] Wriggle Offset! Adds an organic sine wave to the segments as it moves
+            const wriggleOffset = Math.sin(tick * 0.2 + i) * 3;
+            ctx.translate(pos.x, pos.y); 
+            ctx.rotate(pos.angle);
+            ctx.translate(0, wriggleOffset);
+            
+            // 🧃 [JUICE] Ambient Drop Shadow for segments
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetY = 2;
+
+            if (this.bodySprite && this.bodySprite.complete && this.bodySprite.naturalHeight !== 0) { 
+                ctx.drawImage(this.bodySprite, -15, -15, 30, 30); 
+            } else { 
+                ctx.fillStyle = i % 2 === 0 ? '#113311' : '#225522'; 
+                ctx.beginPath(); ctx.arc(0, 0, 15, 0, MathUtils.TWO_PI); ctx.fill(); 
             }
+            ctx.restore();
         }
 
         // 2. Draw Head
@@ -213,16 +223,22 @@ export class CentipedeBoss {
         ctx.translate(this.x, this.y); 
         ctx.rotate(this.angle);
         
-        // [JUICE] Head lunges forward slightly during attack cooldown
+        // 🧃 [JUICE] Head lunges forward slightly during attack cooldown
         if (this.cooldown > BOSS_CONFIG.attackCooldown - 5) {
             ctx.translate(5, 0); 
         }
         
+        // 🧃 [JUICE] Head Drop Shadow
+        ctx.shadowColor = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetY = 3;
+
         if (this.headSprite && this.headSprite.complete && this.headSprite.naturalHeight !== 0) { 
             ctx.drawImage(this.headSprite, -20, -20, 40, 40); 
         } else { 
             ctx.fillStyle = '#052205'; 
             ctx.beginPath(); ctx.arc(0, 0, 22, 0, MathUtils.TWO_PI); ctx.fill(); 
+            ctx.shadowBlur = 0; // Turn off shadow for eyes
             ctx.fillStyle = 'red'; 
             ctx.beginPath(); ctx.arc(8, -8, 4, 0, MathUtils.TWO_PI); 
             ctx.arc(8, 8, 4, 0, MathUtils.TWO_PI); ctx.fill(); 
@@ -287,10 +303,9 @@ export const GodUnitExpansion = {
 
                 this.addEntity(new CentipedeBoss(spawnX, spawnY));
                 
-                // JUICE: The Eruption Spawn!
+                // 🧃 [JUICE] The Eruption Spawn!
                 if (this.triggerShake) this.triggerShake(25); 
-                this.bus.emit('playSound', 'death'); 
-                setTimeout(() => this.bus.emit('playSound', 'death'), 200); 
+                this.bus.emit('playSound', 'roar'); 
                 
                 // Erupting dirt and magic
                 this.bus.emit('particles', {x: spawnX, y: spawnY, color: '#3d2817', count: 300}); // Dirt clods
