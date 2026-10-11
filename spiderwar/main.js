@@ -30,7 +30,7 @@ import { SwarmDynamicsExpansion } from './expansions/SwarmDynamics.js';
 import { SpellExpansion } from './expansions/Spells.js';
 import { SpecialUnitsExpansion } from './expansions/SpecialUnits.js';
 import { HazardsExpansion } from './expansions/Hazards.js';
-import { CaravansExpansion } from './expansions/Caravans.js'; // 🪲 NEW!
+import { CaravansExpansion } from './expansions/Caravans.js'; 
 import { DayNightExpansion } from './expansions/DayNight.js';
 import { WeatherSystemExpansion } from './expansions/Weather.js';
 import { ControlPointsExpansion } from './expansions/ControlPoints.js';
@@ -75,7 +75,7 @@ const expansionManifest = [
     
     { name: 'SpecialUnits',         module: SpecialUnitsExpansion },
     { name: 'Hazards',              module: HazardsExpansion },
-    { name: 'ResourceCaravans',     module: CaravansExpansion }, // 🪲 NEW!
+    { name: 'ResourceCaravans',     module: CaravansExpansion }, 
     { name: 'DayNight',             module: DayNightExpansion },
     { name: 'WeatherSystem',        module: WeatherSystemExpansion }, 
     { name: 'ControlPoints',        module: ControlPointsExpansion },
@@ -107,12 +107,16 @@ const expansionManifest = [
 // 4. BULLETPROOF BOOT SEQUENCE
 // ==========================================
 const bootEngine = () => {
+    // 🛡️ [FIX] Prevent double-booting if this script is hot-reloaded or called multiple times
+    if (window.SpiderWarsBooted) return;
+    window.SpiderWarsBooted = true;
+
     // 1. PERFORMANCE TRACKING
     const bootStartTime = performance.now();
 
     // 2. GLOBAL CONFIGURATION
     window.SpiderWarsConfig = window.SpiderWarsConfig || {
-        version: '1.2.0',
+        version: '1.2.1',
         debugMode: false,
         cheatsEnabled: false
     };
@@ -185,11 +189,12 @@ SpiderWars! Engine v${window.SpiderWarsConfig.version}
     }
     
     // 🔌 6. HOT-PLUGGABLE MOD API
-    // Allows devs (or Chrome Extensions) to inject scripts while the game is actively running!
     window.SpiderWarsAPI = {
+        version: window.SpiderWarsConfig.version,
         getEngine: () => window.SpiderWarsEngine,
         emit: (event, data) => window.SpiderWarsEngine?.bus.emit(event, data),
         on: (event, callback) => window.SpiderWarsEngine?.bus.on(event, callback),
+        halt: () => { if (window.SpiderWarsEngine) window.SpiderWarsEngine.gameState = 'halted'; },
         loadMod: (modName, modModule) => {
             try {
                 game.expansions.load(modName, modModule);
@@ -215,12 +220,38 @@ SpiderWars! Engine v${window.SpiderWarsConfig.version}
 // ==========================================
 // 5. GLOBAL CATASTROPHE HANDLER
 // ==========================================
-// 🛡️ [FIX] Prevents silent failures by catching unhandled exceptions and styling them beautifully
+// 🛡️ [FIX] Prevents silent failures. Mobile players can now physically see when a fatal error occurs!
+const showFatalErrorScreen = (errorType, message) => {
+    if (document.getElementById('fatal-error-screen')) return; // Already showing
+    
+    if (window.SpiderWarsEngine) window.SpiderWarsEngine.gameState = 'error'; // Halt the engine loop
+    
+    const crashUI = document.createElement('div');
+    crashUI.id = 'fatal-error-screen';
+    crashUI.style.cssText = `
+        position: fixed; inset: 0; background: rgba(5,2,0,0.95); z-index: 9999999; 
+        display: flex; flex-direction: column; align-items: center; justify-content: center; 
+        color: #ff0000; font-family: 'Courier New', monospace; text-align: center; padding: 20px;
+    `;
+    crashUI.innerHTML = `
+        <h1 style="font-size: 3rem; margin-bottom: 10px; text-shadow: 0 0 20px #ff0000;">🕸️ THE WEB HAS SNAPPED</h1>
+        <p style="color: #ff9d00; font-size: 1.2rem; max-width: 600px; margin-bottom: 20px;">A fatal engine anomaly occurred.</p>
+        <div style="color: #aaa; background: #000; padding: 15px; border: 1px solid #333; border-radius: 5px; overflow-x: auto; max-width: 80vw; text-align: left; font-size: 0.9rem;">
+            <strong>[${errorType}]</strong><br/>${message}
+        </div>
+        <button onclick="window.location.reload()" style="margin-top: 30px; padding: 15px 30px; background: #ff0000; color: #fff; border: 2px solid #ff9d00; font-family: inherit; font-size: 1.2rem; cursor: pointer; border-radius: 8px; font-weight: bold; box-shadow: 0 0 15px #ff0000;">RELOAD ENGINE</button>
+    `;
+    document.body.appendChild(crashUI);
+};
+
 window.addEventListener('error', (e) => {
     console.error(`%c🕸️ [CATASTROPHE] The Web has snapped! \nFatal Error: ${e.message}`, "color: #ff0000; font-size: 14px; font-weight: bold; border: 1px solid #ff0000; padding: 5px; background: rgba(50,0,0,0.5);");
+    showFatalErrorScreen('System Error', e.message);
 });
+
 window.addEventListener('unhandledrejection', (e) => {
     console.error(`%c🕸️ [VOID WHISPERS] Unhandled Promise Rejection! \nReason: ${e.reason}`, "color: #aa00ff; font-size: 14px; font-weight: bold; border: 1px solid #aa00ff; padding: 5px; background: rgba(20,0,50,0.5);");
+    showFatalErrorScreen('Promise Rejection', e.reason || 'Unknown Async Error');
 });
 
 // ==========================================
