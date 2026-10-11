@@ -4,7 +4,7 @@ import { MathUtils } from '../game.js';
 // ==========================================
 // 1. DATA-DRIVEN DECOR CONFIGURATION
 // ==========================================
-// [EXPANDABILITY] Exported so other mods can inject new biomes and behaviors!
+// 🔌 [EXPANDABILITY] Exported so other mods can inject new biomes and behaviors!
 export const DECOR_CONFIG = {
     // Behaviors: 'liquid' (bobs up/down), 'plant' (sways from base), 'solid' (casts shadow)
     water:   { src: 'assets/clutter_water.png',   count: 400, minSize: 15, maxSize: 30, minAlpha: 0.6, maxAlpha: 0.9, fallbackColor: '#1a4e6e', behavior: 'liquid' },
@@ -73,8 +73,12 @@ export const DecorExpansion = {
                                 alpha: MathUtils.randomRange(config.minAlpha, config.maxAlpha), 
                                 fallbackColor: config.fallbackColor,
                                 
-                                // INSTANT RAM CACHE RETRIEVAL
-                                sprite: this.assets.get(config.src)
+                                // 🚀 [LOGIC FIX] Store SRC target. Cache lookup happens in the draw loop!
+                                spriteSrc: config.src,
+                                sprite: null,
+                                spriteLoaded: false,
+                                drawW: 0, // Cached aspect width
+                                drawH: 0  // Cached aspect height
                             };
 
                             // Assign to Spatial Hash Chunk
@@ -109,7 +113,7 @@ export const DecorExpansion = {
             const maxChunkX = Math.ceil(game.world.width / CHUNK_SIZE);
             const maxChunkY = Math.ceil(game.world.height / CHUNK_SIZE);
             
-            // [FIX] Viewport Clamping: Prevents looking up non-existent chunks if camera shakes out of bounds
+            // 🛡️ [FIX] Viewport Clamping: Prevents looking up non-existent chunks if camera shakes out of bounds
             const startX = MathUtils.clamp(((game.camera.x - padding) / CHUNK_SIZE) | 0, 0, maxChunkX);
             const endX = MathUtils.clamp(((game.camera.x + game.canvas.width + padding) / CHUNK_SIZE) | 0, 0, maxChunkX);
             const startY = MathUtils.clamp(((game.camera.y - padding) / CHUNK_SIZE) | 0, 0, maxChunkY);
@@ -126,46 +130,62 @@ export const DecorExpansion = {
                     const chunk = game.decorChunks.get(chunkKey);
                     
                     if (chunk) {
-                        for (let i = 0; i < chunk.length; i++) {
+                        const chunkLen = chunk.length;
+                        for (let i = 0; i < chunkLen; i++) {
                             let d = chunk[i];
                             
+                            // 🚀 [PERFORMANCE FIX] Cache image resolution ONCE instead of dividing it every frame!
+                            if (!d.spriteLoaded && game.assets) {
+                                d.sprite = game.assets.get(d.spriteSrc);
+                                if (d.sprite && d.sprite.complete && d.sprite.naturalHeight !== 0) {
+                                    d.spriteLoaded = true;
+                                    const aspect = d.sprite.naturalWidth / d.sprite.naturalHeight;
+                                    d.drawH = d.renderSize;
+                                    d.drawW = d.drawH * aspect;
+                                }
+                            }
+
                             ctx.save();
-                            ctx.globalAlpha = d.alpha; 
                             
-                            // [JUICE] Ambient Animations based on behavior tags!
+                            // 🧃 [JUICE] Ambient Animations based on behavior tags!
                             if (d.behavior === 'liquid') {
                                 // Gentle bobbing on the Y axis
                                 const drawY = d.y + Math.sin(tick * 0.03 + d.x) * 2; 
                                 ctx.translate(d.x, drawY);
                                 ctx.rotate(d.angle);       
                                 
+                                // 🧃 [JUICE] Water glistens (alpha pulsing)
+                                ctx.globalAlpha = MathUtils.clamp(d.alpha + Math.sin(tick * 0.05 + d.x) * 0.15, 0.2, 1.0);
+                                
                             } else if (d.behavior === 'plant') {
-                                // [JUICE] Base-hinged swaying! 
+                                // 🧃 [JUICE] Base-hinged swaying! 
                                 // Translates to the BOTTOM of the sprite, rotates, then draws offset.
                                 const sway = Math.sin(tick * 0.015 + d.y) * 0.08;
                                 ctx.translate(d.x, d.y + d.size); // Move to the "roots"
                                 ctx.rotate(d.angle + sway);       // Apply wind
                                 ctx.translate(0, -d.size);        // Move back up to draw center
                                 
+                                ctx.globalAlpha = d.alpha;
+                                
+                                // Drop shadow for rooted plants
+                                ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2;
+                                
                             } else {
-                                // Solid objects
+                                // Solid objects (Bones, Pebbles)
                                 ctx.translate(d.x, d.y);
                                 ctx.rotate(d.angle);
+                                ctx.globalAlpha = d.alpha;
                                 
-                                // [JUICE] Drop Shadows anchor solid objects to the dirt!
+                                // 🧃 [JUICE] Drop Shadows anchor solid objects to the dirt!
                                 ctx.shadowColor = 'rgba(0,0,0,0.5)';
                                 ctx.shadowBlur = 4;
                                 ctx.shadowOffsetY = 2;
                             }
                             
-                            // Render Asset or Fallback Shape
-                            if (d.sprite && d.sprite.complete && d.sprite.naturalHeight !== 0) {
-                                // ASPECT RATIO FIX: Calculate dynamic width based on actual image proportions
-                                const aspect = d.sprite.naturalWidth / d.sprite.naturalHeight;
-                                const drawH = d.renderSize;
-                                const drawW = drawH * aspect;
-                                
-                                ctx.drawImage(d.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
+                            // Render Cached Asset or Fallback Shape
+                            if (d.spriteLoaded) {
+                                // ZERO MATH DRAW!
+                                ctx.drawImage(d.sprite, -d.drawW / 2, -d.drawH / 2, d.drawW, d.drawH);
                             } else {
                                 // Graceful fallback
                                 ctx.fillStyle = d.fallbackColor;
