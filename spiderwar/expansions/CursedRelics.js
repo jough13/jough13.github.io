@@ -4,7 +4,7 @@ import { Spider, Structure, MathUtils, UNIT_DATA, STRUCTURE_DATA } from '../game
 // ==========================================
 // 1. CONFIGURATION & BALANCING
 // ==========================================
-// [EXPANDABILITY] Exported config for easy tweaking by other mods
+// 🔌 [EXPANDABILITY] Exported config for easy tweaking by other mods
 export const CURSED_CONFIG = {
     wraith: { 
         hp: 120, damage: 30, attackSpeed: 25, 
@@ -58,18 +58,18 @@ export const CursedRelicsExpansion = {
                 let enemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, CURSED_CONFIG.wraith.blinkRange);
                 
                 if (enemy && entity.blinkCooldown <= 0) {
-                    // [JUICE] Poof! (Start location implosion)
+                    // 🧃 [JUICE] Poof! (Start location implosion)
                     gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#aa00ff', count: 15, type: 'magic'});
                     
                     // Teleport behind them
                     entity.x = enemy.x + MathUtils.randomRange(-10, 10);
                     entity.y = enemy.y + MathUtils.randomRange(-10, 10);
                     
-                    // [JUICE] Poof! (End location explosion)
+                    // 🧃 [JUICE] Poof! (End location explosion)
                     gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#aa00ff', count: 15, type: 'splatter'});
                     gameObj.bus.emit('playSound', 'spell');
                     
-                    // [JUICE] Make the Wraith flash bright white for a split second after blinking
+                    // 🧃 [JUICE] Make the Wraith flash bright white for a split second after blinking
                     entity.flashFrames = 5;
                     
                     // Sneak attack damage multiplier!
@@ -102,7 +102,7 @@ export const CursedRelicsExpansion = {
                     const oldTick = game.tick;
                     game.tick += Math.floor(ticksToAdd); // FAST FORWARD TIME!
                     
-                    // [FIX] THE TIME-WARP SAFETY NET
+                    // 🛡️ [FIX] THE TIME-WARP SAFETY NET
                     // If the time-skip accidentally skips exactly over the Boss Spawn frame, 
                     // the game breaks. This catches it and pins the engine to the exact spawn frame!
                     const bossTick = (game.bossConfig && game.bossConfig.spawnTick) ? game.bossConfig.spawnTick : 10800;
@@ -124,8 +124,9 @@ export const CursedRelicsExpansion = {
                     game.eco[data.team].dew -= 30;
                     
                     let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
-                    s.sprite = game.assets.get(data.team === 'black' ? 'assets/wraith_black.png' : 'assets/wraith_red.png');
-                    s.imageLoaded = true; 
+                    
+                    // 🚀 [LOGIC FIX] Point the base class to the correct sprite target!
+                    s.spriteSrc = data.team === 'black' ? 'assets/wraith_black.png' : 'assets/wraith_red.png';
                     
                     game.addEntity(s);
                     game.bus.emit('playSound', 'spell'); 
@@ -146,6 +147,7 @@ export const CursedRelicsExpansion = {
 
                 if (this.zapCooldown <= 0) {
                     let enemy = gameObj.getNearestEnemy(this.x, this.y, this.team, CURSED_CONFIG.obelisk.zapRange);
+                    
                     if (enemy) {
                         const baseDamage = CURSED_CONFIG.obelisk.baseDamage + ((gameObj.techLevel[this.team]||0) * 10);
                         enemy.hp -= baseDamage;
@@ -154,12 +156,36 @@ export const CursedRelicsExpansion = {
                         gameObj.bus.emit('playSound', 'shoot');
                         gameObj.bus.emit('particles', {x: enemy.x, y: enemy.y, color: '#ffffff', count: 10});
                         
-                        // JUICE: Chain Lightning! Find a secondary target near the primary target
-                        let secondaryEnemy = gameObj.getNearestEnemy(enemy.x, enemy.y, this.team, CURSED_CONFIG.obelisk.chainRange);
+                        // 🧃 [JUICE] Chain Lightning! 
+                        let secondaryEnemy = null;
+                        
+                        // 🚀 [PERFORMANCE] Fast Spatial Grid Secondary Scan
+                        // Instead of running `getNearestEnemy` again, we just peek into the grid cell the first enemy was in!
+                        const CELL_SIZE = 250;
+                        const maxGridX = Math.ceil(gameObj.world.width / CELL_SIZE);
+                        const maxGridY = Math.ceil(gameObj.world.height / CELL_SIZE);
+                        
+                        const cx = MathUtils.clamp((enemy.x / CELL_SIZE) | 0, 0, maxGridX);
+                        const cy = MathUtils.clamp((enemy.y / CELL_SIZE) | 0, 0, maxGridY);
+                        
+                        const key = (cx << 16) | cy;
+                        const cell = gameObj.spatialGrid.get(key);
+                        
+                        if (cell) {
+                            for (let i = 0; i < cell.length; i++) {
+                                let possibleTarget = cell[i];
+                                if (possibleTarget.team && possibleTarget.team !== this.team && possibleTarget.hp > 0 && possibleTarget !== enemy) {
+                                    if (MathUtils.distSq(enemy.x, enemy.y, possibleTarget.x, possibleTarget.y) < (CURSED_CONFIG.obelisk.chainRange * CURSED_CONFIG.obelisk.chainRange)) {
+                                        secondaryEnemy = possibleTarget;
+                                        break; // Found one, chain complete!
+                                    }
+                                }
+                            }
+                        }
+                        
                         let chainVisual = null;
                         
-                        // Ensure it doesn't just hit the exact same bug twice
-                        if (secondaryEnemy && secondaryEnemy !== enemy) {
+                        if (secondaryEnemy) {
                             secondaryEnemy.hp -= (baseDamage * CURSED_CONFIG.obelisk.chainDamageMult); 
                             gameObj.bus.emit('particles', {x: secondaryEnemy.x, y: secondaryEnemy.y, color: '#aa00ff', count: 5});
                             chainVisual = { x: secondaryEnemy.x, y: secondaryEnemy.y };
@@ -175,9 +201,9 @@ export const CursedRelicsExpansion = {
         // 6. DRAWING LOGIC: PROCEDURAL JAGGED LIGHTNING
         game.expansions.patchClass(Structure, 'draw', function(original, ctx, gameObj) {
             
-            // Sprite Caching Link
+            // 🚀 [LOGIC FIX] Pull the preloaded image directly from the RAM Cache!
             if (this.type === 'obelisk' && !this.spriteLoaded && gameObj.assets) {
-                this.sprite = gameObj.assets.get(`assets/${this.type}_${this.team}.png`);
+                this.sprite = gameObj.assets.get(this.spriteSrc);
                 if (this.sprite) this.spriteLoaded = true;
             }
 
@@ -192,7 +218,7 @@ export const CursedRelicsExpansion = {
                 ctx.shadowColor = '#ffffff';
                 ctx.shadowBlur = 10;
                 
-                // [JUICE] True Procedural Jagged Lightning Function
+                // 🧃 [JUICE] True Procedural Jagged Lightning Function
                 const drawJaggedLine = (x1, y1, x2, y2, segments, variance, width) => {
                     ctx.lineWidth = width;
                     ctx.beginPath();
@@ -200,6 +226,8 @@ export const CursedRelicsExpansion = {
                     for (let i = 1; i <= segments; i++) {
                         let px = MathUtils.lerp(x1, x2, i / segments);
                         let py = MathUtils.lerp(y1, y2, i / segments);
+                        
+                        // Add organic jagged variance, except to the final connecting point
                         if (i < segments) {
                             px += MathUtils.randomRange(-variance, variance);
                             py += MathUtils.randomRange(-variance, variance);
@@ -210,11 +238,11 @@ export const CursedRelicsExpansion = {
                 };
 
                 // Primary Bolt (Thick, highly jagged)
-                drawJaggedLine(this.x, this.y - this.size, this.zapVisual.x, this.zapVisual.y, 5, 20, 3);
+                drawJaggedLine(this.x, this.y - this.size, this.zapVisual.x, this.zapVisual.y, 6, 25, 3);
 
                 // Secondary Chain Lightning Bolt (Thinner, less jagged)
                 if (this.zapVisual.chain) {
-                    drawJaggedLine(this.zapVisual.x, this.zapVisual.y, this.zapVisual.chain.x, this.zapVisual.chain.y, 3, 10, 1.5);
+                    drawJaggedLine(this.zapVisual.x, this.zapVisual.y, this.zapVisual.chain.x, this.zapVisual.chain.y, 4, 15, 1.5);
                 }
                 
                 ctx.restore();
@@ -228,7 +256,7 @@ export const CursedRelicsExpansion = {
                 ctx.fillStyle = '#222'; 
                 ctx.beginPath(); ctx.moveTo(-10, 15); ctx.lineTo(10, 15); ctx.lineTo(0, -30); ctx.fill();
                 
-                // [JUICE] Glowing, pulsing crystal orb on top
+                // 🧃 [JUICE] Glowing, pulsing crystal orb on top
                 const tick = gameObj ? gameObj.tick : 0;
                 const throb = Math.sin(tick * 0.2) * 2;
                 
@@ -243,7 +271,7 @@ export const CursedRelicsExpansion = {
         
         // 7. WRAITH AFTERIMAGE RENDER
         game.expansions.patchClass(Spider, 'draw', function(original, ctx, gameObj) {
-            // [JUICE] Flash bright white immediately after a teleport
+            // 🧃 [JUICE] Flash bright white immediately after a teleport
             if (this.flashFrames && this.flashFrames > 0) {
                 this.flashFrames--;
                 ctx.save();
