@@ -4,7 +4,7 @@ import { MathUtils, Spider } from '../game.js';
 // ==========================================
 // 1. CONFIGURATION & BALANCING
 // ==========================================
-// [EXPANDABILITY] Exported config so other mods can tweak the commander's stats
+// 🔌 [EXPANDABILITY] Exported config so other mods can tweak the commander's stats
 export const QUEEN_CONFIG = {
     hp: 2500,
     damage: 40,
@@ -35,22 +35,15 @@ export class Queen extends Spider {
         this.commandTarget = null; 
         this.thinkTimer = 0; // Used for Red AI throttling
         
-        // [JUICE] Animation Offsets
+        // 🧃 [JUICE] Animation Offsets
         this.animOffset = parseInt(this.id, 36) % 100;
         this.age = 0;
 
-        this.ramSpriteLoaded = false; // Prevents reloading the image outside of RAM cache
+        // 🚀 [LOGIC FIX] Point the base class to the correct sprite target!
+        this.spriteSrc = this.team === 'black' ? 'assets/queen_black.png' : 'assets/queen_red.png';
     }
 
     update(game) {
-        // --- ASSET MANAGER CACHE LINKING ---
-        // Instantly grabs the preloaded sprite from RAM instead of making the browser resolve a path
-        if (!this.ramSpriteLoaded && game.assets) {
-            this.sprite = game.assets.get(this.team === 'black' ? 'assets/queen_black.png' : 'assets/queen_red.png');
-            this.imageLoaded = true; // Tell base class it's ready to draw
-            this.ramSpriteLoaded = true;
-        }
-
         this.age++;
 
         // 1. Self-Defense Combat Check (Queens hit hard!)
@@ -58,7 +51,7 @@ export class Queen extends Spider {
         let nearestEnemy = game.getNearestEnemy(this.x, this.y, this.team, QUEEN_CONFIG.aggroRadius);
         
         if (nearestEnemy) {
-            // [JUICE] Smooth organic turning towards the enemy
+            // 🧃 [JUICE] Smooth organic turning towards the enemy
             const targetAngle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
             this.angle += MathUtils.angleWrap(targetAngle - this.angle) * 0.15;
             
@@ -74,7 +67,7 @@ export class Queen extends Spider {
                     this.x -= Math.cos(this.angle) * 15; 
                     this.y -= Math.sin(this.angle) * 15; 
                     
-                    // [JUICE] Massive hit impact!
+                    // 🧃 [JUICE] Massive hit impact!
                     if (game.triggerShake) game.triggerShake(5);
                     const magicColor = this.team === 'black' ? '#aa00ff' : '#ff0000';
                     game.bus.emit('particles', {x: nearestEnemy.x, y: nearestEnemy.y, color: magicColor, count: 15}); 
@@ -96,10 +89,11 @@ export class Queen extends Spider {
                 // Wait until late game OR we have a massive army
                 if (game.tick > QUEEN_CONFIG.aiAttackTick || game.pop.red >= QUEEN_CONFIG.aiAttackPop) {
                     
-                    // Lead the final assault! (PERFORMANCE FIX: No .filter allocation)
+                    // Lead the final assault! (🚀 PERFORMANCE: No .filter allocation)
                     let targetNest = null;
                     const structs = game.structures; // Cache getter
-                    for (let i = 0; i < structs.length; i++) {
+                    const structLen = structs.length;
+                    for (let i = 0; i < structLen; i++) {
                         let s = structs[i];
                         if (s.team === 'black' && s.type === 'nest' && s.hp > 0) {
                             targetNest = s; break;
@@ -109,10 +103,11 @@ export class Queen extends Spider {
                     
                 } else {
                     
-                    // Defend own base - Patrol around the Red Nest (PERFORMANCE FIX: No .filter allocation)
+                    // Defend own base - Patrol around the Red Nest (🚀 PERFORMANCE: No .filter allocation)
                     let homeNest = null;
                     const structs = game.structures; // Cache getter
-                    for (let i = 0; i < structs.length; i++) {
+                    const structLen = structs.length;
+                    for (let i = 0; i < structLen; i++) {
                         let s = structs[i];
                         if (s.team === 'red' && s.type === 'nest' && s.hp > 0) {
                             homeNest = s; break;
@@ -145,10 +140,10 @@ export class Queen extends Spider {
             
             const currentSpeed = Math.max(0.1, (this.baseSpeed + techSpeed)) * tMod;
 
-            // [PERFORMANCE] Avoid square root lookup for distance
+            // 🚀 [PERFORMANCE] Avoid square root lookup for distance
             if ((dx * dx + dy * dy) > 100) { 
                 
-                // [JUICE] Smooth organic turning towards target
+                // 🧃 [JUICE] Smooth organic turning towards target
                 const targetAngle = Math.atan2(dy, dx); 
                 this.angle += MathUtils.angleWrap(targetAngle - this.angle) * 0.10;
                 
@@ -168,13 +163,26 @@ export class Queen extends Spider {
         this.y = MathUtils.clamp(this.y, bnd, game.world.height - bnd);
     }
 
-    // [FIX] Added game parameter so breathing animation inherits correctly
+    // 🛡️ [FIX] Added game parameter so breathing animation inherits correctly
     draw(ctx, game) {
+        // 🚀 [LOGIC FIX] Pull the preloaded image directly from the RAM Cache!
+        if (!this.imageLoaded && game && game.assets) {
+            this.sprite = game.assets.get(this.spriteSrc);
+            if (this.sprite) this.imageLoaded = true;
+        }
+
         ctx.save(); 
         ctx.translate(this.x, this.y); 
+
+        // 🧃 [JUICE] High-Performance Drop Shadow (Drawn before rotation so it stays flat on the ground)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.beginPath();
+        ctx.ellipse(0, this.size * 0.4, this.size * 0.9, this.size * 0.5, 0, 0, MathUtils.TWO_PI);
+        ctx.fill();
+
         ctx.rotate(this.angle); 
         
-        // [JUICE] Organic breathing animation! Faster when walking or fighting.
+        // 🧃 [JUICE] Organic breathing animation! Faster when walking or fighting.
         const tick = game ? game.tick : 0;
         const breathSpeed = (this.commandTarget || this.cooldown > 0) ? 0.2 : 0.05;
         const breath = 1 + Math.sin(tick * breathSpeed + this.animOffset) * 0.05;
@@ -187,12 +195,8 @@ export class Queen extends Spider {
             const drawW = drawH * aspect;
             ctx.drawImage(this.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
         } else {
-            // [JUICE] Add drop shadow to fallback graphics
-            ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2;
-            
+            // Fallback rendering
             ctx.fillStyle = this.team; ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
-            
-            ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; // Reset
             ctx.fillStyle = 'white'; ctx.fillRect(this.size/2, -3, 4, 6);
         }
         ctx.restore();
@@ -230,7 +234,7 @@ export const QueenExpansion = {
     init: (game) => {
         game.queensSpawned = false;
         
-        // [EXPANDABILITY] Export config to the game engine
+        // 🔌 [EXPANDABILITY] Export config to the game engine
         game.queenConfig = QUEEN_CONFIG;
 
         // --- ASSET REGISTRY ---
@@ -239,11 +243,14 @@ export const QueenExpansion = {
 
         // Hook for UI/Control Commands
         game.bus.on('commandQueen', (data) => {
-            // PERFORMANCE FIX: Clean loop instead of array GC allocation
+            // 🚀 PERFORMANCE FIX: Clean loop instead of array GC allocation
             let targetQueen = null;
-            for (let i = 0; i < game.entities.length; i++) {
-                if (game.entities[i].role === 'queen' && game.entities[i].team === data.team) {
-                    targetQueen = game.entities[i];
+            const entities = game.entities;
+            const entLen = entities.length;
+            for (let i = 0; i < entLen; i++) {
+                let e = entities[i];
+                if (e.role === 'queen' && e.team === data.team) {
+                    targetQueen = e;
                     break;
                 }
             }
@@ -259,12 +266,13 @@ export const QueenExpansion = {
             if (this.gameState === 'playing' && this.tick === 2 && !this.queensSpawned) {
                 this.queensSpawned = true;
                 
-                // PERFORMANCE FIX: Clean loop instead of multiple filter/find allocations
+                // 🚀 PERFORMANCE FIX: Clean loop instead of multiple filter/find allocations
                 let bNest = null;
                 let rNest = null;
                 
                 const structs = this.structures; // Cache
-                for (let i = 0; i < structs.length; i++) {
+                const structLen = structs.length;
+                for (let i = 0; i < structLen; i++) {
                     let s = structs[i];
                     if (s.type === 'nest') {
                         if (s.team === 'black' && !bNest) bNest = s;
