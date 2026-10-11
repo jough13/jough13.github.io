@@ -63,17 +63,20 @@ export const SplashScreenExpansion = {
             /* The Overlay Text for Intro */
             #splashText {
                 position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                z-index: 2; text-align: center;
+                z-index: 2; 
+                /* 🚀 FIX: Bulletproof Flexbox Centering */
+                display: flex; flex-direction: column; align-items: center; justify-content: center;
+                width: 100%; text-align: center;
                 text-shadow: 0 0 15px rgba(255, 157, 0, 0.8), 3px 3px 0px #000;
                 pointer-events: none;
             }
             #splashText h1 { font-size: 6rem; margin: 0; letter-spacing: 4px; text-transform: uppercase; color: var(--color-pumpkin);}
-            #splashText p { font-size: 1.5rem; margin-top: 20px; color: #ffffff; animation: splashPulse 1.5s infinite; }
+            #splashText p { font-size: 1.5rem; margin: 20px 0 0 0; color: #ffffff; animation: splashPulse 1.5s infinite; }
             
             @keyframes splashPulse { 
-                0% { opacity: 0.4; transform: translate(-50%, -50%) scale(0.98); } 
-                50% { opacity: 1; transform: translate(-50%, -50%) scale(1.02); box-shadow: 0 0 40px var(--color-pumpkin); } 
-                100% { opacity: 0.4; transform: translate(-50%, -50%) scale(0.98); } 
+                0% { opacity: 0.4; transform: scale(0.98); } 
+                50% { opacity: 1; transform: scale(1.02); } 
+                100% { opacity: 0.4; transform: scale(0.98); } 
             }
 
             /* --- MAIN MENU VIEW --- */
