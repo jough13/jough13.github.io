@@ -4,7 +4,7 @@ import { MathUtils, Structure } from '../game.js';
 // ==========================================
 // 1. CONFIGURATION & BALANCING
 // ==========================================
-// [EXPANDABILITY] Exported so other mods can tweak the point values and capture logic
+// 🔌 [EXPANDABILITY] Exported so other mods can tweak the point values and capture logic
 export const CP_CONFIG = {
     size: 45,
     captureRadius: 350,
@@ -45,18 +45,15 @@ export class JackOLantern {
         this.isContested = false; // [FIX] Tracks stalemate states
         this.age = parseInt(this.id, 36) % 100; // Deterministic animation offset
         
-        this.tethers = []; // [JUICE] Stores linked structures for visual beams
+        this.tethers = []; // 🧃 [JUICE] Stores linked structures for visual beams
         
-        // Sprite will be pulled instantly from RAM cache on Tick 1 of its life
+        // 🚀 [LOGIC FIX] Store the SRC target
+        this.spriteSrc = 'assets/jackolantern.png';
         this.sprite = null;
+        this.spriteLoaded = false;
     }
 
     update(game) {
-        // --- ASSET MANAGER CACHE LINKING ---
-        if (!this.sprite && game.assets) {
-            this.sprite = game.assets.get('assets/jackolantern.png');
-        }
-
         this.age++;
         this.tethers.length = 0; // Reset visual links every frame
 
@@ -64,10 +61,11 @@ export class JackOLantern {
         let blackScore = 0;
         let redScore = 0;
 
-        // [PERFORMANCE] Cache the getter so we don't run an array filter 60 times a second!
+        // 🚀 [PERFORMANCE] Cache the getter so we don't run an array filter 60 times a second!
         const structs = game.structures;
+        const structLen = structs.length;
 
-        for (let i = 0; i < structs.length; i++) {
+        for (let i = 0; i < structLen; i++) {
             let s = structs[i];
             
             // Fast early exits: Structure must be alive and fully built
@@ -84,7 +82,7 @@ export class JackOLantern {
                 if (s.team === 'black') blackScore += weight;
                 if (s.team === 'red') redScore += weight;
                 
-                // [JUICE] Store reference to draw a magical tether to this building!
+                // 🧃 [JUICE] Store reference to draw a magical tether to this building!
                 this.tethers.push(s);
             }
         }
@@ -106,7 +104,7 @@ export class JackOLantern {
                     this.controllingTeam = dominantTeam;
                     this.captureProgress = 100;
                     
-                    // [JUICE] Massive visual feedback when a point is secured!
+                    // 🧃 [JUICE] Massive visual feedback when a point is secured!
                     if (game.triggerShake) game.triggerShake(8); 
                     game.bus.emit('playSound', 'spell');
                     const magicColor = dominantTeam === 'black' ? '#aa00ff' : '#ff0000';
@@ -115,6 +113,12 @@ export class JackOLantern {
                     
                     // Spawn a ring effect to signify capture wave
                     game.bus.emit('particles', {x: this.x, y: this.y, color: magicColor, count: 1, type: 'ring'});
+                    
+                    // UI Notification
+                    if (game.showSystemMessage) {
+                        const teamName = dominantTeam === 'black' ? 'OBSIDIAN BROOD' : 'CRIMSON SWARM';
+                        game.showSystemMessage(`${teamName} SECURED A JACK-O'-LANTERN`, magicColor);
+                    }
                 }
             }
         } else if (blackScore === 0 && redScore === 0) {
@@ -128,15 +132,21 @@ export class JackOLantern {
             game.eco[this.controllingTeam].pumpkins += CP_CONFIG.incomePumpkins;
             game.eco[this.controllingTeam].dew += CP_CONFIG.incomeDew;
             
-            // [JUICE] Visual indicator of income popping out of the pumpkin
+            // 🧃 [JUICE] Visual indicator of income popping out of the pumpkin
             game.bus.emit('particles', {x: this.x, y: this.y - this.size, color: '#ff9d00', count: 3, type: 'magic'});
         }
     }
 
     draw(ctx, game) {
+        // 🚀 [LOGIC FIX] Pull the preloaded image directly from the RAM Cache!
+        if (!this.spriteLoaded && game && game.assets) {
+            this.sprite = game.assets.get(this.spriteSrc);
+            if (this.sprite) this.spriteLoaded = true;
+        }
+
         ctx.save(); 
         
-        // [JUICE] Draw magical tethers connecting to capturing structures FIRST (so they render under the pumpkin)
+        // 🧃 [JUICE] Draw magical tethers connecting to capturing structures FIRST (so they render under the pumpkin)
         if (this.tethers.length > 0) {
             ctx.lineWidth = 2;
             ctx.setLineDash([5, 5]);
@@ -153,7 +163,7 @@ export class JackOLantern {
             ctx.setLineDash([]); // Reset
         }
         
-        // [JUICE] Smooth hovering animation
+        // 🧃 [JUICE] Smooth hovering animation
         const floatY = Math.sin(this.age * 0.05) * 4;
         ctx.translate(this.x, this.y + floatY);
 
@@ -162,7 +172,7 @@ export class JackOLantern {
         if (this.controllingTeam === 'black') ctx.strokeStyle = 'rgba(170, 0, 255, 0.4)';
         if (this.controllingTeam === 'red') ctx.strokeStyle = 'rgba(255, 0, 0, 0.4)';
         
-        // [JUICE] Flash the ring aggressively if the point is actively contested!
+        // 🧃 [JUICE] Flash the ring aggressively if the point is actively contested!
         if (this.isContested && this.age % 20 < 10) {
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
         }
@@ -174,10 +184,16 @@ export class JackOLantern {
         ctx.setLineDash([]); // Reset for other draw calls
 
         // 2. Draw the Jack-O'-Lantern
-        if (this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) {
-            // [JUICE] Add a dark drop shadow so it pops off the map
+        if (this.spriteLoaded && this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) {
+            // 🧃 [JUICE] Add a dark drop shadow so it pops off the map
             ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 5;
-            ctx.drawImage(this.sprite, -this.size, -this.size, this.size*2, this.size*2);
+            
+            // Aspect Ratio scaling
+            const aspect = this.sprite.naturalWidth / this.sprite.naturalHeight;
+            const drawH = this.size * 2;
+            const drawW = drawH * aspect;
+            
+            ctx.drawImage(this.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
             ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; // Reset
         } else {
             // Fallback Drawing
@@ -217,7 +233,7 @@ export const ControlPointsExpansion = {
     init: (game) => {
         game.controlPointsSpawned = false;
         
-        // [EXPANDABILITY] Export config to the engine
+        // 🔌 [EXPANDABILITY] Export config to the engine
         game.cpConfig = CP_CONFIG;
         
         // --- ASSET REGISTRY ---
@@ -252,7 +268,7 @@ export const ControlPointsExpansion = {
 
         // Minimap Integration
         game.bus.on('uiDraw', (ctx) => {
-            // [FIX] Decouple from UI/Minimap expansions so it doesn't crash if they are missing
+            // 🛡️ [FIX] Decouple from UI/Minimap expansions so it doesn't crash if they are missing
             if (game.gameState !== 'playing' || !game.mapGrid || !game.minimap) return;
             
             const size = game.minimap.size; 
@@ -263,9 +279,12 @@ export const ControlPointsExpansion = {
             const scaleX = size / game.world.width; 
             const scaleY = size / game.world.height;
             
-            // PERFORMANCE FIX: Replaced .filter().forEach() array allocation with a raw loop!
-            for (let i = 0; i < game.entities.length; i++) {
-                let j = game.entities[i];
+            // 🚀 PERFORMANCE FIX: Replaced .filter().forEach() array allocation with a raw loop!
+            const entities = game.entities;
+            const entLen = entities.length;
+
+            for (let i = 0; i < entLen; i++) {
+                let j = entities[i];
                 if (j instanceof JackOLantern) {
                     let color = '#ffff00'; // Uncaptured (Yellow)
                     if (j.controllingTeam === 'black') color = '#aa00ff'; // Obsidian Brood
@@ -274,7 +293,7 @@ export const ControlPointsExpansion = {
                     const drawX = startX + (j.x * scaleX);
                     const drawY = startY + (j.y * scaleY);
 
-                    // [JUICE] Active capturing pulses on the minimap!
+                    // 🧃 [JUICE] Active capturing pulses on the minimap!
                     if (j.captureProgress > 0 && j.captureProgress < 100) {
                         const pulseRad = 5 + Math.sin(game.tick * 0.2) * 3;
                         ctx.fillStyle = j.isContested ? 'rgba(255,255,255,0.5)' : `rgba(255, 157, 0, 0.5)`;
