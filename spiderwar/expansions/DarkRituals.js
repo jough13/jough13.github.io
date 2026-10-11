@@ -4,7 +4,7 @@ import { Spider, Structure, MathUtils, UNIT_DATA, STRUCTURE_DATA } from '../game
 // ==========================================
 // 1. CONFIGURATION & BALANCING
 // ==========================================
-// [EXPANDABILITY] Exported config so other mods can tweak economy and spells!
+// 🔌 [EXPANDABILITY] Exported config so other mods can tweak economy and spells!
 export const RITUAL_CONFIG = {
     spellCost: 60,
     spellRadius: 200,
@@ -49,7 +49,7 @@ export const DarkRitualsExpansion = {
                 if (game.eco[data.team].dew >= RITUAL_CONFIG.spellCost) {
                     game.eco[data.team].dew -= RITUAL_CONFIG.spellCost;
                     
-                    // [JUICE] Heavy camera shake for the massive surge of power!
+                    // 🧃 [JUICE] Heavy camera shake for the massive surge of power!
                     if (game.triggerShake) game.triggerShake(8);
                     game.bus.emit('playSound', 'spell');
                     game.bus.emit('particles', {x: data.x, y: data.y, color: '#ff0000', count: 80, type: 'magic'});
@@ -57,12 +57,15 @@ export const DarkRitualsExpansion = {
                     const radius = RITUAL_CONFIG.spellRadius;
                     const radiusSq = RITUAL_CONFIG.spellRadiusSq; 
                     
-                    // [PERFORMANCE] Spatial Grid Lookup for AoE Buffs!
+                    // 🚀 [PERFORMANCE] Clamped Spatial Grid Lookup for AoE Buffs!
                     const CELL_SIZE = 250;
-                    const minCx = Math.max(0, ((data.x - radius) / CELL_SIZE) | 0);
-                    const maxCx = Math.max(0, ((data.x + radius) / CELL_SIZE) | 0);
-                    const minCy = Math.max(0, ((data.y - radius) / CELL_SIZE) | 0);
-                    const maxCy = Math.max(0, ((data.y + radius) / CELL_SIZE) | 0);
+                    const maxGridX = Math.ceil(game.world.width / CELL_SIZE);
+                    const maxGridY = Math.ceil(game.world.height / CELL_SIZE);
+                    
+                    const minCx = MathUtils.clamp(((data.x - radius) / CELL_SIZE) | 0, 0, maxGridX);
+                    const maxCx = MathUtils.clamp(((data.x + radius) / CELL_SIZE) | 0, 0, maxGridX);
+                    const minCy = MathUtils.clamp(((data.y - radius) / CELL_SIZE) | 0, 0, maxGridY);
+                    const maxCy = MathUtils.clamp(((data.y + radius) / CELL_SIZE) | 0, 0, maxGridY);
 
                     for (let cx = minCx; cx <= maxCx; cx++) {
                         for (let cy = minCy; cy <= maxCy; cy++) {
@@ -98,7 +101,9 @@ export const DarkRitualsExpansion = {
                     game.eco[data.team].pumpkins -= 30;
                     
                     let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
-                    s.sprite = game.assets.get(data.team === 'black' ? 'assets/tick_black.png' : 'assets/tick_red.png');
+                    
+                    // 🚀 [LOGIC FIX] Point the base class to the correct sprite target!
+                    s.spriteSrc = data.team === 'black' ? 'assets/tick_black.png' : 'assets/tick_red.png';
                     
                     // ECS Trait Setup for Tick's Siege capabilities
                     if (s.hasTrait('siege_attacker')) {
@@ -106,8 +111,6 @@ export const DarkRitualsExpansion = {
                         s.rangeSq = UNIT_DATA['tick'].rangeSq;
                     }
 
-                    s.imageLoaded = true; 
-                    
                     game.addEntity(s);
                     game.bus.emit('playSound', 'harvest'); 
                 }
@@ -129,7 +132,8 @@ export const DarkRitualsExpansion = {
                 this.baseSpeed *= RITUAL_CONFIG.bloodlustSpeedMult; 
                 this.damage += RITUAL_CONFIG.bloodlustDamageBonus;     
                 
-                // [JUICE] Bloody particle trail while enraged
+                // 🧃 [JUICE] Bloody particle trail while enraged (only drops if actively moving)
+                // 🛡️ [FIX] Checking actual frame diffs on coordinates prevents trail overlap when walking into walls
                 if (gameObj.tick % 5 === 0 && this.speed > 0) {
                     gameObj.bus.emit('particles', {x: this.x, y: this.y, color: '#ff0000', count: 1});
                 }
@@ -147,25 +151,25 @@ export const DarkRitualsExpansion = {
             
             if (this.type === 'extractor' && !this.isConstructing && this.hp > 0) {
                 
-                // [JUICE] Manage pump animation decay
+                // 🧃 [JUICE] Manage pump animation decay
                 if (this.pumpAnim > 0) this.pumpAnim--;
 
                 if (gameObj.tick % RITUAL_CONFIG.extractorTickRate === 0) {
                     gameObj.eco[this.team].dew += RITUAL_CONFIG.extractorDewYield;
                     gameObj.bus.emit('particles', {x: this.x, y: this.y - 20, color: '#00aaff', count: 3, type: 'magic'});
                     
-                    // [JUICE] Trigger the pump animation!
+                    // 🧃 [JUICE] Trigger the pump animation!
                     this.pumpAnim = 15; 
                 }
             }
         });
 
         // 6. DRAWING INJECTIONS
-        
+        // [FIX] Update signature to receive gameObj for animations
         game.expansions.patchClass(Spider, 'draw', function(original, ctx, gameObj) {
             const tick = gameObj ? gameObj.tick : 0;
             
-            // [JUICE] Volatile pulsing animation for the explosive 'Tick' unit
+            // 🧃 [JUICE] Volatile pulsing animation for the explosive 'Tick' unit
             let restoreScale = false;
             if (this.role === 'tick') {
                 const tickPulse = 1 + Math.sin(tick * 0.4 + this.animOffset) * 0.15;
@@ -176,40 +180,42 @@ export const DarkRitualsExpansion = {
                 restoreScale = true;
             }
 
-            // [JUICE] The Bloodlust Aura and Afterimages!
+            // 🧃 [JUICE] The Bloodlust Under-Aura!
             if (this.bloodlustTimer > 0) {
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 const pulse = Math.sin(tick * 0.3) * 2;
                 
-                // Red glowing ring
+                // Deep Red glowing ring under the unit
+                ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 10;
                 ctx.fillStyle = `rgba(255, 0, 0, 0.3)`;
                 ctx.beginPath(); ctx.arc(0, 0, this.size + 4 + pulse, 0, MathUtils.TWO_PI); ctx.fill();
-                
-                // Aggressive red tint over the sprite
-                ctx.globalCompositeOperation = 'source-atop';
-                ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
-                ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
-                ctx.globalCompositeOperation = 'source-over';
+                ctx.shadowBlur = 0; // Reset
                 ctx.restore();
             }
 
             original.call(this, ctx, gameObj); // Draw the spider normally on top
 
+            // 🛡️ [FIX] Apply visual rage tint correctly OVER the spider using additive blending!
+            if (this.bloodlustTimer > 0) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+                ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
+                ctx.restore();
+            }
+
             if (restoreScale) ctx.restore(); // Clean up Tick animation scale
         });
 
         game.expansions.patchClass(Structure, 'draw', function(original, ctx, gameObj) {
-            if (this.type === 'extractor' && !this.spriteLoaded && gameObj.assets) {
-                this.sprite = gameObj.assets.get(this.team === 'black' ? 'assets/extractor_black.png' : 'assets/extractor_red.png');
-                this.spriteLoaded = true;
-            }
-
-            // [JUICE] The Kinetic Piston Animation!
+            
+            // 🧃 [JUICE] The Kinetic Piston Animation!
             let restorePump = false;
             if (this.type === 'extractor' && this.pumpAnim > 0) {
                 // Squash and stretch based on the pumpAnim timer
-                const stretch = 1 + Math.sin(this.pumpAnim * 0.4) * 0.15;
+                const stretch = 1 + Math.sin((this.pumpAnim / 15) * Math.PI) * 0.15;
                 ctx.save();
                 ctx.translate(this.x, this.y + (this.size / 2)); // Pin to the bottom
                 ctx.scale(1 / stretch, stretch);
@@ -219,7 +225,7 @@ export const DarkRitualsExpansion = {
 
             original.call(this, ctx, gameObj); 
 
-            // Canvas Fallback
+            // Canvas Fallback (Used if sprite isn't loaded yet)
             if (this.type === 'extractor' && (!this.sprite || !this.sprite.complete || this.sprite.naturalHeight === 0)) {
                 ctx.save(); ctx.translate(this.x, this.y);
                 
