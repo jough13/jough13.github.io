@@ -30,6 +30,7 @@ import { SwarmDynamicsExpansion } from './expansions/SwarmDynamics.js';
 import { SpellExpansion } from './expansions/Spells.js';
 import { SpecialUnitsExpansion } from './expansions/SpecialUnits.js';
 import { HazardsExpansion } from './expansions/Hazards.js';
+import { CaravansExpansion } from './expansions/Caravans.js'; // 🪲 NEW!
 import { DayNightExpansion } from './expansions/DayNight.js';
 import { WeatherSystemExpansion } from './expansions/Weather.js';
 import { ControlPointsExpansion } from './expansions/ControlPoints.js';
@@ -40,7 +41,7 @@ import { CursedRelicsExpansion } from './expansions/CursedRelics.js';
 import { ToxicPlagueExpansion } from './expansions/ToxicPlague.js'; 
 import { VoidWhispersExpansion } from './expansions/VoidWhispers.js'; 
 import { TitansExpansion } from './expansions/Titans.js'; 
-import { TrapdoorExpansion } from './expansions/Trapdoor.js'; // 🕳️ NEW!
+import { TrapdoorExpansion } from './expansions/Trapdoor.js'; 
 import { BroodAmbushExpansion } from './expansions/BroodAmbush.js'; 
 import { FortressExpansion } from './expansions/Fortress.js';
 
@@ -74,6 +75,7 @@ const expansionManifest = [
     
     { name: 'SpecialUnits',         module: SpecialUnitsExpansion },
     { name: 'Hazards',              module: HazardsExpansion },
+    { name: 'ResourceCaravans',     module: CaravansExpansion }, // 🪲 NEW!
     { name: 'DayNight',             module: DayNightExpansion },
     { name: 'WeatherSystem',        module: WeatherSystemExpansion }, 
     { name: 'ControlPoints',        module: ControlPointsExpansion },
@@ -85,7 +87,7 @@ const expansionManifest = [
     { name: 'ToxicPlague',          module: ToxicPlagueExpansion }, 
     { name: 'VoidWhispers',         module: VoidWhispersExpansion }, 
     { name: 'Titans',               module: TitansExpansion },
-    { name: 'TrapdoorAssassin',     module: TrapdoorExpansion }, // 🕳️ NEW!
+    { name: 'TrapdoorAssassin',     module: TrapdoorExpansion },
     { name: 'BroodAmbush',          module: BroodAmbushExpansion },
     { name: 'Fortress',             module: FortressExpansion },
     
