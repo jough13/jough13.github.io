@@ -18,7 +18,7 @@ import { AdvancedBaseExpansion } from './expansions/AdvancedBase.js';
 import { AIDirectorExpansion } from './expansions/AIDirector.js'; 
 import { TraitManagerExpansion } from './expansions/TraitManager.js'; 
 import { GodUnitExpansion } from './expansions/Boss.js';
-import { TitanGodExpansion } from './expansions/TitanGod.js'; // 🔗 NEW!
+import { TitanGodExpansion } from './expansions/TitanGod.js';
 
 // Core AI & Networks
 import { QueenExpansion } from './expansions/Queen.js';
@@ -40,6 +40,7 @@ import { CursedRelicsExpansion } from './expansions/CursedRelics.js';
 import { ToxicPlagueExpansion } from './expansions/ToxicPlague.js'; 
 import { VoidWhispersExpansion } from './expansions/VoidWhispers.js'; 
 import { TitansExpansion } from './expansions/Titans.js'; 
+import { TrapdoorExpansion } from './expansions/Trapdoor.js'; // 🕳️ NEW!
 import { BroodAmbushExpansion } from './expansions/BroodAmbush.js'; 
 import { FortressExpansion } from './expansions/Fortress.js';
 
@@ -64,7 +65,7 @@ const expansionManifest = [
     { name: 'AIDirector',           module: AIDirectorExpansion }, 
     { name: 'TraitManager',         module: TraitManagerExpansion }, 
     { name: 'CentipedeBoss',        module: GodUnitExpansion },
-    { name: 'TitanGod',             module: TitanGodExpansion }, // 🔗 NEW! (Must load after CentipedeBoss)
+    { name: 'TitanGod',             module: TitanGodExpansion }, 
     { name: 'QueenSystem',          module: QueenExpansion },
     { name: 'CombatAndHarvesterAI', module: CombatAndHarvesterExpansion },
     
@@ -84,6 +85,7 @@ const expansionManifest = [
     { name: 'ToxicPlague',          module: ToxicPlagueExpansion }, 
     { name: 'VoidWhispers',         module: VoidWhispersExpansion }, 
     { name: 'Titans',               module: TitansExpansion },
+    { name: 'TrapdoorAssassin',     module: TrapdoorExpansion }, // 🕳️ NEW!
     { name: 'BroodAmbush',          module: BroodAmbushExpansion },
     { name: 'Fortress',             module: FortressExpansion },
     
