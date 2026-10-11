@@ -4,7 +4,7 @@ import { MathUtils, Spider } from '../game.js';
 // ==========================================
 // 1. CONFIGURATION & BALANCING
 // ==========================================
-// [EXPANDABILITY] Exported config so other mods can tweak zombie decay, speed, and costs
+// 🔌 [EXPANDABILITY] Exported config so other mods can tweak zombie decay, speed, and costs
 export const NECRO_CONFIG = {
     spellCost: 40,
     spellRadius: 200,             
@@ -29,7 +29,7 @@ export class Corpse {
         this.y = y;
         this.size = size || 12;
         
-        // [PERFORMANCE FIX] Assigning a team ensures game.js adds this to the O(1) Spatial Grid!
+        // 🚀 [PERFORMANCE FIX] Assigning a team ensures game.js adds this to the O(1) Spatial Grid!
         this.team = 'dead'; 
         
         // Give the corpse actual destructible HP based on its size so explosions can gib it!
@@ -39,19 +39,16 @@ export class Corpse {
         // Random rotation so the battlefield looks like an organic mess of casualties
         this.angle = Math.random() * MathUtils.TWO_PI;
         
-        // Sprite will be pulled instantly from RAM cache on Tick 1 of its life
+        // 🚀 [LOGIC FIX] Store the SRC target
+        this.spriteSrc = 'assets/corpse.png';
         this.sprite = null;
+        this.spriteLoaded = false;
     }
 
     update(game) {
-        // --- ASSET MANAGER CACHE LINKING ---
-        if (!this.sprite) {
-            this.sprite = game.assets.get('assets/corpse.png');
-        }
-
         this.life--;
         
-        // [JUICE] Emit subtle rotting miasma particles over time
+        // 🧃 [JUICE] Emit subtle rotting miasma particles over time
         if (game.tick % 60 === 0 && Math.random() > 0.5) {
             game.bus.emit('particles', {x: this.x, y: this.y, color: 'rgba(0, 255, 0, 0.4)', count: 1, type: 'magic'});
         }
@@ -60,27 +57,34 @@ export class Corpse {
         // We let the engine handle the cleanup automatically!
     }
 
-    draw(ctx) {
+    draw(ctx, game) {
+        // 🚀 [LOGIC FIX] Pull the preloaded image directly from the RAM Cache!
+        if (!this.spriteLoaded && game && game.assets) {
+            this.sprite = game.assets.get(this.spriteSrc);
+            if (this.sprite) this.spriteLoaded = true;
+        }
+
         ctx.save(); 
         ctx.translate(this.x, this.y);
+        
+        // 🧃 [JUICE] Drop shadow to anchor the corpse to the dirt (Drawn before rotation)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.beginPath();
+        ctx.ellipse(0, this.size * 0.4, this.size * 0.9, this.size * 0.5, 0, 0, MathUtils.TWO_PI);
+        ctx.fill();
+
         ctx.rotate(this.angle);
         
         // Fade out into the dirt during the last portion of decay
         ctx.globalAlpha = Math.min(1, this.life / 300); 
         
-        if (this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) {
+        if (this.spriteLoaded && this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) {
             // ASPECT RATIO FIX: Calculate dynamic width based on actual image proportions
             const aspect = this.sprite.naturalWidth / this.sprite.naturalHeight;
             const drawH = this.size * 2;
             const drawW = drawH * aspect;
             
-            // [JUICE] Drop shadow to anchor the corpse to the dirt
-            ctx.shadowColor = 'rgba(0,0,0,0.5)';
-            ctx.shadowBlur = 4;
-            ctx.shadowOffsetY = 2;
-            
             ctx.drawImage(this.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
-            ctx.shadowBlur = 0; // Reset
         } else {
             // Fallback drawing: A creepy wrapped web cocoon scaling with size
             ctx.fillStyle = '#dddddd';
@@ -105,7 +109,7 @@ export class ZombieSpider extends Spider {
         
         this.isZombie = true; // Flags it so it doesn't drop another corpse when it dies!
         
-        // POLISH FIX: Dynamic Scaling based on the corpse it came from!
+        // 🧃 POLISH FIX: Dynamic Scaling based on the corpse it came from!
         const scale = (size || 16) / 16;
         this.size = size || 16;
         
@@ -116,22 +120,15 @@ export class ZombieSpider extends Spider {
         this.baseSpeed = NECRO_CONFIG.zombieSpeed; 
         this.speed = this.baseSpeed;
 
-        this.ramSpriteLoaded = false;
+        // 🚀 [LOGIC FIX] Point the base class to the correct sprite target!
+        this.spriteSrc = this.team === 'black' ? 'assets/zombie_black.png' : 'assets/zombie_red.png';
         
-        // [JUICE] Pop-in scale animation
+        // 🧃 [JUICE] Pop-in scale animation
         this.spawnScale = 0.1;
     }
 
     update(game) {
-        // --- ASSET MANAGER CACHE LINKING ---
-        // Overrides the default Spider() constructor image safely
-        if (!this.ramSpriteLoaded && game.assets) {
-            this.sprite = game.assets.get(this.team === 'black' ? 'assets/zombie_black.png' : 'assets/zombie_red.png');
-            this.imageLoaded = true; // Tell base class it's ready to draw
-            this.ramSpriteLoaded = true;
-        }
-
-        // [JUICE] Scale up rapidly on spawn to simulate clawing out of the dirt
+        // 🧃 [JUICE] Scale up rapidly on spawn to simulate clawing out of the dirt
         if (this.spawnScale < 1.0) {
             this.spawnScale = Math.min(1.0, this.spawnScale + 0.15);
         }
@@ -142,7 +139,7 @@ export class ZombieSpider extends Spider {
         super.update(game);
     }
 
-    // [FIX] Pass game object down to super.draw to preserve the new breathing animations!
+    // 🛡️ [FIX] Pass game object down to super.draw to preserve the new breathing animations!
     draw(ctx, game) {
         ctx.save();
         ctx.translate(this.x, this.y);
@@ -182,20 +179,25 @@ class ReanimateAOE {
     draw(ctx) {
         // Expanding shockwave effect
         const progress = 1 - (this.life / this.maxLife);
-        // MATH FIX: Math.sqrt is vastly faster than Math.pow(x, 0.5)
+        // 🚀 MATH FIX: Math.sqrt is vastly faster than Math.pow(x, 0.5)
         const currentRadius = this.maxRadius * Math.sqrt(progress); 
 
+        ctx.save();
         ctx.globalAlpha = this.life / this.maxLife; // Fade out as it expands
         
-        // [JUICE] Added a dark magic underglow
-        ctx.fillStyle = 'rgba(0, 50, 0, 0.5)';
+        // 🧃 [JUICE] Additive blending makes the magic glow brightly!
+        ctx.globalCompositeOperation = 'lighter';
+        
+        // Ethereal magic underglow
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
         ctx.beginPath(); ctx.arc(this.x, this.y, currentRadius, 0, MathUtils.TWO_PI); ctx.fill();
         
+        // Bright outer ring
         ctx.strokeStyle = '#00ff00'; 
         ctx.lineWidth = 4; 
         ctx.stroke();
         
-        ctx.globalAlpha = 1.0;
+        ctx.restore();
     }
 }
 
@@ -204,7 +206,7 @@ class ReanimateAOE {
 // ==========================================
 export const NecromancyExpansion = {
     init: (game) => {
-        // [EXPANDABILITY] Hook config to the game engine
+        // 🔌 [EXPANDABILITY] Hook config to the game engine
         game.necroConfig = NECRO_CONFIG;
 
         // --- ASSET REGISTRY ---
@@ -222,7 +224,7 @@ export const NecromancyExpansion = {
                     // Spawn the visual shockwave
                     game.addEntity(new ReanimateAOE(data.x, data.y));
                     
-                    // JUICE: Heavy camera shake for the massive exertion of dark magic!
+                    // 🧃 JUICE: Heavy camera shake for the massive exertion of dark magic!
                     if (game.triggerShake) game.triggerShake(6);
                     game.bus.emit('playSound', 'spell');
                     
@@ -230,12 +232,16 @@ export const NecromancyExpansion = {
                     const radius = NECRO_CONFIG.spellRadius;
                     const radiusSq = NECRO_CONFIG.spellRadiusSq;
                     
-                    // [PERFORMANCE FIX] Use O(1) Spatial Grid instead of checking all entities
+                    // 🚀 [PERFORMANCE FIX] Use O(1) Spatial Grid instead of checking all entities
                     const CELL_SIZE = 250;
-                    const minCx = Math.max(0, ((data.x - radius) / CELL_SIZE) | 0);
-                    const maxCx = Math.max(0, ((data.x + radius) / CELL_SIZE) | 0);
-                    const minCy = Math.max(0, ((data.y - radius) / CELL_SIZE) | 0);
-                    const maxCy = Math.max(0, ((data.y + radius) / CELL_SIZE) | 0);
+                    const maxGridX = Math.ceil(game.world.width / CELL_SIZE);
+                    const maxGridY = Math.ceil(game.world.height / CELL_SIZE);
+                    
+                    // 🛡️ [FIX] Clamp bounds to prevent out-of-bounds array lookups
+                    const minCx = MathUtils.clamp(((data.x - radius) / CELL_SIZE) | 0, 0, maxGridX);
+                    const maxCx = MathUtils.clamp(((data.x + radius) / CELL_SIZE) | 0, 0, maxGridX);
+                    const minCy = MathUtils.clamp(((data.y - radius) / CELL_SIZE) | 0, 0, maxGridY);
+                    const maxCy = MathUtils.clamp(((data.y + radius) / CELL_SIZE) | 0, 0, maxGridY);
 
                     for (let cx = minCx; cx <= maxCx; cx++) {
                         for (let cy = minCy; cy <= maxCy; cy++) {
@@ -258,7 +264,7 @@ export const NecromancyExpansion = {
                                         game.bus.emit('particles', {x: e.x, y: e.y, color: '#00ff00', count: 15, type: 'magic'});
                                         game.bus.emit('particles', {x: e.x, y: e.y, color: '#3d2817', count: 10}); // Dirt clods
                                         
-                                        // JUICE: The wet snapping sound of bones reconstructing
+                                        // 🧃 JUICE: The wet snapping sound of bones reconstructing
                                         game.bus.emit('playSound', 'harvest'); 
                                         
                                         raisedCount++;
@@ -281,12 +287,14 @@ export const NecromancyExpansion = {
         // Intercept the main game loop to drop corpses right BEFORE a spider is culled
         game.expansions.patchClass(game.constructor, 'update', function(original) {
             
-            // PERFORMANCE FIX: Native for-loop is vastly faster than .forEach for the main update tick
-            for (let i = 0; i < this.entities.length; i++) {
-                let e = this.entities[i];
+            // 🚀 PERFORMANCE FIX: Native for-loop is vastly faster than .forEach for the main update tick
+            const entities = this.entities;
+            const entLen = entities.length;
+            for (let i = 0; i < entLen; i++) {
+                let e = entities[i];
                 
                 // If a spider dies, and it wasn't already a zombie, drop a corpse!
-                // LOGIC FIX: Exclude 'broodling' suicide units to prevent infinite zombie cheese and map clutter
+                // 🛡️ LOGIC FIX: Exclude 'broodling' suicide units to prevent infinite zombie cheese and map clutter
                 if (e.hp <= 0 && e instanceof Spider && !e.isZombie && !e.corpseSpawned && e.role !== 'broodling') {
                     e.corpseSpawned = true; // Safety flag to prevent double-spawns
                     this.addEntity(new Corpse(e.x, e.y, e.size));
