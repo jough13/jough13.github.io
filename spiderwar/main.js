@@ -18,6 +18,7 @@ import { AdvancedBaseExpansion } from './expansions/AdvancedBase.js';
 import { AIDirectorExpansion } from './expansions/AIDirector.js'; 
 import { TraitManagerExpansion } from './expansions/TraitManager.js'; 
 import { GodUnitExpansion } from './expansions/Boss.js';
+import { TitanGodExpansion } from './expansions/TitanGod.js'; // 🔗 NEW!
 
 // Core AI & Networks
 import { QueenExpansion } from './expansions/Queen.js';
@@ -30,7 +31,7 @@ import { SpellExpansion } from './expansions/Spells.js';
 import { SpecialUnitsExpansion } from './expansions/SpecialUnits.js';
 import { HazardsExpansion } from './expansions/Hazards.js';
 import { DayNightExpansion } from './expansions/DayNight.js';
-import { WeatherSystemExpansion } from './expansions/Weather.js'; // 🌧️ NEW!
+import { WeatherSystemExpansion } from './expansions/Weather.js';
 import { ControlPointsExpansion } from './expansions/ControlPoints.js';
 import { NecromancyExpansion } from './expansions/Necromancy.js'; 
 import { DarkRitualsExpansion } from './expansions/DarkRituals.js';
@@ -63,6 +64,7 @@ const expansionManifest = [
     { name: 'AIDirector',           module: AIDirectorExpansion }, 
     { name: 'TraitManager',         module: TraitManagerExpansion }, 
     { name: 'CentipedeBoss',        module: GodUnitExpansion },
+    { name: 'TitanGod',             module: TitanGodExpansion }, // 🔗 NEW! (Must load after CentipedeBoss)
     { name: 'QueenSystem',          module: QueenExpansion },
     { name: 'CombatAndHarvesterAI', module: CombatAndHarvesterExpansion },
     
@@ -72,7 +74,7 @@ const expansionManifest = [
     { name: 'SpecialUnits',         module: SpecialUnitsExpansion },
     { name: 'Hazards',              module: HazardsExpansion },
     { name: 'DayNight',             module: DayNightExpansion },
-    { name: 'WeatherSystem',        module: WeatherSystemExpansion }, // 🌧️ NEW!
+    { name: 'WeatherSystem',        module: WeatherSystemExpansion }, 
     { name: 'ControlPoints',        module: ControlPointsExpansion },
     { name: 'CommanderSpells',      module: SpellExpansion },
     { name: 'Necromancy',           module: NecromancyExpansion },
