@@ -5,7 +5,7 @@ import { Queen } from './Queen.js';
 // ==========================================
 // 1. CONFIGURATION & TUNING
 // ==========================================
-// [EXPANDABILITY] Exported so other mods can tweak control feel
+// 🔌 [EXPANDABILITY] Exported so other mods can tweak control feel
 export const CONTROLS_CONFIG = {
     doubleClickMs: 300,        // Max time between clicks to trigger "Select All of Type"
     dragBoxThresholdSq: 100,   // Minimum pixels dragged to count as a box vs a single click
@@ -17,7 +17,7 @@ export const CONTROLS_CONFIG = {
     autoResumeDelay: 45        // 1.5 seconds of idling before auto-resuming a paused building
 };
 
-// [EXPANDABILITY] Centralized costs so AI and Player use the same exact economy rules
+// 🔌 [EXPANDABILITY] Centralized costs so AI and Player use the same exact economy rules
 export const BUILD_COSTS = { 
     'nest': {p: 150, d: 0}, 'eggsac': {p: 50, d: 0}, 'pylon': {p: 25, d: 0}, 
     'turret': {p: 100, d: 0}, 'wall': {p: 25, d: 0}, 'extractor': {p: 100, d: 0},
@@ -39,7 +39,7 @@ export const AdvancedUnitControlExpansion = {
 
         // 1. Keyboard Shortcuts (Control Groups & Cancel)
         window.addEventListener('keydown', e => { 
-            // 🚀 [LOGIC FIX] Block keyboard commands if the game is over or paused
+            // 🛡️ [LOGIC FIX] Block keyboard commands if the game is over or paused
             if (game.gameState !== 'playing' || game.freezeFrames > 0) return;
 
             const key = e.key.toLowerCase();
@@ -60,10 +60,12 @@ export const AdvancedUnitControlExpansion = {
                         game.bus.emit('playSound', 'spell');
                     } else {
                         // Recall Control Group
-                        // PERFORMANCE FIX: Native loop instead of .filter to purge dead units
+                        // 🚀 [PERFORMANCE] Native loop instead of .filter to purge dead units
                         let aliveGroup = [];
-                        for (let i = 0; i < game.controlGroups[key].length; i++) {
-                            if (game.controlGroups[key][i].hp > 0) aliveGroup.push(game.controlGroups[key][i]);
+                        const grp = game.controlGroups[key];
+                        const grpLen = grp.length;
+                        for (let i = 0; i < grpLen; i++) {
+                            if (grp[i].hp > 0) aliveGroup.push(grp[i]);
                         }
                         game.controlGroups[key] = aliveGroup;
                         
@@ -88,7 +90,7 @@ export const AdvancedUnitControlExpansion = {
         let ticking = false; // Used for requestAnimationFrame throttling
         
         game.canvas.addEventListener('mousedown', e => {
-            // 🚀 [LOGIC FIX] Block drag box if the game is over or paused
+            // 🛡️ [LOGIC FIX] Block drag box if the game is over or paused
             if (game.gameState !== 'playing' || game.freezeFrames > 0) return;
 
             startX = e.clientX; startY = e.clientY;
@@ -119,8 +121,8 @@ export const AdvancedUnitControlExpansion = {
             const wasDraggingBox = isDraggingBox;
             isDraggingBox = false;
             
-            // 🚀 [LOGIC FIX] Strict Interaction Lockout!
-            // If a Queen just died (freezeFrames) or the menu is open, ignore clicks completely
+            // 🛡️ [LOGIC FIX] Strict Interaction Lockout!
+            // If a Queen just died (freezeFrames) or the game is over, ignore clicks completely
             if (game.gameState !== 'playing' || game.freezeFrames > 0) {
                 game.dragBox = null;
                 return;
@@ -150,9 +152,11 @@ export const AdvancedUnitControlExpansion = {
             // Identify what was clicked (unless we just finished a large drag-box selection)
             if (!wasDraggingBox || (game.dragBox && MathUtils.distSq(0,0, game.dragBox.w, game.dragBox.h) <= CONTROLS_CONFIG.dragBoxThresholdSq)) {
                 
-                // PERFORMANCE FIX: Loop through game.entities directly to prevent `.concat()` array allocation GC lag
-                for (let i = 0; i < game.entities.length; i++) {
-                    let u = game.entities[i];
+                // 🚀 [PERFORMANCE] Loop through game.entities directly to prevent `.concat()` array allocation GC lag
+                const entities = game.entities;
+                const entLen = entities.length;
+                for (let i = 0; i < entLen; i++) {
+                    let u = entities[i];
                     
                     if (u.team === 'black' && u.hp > 0) {
                         // Check Units (Spiders/Queens)
@@ -184,20 +188,21 @@ export const AdvancedUnitControlExpansion = {
             // EXECUTE COMMAND: Move Units
             if (isMoveCommand && game.selectedUnits.length > 0) {
                 let validCount = 0;
-                for (let i = 0; i < game.selectedUnits.length; i++) {
+                const selLen = game.selectedUnits.length;
+                for (let i = 0; i < selLen; i++) {
                     if (game.selectedUnits[i].team === 'black' && game.selectedUnits[i].hp > 0) validCount++;
                 }
                 
                 if (validCount > 0) {
                     game.bus.emit('particles', {x: worldX, y: worldY, color: '#ffffff', count: 12});
                     
-                    // [JUICE] Expanding tactical Sonar Ring at the destination!
+                    // 🧃 [JUICE] Expanding tactical Sonar Ring at the destination!
                     game.bus.emit('particles', {x: worldX, y: worldY, color: 'rgba(0, 255, 0, 0.6)', count: 1, type: 'ring'});
                     
                     // Crisp ping sound for issuing a command
                     game.bus.emit('playSound', 'ping');
                     
-                    for (let i = 0; i < game.selectedUnits.length; i++) {
+                    for (let i = 0; i < selLen; i++) {
                         let u = game.selectedUnits[i];
                         if (u.team === 'black' && u.hp > 0) {
                             u.commandTarget = { x: worldX, y: worldY }; 
@@ -217,9 +222,11 @@ export const AdvancedUnitControlExpansion = {
                     let y2 = Math.max(startY, startY + game.dragBox.h) + game.camera.y;
                     
                     game.selectedUnits = [];
-                    // PERFORMANCE FIX: Loop game.entities instead of multiple filter/concat allocations
-                    for (let i = 0; i < game.entities.length; i++) {
-                        let u = game.entities[i];
+                    // 🚀 [PERFORMANCE] Loop game.entities instead of multiple filter/concat allocations
+                    const entities = game.entities;
+                    const entLen = entities.length;
+                    for (let i = 0; i < entLen; i++) {
+                        let u = entities[i];
                         if (u.team === 'black' && u.hp > 0 && (u.role || u instanceof Queen)) {
                             if (u.x >= x1 && u.x <= x2 && u.y >= y1 && u.y <= y2) {
                                 game.selectedUnits.push(u);
@@ -240,15 +247,17 @@ export const AdvancedUnitControlExpansion = {
                     if (clickedUnit) {
                         const now = Date.now();
                         
-                        // RTS POLISH: Double-Click to select all units of the same type!
+                        // 🧃 RTS POLISH: Double-Click to select all units of the same type!
                         if (now - lastClickTime < CONTROLS_CONFIG.doubleClickMs && lastClickedUnit === clickedUnit) {
                             
                             const viewL = game.camera.x; const viewR = game.camera.x + game.canvas.width;
                             const viewT = game.camera.y; const viewB = game.camera.y + game.canvas.height;
                             
                             game.selectedUnits = [];
-                            for (let i = 0; i < game.entities.length; i++) {
-                                let u = game.entities[i];
+                            const entities = game.entities;
+                            const entLen = entities.length;
+                            for (let i = 0; i < entLen; i++) {
+                                let u = entities[i];
                                 if (u.team === 'black' && u.hp > 0 && u.role === clickedUnit.role) {
                                     // Only select units currently visible on screen
                                     if (u.x >= viewL && u.x <= viewR && u.y >= viewT && u.y <= viewB) {
@@ -292,7 +301,7 @@ export const AdvancedUnitControlExpansion = {
         
         // Touch events explicitly verify 1 finger to prevent pinch-zoom commands from firing moves
         game.canvas.addEventListener('touchstart', e => { 
-            // 🚀 [LOGIC FIX] Block touch tracking if the game is over or paused
+            // 🛡️ [LOGIC FIX] Block touch tracking if the game is over or paused
             if (game.gameState !== 'playing' || game.freezeFrames > 0) return;
 
             if(e.touches.length === 1) { 
@@ -316,8 +325,10 @@ export const AdvancedUnitControlExpansion = {
                 for (let i = 1; i <= 9; i++) {
                     if (this.controlGroups[i] && this.controlGroups[i].length > 0) {
                         let aliveGroup = [];
-                        for (let k = 0; k < this.controlGroups[i].length; k++) {
-                            if (this.controlGroups[i][k].hp > 0) aliveGroup.push(this.controlGroups[i][k]);
+                        const grp = this.controlGroups[i];
+                        const len = grp.length;
+                        for (let k = 0; k < len; k++) {
+                            if (grp[k].hp > 0) aliveGroup.push(grp[k]);
                         }
                         this.controlGroups[i] = aliveGroup;
                     }
@@ -331,10 +342,11 @@ export const AdvancedUnitControlExpansion = {
             
             // Optimize by precalculating the dash offset once per frame
             const dashOffset = -game.tick * 0.5;
-            // [JUICE] Gently pulse the selection rings so they feel alive
+            // 🧃 [JUICE] Gently pulse the selection rings so they feel alive
             const pulse = 1 + Math.sin(game.tick * 0.1) * 0.05;
             
-            for (let i = 0; i < game.selectedUnits.length; i++) {
+            const selLen = game.selectedUnits.length;
+            for (let i = 0; i < selLen; i++) {
                 let u = game.selectedUnits[i];
                 if (u.hp > 0) {
                     ctx.save();
@@ -356,7 +368,7 @@ export const AdvancedUnitControlExpansion = {
             ctx.setLineDash([]);
         });
 
-        // [FIX] Custom Queen rotation handling (Smoothing her turns!)
+        // 🧃 [JUICE] Custom Queen rotation handling (Smoothing her turns!)
         game.expansions.patchClass(Queen, 'update', function(original, gameObj) {
             const prevAngle = this.angle || 0;
             original.call(this, gameObj);
@@ -387,17 +399,21 @@ export const ConstructionExpansion = {
         
         game.bus.on('buildStructure', (data) => {
             
-            // [FIX/QoL] Find the *closest* idle Queen, not just the first one in the array!
+            // 🚀 [PERFORMANCE/QoL] Find the *closest* idle Queen, not just the first one in the array!
             let bestQueen = null;
             let minQueenDistSq = Infinity;
-            const queens = game.queens; // Cache
             
-            for (let i = 0; i < queens.length; i++) {
-                if (queens[i].team === data.team && queens[i].hp > 0) { 
-                    let dSq = MathUtils.distSq(queens[i].x, queens[i].y, data.x, data.y);
+            // Avoid array instantiation via getter
+            const entities = game.entities;
+            const entLen = entities.length;
+            
+            for (let i = 0; i < entLen; i++) {
+                let e = entities[i];
+                if (e.role === 'queen' && e.team === data.team && e.hp > 0) { 
+                    let dSq = MathUtils.distSq(e.x, e.y, data.x, data.y);
                     if (dSq < minQueenDistSq) {
                         minQueenDistSq = dSq;
-                        bestQueen = queens[i];
+                        bestQueen = e;
                     }
                 }
             }
@@ -405,22 +421,23 @@ export const ConstructionExpansion = {
             let queen = bestQueen;
             if (!queen) return; 
             
-            // --- FIX 2: RESTORE TERRITORY & OVERLAP CHECK ---
+            // --- 🛡️ RESTORE TERRITORY & OVERLAP CHECK ---
             // Ensure the player is only building inside their own Web Network AND not stacking!
             if (data.team === 'black') {
                 let hasBase = false;
                 let isOverlapping = false;
-                const structs = game.structures; // Cache
                 
-                for (let i = 0; i < structs.length; i++) {
-                    let s = structs[i];
-                    if (s.team === 'black') hasBase = true;
-                    
-                    // Prevent Stacking: Check if the new click is too close to an existing building
-                    // We use (size * 2) squared for a generous, safe bounding box
-                    if (MathUtils.distSq(s.x, s.y, data.x, data.y) < (s.size * 2) * (s.size * 2)) {
-                        isOverlapping = true;
-                        break; // Stop checking, we already know it's an illegal spot
+                for (let i = 0; i < entLen; i++) {
+                    let s = entities[i];
+                    if (s instanceof Structure) {
+                        if (s.team === 'black') hasBase = true;
+                        
+                        // Prevent Stacking: Check if the new click is too close to an existing building
+                        // We use (size * 2) squared for a generous, safe bounding box
+                        if (MathUtils.distSq(s.x, s.y, data.x, data.y) < (s.size * 2) * (s.size * 2)) {
+                            isOverlapping = true;
+                            break; // Stop checking, we already know it's an illegal spot
+                        }
                     }
                 }
                 
@@ -471,7 +488,7 @@ export const ConstructionExpansion = {
                     this.activeConstruction.buildProgress += CONTROLS_CONFIG.buildSpeed;
                     this.activeConstruction.isPaused = false;
                     
-                    // [JUICE] Emit sparks/magic from the Queen to the building!
+                    // 🧃 [JUICE] Emit sparks/magic from the Queen to the building!
                     if (gameObj.tick % 10 === 0) {
                         gameObj.bus.emit('particles', {x: this.activeConstruction.x, y: this.activeConstruction.y, color: '#ff9d00', count: 2, type: 'magic'});
                     }
@@ -481,7 +498,7 @@ export const ConstructionExpansion = {
                         this.activeConstruction.buildProgress = 1;
                         this.activeConstruction.territory = this.activeConstruction.originalTerritory; 
                         
-                        // [JUICE] Massive visual pop when a building finishes!
+                        // 🧃 [JUICE] Massive visual pop when a building finishes!
                         gameObj.bus.emit('particles', {x: this.activeConstruction.x, y: this.activeConstruction.y, color: '#ffffff', count: 40});
                         gameObj.bus.emit('particles', {x: this.activeConstruction.x, y: this.activeConstruction.y, color: '#3d2817', count: 30}); // Dirt clods
                         
@@ -521,7 +538,7 @@ export const ConstructionExpansion = {
                             s.originalTerritory = s.territory;
                             s.territory = 0; // No territory control until finished building!
                             
-                            // [JUICE] Foundation placed!
+                            // 🧃 [JUICE] Foundation placed!
                             gameObj.bus.emit('particles', {x: s.x, y: s.y, color: '#3d2817', count: 15});
                             
                             gameObj.addEntity(s);
@@ -539,10 +556,13 @@ export const ConstructionExpansion = {
                 
                 if (this.idleBuildTimer > CONTROLS_CONFIG.autoResumeDelay) {
                     let unfinished = null;
-                    const structs = gameObj.structures; // Cache
-                    for (let i = 0; i < structs.length; i++) {
-                        let s = structs[i];
-                        if (s.isConstructing && s.team === this.team && MathUtils.distSq(s.x, s.y, this.x, this.y) < CONTROLS_CONFIG.buildResumeRangeSq) {
+                    
+                    // 🚀 [PERFORMANCE] Loop game.entities instead of the array-allocating game.structures getter
+                    const entities = gameObj.entities;
+                    const entLen = entities.length;
+                    for (let i = 0; i < entLen; i++) {
+                        let s = entities[i];
+                        if (s instanceof Structure && s.isConstructing && s.team === this.team && MathUtils.distSq(s.x, s.y, this.x, this.y) < CONTROLS_CONFIG.buildResumeRangeSq) {
                             unfinished = s; break;
                         }
                     }
@@ -574,9 +594,11 @@ export const ConstructionExpansion = {
                 // Pulsing animation unless paused
                 const pulse = this.isPaused ? 0 : Math.sin(tick * 0.1) * 2;
                 
-                // [JUICE] Draw a dark "foundation hole" on the ground
+                // 🧃 [JUICE] Draw a dark "foundation hole" on the ground
                 ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 4;
                 ctx.beginPath(); ctx.ellipse(0, 0, this.size, this.size * 0.7, 0, 0, MathUtils.TWO_PI); ctx.fill();
+                ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; // Reset
                 
                 // Base
                 ctx.fillStyle = '#221100';
