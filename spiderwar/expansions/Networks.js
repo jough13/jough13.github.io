@@ -5,7 +5,7 @@ import { Queen } from './Queen.js';
 // ==========================================
 // 1. CONFIGURATION & BALANCING
 // ==========================================
-// [EXPANDABILITY] Exposed so other mods can tweak connection distances and buffs
+// 🔌 [EXPANDABILITY] Exposed so other mods can tweak connection distances and buffs
 export const NETWORK_CONFIG = {
     friendlySpeedBuff: 1.5,  // +50% speed on friendly silk
     enemySpeedDebuff: 0.7,   // -30% speed on enemy silk
@@ -86,13 +86,15 @@ export const SilkNetworkExpansion = {
             let isOnFriendlyWeb = false;
             let isOnEnemyWeb = false;
             
-            // PERFORMANCE FIX: Cache getter to prevent .filter() array GC thrashing
+            // 🚀 [PERFORMANCE FIX] Cache getter to prevent .filter() array GC thrashing
             const structs = gameObj.structures;
+            const structLen = structs.length;
 
-            for (let i = 0; i < structs.length; i++) {
+            for (let i = 0; i < structLen; i++) {
                 let s = structs[i];
                 
                 if (s.territory > 0 && s.hp > 0 && !s.isConstructing) {
+                    // 🚀 [PERFORMANCE] Fast AABB Check before expensive MathUtils.distSq
                     if (Math.abs(this.x - s.x) > s.territory || Math.abs(this.y - s.y) > s.territory) continue;
 
                     if (MathUtils.distSq(s.x, s.y, this.x, this.y) <= s.territory * s.territory) {
@@ -104,8 +106,14 @@ export const SilkNetworkExpansion = {
             }
             
             const baseSpdTemp = this.baseSpeed;
-            if (isOnFriendlyWeb) this.baseSpeed *= NETWORK_CONFIG.friendlySpeedBuff;      
-            else if (isOnEnemyWeb) this.baseSpeed *= NETWORK_CONFIG.enemySpeedDebuff;    
+            if (isOnFriendlyWeb) {
+                this.baseSpeed *= NETWORK_CONFIG.friendlySpeedBuff;
+            } else if (isOnEnemyWeb) {
+                this.baseSpeed *= NETWORK_CONFIG.enemySpeedDebuff;
+                this.isWebbed = true; // 🧃 [JUICE] Flag for visual drawing!
+            } else {
+                this.isWebbed = false;
+            }
             
             original.call(this, gameObj); 
             
@@ -116,10 +124,12 @@ export const SilkNetworkExpansion = {
         game.expansions.patchClass(Queen, 'update', function(original, gameObj) {
             let isOnFriendlyWeb = false;
             const structs = gameObj.structures; // Cache
+            const structLen = structs.length;
             
-            for (let i = 0; i < structs.length; i++) {
+            for (let i = 0; i < structLen; i++) {
                 let s = structs[i];
                 if (s.team === this.team && s.territory > 0 && s.hp > 0 && !s.isConstructing) {
+                    
                     if (Math.abs(this.x - s.x) > s.territory || Math.abs(this.y - s.y) > s.territory) continue;
                     
                     if (MathUtils.distSq(s.x, s.y, this.x, this.y) <= s.territory * s.territory) {
@@ -135,6 +145,21 @@ export const SilkNetworkExpansion = {
             original.call(this, gameObj);
             
             this.baseSpeed = baseSpdTemp;
+        });
+
+        // 🧃 [JUICE] Add visual indicator for being stuck on enemy webs
+        game.expansions.patchClass(Spider, 'draw', function(original, ctx, gameObj) {
+            original.call(this, ctx, gameObj);
+
+            if (this.isWebbed) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.globalCompositeOperation = 'lighter';
+                // Opposing team color
+                ctx.fillStyle = this.team === 'black' ? 'rgba(255, 0, 0, 0.4)' : 'rgba(170, 0, 255, 0.4)';
+                ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
+                ctx.restore();
+            }
         });
     }
 };
@@ -184,11 +209,12 @@ export const WebNetworkExpansion = {
                     let struct = aliveStructs[k];
                     
                     if (struct.team === s1.team) {
+                        // Fast AABB Check
                         if (Math.abs(s1.x - struct.x) > structDist || Math.abs(s1.y - struct.y) > structDist) continue;
                         
                         const distSq = MathUtils.distSq(struct.x, struct.y, s1.x, s1.y);
                         if (distSq < NETWORK_CONFIG.structLinkDistSq) {
-                            // [JUICE] Dist-based pulsing makes the light look like it's flowing through the web!
+                            // 🧃 [JUICE] Dist-based pulsing makes the light look like it's flowing through the web!
                             const flowPulse = 0.15 + Math.sin(game.tick * 0.1 + Math.sqrt(distSq)) * 0.1;
                             ctx.strokeStyle = s1.team === 'black' ? `rgba(255,255,255,${flowPulse + 0.1})` : `rgba(255, 100, 100, ${flowPulse + 0.1})`; 
                             ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(struct.x, struct.y); ctx.stroke(); 
@@ -198,6 +224,8 @@ export const WebNetworkExpansion = {
                 
                 // 2. SPATIAL GRID OPTIMIZATION for Spider-to-Spider links
                 // Instead of checking against every spider on the screen, only check the 9 grid cells around this spider!
+                
+                // 🛡️ [FIX] Clamp grid lookups so bugs near the wall don't cause array out-of-bounds errors
                 const cx = MathUtils.clamp((s1.x / CELL_SIZE) | 0, 0, maxGridX);
                 const cy = MathUtils.clamp((s1.y / CELL_SIZE) | 0, 0, maxGridY);
 
@@ -213,11 +241,11 @@ export const WebNetworkExpansion = {
                         for (let j = 0; j < cell.length; j++) {
                             let s2 = cell[j];
                             
-                            // [FIX] ID Check to prevent Canvas Double-Drawing
-                            // Only draw A->B, skip B->A
+                            // 🛡️ [FIX] ID Check to prevent Canvas Double-Drawing
+                            // Only draw A->B, skip B->A. Also ensure they are actually living Spiders
                             if (s1 === s2 || s1.team !== s2.team || !s2.role || s2.hp <= 0 || s1.id > s2.id) continue;
 
-                            // Fast AABB check
+                            // 🚀 [PERFORMANCE] Fast AABB check before expensive math
                             if (Math.abs(s1.x - s2.x) > spiderDist || Math.abs(s1.y - s2.y) > spiderDist) continue;
 
                             const distSq = MathUtils.distSq(s2.x, s2.y, s1.x, s1.y);
