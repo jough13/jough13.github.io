@@ -4,7 +4,7 @@ import { MathUtils, Structure } from '../game.js';
 // ==========================================
 // 1. CONFIGURATION & BALANCING
 // ==========================================
-// [EXPANDABILITY] Exported so other mods can tweak artillery and healing stats!
+// 🔌 [EXPANDABILITY] Exported so other mods can tweak artillery and healing stats!
 export const FORTRESS_CONFIG = {
     // Mortar Artillery
     mortarRange: 750,
@@ -49,7 +49,7 @@ export class MortarShell {
         if (progress >= 1.0) {
             this.active = false;
             
-            // [JUICE] Massive Artillery Impact!
+            // 🧃 [JUICE] Massive Artillery Impact!
             if (game.triggerShake) game.triggerShake(10);
             game.bus.emit('playSound', 'death'); 
             
@@ -60,16 +60,20 @@ export class MortarShell {
             game.bus.emit('particles', {x: this.targetX, y: this.targetY, color: secondaryColor, count: 30});
             game.bus.emit('particles', {x: this.targetX, y: this.targetY, color: '#3d2817', count: 40}); // Dirt clods
             
-            // [PERFORMANCE] Splash Damage Calculation using O(1) Spatial Grid!
+            // 🚀 [PERFORMANCE] Splash Damage Calculation using O(1) Spatial Grid!
             const CELL_SIZE = 250;
-            const cx = Math.max(0, (this.targetX / CELL_SIZE) | 0);
-            const cy = Math.max(0, (this.targetY / CELL_SIZE) | 0);
+            const maxGridX = Math.ceil(game.world.width / CELL_SIZE);
+            const maxGridY = Math.ceil(game.world.height / CELL_SIZE);
+            
+            // 🛡️ [FIX] Clamp bounds to prevent array out-of-bounds errors on edge impacts
+            const cx = MathUtils.clamp((this.targetX / CELL_SIZE) | 0, 0, maxGridX);
+            const cy = MathUtils.clamp((this.targetY / CELL_SIZE) | 0, 0, maxGridY);
             const radiusSq = FORTRESS_CONFIG.mortarSplashRadiusSq;
 
             for (let nx = cx - 1; nx <= cx + 1; nx++) {
-                if (nx < 0) continue;
+                if (nx < 0 || nx > maxGridX) continue;
                 for (let ny = cy - 1; ny <= cy + 1; ny++) {
-                    if (ny < 0) continue;
+                    if (ny < 0 || ny > maxGridY) continue;
                     
                     const key = (nx << 16) | ny;
                     const cell = game.spatialGrid.get(key);
@@ -99,7 +103,7 @@ export class MortarShell {
             this.x = MathUtils.lerp(this.startX, this.targetX, progress);
             this.y = MathUtils.lerp(this.startY, this.targetY, progress);
             
-            // [JUICE] Smoke trail matching the Z-axis elevation!
+            // 🧃 [JUICE] Smoke trail matching the Z-axis elevation!
             if (game.tick % 2 === 0) {
                 let z = Math.sin(progress * Math.PI) * 100;
                 game.bus.emit('particles', {x: this.x, y: this.y - z, color: 'rgba(200,200,200,0.5)', count: 1});
@@ -109,12 +113,12 @@ export class MortarShell {
 
     draw(ctx) {
         let progress = this.currentFrame / this.flightFrames;
-        // Sine wave arc for Z-axis height during flight
+        // 🧃 [JUICE] Sine wave arc for Z-axis height during flight
         let z = Math.sin(progress * Math.PI) * 100; 
         
-        // Ground Shadow
+        // Ground Shadow (shrinks as the shell goes higher)
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.beginPath(); ctx.arc(this.x, this.y, Math.max(2, 8 - (z / 20)), 0, TWO_PI); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(this.x, this.y, Math.max(2, 10 - (z / 15)), Math.max(1, 5 - (z / 30)), 0, 0, TWO_PI); ctx.fill();
         
         // Main Projectile Body (Elevated by Z)
         ctx.fillStyle = this.team === 'black' ? '#aa00ff' : '#ff5500';
@@ -131,7 +135,7 @@ export class MortarShell {
 // ==========================================
 export const FortressExpansion = {
     init: (game) => {
-        // [EXPANDABILITY] Hook config to game engine
+        // 🔌 [EXPANDABILITY] Hook config to game engine
         game.fortressConfig = FORTRESS_CONFIG;
 
         // --- ASSET REGISTRY ---
@@ -154,7 +158,7 @@ export const FortressExpansion = {
                 this.cooldown = this.cooldown || 0;
                 if (this.cooldown > 0) this.cooldown--;
                 
-                // [JUICE] Manage Recoil Animation State
+                // 🧃 [JUICE] Manage Recoil Animation State
                 if (this.fireAnim > 0) this.fireAnim--;
                 
                 if (this.cooldown <= 0) {
@@ -166,7 +170,7 @@ export const FortressExpansion = {
                         const actualDamage = FORTRESS_CONFIG.mortarBaseDamage + ((gameObj.techLevel[this.team] || 0) * 15);
                         gameObj.addEntity(new MortarShell(this.x, this.y, target.x, target.y, actualDamage, this.team));
                         
-                        // [JUICE] Recoil Shake & Squash Animation
+                        // 🧃 [JUICE] Recoil Shake & Squash Animation
                         if (gameObj.triggerShake) gameObj.triggerShake(4); 
                         gameObj.bus.emit('playSound', 'shoot'); 
                         this.fireAnim = 12; // Trigger structural squash animation
@@ -188,15 +192,19 @@ export const FortressExpansion = {
                     const radius = FORTRESS_CONFIG.shrineHealRadius;
                     const radiusSq = FORTRESS_CONFIG.shrineHealRadiusSq;
 
-                    // [PERFORMANCE] Spatial Grid Lookup for Healing!
+                    // 🚀 [PERFORMANCE] Spatial Grid Lookup for Healing!
                     const CELL_SIZE = 250;
-                    const cx = Math.max(0, (this.x / CELL_SIZE) | 0);
-                    const cy = Math.max(0, (this.y / CELL_SIZE) | 0);
+                    const maxGridX = Math.ceil(gameObj.world.width / CELL_SIZE);
+                    const maxGridY = Math.ceil(gameObj.world.height / CELL_SIZE);
+                    
+                    // 🛡️ [FIX] Strict boundary clamping
+                    const cx = MathUtils.clamp((this.x / CELL_SIZE) | 0, 0, maxGridX);
+                    const cy = MathUtils.clamp((this.y / CELL_SIZE) | 0, 0, maxGridY);
 
                     for (let nx = cx - 1; nx <= cx + 1; nx++) {
-                        if (nx < 0) continue;
+                        if (nx < 0 || nx > maxGridX) continue;
                         for (let ny = cy - 1; ny <= cy + 1; ny++) {
-                            if (ny < 0) continue;
+                            if (ny < 0 || ny > maxGridY) continue;
                             
                             const key = (nx << 16) | ny;
                             const cell = gameObj.spatialGrid.get(key);
@@ -224,7 +232,7 @@ export const FortressExpansion = {
                     // Emit a pulse from the Shrine if it successfully healed something
                     if (healed) {
                         this.auraAlpha = 1.0; // Trigger the visual expanding ring
-                        gameObj.bus.emit('playSound', 'ping'); // JUICE: Satisfying healing chime
+                        gameObj.bus.emit('playSound', 'heal'); // 🧃 JUICE: Satisfying healing chime
                         gameObj.bus.emit('particles', {x: this.x, y: this.y - 20, color: '#00ff00', count: 8, type: 'magic'});
                     }
                 }
@@ -232,7 +240,7 @@ export const FortressExpansion = {
         });
 
         // PATCH: Structure Rendering
-        // [FIX] Signature updated to (original, ctx, gameObj)
+        // 🛡️ [FIX] Signature updated to (original, ctx, gameObj)
         game.expansions.patchClass(Structure, 'draw', function(original, ctx, gameObj) {
             
             // Draw Shrine Healing Aura underneath the structure
@@ -250,13 +258,13 @@ export const FortressExpansion = {
                 ctx.restore();
             }
 
-            // Sprite Caching Link
+            // 🚀 [LOGIC FIX] Pull the preloaded image directly from the RAM Cache!
             if ((this.type === 'mortar' || this.type === 'shrine') && !this.spriteLoaded && gameObj.assets) {
-                this.sprite = gameObj.assets.get(`assets/${this.type}_${this.team}.png`);
+                this.sprite = gameObj.assets.get(this.spriteSrc);
                 if (this.sprite) this.spriteLoaded = true;
             }
 
-            // [JUICE] Heavy Recoil Animation for Mortars
+            // 🧃 [JUICE] Heavy Recoil Animation for Mortars
             let restoreRecoil = false;
             if (this.type === 'mortar' && this.fireAnim > 0) {
                 // Squash the mortar down by up to 20% on fire, snapping back quickly
@@ -281,7 +289,7 @@ export const FortressExpansion = {
                     ctx.fillStyle = '#111'; 
                     ctx.beginPath(); ctx.arc(this.x, this.y - 5, 12, 0, TWO_PI); ctx.fill();
                     
-                    // [JUICE] Glowing energy core
+                    // 🧃 [JUICE] Glowing energy core
                     ctx.shadowColor = this.team === 'black' ? '#aa00ff' : '#ff5500';
                     ctx.shadowBlur = 10;
                     ctx.fillStyle = ctx.shadowColor;
@@ -292,7 +300,7 @@ export const FortressExpansion = {
                     ctx.fillStyle = '#225522'; 
                     ctx.beginPath(); ctx.moveTo(this.x, this.y - 30); ctx.lineTo(this.x + 20, this.y + 15); ctx.lineTo(this.x - 20, this.y + 15); ctx.fill();
                     
-                    // [JUICE] Glowing healing basin
+                    // 🧃 [JUICE] Glowing healing basin
                     ctx.shadowColor = '#00ff00';
                     ctx.shadowBlur = 10 + Math.sin(gameObj.tick * 0.1) * 5;
                     ctx.fillStyle = '#00ff00'; 
