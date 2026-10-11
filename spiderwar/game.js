@@ -10,7 +10,7 @@ export const MathUtils = {
     lerp: (start, end, amt) => (1 - amt) * start + amt * end,
     randomRange: (min, max) => Math.random() * (max - min) + min,
     randomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
-    // [EXPANDABILITY] Smooth rotation wrapper for AI logic
+    // 🔌 [EXPANDABILITY] Smooth rotation wrapper for AI logic
     angleWrap: (angle) => {
         while (angle > Math.PI) angle -= MathUtils.TWO_PI;
         while (angle < -Math.PI) angle += MathUtils.TWO_PI;
@@ -50,7 +50,7 @@ export class AssetManager {
 export class ExpansionManager {
     constructor(game) { this.game = game; this.expansions = {}; }
     load(name, expansion) {
-        // [FIX] Bulletproof error boundaries so one bad mod doesn't crash the engine!
+        // 🛡️ [FIX] Bulletproof error boundaries so one bad mod doesn't crash the engine!
         try {
             console.log(`%c[Plugin Loaded] ${name}`, 'color: #00aaff;');
             this.expansions[name] = expansion;
@@ -80,7 +80,7 @@ export const SPIDER_STATE = {
     RETURNING_HOME: 3
 };
 
-// [EXPANDABILITY] Base stats for the Obsidian Brood and Crimson Swarm
+// 🔌 [EXPANDABILITY] Base stats for the Obsidian Brood and Crimson Swarm
 export const UNIT_DATA = {
     harvester: { size: 12, hp: 100, damage: 15, attackSpeed: 30, baseSpeedMin: 0.8, baseSpeedMax: 1.8, traits: ['gatherer'] },
     soldier:   { size: 16, hp: 200, damage: 30, attackSpeed: 20, baseSpeedMin: 1.2, baseSpeedMax: 2.2, traits: ['melee', 'escort'] }
@@ -113,7 +113,7 @@ export class Spider {
         this.cargo = { amount: 0, type: null };
         this.isCloaked = false; 
         
-        // [PERFORMANCE] Convert ID string to a number once for deterministic animation offsets
+        // 🚀 [PERFORMANCE] Convert ID string to a number once for deterministic animation offsets
         this.animOffset = parseInt(this.id, 36) % 100;
         
         // 🚀 [LOGIC FIX] Store the SRC target instead of creating a raw Image object
@@ -140,7 +140,6 @@ export class Spider {
         // 🧃 [JUICE] High-Performance Drop Shadow (Drawn before rotation so it stays flat on the ground)
         ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
         ctx.beginPath();
-        // Dynamic ellipse shadow based on unit size
         ctx.ellipse(0, this.size * 0.4, this.size * 0.9, this.size * 0.5, 0, 0, MathUtils.TWO_PI);
         ctx.fill();
 
@@ -156,7 +155,8 @@ export class Spider {
             ctx.drawImage(this.sprite, -this.size, -this.size, this.size * 2, this.size * 2); 
         } else {
             // Fallback geometric rendering
-            ctx.fillStyle = this.team; ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
+            ctx.fillStyle = this.team === 'black' ? '#222' : '#822'; 
+            ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
             ctx.fillStyle = 'white'; ctx.fillRect(this.size/2, -3, 4, 6);
             if(this.role === 'soldier') { ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(0, 0, 4, 0, MathUtils.TWO_PI); ctx.fill(); }
         }
@@ -240,7 +240,6 @@ export class Structure {
     }
     update(game) {} 
     
-    // [FIX] Ensure structure accepts 'game' so it can access the cache
     draw(ctx, game) {
         // 🚀 [LOGIC FIX] Pull the preloaded image directly from the RAM Cache!
         if (!this.spriteLoaded && game && game.assets) {
@@ -275,7 +274,10 @@ export class Structure {
             else if(this.type === 'wall') { ctx.fillRect(-this.size, -10, this.size * 2, 20); }
             else if(this.type === 'pylon') { ctx.beginPath(); ctx.moveTo(0, -this.size); ctx.lineTo(-this.size, this.size); ctx.lineTo(this.size, this.size); ctx.fill(); }
             
-            ctx.strokeStyle = this.team; ctx.lineWidth = 2; ctx.stroke();
+            // 🧃 [JUICE] Cool neon wireframes for missing assets!
+            ctx.strokeStyle = this.team === 'black' ? '#aa00ff' : '#ff0000'; 
+            ctx.lineWidth = 2; 
+            ctx.stroke();
         }
         ctx.restore();
     }
@@ -289,7 +291,9 @@ export class Projectile {
     update(game) {
         if(!this.target || this.target.hp === undefined || this.target.hp <= 0) { this.active = false; return; }
         const dx = this.target.x - this.x; const dy = this.target.y - this.y;
-        const distSq = MathUtils.distSq(this.x, this.y, this.target.x, this.target.y);
+        
+        // 🚀 [PERFORMANCE] Fast inline distance math
+        const distSq = (dx * dx) + (dy * dy);
         
         // 🧃 [JUICE] Track angle for motion blur rendering
         this.angle = Math.atan2(dy, dx);
@@ -337,7 +341,7 @@ export class Game {
         this.expansions = new ExpansionManager(this);
         this.assets = new AssetManager();
         
-        // [EXPANDABILITY] Mount core data to the game instance for mods
+        // 🔌 [EXPANDABILITY] Mount core data to the game instance for mods
         this.unitData = UNIT_DATA;
         this.structureData = STRUCTURE_DATA;
         
@@ -400,7 +404,7 @@ export class Game {
     resize() { 
         this.canvas.width = window.innerWidth; 
         this.canvas.height = window.innerHeight; 
-        // [FIX] Browsers reset canvas context state when resized. Must reapply crisp rendering here!
+        // 🛡️ [FIX] Browsers reset canvas context state when resized. Must reapply crisp rendering here!
         this.ctx.imageSmoothingEnabled = false; 
         this.canvasRect = this.canvas.getBoundingClientRect();
     }
@@ -459,7 +463,7 @@ export class Game {
                         this.bus.emit('commandQueen', { x: worldX, y: worldY, team: 'black' });
                         this.activeTool = 'select'; this.bus.emit('toolChanged', 'select'); 
                     }
-                    else if (['venomStrike', 'silkTrap', 'reanimate', 'ambush', 'contagion', 'vortex'].includes(this.activeTool)) {
+                    else if (['venomStrike', 'silkTrap', 'reanimate', 'ambush', 'contagion', 'vortex', 'subjugate'].includes(this.activeTool)) {
                         this.bus.emit('castSpell', { x: worldX, y: worldY, type: this.activeTool, team: 'black' });
                         this.activeTool = 'select'; this.bus.emit('toolChanged', 'select');
                     }
@@ -573,16 +577,20 @@ export class Game {
         this.camera.x = MathUtils.clamp(this.camera.x, 0, this.world.width - this.canvas.width);
         this.camera.y = MathUtils.clamp(this.camera.y, 0, this.world.height - this.canvas.height);
 
+        // 🚀 [PERFORMANCE FIX] Native for-loop instead of .forEach() array allocation!
         if (this.tick % 30 === 0) {
             let blackEggs = 0, redEggs = 0, blackPop = 0, redPop = 0;
-            this.entities.forEach(e => {
+            const entLen = this.entities.length;
+            
+            for (let i = 0; i < entLen; i++) {
+                let e = this.entities[i];
                 if (e instanceof Structure && e.type === 'eggsac') {
                     if (e.team === 'black') blackEggs++; else if (e.team === 'red') redEggs++;
                 }
                 if (e instanceof Spider && !e.hasTrait('queen')) {
                     if (e.team === 'black') blackPop++; else if (e.team === 'red') redPop++;
                 }
-            });
+            }
             this.maxPop.black = 10 + (blackEggs * 10);
             this.maxPop.red = 10 + (redEggs * 10);
             this.pop.black = blackPop;
@@ -660,10 +668,14 @@ export class Game {
     getNearestEnemy(x, y, team, maxDist) {
         const CELL_SIZE = 250;
         
-        const minCx = ((x - maxDist) / CELL_SIZE) | 0;
-        const maxCx = ((x + maxDist) / CELL_SIZE) | 0;
-        const minCy = ((y - maxDist) / CELL_SIZE) | 0;
-        const maxCy = ((y + maxDist) / CELL_SIZE) | 0;
+        // 🚀 [PERFORMANCE] Pre-calculate and clamp bounds outside the loop
+        const maxGridX = Math.ceil(this.world.width / CELL_SIZE);
+        const maxGridY = Math.ceil(this.world.height / CELL_SIZE);
+        
+        const minCx = MathUtils.clamp(((x - maxDist) / CELL_SIZE) | 0, 0, maxGridX);
+        const maxCx = MathUtils.clamp(((x + maxDist) / CELL_SIZE) | 0, 0, maxGridX);
+        const minCy = MathUtils.clamp(((y - maxDist) / CELL_SIZE) | 0, 0, maxGridY);
+        const maxCy = MathUtils.clamp(((y + maxDist) / CELL_SIZE) | 0, 0, maxGridY);
 
         let nearest = null;
         let minDistSq = maxDist * maxDist;
@@ -671,7 +683,7 @@ export class Game {
         for (let cx = minCx; cx <= maxCx; cx++) {
             for (let cy = minCy; cy <= maxCy; cy++) {
                 
-                const key = (Math.max(0, cx) << 16) | Math.max(0, cy);
+                const key = (cx << 16) | cy;
                 const cell = this.spatialGrid.get(key);
                 if (!cell) continue; 
 
