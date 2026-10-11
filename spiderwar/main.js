@@ -30,6 +30,7 @@ import { SpellExpansion } from './expansions/Spells.js';
 import { SpecialUnitsExpansion } from './expansions/SpecialUnits.js';
 import { HazardsExpansion } from './expansions/Hazards.js';
 import { DayNightExpansion } from './expansions/DayNight.js';
+import { WeatherSystemExpansion } from './expansions/Weather.js'; // 🌧️ NEW!
 import { ControlPointsExpansion } from './expansions/ControlPoints.js';
 import { NecromancyExpansion } from './expansions/Necromancy.js'; 
 import { DarkRitualsExpansion } from './expansions/DarkRituals.js';
@@ -71,6 +72,7 @@ const expansionManifest = [
     { name: 'SpecialUnits',         module: SpecialUnitsExpansion },
     { name: 'Hazards',              module: HazardsExpansion },
     { name: 'DayNight',             module: DayNightExpansion },
+    { name: 'WeatherSystem',        module: WeatherSystemExpansion }, // 🌧️ NEW!
     { name: 'ControlPoints',        module: ControlPointsExpansion },
     { name: 'CommanderSpells',      module: SpellExpansion },
     { name: 'Necromancy',           module: NecromancyExpansion },
