@@ -4,7 +4,7 @@ import { MathUtils, Spider } from '../game.js';
 // ==========================================
 // 1. CONFIGURATION & BALANCING
 // ==========================================
-// [EXPANDABILITY] Exported so other mods can tweak hazard spawn rates and damage!
+// 🔌 [EXPANDABILITY] Exported so other mods can tweak hazard spawn rates and damage!
 export const HAZARD_CONFIG = {
     flytrapCount: 30,
     flytrapDamage: 200,      // Massive damage, instantly kills most basic units
@@ -27,25 +27,26 @@ export class VenusFlytrap {
         this.hp = HAZARD_CONFIG.flytrapHp; 
         this.maxHp = HAZARD_CONFIG.flytrapHp;
         
-        // [JUICE] Animation Offsets & Damage Tracking
+        // 🧃 [JUICE] Animation Offsets & Damage Tracking
         this.animOffset = parseInt(this.id, 36) % 100;
         this.flashFrames = 0;
         this.chompAnim = 0;
         this._lastHp = this.hp;
         
-        // Sprites will be pulled instantly from RAM cache on Tick 1 of its life
+        // 🚀 [LOGIC FIX] Store the SRC targets
+        this.spriteSrcOpen = 'assets/flytrap_open.png';
+        this.spriteSrcClosed = 'assets/flytrap_closed.png';
         this.spriteOpen = null;
         this.spriteClosed = null;
+        this.spritesLoaded = false;
+        
+        // Cached aspect ratios
+        this.drawWOpen = 0;
+        this.drawWClosed = 0;
     }
 
     update(game) {
-        // --- ASSET MANAGER CACHE LINKING ---
-        if (!this.spriteOpen && game.assets) {
-            this.spriteOpen = game.assets.get('assets/flytrap_open.png');
-            this.spriteClosed = game.assets.get('assets/flytrap_closed.png');
-        }
-
-        // [JUICE] Damage Flashing Tracker
+        // 🧃 [JUICE] Damage Flashing Tracker
         if (this.hp < this._lastHp) this.flashFrames = 4;
         this._lastHp = this.hp;
         
@@ -64,7 +65,7 @@ export class VenusFlytrap {
         }
         
         // 2. Ambush / Hunting Phase
-        // PERFORMANCE FIX: Use the Spatial Grid to only check units physically nearby!
+        // 🚀 [PERFORMANCE] Use the Spatial Grid to only check units physically nearby!
         let prey = game.getNearestEnemy(this.x, this.y, this.team, HAZARD_CONFIG.flytrapRadius);
         
         if (prey && prey instanceof Spider) {
@@ -75,7 +76,7 @@ export class VenusFlytrap {
                 this.cooldown = HAZARD_CONFIG.flytrapCooldown; // Go to sleep
                 this.chompAnim = 15; // Trigger the vicious snap animation!
                 
-                // JUICE: The snap of the jaw shakes the screen!
+                // 🧃 [JUICE] The snap of the jaw shakes the screen!
                 if (game.triggerShake) game.triggerShake(5);
                 game.bus.emit('playSound', 'death');
                 
@@ -86,12 +87,32 @@ export class VenusFlytrap {
         }
     }
 
-    // [FIX] Pass game down so animations respect game.tick and hit-stops
+    // 🛡️ [FIX] Pass game down so animations respect game.tick and RAM Cache is accessible
     draw(ctx, game) {
+        // 🚀 [LOGIC FIX] Pull the preloaded image directly from the RAM Cache!
+        if (!this.spritesLoaded && game && game.assets) {
+            this.spriteOpen = game.assets.get(this.spriteSrcOpen);
+            this.spriteClosed = game.assets.get(this.spriteSrcClosed);
+            
+            if (this.spriteOpen && this.spriteOpen.complete && this.spriteClosed && this.spriteClosed.complete) {
+                // Pre-calculate Aspect Ratios once to save thousands of math operations
+                const drawH = this.size * 2;
+                this.drawWOpen = drawH * (this.spriteOpen.naturalWidth / this.spriteOpen.naturalHeight);
+                this.drawWClosed = drawH * (this.spriteClosed.naturalWidth / this.spriteClosed.naturalHeight);
+                this.spritesLoaded = true;
+            }
+        }
+
         ctx.save(); 
         ctx.translate(this.x, this.y);
         
-        // [JUICE] Damage flash filter
+        // 🧃 [JUICE] High-Performance Drop Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.beginPath();
+        ctx.ellipse(0, this.size * 0.4, this.size * 0.9, this.size * 0.5, 0, 0, MathUtils.TWO_PI);
+        ctx.fill();
+
+        // 🧃 [JUICE] Damage flash filter
         if (this.flashFrames > 0) ctx.filter = 'brightness(2.5)';
         
         // Organic Breathing Animation
@@ -103,27 +124,19 @@ export class VenusFlytrap {
         
         ctx.scale(breathe, breathe);
 
-        // [JUICE] Chomp recoil animation!
+        // 🧃 [JUICE] Chomp recoil animation!
         if (this.chompAnim > 0) {
             // A rapid squash and stretch to simulate snapping shut
             const squash = 1 - Math.sin((this.chompAnim / 15) * Math.PI) * 0.3;
             ctx.scale(1 / squash, squash); // Preserves volume
         }
 
-        // [JUICE] Add an ambient drop shadow so the plant feels rooted to the earth
-        ctx.shadowColor = 'rgba(0,0,0,0.6)';
-        ctx.shadowBlur = 8;
-        ctx.shadowOffsetY = 4;
-
         const isOpen = this.cooldown === 0;
         const activeSprite = isOpen ? this.spriteOpen : this.spriteClosed;
 
-        if (activeSprite && activeSprite.complete && activeSprite.naturalHeight !== 0) {
-            
-            // ASPECT RATIO FIX: Calculate dynamic width based on the actual image proportions!
-            const aspect = activeSprite.naturalWidth / activeSprite.naturalHeight;
+        if (this.spritesLoaded && activeSprite) {
             const drawH = this.size * 2;
-            const drawW = drawH * aspect;
+            const drawW = isOpen ? this.drawWOpen : this.drawWClosed;
             
             ctx.drawImage(activeSprite, -drawW / 2, -drawH / 2, drawW, drawH);
             
@@ -132,7 +145,6 @@ export class VenusFlytrap {
             ctx.fillStyle = isOpen ? '#55ff55' : '#335533';
             ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
             
-            ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; // Reset shadow for eyes
             if (isOpen) { 
                 ctx.fillStyle = 'red'; 
                 ctx.beginPath(); ctx.arc(0, 0, 8, 0, MathUtils.TWO_PI); ctx.fill(); 
@@ -143,7 +155,7 @@ export class VenusFlytrap {
         // Standard Universal Health Bar (Only draw if damaged)
         if (this.hp < this.maxHp && this.hp > 0) {
             const w = this.size * 1.5;
-            // SAFETY FIX: Prevent negative width rendering if HP drops below zero before cleanup
+            // 🛡️ [FIX] Safely clamp percentage to prevent negative width rendering errors
             const pct = Math.max(0, this.hp) / this.maxHp;
             
             ctx.fillStyle = 'black'; 
@@ -166,7 +178,7 @@ export const HazardsExpansion = {
     init: (game) => {
         game.hazardsSpawned = false;
         
-        // [EXPANDABILITY] Hook config to the game engine
+        // 🔌 [EXPANDABILITY] Hook config to the game engine
         game.hazardConfig = HAZARD_CONFIG;
         
         // --- ASSET REGISTRY ---
