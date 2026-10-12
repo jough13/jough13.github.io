@@ -10,7 +10,7 @@ export const SWARM_CONFIG = {
     structureMass: 1.0,   // Buildings don't move, so they push bugs away with 100% force
     unitMass: 0.5,        // Bugs push each other equally (50% force each)
     cellSize: 250,        // MUST match the CELL_SIZE in game.js spatialGrid!
-    scrambleWobble: 0.05  // How much rotation gets disrupted when crammed together
+    scrambleWobble: 0.002 // Toned down from 0.05. How much rotation gets disrupted when crammed together
 };
 
 export const SwarmDynamicsExpansion = {
