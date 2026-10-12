@@ -135,8 +135,11 @@ export const AdvancedUnitControlExpansion = {
                 return;
             }
 
-            // Prevent interaction if clicking on UI elements
-            if (targetElem && targetElem.closest && (targetElem.closest('#structureModal') || targetElem.closest('#rtsUI') || targetElem.closest('#preGameUI'))) {
+            // ==========================================
+            // 🛠️ BUG FIX: Minimap Double-Command Glitch
+            // Added #mobileToolbar to the ignore list!
+            // ==========================================
+            if (targetElem && targetElem.closest && (targetElem.closest('#structureModal') || targetElem.closest('#rtsUI') || targetElem.closest('#preGameUI') || targetElem.closest('#mobileToolbar'))) {
                 game.dragBox = null; return;
             }
 
@@ -245,7 +248,8 @@ export const AdvancedUnitControlExpansion = {
                     }
 
                     if (clickedUnit) {
-                        const now = Date.now();
+                        // 🛠️ BUG FIX: Use performance.now() to prevent double-click from breaking if OS clock stutters
+                        const now = performance.now();
                         
                         // 🧃 RTS POLISH: Double-Click to select all units of the same type!
                         if (now - lastClickTime < CONTROLS_CONFIG.doubleClickMs && lastClickedUnit === clickedUnit) {
@@ -298,6 +302,16 @@ export const AdvancedUnitControlExpansion = {
         };
 
         window.addEventListener('mouseup', e => handleRTSClick(e, e.clientX, e.clientY, e.target, false));
+        
+        // ==========================================
+        // 🛠️ BUG FIX: Mobile Touch Lockout 
+        // We added the missing `touchend` listener!
+        // ==========================================
+        window.addEventListener('touchend', e => {
+            if(e.changedTouches.length === 1) {
+                handleRTSClick(e, e.changedTouches[0].clientX, e.changedTouches[0].clientY, e.target, true);
+            }
+        });
         
         // Touch events explicitly verify 1 finger to prevent pinch-zoom commands from firing moves
         game.canvas.addEventListener('touchstart', e => { 
