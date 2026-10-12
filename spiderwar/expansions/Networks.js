@@ -42,7 +42,8 @@ export const SilkNetworkExpansion = {
             const viewT = game.camera.y - padding;
             const viewB = game.camera.y + game.canvas.height + padding;
 
-            const pulseAlpha = 0.15 + Math.sin(game.tick * 0.05) * 0.10; 
+            // Toned down territory pulse
+            const pulseAlpha = 0.15 + Math.sin(game.tick * 0.05) * 0.005; 
 
             for (let i = 0; i < game.structures.length; i++) {
                 let s = game.structures[i];
@@ -214,8 +215,8 @@ export const WebNetworkExpansion = {
                         
                         const distSq = MathUtils.distSq(struct.x, struct.y, s1.x, s1.y);
                         if (distSq < NETWORK_CONFIG.structLinkDistSq) {
-                            // 🧃 [JUICE] Dist-based pulsing makes the light look like it's flowing through the web!
-                            const flowPulse = 0.15 + Math.sin(game.tick * 0.1 + Math.sqrt(distSq)) * 0.1;
+                            // Toned down web link pulsing
+                            const flowPulse = 0.15 + Math.sin(game.tick * 0.1 + Math.sqrt(distSq)) * 0.005;
                             ctx.strokeStyle = s1.team === 'black' ? `rgba(255,255,255,${flowPulse + 0.1})` : `rgba(255, 100, 100, ${flowPulse + 0.1})`; 
                             ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(struct.x, struct.y); ctx.stroke(); 
                         }
@@ -250,7 +251,8 @@ export const WebNetworkExpansion = {
 
                             const distSq = MathUtils.distSq(s2.x, s2.y, s1.x, s1.y);
                             if (distSq < spiderDistSq) { 
-                                const flowPulse = 0.15 + Math.sin(game.tick * 0.1 + Math.sqrt(distSq)) * 0.1;
+                                // Toned down web link pulsing
+                                const flowPulse = 0.15 + Math.sin(game.tick * 0.1 + Math.sqrt(distSq)) * 0.005;
                                 ctx.strokeStyle = s1.team === 'black' ? `rgba(255,255,255,${flowPulse})` : `rgba(255, 100, 100, ${flowPulse})`; 
                                 ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y); ctx.stroke(); 
                             }
