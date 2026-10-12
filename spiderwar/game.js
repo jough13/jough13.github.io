@@ -598,20 +598,43 @@ export class Game {
         }
 
         // 🚀 [PERFORMANCE FIX] Array Pooling! 
-        // Instead of destroying arrays and triggering Garbage Collection, 
-        // we simply empty them out by setting length to 0 and reuse the memory!
         for (let cell of this.spatialGrid.values()) {
             cell.length = 0; 
         }
         
         const CELL_SIZE = 250;
-        
-        // [PERFORMANCE] Fast spatial map bounds caching
         const maxGridX = Math.ceil(this.world.width / CELL_SIZE);
         const maxGridY = Math.ceil(this.world.height / CELL_SIZE);
+        const originalLength = this.entities.length;
 
+        // ========================================================
+        // 🛠️ PASS 1: POPULATE SPATIAL GRID FIRST
+        // This ensures the grid is 100% full before ANY unit tries to query it!
+        // ========================================================
+        for (let i = 0; i < originalLength; i++) {
+            let e = this.entities[i];
+            
+            // Only add alive entities with a team to the grid
+            let isDead = (e.hp !== undefined && e.hp <= 0) || 
+                         (e.resources !== undefined && e.resources <= 0) || 
+                         (e.active !== undefined && !e.active) || 
+                         (e.life !== undefined && e.life <= 0);
+
+            if (!isDead && e.team) {
+                const cx = MathUtils.clamp((e.x / CELL_SIZE) | 0, 0, maxGridX);
+                const cy = MathUtils.clamp((e.y / CELL_SIZE) | 0, 0, maxGridY);
+                const key = (cx << 16) | cy;
+                
+                let cell = this.spatialGrid.get(key);
+                if (!cell) { cell = []; this.spatialGrid.set(key, cell); }
+                cell.push(e);
+            }
+        }
+
+        // ========================================================
+        // 🛠️ PASS 2: UPDATE ENTITIES & GARBAGE COLLECTION
+        // ========================================================
         let aliveCount = 0;
-        let originalLength = this.entities.length;
 
         for (let i = 0; i < originalLength; i++) {
             let e = this.entities[i];
@@ -632,25 +655,12 @@ export class Game {
                 if (this.selectedStructure === e) { this.selectedStructure = null; this.bus.emit('closeModal'); }
                 
             } else {
-                // Execute behavior
+                // Execute behavior (Now safely queries the fully populated spatial grid!)
                 if (e.update) e.update(this);
                 
                 // Pack alive entities tightly into the start of the array
                 this.entities[aliveCount] = e; 
                 aliveCount++;
-                
-                // --- PILLAR 1: POPULATE SPATIAL GRID ---
-                if (e.team) {
-                    // [FIX] Double-clamping ensures grid keys never overflow or go negative if bugs walk off-map
-                    const cx = MathUtils.clamp((e.x / CELL_SIZE) | 0, 0, maxGridX);
-                    const cy = MathUtils.clamp((e.y / CELL_SIZE) | 0, 0, maxGridY);
-                    
-                    const key = (cx << 16) | cy;
-                    
-                    let cell = this.spatialGrid.get(key);
-                    if (!cell) { cell = []; this.spatialGrid.set(key, cell); }
-                    cell.push(e);
-                }
             }
         }
 
