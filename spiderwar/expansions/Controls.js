@@ -356,8 +356,8 @@ export const AdvancedUnitControlExpansion = {
             
             // Optimize by precalculating the dash offset once per frame
             const dashOffset = -game.tick * 0.5;
-            // 🧃 [JUICE] Gently pulse the selection rings so they feel alive
-            const pulse = 1 + Math.sin(game.tick * 0.1) * 0.05;
+            // Gently pulse the selection rings so they feel alive
+            const pulse = 1 + Math.sin(game.tick * 0.1) * 0.002;
             
             const selLen = game.selectedUnits.length;
             for (let i = 0; i < selLen; i++) {
@@ -606,9 +606,9 @@ export const ConstructionExpansion = {
                 const tick = gameObj ? gameObj.tick : 0;
                 
                 // Pulsing animation unless paused
-                const pulse = this.isPaused ? 0 : Math.sin(tick * 0.1) * 2;
+                const pulse = this.isPaused ? 0 : Math.sin(tick * 0.1) * 0.1;
                 
-                // 🧃 [JUICE] Draw a dark "foundation hole" on the ground
+                // Draw a dark "foundation hole" on the ground
                 ctx.fillStyle = 'rgba(0,0,0,0.6)';
                 ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 4;
                 ctx.beginPath(); ctx.ellipse(0, 0, this.size, this.size * 0.7, 0, 0, MathUtils.TWO_PI); ctx.fill();
