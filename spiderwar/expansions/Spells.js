@@ -126,8 +126,8 @@ export class Spell {
             
             ctx.shadowBlur = 0; // Reset
             
-            // Caustic ripple effect synced to global tick
-            const ripple = this.radius * (0.8 + Math.sin(tick * 0.1) * 0.1);
+            // Caustic ripple effect synced to global tick (toned down from 0.1 to 0.005)
+            const ripple = this.radius * (0.8 + Math.sin(tick * 0.1) * 0.005);
             ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
             ctx.beginPath(); 
             ctx.arc(0, 0, ripple, 0, MathUtils.TWO_PI); 
@@ -146,8 +146,8 @@ export class Spell {
             }
         } 
         else if (this.type === 'silkTrap') {
-            // Mesmerizing, slow rotation animation synced to global tick
-            ctx.rotate(tick * 0.01);
+            // Mesmerizing, slow rotation animation synced to global tick (toned down from 0.01 to 0.0005)
+            ctx.rotate(tick * 0.0005);
             
             ctx.fillStyle = '#ffffff'; 
             
