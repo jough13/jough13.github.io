@@ -145,10 +145,10 @@ export class Spider {
 
         ctx.rotate(this.angle); 
         
-        // 🧃 [JUICE] Organic breathing animation! Faster when in combat or moving.
+        // Organic breathing animation! Faster when in combat or moving.
         const tick = game ? game.tick : 0;
         const breathSpeed = (this.state === SPIDER_STATE.COMBAT || this.speed > 0.5) ? 0.2 : 0.05;
-        const breath = 1 + Math.sin(tick * breathSpeed + this.animOffset) * 0.05;
+        const breath = 1 + Math.sin(tick * breathSpeed + this.animOffset) * 0.002;
         ctx.scale(breath, 1 / breath); // Squish and stretch volume preservation
         
         if (this.imageLoaded && this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) { 
@@ -194,16 +194,16 @@ export class ResourceNode {
 
         ctx.save(); 
         
-        // 🧃 [JUICE] Magical hovering animation for resources
+        // Magical hovering animation for resources
         const tick = game ? game.tick : 0;
-        const floatY = Math.sin(tick * 0.05 + this.animOffset) * 4;
+        const floatY = Math.sin(tick * 0.05 + this.animOffset) * 0.2;
         ctx.translate(this.x, this.y + floatY);
         
         const maxRes = this.type === 'pumpkin' ? 100 : 50;
         const scale = Math.max(0.4, this.resources / maxRes); 
         ctx.scale(scale, scale);
         
-        // 🧃 [JUICE] Add an ethereal glow matching the resource color
+        // Add an ethereal glow matching the resource color
         ctx.shadowColor = this.type === 'pumpkin' ? '#ff7b00' : '#00aaff';
         ctx.shadowBlur = 15;
         
