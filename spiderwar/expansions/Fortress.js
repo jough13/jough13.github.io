@@ -267,8 +267,8 @@ export const FortressExpansion = {
             // 🧃 [JUICE] Heavy Recoil Animation for Mortars
             let restoreRecoil = false;
             if (this.type === 'mortar' && this.fireAnim > 0) {
-                // Squash the mortar down by up to 20% on fire, snapping back quickly
-                const squash = 1 - Math.sin((this.fireAnim / 12) * Math.PI) * 0.2;
+                // Squash the mortar down on fire, snapping back quickly (toned down from 0.2 to 0.01)
+                const squash = 1 - Math.sin((this.fireAnim / 12) * Math.PI) * 0.01;
                 ctx.save();
                 ctx.translate(this.x, this.y + this.size/2); // Pin to the ground
                 ctx.scale(1 / squash, squash);               // Squash and stretch volume preservation
@@ -302,7 +302,8 @@ export const FortressExpansion = {
                     
                     // 🧃 [JUICE] Glowing healing basin
                     ctx.shadowColor = '#00ff00';
-                    ctx.shadowBlur = 10 + Math.sin(gameObj.tick * 0.1) * 5;
+                    // Toned down shadow pulsing from 5 to 0.25
+                    ctx.shadowBlur = 10 + Math.sin(gameObj.tick * 0.1) * 0.25;
                     ctx.fillStyle = '#00ff00'; 
                     ctx.beginPath(); ctx.ellipse(this.x, this.y + 15, 22, 8, 0, 0, TWO_PI); ctx.fill();
                 } 
