@@ -87,8 +87,8 @@ class ToxicPuddle {
         ctx.beginPath();
         // [JUICE] Organic pulsating blob shape
         const tick = game ? game.tick : 0;
-        const pulseX = 1 + Math.sin(tick * 0.05 + this.animOffset) * 0.1;
-        const pulseY = 1 + Math.cos(tick * 0.05 + this.animOffset) * 0.1;
+        const pulseX = 1 + Math.sin(tick * 0.05 + this.animOffset) * 0.005;
+        const pulseY = 1 + Math.cos(tick * 0.05 + this.animOffset) * 0.005;
         
         ctx.ellipse(0, 0, this.radius * pulseX, this.radius * 0.7 * pulseY, Math.sin(this.life * 0.05), 0, MathUtils.TWO_PI);
         ctx.fill();
@@ -344,7 +344,7 @@ export const ToxicPlagueExpansion = {
                 ctx.translate(this.x, this.y);
                 
                 const tick = gameObj ? gameObj.tick : 0;
-                const pulse = Math.sin(tick * 0.2) * 2;
+                const pulse = Math.sin(tick * 0.2) * 0.1;
                 
                 ctx.fillStyle = `rgba(85, 255, 0, 0.3)`;
                 ctx.beginPath(); ctx.arc(0, 0, this.size + 4 + pulse, 0, MathUtils.TWO_PI); ctx.fill();
@@ -371,7 +371,7 @@ export const ToxicPlagueExpansion = {
             // [JUICE] Birthing Squash & Stretch
             let restoreScale = false;
             if (this.type === 'incubator' && this.spawnAnim > 0) {
-                const stretch = 1 + Math.sin((this.spawnAnim / 15) * Math.PI) * 0.2;
+                const stretch = 1 + Math.sin((this.spawnAnim / 15) * Math.PI) * 0.01;
                 ctx.save();
                 ctx.translate(this.x, this.y + this.size/2); // Pin to ground
                 ctx.scale(1 / stretch, stretch);
@@ -391,7 +391,7 @@ export const ToxicPlagueExpansion = {
                 ctx.fillStyle = '#55ff00'; 
                 
                 const tick = gameObj ? gameObj.tick : 0;
-                const throb = Math.sin(tick * 0.1) * 3;
+                const throb = Math.sin(tick * 0.1) * 3; // (Left untouched as requested, matching existing codebase state)
                 
                 ctx.beginPath(); ctx.arc(0, 0, 10 + throb, 0, MathUtils.TWO_PI); ctx.fill();
                 ctx.restore();
