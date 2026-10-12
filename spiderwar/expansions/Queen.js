@@ -209,7 +209,8 @@ export class Queen extends Spider {
         // 🧃 [JUICE] Organic breathing animation! Faster when walking or fighting.
         const tick = game ? game.tick : 0;
         const breathSpeed = (this.commandTarget || this.cooldown > 0) ? 0.2 : 0.05;
-        const breath = 1 + Math.sin(tick * breathSpeed + this.animOffset) * 0.05;
+        // Toned down breathing animation from 0.05 to 0.002
+        const breath = 1 + Math.sin(tick * breathSpeed + this.animOffset) * 0.002;
         ctx.scale(breath, 1 / breath);
         
         // ASPECT RATIO FIX: Queen sprites can now be rectangular!
