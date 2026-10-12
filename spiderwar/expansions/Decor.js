@@ -150,7 +150,7 @@ export const DecorExpansion = {
                             // 🧃 [JUICE] Ambient Animations based on behavior tags!
                             if (d.behavior === 'liquid') {
                                 // Gentle bobbing on the Y axis
-                                const drawY = d.y + Math.sin(tick * 0.03 + d.x) * 2; 
+                                const drawY = d.y + Math.sin(tick * 0.03 + d.x) * 0.1; 
                                 ctx.translate(d.x, drawY);
                                 ctx.rotate(d.angle);       
                                 
@@ -160,7 +160,7 @@ export const DecorExpansion = {
                             } else if (d.behavior === 'plant') {
                                 // 🧃 [JUICE] Base-hinged swaying! 
                                 // Translates to the BOTTOM of the sprite, rotates, then draws offset.
-                                const sway = Math.sin(tick * 0.015 + d.y) * 0.08;
+                                const sway = Math.sin(tick * 0.015 + d.y) * 0.004;
                                 ctx.translate(d.x, d.y + d.size); // Move to the "roots"
                                 ctx.rotate(d.angle + sway);       // Apply wind
                                 ctx.translate(0, -d.size);        // Move back up to draw center
