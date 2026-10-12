@@ -172,7 +172,7 @@ export const DarkRitualsExpansion = {
             // 🧃 [JUICE] Volatile pulsing animation for the explosive 'Tick' unit
             let restoreScale = false;
             if (this.role === 'tick') {
-                const tickPulse = 1 + Math.sin(tick * 0.4 + this.animOffset) * 0.15;
+                const tickPulse = 1 + Math.sin(tick * 0.4 + this.animOffset) * 0.007;
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 ctx.scale(tickPulse, tickPulse);
@@ -184,7 +184,7 @@ export const DarkRitualsExpansion = {
             if (this.bloodlustTimer > 0) {
                 ctx.save();
                 ctx.translate(this.x, this.y);
-                const pulse = Math.sin(tick * 0.3) * 2;
+                const pulse = Math.sin(tick * 0.3) * 0.1;
                 
                 // Deep Red glowing ring under the unit
                 ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 10;
@@ -215,7 +215,7 @@ export const DarkRitualsExpansion = {
             let restorePump = false;
             if (this.type === 'extractor' && this.pumpAnim > 0) {
                 // Squash and stretch based on the pumpAnim timer
-                const stretch = 1 + Math.sin((this.pumpAnim / 15) * Math.PI) * 0.15;
+                const stretch = 1 + Math.sin((this.pumpAnim / 15) * Math.PI) * 0.007;
                 ctx.save();
                 ctx.translate(this.x, this.y + (this.size / 2)); // Pin to the bottom
                 ctx.scale(1 / stretch, stretch);
@@ -238,7 +238,7 @@ export const DarkRitualsExpansion = {
                 ctx.fillStyle = '#00aaff'; 
                 
                 const tick = gameObj ? gameObj.tick : 0;
-                const piston = Math.sin(tick * 0.1) * 10;
+                const piston = Math.sin(tick * 0.1) * 0.5;
                 ctx.fillRect(-5, -30 + piston, 10, 20);
                 
                 ctx.restore();
