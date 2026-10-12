@@ -199,7 +199,7 @@ export class CentipedeBoss {
             ctx.save(); 
             
             // 🧃 [JUICE] Wriggle Offset! Adds an organic sine wave to the segments as it moves
-            const wriggleOffset = Math.sin(tick * 0.2 + i) * 3;
+            const wriggleOffset = Math.sin(tick * 0.2 + i) * 0.15; // Toned down from 3 to 0.15
             ctx.translate(pos.x, pos.y); 
             ctx.rotate(pos.angle);
             ctx.translate(0, wriggleOffset);
