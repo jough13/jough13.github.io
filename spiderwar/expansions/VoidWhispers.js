@@ -118,8 +118,8 @@ class VortexEntity {
         // Apply spawn scaling
         ctx.scale(this.spawnScale, this.spawnScale);
         
-        // Swirling animation
-        ctx.rotate(this.life * 0.2);
+        // Swirling animation (Toned down from 0.2 to 0.01)
+        ctx.rotate(this.life * 0.01);
         
         // Fade in/out
         const alpha = Math.min(1, this.life / 30);
@@ -365,10 +365,10 @@ export const VoidWhispersExpansion = {
                 if (this.sprite) this.spriteLoaded = true;
             }
 
-            // [JUICE] The Chewing Animation (Squash and Stretch)
+            // [JUICE] The Chewing Animation (Squash and Stretch toned down from 0.2 to 0.01)
             let restoreChew = false;
             if (this.type === 'maw' && this.chewAnim > 0) {
-                const squash = 1 - Math.sin((this.chewAnim / 15) * Math.PI) * 0.2;
+                const squash = 1 - Math.sin((this.chewAnim / 15) * Math.PI) * 0.01;
                 ctx.save();
                 ctx.translate(this.x, this.y + this.size/2); 
                 ctx.scale(1 / squash, squash);
@@ -385,9 +385,9 @@ export const VoidWhispersExpansion = {
                 // [JUICE] Added drop shadow to fallback
                 ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 4;
                 
-                // Pulsing outer flesh ring
+                // Pulsing outer flesh ring (Toned down from 3 to 0.15)
                 const tick = gameObj ? gameObj.tick : 0;
-                const pulse = Math.sin(tick * 0.1) * 3;
+                const pulse = Math.sin(tick * 0.1) * 0.15;
                 ctx.fillStyle = '#220022'; 
                 ctx.beginPath(); ctx.arc(0, 0, this.size + pulse, 0, MathUtils.TWO_PI); ctx.fill();
                 
