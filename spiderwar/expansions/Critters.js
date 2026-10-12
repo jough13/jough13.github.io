@@ -110,7 +110,8 @@ export class Aphid {
         // 🧃 [JUICE] Organic wiggle that speeds up significantly if they are fleeing in panic
         const tick = game ? game.tick : 0;
         const wiggleSpeed = this.hp < this.maxHp ? 0.8 : 0.1;
-        const wiggle = Math.sin(tick * wiggleSpeed + this.animOffset) * 0.15;
+        // Reduced wiggle magnitude from 0.15 to 0.007
+        const wiggle = Math.sin(tick * wiggleSpeed + this.animOffset) * 0.007;
         ctx.rotate(wiggle);
 
         // 🧃 [JUICE] Flash bright white when damaged
@@ -231,7 +232,8 @@ export class GoldenBug {
         // 🧃 [JUICE] Frantic wiggle animation when running away
         const tick = game ? game.tick : 0;
         const wiggleSpeed = this.hp < this.maxHp ? 0.6 : 0.05;
-        const wiggle = Math.sin(tick * wiggleSpeed + this.animOffset) * 0.1;
+        // Reduced wiggle magnitude from 0.1 to 0.005
+        const wiggle = Math.sin(tick * wiggleSpeed + this.animOffset) * 0.005;
         ctx.rotate(wiggle);
 
         // 🧃 [JUICE] Flash bright white when damaged
@@ -245,7 +247,8 @@ export class GoldenBug {
             
             // 🧃 [JUICE] Pulsing golden aura behind the sprite
             ctx.shadowColor = '#ffea00';
-            ctx.shadowBlur = 15 + Math.sin(tick * 0.1 + this.animOffset) * 5;
+            // Reduced glow pulse magnitude from 5 to 0.25
+            ctx.shadowBlur = 15 + Math.sin(tick * 0.1 + this.animOffset) * 0.25;
             
             ctx.drawImage(this.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
             ctx.shadowBlur = 0;
