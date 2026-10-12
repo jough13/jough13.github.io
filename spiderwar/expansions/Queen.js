@@ -44,6 +44,15 @@ export class Queen extends Spider {
     }
 
     update(game) {
+        // ==========================================
+        // 🛠️ BUG FIX: Inherit Status Effects
+        // ==========================================
+        // 1. Run the base spider update (Processes Toxic DoTs, Bloodlust, etc.)
+        super.update(game);
+        
+        // 2. Halt AI if completely frozen by the Paralyze spell
+        if (this.stunTimer > 0) return;
+
         this.age++;
 
         // 1. Self-Defense Combat Check (Queens hit hard!)
@@ -165,6 +174,21 @@ export class Queen extends Spider {
 
     // 🛡️ [FIX] Added game parameter so breathing animation inherits correctly
     draw(ctx, game) {
+        // ==========================================
+        // 🛠️ BUG FIX: Inherit Status Effect Graphics
+        // ==========================================
+        // Temporarily hide the sprite so the base class only draws the magic auras/ice blocks
+        // and doesn't accidentally draw a squished double-sprite underneath the Queen!
+        const tempSprite = this.sprite;
+        const tempLoaded = this.imageLoaded;
+        this.sprite = null;
+        this.imageLoaded = false;
+        
+        super.draw(ctx, game); 
+        
+        this.sprite = tempSprite;
+        this.imageLoaded = tempLoaded;
+
         // 🚀 [LOGIC FIX] Pull the preloaded image directly from the RAM Cache!
         if (!this.imageLoaded && game && game.assets) {
             this.sprite = game.assets.get(this.spriteSrc);
