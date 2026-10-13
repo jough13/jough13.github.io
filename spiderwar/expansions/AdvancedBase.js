@@ -181,21 +181,41 @@ export const AdvancedBaseExpansion = {
             // 3. CRIMSON SWARM AI: DYNAMIC ESCALATION
             // ==========================================
             
+            // ✅ FIX: Initialize tracking flags so we only escalate once per phase
+            if (this.aiConfig.phase2Escalated === undefined) {
+                this.aiConfig.phase2Escalated = false;
+                this.aiConfig.phase3Escalated = false;
+                this.aiConfig.phase4Escalated = false;
+            }
+
             // 🧃 [JUICE] Phase Escalation UI & Sound Hooks
-            const escalatePhase = (phaseNum) => {
+            const escalatePhase = (phaseNum, targetTick) => {
                 const phaseStr = `phase${phaseNum}`;
                 this.aiConfig.activeUnitPool.push(...this.aiConfig.pools.units[phaseStr]);
                 this.aiConfig.activeBuildPool.push(...this.aiConfig.pools.buildings[phaseStr]);
                 
-                if (this.showSystemMessage) this.showSystemMessage(`THE SWARM EVOLVES: PHASE ${phaseNum}`, '#ff0000');
-                this.bus.emit('playSound', 'roar');
-                if (this.triggerShake) this.triggerShake(8);
-                console.log(`%c[AI Alert] Crimson Swarm reached Phase ${phaseNum}!`, "color: #ff0000; font-weight: bold;");
+                // ✅ FIX: Mute the SFX/VFX if the game is "catching up" after loading a save file
+                const isCatchingUp = (this.tick > targetTick + 5);
+                
+                if (!isCatchingUp) {
+                    if (this.showSystemMessage) this.showSystemMessage(`THE SWARM EVOLVES: PHASE ${phaseNum}`, '#ff0000');
+                    this.bus.emit('playSound', 'roar');
+                    if (this.triggerShake) this.triggerShake(8);
+                }
+                
+                console.log(`%c[AI Alert] Crimson Swarm reached Phase ${phaseNum}! ${isCatchingUp ? '(Save Loaded)' : ''}`, "color: #ff0000; font-weight: bold;");
             };
 
-            if (this.tick === ai.phase2Tick) escalatePhase(2);
-            if (this.tick === ai.phase3Tick) escalatePhase(3);
-            if (this.tick === ai.phase4Tick) escalatePhase(4);
+            // Use >= so late-game saves instantly unlock the correct tech pools
+            if (this.tick >= ai.phase2Tick && !this.aiConfig.phase2Escalated) { 
+                this.aiConfig.phase2Escalated = true; escalatePhase(2, ai.phase2Tick); 
+            }
+            if (this.tick >= ai.phase3Tick && !this.aiConfig.phase3Escalated) { 
+                this.aiConfig.phase3Escalated = true; escalatePhase(3, ai.phase3Tick); 
+            }
+            if (this.tick >= ai.phase4Tick && !this.aiConfig.phase4Escalated) { 
+                this.aiConfig.phase4Escalated = true; escalatePhase(4, ai.phase4Tick); 
+            }
 
             // Unit Spawning Loop
             if (this.tick % ai.unitTickRate === 0) {
