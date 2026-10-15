@@ -703,6 +703,10 @@ export class Game {
                     this.bus.emit('particles', {x: e.x, y: e.y, color: e.color || e.team || '#888', count: e.constructor.name === 'CentipedeBoss' ? 100 : 30});
                     this.bus.emit('playSound', e.team === 'nature' ? 'harvest' : 'death');
                 }
+                
+                // 🛡️ [FIX] Trigger onDeath hook before deleting the entity so loot drops!
+                if (e.onDeath) e.onDeath(this);
+
                 if (this.selectedStructure === e) { this.selectedStructure = null; this.bus.emit('closeModal'); }
                 
             } else {
