@@ -140,7 +140,8 @@ export class EggTrap {
 
     // [FIX] Pass `game` to draw so the RAM cache can be accessed
     draw(ctx, game) {
-        if (this.team !== 'black') return; // Invisible to enemy team
+        // 🛡️ [FIX] Enemy traps are invisible until they trigger! 
+        if (this.team !== 'black' && !this.detonating) return; 
 
         // 🚀 [LOGIC FIX] Pull the preloaded image directly from the RAM Cache!
         if (!this.spriteLoaded && game && game.assets) {
@@ -270,12 +271,16 @@ export const BroodAmbushExpansion = {
                     
                     game.bus.emit('playSound', 'spell');
                     
+                    // 🛡️ [FIX] Dynamic colors for whichever team casts it!
+                    const magicColor = data.team === 'black' ? '#aa00ff' : '#ff0000';
+                    const ringColor = data.team === 'black' ? 'rgba(170, 0, 255, 0.5)' : 'rgba(255, 0, 0, 0.5)';
+                    
                     // 🧃 [JUICE] Dirt burrowing visual + Range Indicator Ring!
                     game.bus.emit('particles', {x: data.x, y: data.y, color: '#3d2817', count: 15});
-                    game.bus.emit('particles', {x: data.x, y: data.y, color: '#aa00ff', count: 10, type: 'magic'});
+                    game.bus.emit('particles', {x: data.x, y: data.y, color: magicColor, count: 10, type: 'magic'});
                     
                     // Flash the trigger ring to the player briefly
-                    game.bus.emit('particles', {x: data.x, y: data.y, color: 'rgba(170, 0, 255, 0.5)', count: 1, type: 'ring'});
+                    game.bus.emit('particles', {x: data.x, y: data.y, color: ringColor, count: 1, type: 'ring'});
                 }
             }
         });
