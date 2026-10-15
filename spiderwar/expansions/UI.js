@@ -36,7 +36,7 @@ export const MinimapExpansion = {
         game.uiConfig = UI_CONFIG;
         game.minimap = UI_CONFIG.minimap; 
         game.isMinimapDragging = false;
-        game.minimapPings = []; // JUICE: Array to hold radar pings!
+        game.minimapPings = []; // JUICE: Array to hold radar pings! (Now uses World Coordinates!)
         
         const getMinimapWorldPos = (localX, localY) => {
             const pctX = MathUtils.clamp(localX / game.minimap.size, 0, 1); 
@@ -64,8 +64,8 @@ export const MinimapExpansion = {
                 game.bus.emit('particles', {x: pos.x, y: pos.y, color: '#aa00ff', count: 20});
                 game.bus.emit('playSound', 'shoot');
                 
-                // Add a visual ping to the minimap
-                game.minimapPings.push({ x: localX, y: localY, age: 0 });
+                // 🛡️ [FIX] Store the ping in World Coordinates (pos.x, pos.y) instead of local minimap coordinates
+                game.minimapPings.push({ x: pos.x, y: pos.y, age: 0 });
                 
                 validUnits.forEach(u => {
                     u.commandTarget = { x: pos.x, y: pos.y }; 
@@ -240,7 +240,8 @@ export const MinimapExpansion = {
                 ctx.strokeStyle = `rgba(170, 0, 255, ${1 - (p.age/45)})`; 
                 ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.arc(startX + p.x, startY + p.y, p.age * 1.5, 0, TWO_PI); // Expands dynamically
+                // 🛡️ [FIX] Scale the world coordinate down to minimap space during render!
+                ctx.arc(startX + (p.x * scaleX), startY + (p.y * scaleY), p.age * 1.5, 0, TWO_PI); 
                 ctx.stroke();
             }
             
