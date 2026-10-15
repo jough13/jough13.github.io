@@ -132,6 +132,20 @@ export const AIDirectorExpansion = {
 
             // --- STATE: BUILDING (Rallying troops) ---
             if (dir.state === AI_STATE.BUILDING || dir.state === AI_STATE.DEFENDING) {
+                
+                // 🛡️ [FIX] Release hijacked defense units so they don't get stuck forever
+                if (dir.state === AI_STATE.DEFENDING) {
+                    const entities = this.entities;
+                    const entLen = entities.length;
+                    for (let i = 0; i < entLen; i++) {
+                        let e = entities[i];
+                        if (e.team === 'red' && e.hp > 0 && e instanceof Spider) {
+                            e.isManual = false;
+                            e.commandTarget = null;
+                        }
+                    }
+                }
+
                 dir.state = AI_STATE.BUILDING;
                 
                 // SMART PATHING: Calculate an angle pointing towards the center of the map
@@ -223,6 +237,12 @@ export const AIDirectorExpansion = {
                 if (!dir.target || dir.target.hp <= 0) {
                     dir.target = null;
                     dir.state = AI_STATE.BUILDING; // Temporarily drop to building to trigger re-evaluation on next frame
+                    
+                    // 🛡️ [FIX] Stop marching to the dead target!
+                    for (let bug of dir.squad) {
+                        bug.isManual = false;
+                        bug.commandTarget = null;
+                    }
                     return; 
                 }
 
@@ -239,6 +259,13 @@ export const AIDirectorExpansion = {
                 if (dir.squad.size < (dir.waveSize * cfg.retreatPercentage)) { 
                     console.log(`[AI Director] Wave defeated. Retreating to rebuild!`);
                     dir.state = AI_STATE.BUILDING;
+                    
+                    // 🛡️ [FIX] Actually release the survivors so they stop marching to their death!
+                    for (let bug of dir.squad) {
+                        bug.isManual = false;
+                        bug.commandTarget = null;
+                    }
+                    
                     dir.squad.clear(); // Release survivors to gather/patrol normally
                 }
             }
