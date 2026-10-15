@@ -26,6 +26,12 @@ export class CentipedeBoss {
         this.x = x; this.y = y; 
         this.team = 'nature'; 
         
+        // 🛡️ [FIX] Defined `size` prevents viewport culling pop-in AND provides a solid hitbox!
+        // With a size of 30 and game.js padding of 150, the culling distance is 180px.
+        // The max tail length is (15 segments * 4 spacing * 1.8 speed) = 108px.
+        // Therefore, the tail will NEVER pop out of existence, and Spiders won't bite the air!
+        this.size = 30; 
+        
         this.hp = BOSS_CONFIG.maxHp; 
         this.maxHp = BOSS_CONFIG.maxHp; 
         this.damage = BOSS_CONFIG.damage; 
@@ -38,6 +44,9 @@ export class CentipedeBoss {
         this.segmentCount = BOSS_CONFIG.segmentCount; 
         this.historyLength = this.segmentCount * BOSS_CONFIG.segmentSpacing; 
         this.history = new Array(this.historyLength);
+        
+        // 🧃 [NOTE] Initializing the history buffer to the current position 
+        // creates the awesome "unburrowing from a single hole" stacked visual effect!
         for (let i = 0; i < this.historyLength; i++) {
             this.history[i] = { x: this.x, y: this.y, angle: this.angle };
         }
