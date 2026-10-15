@@ -34,8 +34,11 @@ export const DayNightExpansion = {
         game.isNight = false;
         game.eclipseTimer = 0;
         
-        // 🚀 [PERFORMANCE] We removed the redundant DOM injection here.
-        // We now route time announcements directly through the standardized `game.showSystemMessage` API!
+        // 🛡️ [FIX] Clean listener for the Eclipse spell that bypasses the engine clock!
+        game.bus.on('triggerEclipse', () => {
+            game.eclipseTimer = DAYNIGHT_CONFIG.eclipseDurationTicks;
+            if (game.showSystemMessage) game.showSystemMessage("SUPERNATURAL ECLIPSE", "#aa00ff");
+        });
     },
 
     patch: (game) => {
@@ -45,14 +48,8 @@ export const DayNightExpansion = {
         // ==========================================
         game.expansions.patchClass(Game, 'update', function(original) {
             
-            // 🛡️ [MOD COMPATIBILITY FIX] The Time-Warp Detector!
-            // If CursedRelics.js fast-forwards the engine tick, we catch the jump here
-            // and force the game into a "Supernatural Eclipse" regardless of real-world time.
-            if (this.lastTick !== undefined && this.tick - this.lastTick > 100) {
-                this.eclipseTimer = DAYNIGHT_CONFIG.eclipseDurationTicks;
-                if (this.showSystemMessage) this.showSystemMessage("SUPERNATURAL ECLIPSE", "#aa00ff");
-            }
-            this.lastTick = this.tick;
+            // 🛡️ [FIX] Removed the hacky `lastTick` time-warp detector here. 
+            // Eclipse is now cleanly driven via the 'triggerEclipse' bus event!
 
             original.call(this);
             
