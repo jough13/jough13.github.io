@@ -47,6 +47,9 @@ export class GoldenCaravan extends Spider {
         this.animOffset = parseInt(this.id, 36) % 100;
         this.flashFrames = 0;
         this._lastHp = this.hp;
+        
+        // 🛡️ [FIX] Track if it left the map intentionally
+        this.escaped = false;
     }
 
     update(game) {
@@ -76,50 +79,52 @@ export class GoldenCaravan extends Spider {
         } else {
             // Reached the edge of the map! It escaped!
             this.hp = 0; 
+            this.escaped = true; // 🛡️ [FIX] Prevents loot explosion
+            
             if (game.showSystemMessage) game.showSystemMessage("THE CARAVAN ESCAPED", "#aaaaaa");
             
             // Ensure no corpse is dropped by Necromancy.js since it just walked off-screen
             this.isZombie = true; 
         }
 
-        // 2. Death & Loot Explosion!
-        if (this.hp <= 0 && distSq > 400) { 
-            // If it died before reaching the edge, drop the loot!
-            
-            // 🧃 [JUICE] Massive Death Impact
-            if (game.triggerShake) game.triggerShake(15);
-            game.bus.emit('playSound', 'roar');
-            game.bus.emit('particles', {x: this.x, y: this.y, color: '#ffea00', count: 150});
-            game.bus.emit('particles', {x: this.x, y: this.y, color: '#00ff00', count: 50, type: 'splatter'}); // Bug guts
-            
-            if (game.showSystemMessage) game.showSystemMessage("THE CARAVAN HAS FALLEN", "#ffea00");
-
-            const spread = CARAVAN_CONFIG.dropSpread;
-            
-            // Drop Pumpkins
-            for(let i = 0; i < CARAVAN_CONFIG.lootPumpkins; i++) {
-                const dropAngle = Math.random() * MathUtils.TWO_PI;
-                const dropDist = Math.random() * spread;
-                const pX = MathUtils.clamp(this.x + Math.cos(dropAngle) * dropDist, 50, game.world.width - 50);
-                const pY = MathUtils.clamp(this.y + Math.sin(dropAngle) * dropDist, 50, game.world.height - 50);
-                game.addEntity(new ResourceNode(pX, pY, 'pumpkin'));
-            }
-            
-            // Drop Dew
-            for(let i = 0; i < CARAVAN_CONFIG.lootDew; i++) {
-                const dropAngle = Math.random() * MathUtils.TWO_PI;
-                const dropDist = Math.random() * spread;
-                const dX = MathUtils.clamp(this.x + Math.cos(dropAngle) * dropDist, 50, game.world.width - 50);
-                const dY = MathUtils.clamp(this.y + Math.sin(dropAngle) * dropDist, 50, game.world.height - 50);
-                game.addEntity(new ResourceNode(dX, dY, 'dew'));
-            }
-            
-            // Prevent Necromancy corpse
-            this.isZombie = true;
-        }
-
         // We do NOT call super.update() because we don't want it to run the default combat/flee AI.
         // It should ignore enemies completely and just march forward.
+    }
+
+    // 🛡️ [FIX] The Death Loot Drop is now safely handled here so it isn't skipped by GC
+    onDeath(game) {
+        if (this.escaped) return; // Didn't die, just walked off the map!
+
+        // 🧃 [JUICE] Massive Death Impact
+        if (game.triggerShake) game.triggerShake(15);
+        game.bus.emit('playSound', 'roar');
+        game.bus.emit('particles', {x: this.x, y: this.y, color: '#ffea00', count: 150});
+        game.bus.emit('particles', {x: this.x, y: this.y, color: '#00ff00', count: 50, type: 'splatter'}); // Bug guts
+        
+        if (game.showSystemMessage) game.showSystemMessage("THE CARAVAN HAS FALLEN", "#ffea00");
+
+        const spread = CARAVAN_CONFIG.dropSpread;
+        
+        // Drop Pumpkins
+        for(let i = 0; i < CARAVAN_CONFIG.lootPumpkins; i++) {
+            const dropAngle = Math.random() * MathUtils.TWO_PI;
+            const dropDist = Math.random() * spread;
+            const pX = MathUtils.clamp(this.x + Math.cos(dropAngle) * dropDist, 50, game.world.width - 50);
+            const pY = MathUtils.clamp(this.y + Math.sin(dropAngle) * dropDist, 50, game.world.height - 50);
+            game.addEntity(new ResourceNode(pX, pY, 'pumpkin'));
+        }
+        
+        // Drop Dew
+        for(let i = 0; i < CARAVAN_CONFIG.lootDew; i++) {
+            const dropAngle = Math.random() * MathUtils.TWO_PI;
+            const dropDist = Math.random() * spread;
+            const dX = MathUtils.clamp(this.x + Math.cos(dropAngle) * dropDist, 50, game.world.width - 50);
+            const dY = MathUtils.clamp(this.y + Math.sin(dropAngle) * dropDist, 50, game.world.height - 50);
+            game.addEntity(new ResourceNode(dX, dY, 'dew'));
+        }
+        
+        // Prevent Necromancy corpse
+        this.isZombie = true;
     }
 
     // 🛡️ [FIX] Pass game object down to super.draw to preserve RAM Cache and animations!
