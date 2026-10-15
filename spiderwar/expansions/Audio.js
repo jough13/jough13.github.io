@@ -152,7 +152,10 @@ export const AudioExpansion = {
                 gainNode.gain.linearRampToValueAtTime(layer.vol, now + layer.attack); 
                 gainNode.gain.setValueAtTime(layer.vol, now + layer.attack); // The Safety Pin!
                 gainNode.gain.exponentialRampToValueAtTime(0.001, now + layer.attack + layer.decay); 
-                gainNode.gain.setValueAtTime(0, now + layer.attack + layer.decay);
+                
+                // 🛡️ [FIX] Removed setValueAtTime(0) here because it fires on the exact same timestamp 
+                // as the exponential ramp completion, causing a Web Audio race-condition "pop" in Chromium.
+                // The sourceNode.stop() call below immediately handles the actual kill anyway!
                 
                 // 2. Setup Filter (If requested by the layer)
                 let filterNode = null;
