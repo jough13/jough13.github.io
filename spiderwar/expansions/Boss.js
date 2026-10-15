@@ -27,9 +27,6 @@ export class CentipedeBoss {
         this.team = 'nature'; 
         
         // 🛡️ [FIX] Defined `size` prevents viewport culling pop-in AND provides a solid hitbox!
-        // With a size of 30 and game.js padding of 150, the culling distance is 180px.
-        // The max tail length is (15 segments * 4 spacing * 1.8 speed) = 108px.
-        // Therefore, the tail will NEVER pop out of existence, and Spiders won't bite the air!
         this.size = 30; 
         
         this.hp = BOSS_CONFIG.maxHp; 
@@ -39,14 +36,10 @@ export class CentipedeBoss {
         this.angle = Math.random() * MathUtils.TWO_PI; 
         
         // 🚀 [PERFORMANCE FIX] Segmented Body Ring Buffer!
-        // Instead of using unshift/pop (which triggers massive GC and re-indexing lag),
-        // we use a fixed-size array and just move a pointer (historyIndex).
         this.segmentCount = BOSS_CONFIG.segmentCount; 
         this.historyLength = this.segmentCount * BOSS_CONFIG.segmentSpacing; 
         this.history = new Array(this.historyLength);
         
-        // 🧃 [NOTE] Initializing the history buffer to the current position 
-        // creates the awesome "unburrowing from a single hole" stacked visual effect!
         for (let i = 0; i < this.historyLength; i++) {
             this.history[i] = { x: this.x, y: this.y, angle: this.angle };
         }
@@ -155,30 +148,30 @@ export class CentipedeBoss {
             this.x = MathUtils.clamp(this.x, 100, game.world.width - 100); 
             this.y = MathUtils.clamp(this.y, 100, game.world.height - 100);
         }
+    }
 
-        // 4. Boss Death Loot Splosion!
-        if (this.hp <= 0) {
-            // 🧃 [JUICE] Massive death throes
-            if (game.triggerShake) game.triggerShake(20); 
-            game.bus.emit('playSound', 'roar'); 
-            setTimeout(() => game.bus.emit('playSound', 'void'), 100);
+    // 🛡️ [FIX] The Death Loot Drop is now safely handled here so it isn't skipped by GC
+    onDeath(game) {
+        // 🧃 [JUICE] Massive death throes
+        if (game.triggerShake) game.triggerShake(20); 
+        game.bus.emit('playSound', 'roar'); 
+        setTimeout(() => game.bus.emit('playSound', 'void'), 100);
+        
+        game.bus.emit('particles', {x: this.x, y: this.y, color: '#00ff00', count: 200});
+        game.bus.emit('particles', {x: this.x, y: this.y, color: '#ffea00', count: 50});
+        
+        // Drop a massive ring of loot, ensuring drops stay safely inside map boundaries
+        for (let i = 0; i < BOSS_CONFIG.lootDrops; i++) {
+            const dropAngle = (MathUtils.TWO_PI / BOSS_CONFIG.lootDrops) * i;
             
-            game.bus.emit('particles', {x: this.x, y: this.y, color: '#00ff00', count: 200});
-            game.bus.emit('particles', {x: this.x, y: this.y, color: '#ffea00', count: 50});
+            const pX = MathUtils.clamp(this.x + Math.cos(dropAngle) * 100, 50, game.world.width - 50);
+            const pY = MathUtils.clamp(this.y + Math.sin(dropAngle) * 100, 50, game.world.height - 50);
             
-            // Drop a massive ring of loot, ensuring drops stay safely inside map boundaries
-            for (let i = 0; i < BOSS_CONFIG.lootDrops; i++) {
-                const dropAngle = (MathUtils.TWO_PI / BOSS_CONFIG.lootDrops) * i;
-                
-                const pX = MathUtils.clamp(this.x + Math.cos(dropAngle) * 100, 50, game.world.width - 50);
-                const pY = MathUtils.clamp(this.y + Math.sin(dropAngle) * 100, 50, game.world.height - 50);
-                
-                const dX = MathUtils.clamp(this.x + Math.cos(dropAngle) * 150, 50, game.world.width - 50);
-                const dY = MathUtils.clamp(this.y + Math.sin(dropAngle) * 150, 50, game.world.height - 50);
-                
-                game.addEntity(new ResourceNode(pX, pY, 'pumpkin'));
-                game.addEntity(new ResourceNode(dX, dY, 'dew'));
-            }
+            const dX = MathUtils.clamp(this.x + Math.cos(dropAngle) * 150, 50, game.world.width - 50);
+            const dY = MathUtils.clamp(this.y + Math.sin(dropAngle) * 150, 50, game.world.height - 50);
+            
+            game.addEntity(new ResourceNode(pX, pY, 'pumpkin'));
+            game.addEntity(new ResourceNode(dX, dY, 'dew'));
         }
     }
 
