@@ -350,8 +350,8 @@ export const AdvancedUnitControlExpansion = {
             }
         });
 
-        // Render UI layer (Drag selection box & Unit Highlights)
-        game.bus.on('uiDraw', (ctx) => {
+        // 🛡️ [FIX] Render Unit Highlights on the Map (Moved to postDraw for world-space coordinates!)
+        game.bus.on('postDraw', (ctx) => {
             if (!game.selectedUnits) return;
             
             // Optimize by precalculating the dash offset once per frame
@@ -380,6 +380,25 @@ export const AdvancedUnitControlExpansion = {
                 }
             }
             ctx.setLineDash([]);
+        });
+
+        // 🛡️ [FIX] Render Drag Selection Box (Kept in uiDraw for static screen-space coordinates!)
+        game.bus.on('uiDraw', (ctx) => {
+            if (game.dragBox && Math.abs(game.dragBox.w) > 0 && Math.abs(game.dragBox.h) > 0) {
+                ctx.save();
+                
+                // 🧃 [JUICE] Translucent green selection box with animated "marching ants" border
+                ctx.fillStyle = 'rgba(0, 255, 0, 0.15)';
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([5, 5]);
+                ctx.lineDashOffset = -game.tick * 0.5;
+                
+                ctx.fillRect(game.dragBox.x, game.dragBox.y, game.dragBox.w, game.dragBox.h);
+                ctx.strokeRect(game.dragBox.x, game.dragBox.y, game.dragBox.w, game.dragBox.h);
+                
+                ctx.restore();
+            }
         });
 
         // 🧃 [JUICE] Custom Queen rotation handling (Smoothing her turns!)
