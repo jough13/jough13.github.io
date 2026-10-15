@@ -213,8 +213,8 @@ export const CaravansExpansion = {
                 this.bus.emit('playSound', 'roar');
                 if (this.triggerShake) this.triggerShake(8);
                 
-                // Add an immediate ping to the minimap to alert players
-                if (this.minimapPings) this.minimapPings.push({ x: startX * (this.minimap.size / this.world.width), y: startY * (this.minimap.size / this.world.height), age: 0 });
+                // 🛡️ [FIX] Standardized ping array to use raw World Coordinates!
+                if (this.minimapPings) this.minimapPings.push({ x: startX, y: startY, age: 0 });
 
                 // Schedule the next one! (Adding the random interval to the current tick)
                 this.nextCaravanTick = this.tick + MathUtils.randomInt(CARAVAN_CONFIG.spawnTickMin, CARAVAN_CONFIG.spawnTickMax);
