@@ -69,7 +69,7 @@ export const DarkRitualsExpansion = {
 
                     for (let cx = minCx; cx <= maxCx; cx++) {
                         for (let cy = minCy; cy <= maxCy; cy++) {
-                            const key = (cx << 16) | cy;
+                            const key = (cx << 16) | (cy & 0xFFFF);
                             const cell = game.spatialGrid.get(key);
                             if (!cell) continue;
 
@@ -99,6 +99,9 @@ export const DarkRitualsExpansion = {
             if (data.role === 'tick') {
                 if (game.eco[data.team].pumpkins >= 30 && game.pop[data.team] < game.maxPop[data.team]) {
                     game.eco[data.team].pumpkins -= 30;
+                    
+                    // 🛡️ [FIX] Increment population immediately to prevent spam-click bypass!
+                    game.pop[data.team]++; 
                     
                     let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
                     
