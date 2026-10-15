@@ -89,11 +89,18 @@ export const AdvancedUnitControlExpansion = {
         let startX, startY, isDraggingBox = false;
         let ticking = false; // Used for requestAnimationFrame throttling
         
+        // 🛡️ [FIX] Helper to standardize local coordinates matching game.js!
+        const getLocalPos = (cx, cy) => {
+            const rect = game.canvas.getBoundingClientRect();
+            return { x: cx - rect.left, y: cy - rect.top };
+        };
+
         game.canvas.addEventListener('mousedown', e => {
             // 🛡️ [LOGIC FIX] Block drag box if the game is over or paused
             if (game.gameState !== 'playing' || game.freezeFrames > 0) return;
 
-            startX = e.clientX; startY = e.clientY;
+            const pos = getLocalPos(e.clientX, e.clientY);
+            startX = pos.x; startY = pos.y;
             
             // Record the tool state the exact moment the click starts
             game.toolAtClickStart = game.activeTool; 
@@ -109,8 +116,9 @@ export const AdvancedUnitControlExpansion = {
             if (isDraggingBox && game.dragBox && !ticking) {
                 ticking = true;
                 requestAnimationFrame(() => {
-                    game.dragBox.w = e.clientX - startX;
-                    game.dragBox.h = e.clientY - startY;
+                    const pos = getLocalPos(e.clientX, e.clientY);
+                    game.dragBox.w = pos.x - startX;
+                    game.dragBox.h = pos.y - startY;
                     ticking = false;
                 });
             }
@@ -122,29 +130,28 @@ export const AdvancedUnitControlExpansion = {
             isDraggingBox = false;
             
             // 🛡️ [LOGIC FIX] Strict Interaction Lockout!
-            // If a Queen just died (freezeFrames) or the game is over, ignore clicks completely
             if (game.gameState !== 'playing' || game.freezeFrames > 0) {
                 game.dragBox = null;
                 return;
             }
 
-            // If the user was placing a building or casting a spell, safely ignore this click 
-            // so we don't accidentally deselect their Queen/Hive!
             if (game.toolAtClickStart !== 'select') {
                 game.dragBox = null;
                 return;
             }
 
             // ==========================================
-            // 🛠️ BUG FIX: Minimap Double-Command Glitch
-            // Added #mobileToolbar to the ignore list!
+            // 🛠️ BUG FIX: Minimap Double-Command Glitch + GameOverModal Block
             // ==========================================
-            if (targetElem && targetElem.closest && (targetElem.closest('#structureModal') || targetElem.closest('#rtsUI') || targetElem.closest('#preGameUI') || targetElem.closest('#mobileToolbar'))) {
+            if (targetElem && targetElem.closest && (targetElem.closest('#structureModal') || targetElem.closest('#rtsUI') || targetElem.closest('#preGameUI') || targetElem.closest('#mobileToolbar') || targetElem.closest('#gameOverModal'))) {
                 game.dragBox = null; return;
             }
 
-            const worldX = clientX + game.camera.x; 
-            const worldY = clientY + game.camera.y;
+            // 🛡️ [FIX] Standardize Coordinate Space Translation
+            const pos = getLocalPos(clientX, clientY);
+            const worldX = pos.x + game.camera.x; 
+            const worldY = pos.y + game.camera.y;
+            
             const isRightClick = e.button === 2;
             const isLeftClick = e.button === 0 || isTouch;
 
@@ -243,7 +250,7 @@ export const AdvancedUnitControlExpansion = {
                 // Single Click Selection
                 else {
                     // Prevent micro-drags from clearing selection accidentally
-                    if (MathUtils.distSq(startX, startY, clientX, clientY) > 144) {
+                    if (MathUtils.distSq(startX, startY, pos.x, pos.y) > 144) {
                         game.dragBox = null; return;
                     }
 
@@ -319,8 +326,9 @@ export const AdvancedUnitControlExpansion = {
             if (game.gameState !== 'playing' || game.freezeFrames > 0) return;
 
             if(e.touches.length === 1) { 
-                startX = e.touches[0].clientX; 
-                startY = e.touches[0].clientY; 
+                const pos = getLocalPos(e.touches[0].clientX, e.touches[0].clientY);
+                startX = pos.x; 
+                startY = pos.y; 
                 
                 // Record for mobile touches too!
                 game.toolAtClickStart = game.activeTool; 
@@ -576,6 +584,11 @@ export const ConstructionExpansion = {
                             
                             gameObj.addEntity(s);
                             this.activeConstruction = s; 
+                        } else {
+                            // 🛡️ [FIX] Notify player if Queen arrived but resources were spent elsewhere!
+                            gameObj.bus.emit('particles', {x: this.buildTarget.x, y: this.buildTarget.y, color: '#ff0000', count: 15});
+                            gameObj.bus.emit('playSound', 'error');
+                            if (gameObj.showSystemMessage) gameObj.showSystemMessage("NOT ENOUGH RESOURCES", "#ff0000");
                         }
                         this.buildTarget = null;
                         this.commandTarget = null; 
