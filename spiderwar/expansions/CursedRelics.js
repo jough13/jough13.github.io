@@ -93,23 +93,9 @@ export const CursedRelicsExpansion = {
                     setTimeout(() => game.bus.emit('playSound', 'death'), 300); // Double-boom ominous sound
                     if (game.triggerShake) game.triggerShake(15);
                     
-                    // The DayNight cycle is 7200 ticks.
-                    const cycleTicks = 7200;
-                    
-                    let ticksToAdd = (CURSED_CONFIG.eclipse.targetRatio * cycleTicks) - (game.tick % cycleTicks);
-                    if (ticksToAdd < 0) ticksToAdd += cycleTicks; // Wrap around if we are past it
-                    
-                    const oldTick = game.tick;
-                    game.tick += Math.floor(ticksToAdd); // FAST FORWARD TIME!
-                    
-                    // 🛡️ [FIX] THE TIME-WARP SAFETY NET
-                    // If the time-skip accidentally skips exactly over the Boss Spawn frame, 
-                    // the game breaks. This catches it and pins the engine to the exact spawn frame!
-                    const bossTick = (game.bossConfig && game.bossConfig.spawnTick) ? game.bossConfig.spawnTick : 10800;
-                    if (oldTick < bossTick && game.tick >= bossTick) {
-                        game.tick = bossTick;
-                        console.log("[Eclipse] Safely intercepted Boss Spawn during time-warp.");
-                    }
+                    // 🛡️ [FIX] Do NOT mutate game.tick! It breaks AI escalation and deterministic spawns.
+                    // Instead, trigger DayNight.js to handle the atmospheric changes decoupled from the game clock!
+                    game.bus.emit('triggerEclipse');
                     
                     game.bus.emit('particles', {x: data.x, y: data.y, color: '#aa00ff', count: 200, type: 'magic'});
                 }
