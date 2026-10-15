@@ -79,15 +79,14 @@ export class Aphid {
         const bound = this.size * 2;
         this.x = MathUtils.clamp(this.x, bound, game.world.width - bound); 
         this.y = MathUtils.clamp(this.y, bound, game.world.height - bound);
+    }
 
-        // Death: Drop a magic dew node!
-        if (this.hp <= 0) { 
-            for(let i = 0; i < CRITTER_CONFIG.aphid.dropCount; i++) {
-                // 🛡️ [FIX] Ensure the dropped node is safely clamped within the map bounds
-                const pX = MathUtils.clamp(this.x + MathUtils.randomRange(-10, 10), 50, game.world.width - 50);
-                const pY = MathUtils.clamp(this.y + MathUtils.randomRange(-10, 10), 50, game.world.height - 50);
-                game.addEntity(new ResourceNode(pX, pY, CRITTER_CONFIG.aphid.dropType)); 
-            }
+    // 🛡️ [FIX] The Death Loot Drop is now safely handled here so it isn't skipped by GC
+    onDeath(game) {
+        for(let i = 0; i < CRITTER_CONFIG.aphid.dropCount; i++) {
+            const pX = MathUtils.clamp(this.x + MathUtils.randomRange(-10, 10), 50, game.world.width - 50);
+            const pY = MathUtils.clamp(this.y + MathUtils.randomRange(-10, 10), 50, game.world.height - 50);
+            game.addEntity(new ResourceNode(pX, pY, CRITTER_CONFIG.aphid.dropType)); 
         }
     }
 
@@ -192,22 +191,22 @@ export class GoldenBug {
         const bound = this.size * 2;
         this.x = MathUtils.clamp(this.x, bound, game.world.width - bound); 
         this.y = MathUtils.clamp(this.y, bound, game.world.height - bound);
+    }
 
-        // Death: Drop a massive scatter of resources!
-        if (this.hp <= 0) { 
-            const spread = CRITTER_CONFIG.goldenBug.dropSpread;
-            game.bus.emit('particles', {x: this.x, y: this.y, color: '#ffea00', count: 50});
+    // 🛡️ [FIX] The Death Loot Drop is now safely handled here so it isn't skipped by GC
+    onDeath(game) {
+        const spread = CRITTER_CONFIG.goldenBug.dropSpread;
+        game.bus.emit('particles', {x: this.x, y: this.y, color: '#ffea00', count: 50});
+        
+        for(let i = 0; i < CRITTER_CONFIG.goldenBug.dropCount; i++) {
+            // 🛡️ [FIX] Strict boundary clamping so the massive loot explosion doesn't toss pumpkins off-map!
+            const dropAngle = Math.random() * MathUtils.TWO_PI;
+            const dropDist = Math.random() * spread;
             
-            for(let i = 0; i < CRITTER_CONFIG.goldenBug.dropCount; i++) {
-                // 🛡️ [FIX] Strict boundary clamping so the massive loot explosion doesn't toss pumpkins off-map!
-                const dropAngle = Math.random() * MathUtils.TWO_PI;
-                const dropDist = Math.random() * spread;
-                
-                const pX = MathUtils.clamp(this.x + Math.cos(dropAngle) * dropDist, 50, game.world.width - 50);
-                const pY = MathUtils.clamp(this.y + Math.sin(dropAngle) * dropDist, 50, game.world.height - 50);
+            const pX = MathUtils.clamp(this.x + Math.cos(dropAngle) * dropDist, 50, game.world.width - 50);
+            const pY = MathUtils.clamp(this.y + Math.sin(dropAngle) * dropDist, 50, game.world.height - 50);
 
-                game.addEntity(new ResourceNode(pX, pY, CRITTER_CONFIG.goldenBug.dropType));
-            }
+            game.addEntity(new ResourceNode(pX, pY, CRITTER_CONFIG.goldenBug.dropType));
         }
     }
 
