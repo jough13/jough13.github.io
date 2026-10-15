@@ -45,6 +45,36 @@ export class AssetManager {
     }
     register(src) { this.queue.add(src); }
     get(src) { return this.cache[src]; }
+    
+    // 🛡️ [FIX] Standalone loader implementation in case SplashScreen isn't loaded
+    loadAll(onProgress, onComplete) {
+        let loaded = 0;
+        const total = this.queue.size;
+        if (total === 0) { if (onComplete) onComplete(); return; }
+        
+        this.queue.forEach(src => {
+            if (this.cache[src]) {
+                loaded++;
+                if (onProgress) onProgress(loaded, total);
+                if (loaded === total && onComplete) onComplete();
+                return;
+            }
+            const img = new Image();
+            img.onload = () => {
+                this.cache[src] = img;
+                loaded++;
+                if (onProgress) onProgress(loaded, total);
+                if (loaded === total && onComplete) onComplete();
+            };
+            img.onerror = () => {
+                console.error(`[AssetManager] Failed to load ${src}`);
+                loaded++;
+                if (onProgress) onProgress(loaded, total);
+                if (loaded === total && onComplete) onComplete();
+            };
+            img.src = src;
+        });
+    }
 }
 
 export class ExpansionManager {
@@ -489,10 +519,21 @@ export class Game {
         window.addEventListener('mousemove', (e) => { moveInteraction(e.clientX, e.clientY); });
         window.addEventListener('mouseup', (e) => { if(e.button === 0) endInteraction(e.clientX, e.clientY, e.target); });
         
-        // Touch support mapping
-        this.canvas.addEventListener('touchstart', (e) => { if(e.touches.length === 1) startInteraction(e.touches[0].clientX, e.touches[0].clientY); }, {passive: false});
-        window.addEventListener('touchmove', (e) => { if(e.touches.length === 1) moveInteraction(e.touches[0].clientX, e.touches[0].clientY); }, {passive: false});
-        window.addEventListener('touchend', (e) => { if(e.changedTouches.length === 1) endInteraction(e.changedTouches[0].clientX, e.changedTouches[0].clientY, e.target); });
+        // 🛡️ [FIX] Touch support mapping enhanced with e.preventDefault() to block native panning/zooming!
+        this.canvas.addEventListener('touchstart', (e) => { 
+            e.preventDefault(); 
+            if(e.touches.length === 1) startInteraction(e.touches[0].clientX, e.touches[0].clientY); 
+        }, {passive: false});
+        
+        window.addEventListener('touchmove', (e) => { 
+            e.preventDefault(); 
+            if(e.touches.length === 1) moveInteraction(e.touches[0].clientX, e.touches[0].clientY); 
+        }, {passive: false});
+        
+        window.addEventListener('touchend', (e) => { 
+            e.preventDefault(); 
+            if(e.changedTouches.length === 1) endInteraction(e.changedTouches[0].clientX, e.changedTouches[0].clientY, e.target); 
+        }, {passive: false});
         
         this.canvas.addEventListener('contextmenu', e => e.preventDefault());
 
@@ -506,6 +547,10 @@ export class Game {
             if (data.role === 'harvester' || data.role === 'soldier') {
                 if (this.eco[data.team]?.pumpkins >= cost && this.pop[data.team] < this.maxPop[data.team]) {
                     this.eco[data.team].pumpkins -= cost; 
+                    
+                    // 🛡️ [FIX] Increment population immediately to prevent spam-click bypass!
+                    this.pop[data.team]++; 
+                    
                     this.addEntity(new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role));
                     this.bus.emit('playSound', 'harvest'); 
                 }
@@ -513,6 +558,9 @@ export class Game {
         });
         
         this.bus.on('buildStructure', (data) => {
+            // 🛡️ [FIX] Yield to the ConstructionExpansion if it is loaded to prevent double-charging/stacking!
+            if (this.expansions.expansions['ConstructionLogic']) return;
+            
             // [EXPANDABILITY] Base fallback costs if Controls.js expansion is missing
             const costs = { 'nest': 150, 'eggsac': 50, 'turret': 100, 'wall': 25, 'pylon': 25 };
             if (!costs[data.type]) return; 
@@ -587,7 +635,8 @@ export class Game {
                 if (e instanceof Structure && e.type === 'eggsac') {
                     if (e.team === 'black') blackEggs++; else if (e.team === 'red') redEggs++;
                 }
-                if (e instanceof Spider && !e.hasTrait('queen')) {
+                // 🛡️ [FIX] Prevents temporary 'broodling' summons and 'zombie' units from taking up population cap!
+                if (e instanceof Spider && !e.hasTrait('queen') && e.role !== 'broodling' && !e.isZombie) {
                     if (e.team === 'black') blackPop++; else if (e.team === 'red') redPop++;
                 }
             }
@@ -623,7 +672,9 @@ export class Game {
             if (!isDead && e.team) {
                 const cx = MathUtils.clamp((e.x / CELL_SIZE) | 0, 0, maxGridX);
                 const cy = MathUtils.clamp((e.y / CELL_SIZE) | 0, 0, maxGridY);
-                const key = (cx << 16) | cy;
+                
+                // 🛡️ [FIX] Bitwise isolation protects against negative Y coordinate corruption bugs!
+                const key = (cx << 16) | (cy & 0xFFFF);
                 
                 let cell = this.spatialGrid.get(key);
                 if (!cell) { cell = []; this.spatialGrid.set(key, cell); }
@@ -693,7 +744,9 @@ export class Game {
         for (let cx = minCx; cx <= maxCx; cx++) {
             for (let cy = minCy; cy <= maxCy; cy++) {
                 
-                const key = (cx << 16) | cy;
+                // 🛡️ [FIX] Bitwise isolation protects against negative Y coordinate corruption bugs!
+                const key = (cx << 16) | (cy & 0xFFFF);
+                
                 const cell = this.spatialGrid.get(key);
                 if (!cell) continue; 
 
