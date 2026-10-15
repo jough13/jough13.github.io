@@ -1,5 +1,5 @@
 // expansions/Fortress.js
-import { MathUtils, Structure } from '../game.js';
+import { MathUtils, Structure, STRUCTURE_DATA } from '../game.js';
 
 // ==========================================
 // 1. CONFIGURATION & BALANCING
@@ -137,6 +137,10 @@ export const FortressExpansion = {
     init: (game) => {
         // 🔌 [EXPANDABILITY] Hook config to game engine
         game.fortressConfig = FORTRESS_CONFIG;
+
+        // 🛡️ [FIX] Register structures with data dictionary to prevent fallback values
+        STRUCTURE_DATA['mortar'] = { hp: 400, size: 25, territory: 0 };
+        STRUCTURE_DATA['shrine'] = { hp: 350, size: 22, territory: 0 };
 
         // --- ASSET REGISTRY ---
         game.assets.register('assets/mortar_black.png');
