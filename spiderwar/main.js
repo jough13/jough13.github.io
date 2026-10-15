@@ -142,6 +142,8 @@ SpiderWars! Engine v${window.SpiderWarsConfig.version}
     const activeManifest = new Map();
     expansionManifest.forEach(exp => activeManifest.set(exp.name, exp));
     
+    const newMods = []; // 🛡️ [FIX] Hold brand new custom mods separately
+
     if (Array.isArray(window.SpiderWarsMods)) {
         window.SpiderWarsMods.forEach(mod => {
             if (!mod.name || !mod.module) {
@@ -150,13 +152,24 @@ SpiderWars! Engine v${window.SpiderWarsConfig.version}
             }
             if (activeManifest.has(mod.name)) {
                 console.warn(`%c[Mod API] External mod is overriding core expansion: ${mod.name}`, "color: #ffaa00; font-weight: bold;");
+                activeManifest.set(mod.name, mod); // Overwrite in place, preserves order!
+            } else {
+                newMods.push(mod); // Queue new mods for pre-atmosphere insertion
             }
-            activeManifest.set(mod.name, mod);
         });
     }
 
     // Convert back to an ordered array for the loading sequence
     const fullManifest = Array.from(activeManifest.values());
+
+    // 🛡️ [FIX] Insert brand new custom mods BEFORE Atmosphere and FogOfWar
+    // This ensures custom postDraw visuals are correctly covered by the darkness/fog!
+    const atmosphereIndex = fullManifest.findIndex(exp => exp.name === 'Atmosphere');
+    if (atmosphereIndex !== -1) {
+        fullManifest.splice(atmosphereIndex, 0, ...newMods);
+    } else {
+        fullManifest.push(...newMods); // Safe fallback
+    }
 
     let loadedCount = 0;
     let failedCount = 0;
