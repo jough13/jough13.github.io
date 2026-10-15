@@ -63,6 +63,11 @@ export const CombatAndHarvesterExpansion = {
                             if (currentSpeed > 0) {
                                 entity.x -= Math.cos(entity.angle) * 10; 
                                 entity.y -= Math.sin(entity.angle) * 10; 
+                                
+                                // 🛡️ [FIX] Boundary clamp to prevent recoil from pushing out of bounds!
+                                const bnd = entity.size * 2;
+                                entity.x = MathUtils.clamp(entity.x, bnd, gameObj.world.width - bnd);
+                                entity.y = MathUtils.clamp(entity.y, bnd, gameObj.world.height - bnd);
                             }
                             
                             gameObj.bus.emit('particles', {x: nearestEnemy.x, y: nearestEnemy.y, color: entity.team==='black'?'#aa00ff':'#ffaa00', count: 5}); 
@@ -87,6 +92,7 @@ export const CombatAndHarvesterExpansion = {
                         entity.y += Math.sin(entity.angle) * currentSpeed;
                     } else {
                         entity.commandTarget = null;
+                        entity.isManual = false; // 🛡️ [FIX] Release manual control upon arrival so passive AI resumes
                     }
                     return true; // Bypass gathering if being manually controlled
                 }
@@ -97,8 +103,14 @@ export const CombatAndHarvesterExpansion = {
                     entity.harvestTimer = 0;
                 }
 
-                if (entity.cargo.amount === 0) entity.state = SPIDER_STATE.SEEKING_RESOURCE; 
-                else entity.state = SPIDER_STATE.RETURNING_HOME; 
+                // 🛡️ [FIX] Ensure the target physically matches the state so bugs don't deposit into thin air or try to mine a nest
+                if (entity.cargo.amount === 0) {
+                    entity.state = SPIDER_STATE.SEEKING_RESOURCE; 
+                    if (entity.target && entity.target.resources === undefined) entity.target = null;
+                } else {
+                    entity.state = SPIDER_STATE.RETURNING_HOME; 
+                    if (entity.target && entity.target.resources !== undefined) entity.target = null;
+                }
                 
                 if (!entity.target) {
                     entity.searchDelay = (entity.searchDelay || 0) - 1;
@@ -240,6 +252,11 @@ export const CombatAndHarvesterExpansion = {
                             if (currentSpeed > 0) {
                                 entity.x -= Math.cos(entity.angle) * 10; 
                                 entity.y -= Math.sin(entity.angle) * 10; 
+                                
+                                // 🛡️ [FIX] Boundary clamp to prevent recoil from pushing out of bounds!
+                                const bnd = entity.size * 2;
+                                entity.x = MathUtils.clamp(entity.x, bnd, gameObj.world.width - bnd);
+                                entity.y = MathUtils.clamp(entity.y, bnd, gameObj.world.height - bnd);
                             }
                             
                             gameObj.bus.emit('particles', {x: nearestEnemy.x, y: nearestEnemy.y, color: entity.team==='black'?'#aa00ff':'#ffaa00', count: 5}); 
@@ -289,6 +306,7 @@ export const CombatAndHarvesterExpansion = {
                         entity.y += Math.sin(entity.angle) * currentSpeed;
                     } else {
                         entity.commandTarget = null;
+                        entity.isManual = false; // 🛡️ [FIX] Release manual control upon arrival
                     }
                     return true;
                 }
