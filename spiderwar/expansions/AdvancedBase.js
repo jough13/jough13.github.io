@@ -165,15 +165,20 @@ export const AdvancedBaseExpansion = {
                 }
                 
                 // Scatter Neutral Critters
-                for(let i = 0; i < 3; i++) {
-                    this.addEntity(new GoldenBug(this.world.width/2 + MathUtils.randomRange(-500, 500), this.world.height/2 + MathUtils.randomRange(-500, 500)));
-                }
-                for(let i = 0; i < 30; i++) {
-                    let ax = Math.random() * this.world.width; 
-                    let ay = Math.random() * this.world.height;
-                    if(this.getTerrainAt(ax, ay) === 'grass' || Math.random() > 0.8) {
-                        this.addEntity(new Aphid(ax, ay));
+                // 🛡️ [FIX] Try/Catch wrapper so a missing or corrupted Critters.js doesn't crash initialization
+                try {
+                    for(let i = 0; i < 3; i++) {
+                        this.addEntity(new GoldenBug(this.world.width/2 + MathUtils.randomRange(-500, 500), this.world.height/2 + MathUtils.randomRange(-500, 500)));
                     }
+                    for(let i = 0; i < 30; i++) {
+                        let ax = Math.random() * this.world.width; 
+                        let ay = Math.random() * this.world.height;
+                        if(this.getTerrainAt(ax, ay) === 'grass' || Math.random() > 0.8) {
+                            this.addEntity(new Aphid(ax, ay));
+                        }
+                    }
+                } catch (err) {
+                    console.warn("[AdvancedBase] Critters module missing or failed to initialize. Skipping critter generation.");
                 }
             }
 
@@ -181,7 +186,7 @@ export const AdvancedBaseExpansion = {
             // 3. CRIMSON SWARM AI: DYNAMIC ESCALATION
             // ==========================================
             
-            // ✅ FIX: Initialize tracking flags so we only escalate once per phase
+            // Initialize tracking flags so we only escalate once per phase
             if (this.aiConfig.phase2Escalated === undefined) {
                 this.aiConfig.phase2Escalated = false;
                 this.aiConfig.phase3Escalated = false;
@@ -191,10 +196,19 @@ export const AdvancedBaseExpansion = {
             // 🧃 [JUICE] Phase Escalation UI & Sound Hooks
             const escalatePhase = (phaseNum, targetTick) => {
                 const phaseStr = `phase${phaseNum}`;
-                this.aiConfig.activeUnitPool.push(...this.aiConfig.pools.units[phaseStr]);
-                this.aiConfig.activeBuildPool.push(...this.aiConfig.pools.buildings[phaseStr]);
                 
-                // ✅ FIX: Mute the SFX/VFX if the game is "catching up" after loading a save file
+                // 🛡️ [FIX] Prevent Duplicate Pushing on Save/Load Catchup!
+                const newUnits = this.aiConfig.pools.units[phaseStr];
+                newUnits.forEach(u => {
+                    if (!this.aiConfig.activeUnitPool.includes(u)) this.aiConfig.activeUnitPool.push(u);
+                });
+
+                const newBuilds = this.aiConfig.pools.buildings[phaseStr];
+                newBuilds.forEach(b => {
+                    if (!this.aiConfig.activeBuildPool.includes(b)) this.aiConfig.activeBuildPool.push(b);
+                });
+                
+                // Mute the SFX/VFX if the game is "catching up" after loading a save file
                 const isCatchingUp = (this.tick > targetTick + 5);
                 
                 if (!isCatchingUp) {
