@@ -61,9 +61,10 @@ export const CursedRelicsExpansion = {
                     // 🧃 [JUICE] Poof! (Start location implosion)
                     gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#aa00ff', count: 15, type: 'magic'});
                     
-                    // Teleport behind them
-                    entity.x = enemy.x + MathUtils.randomRange(-10, 10);
-                    entity.y = enemy.y + MathUtils.randomRange(-10, 10);
+                    // Teleport behind them (🛡️ FIX: Clamped to map boundaries!)
+                    const bnd = entity.size * 2;
+                    entity.x = MathUtils.clamp(enemy.x + MathUtils.randomRange(-10, 10), bnd, gameObj.world.width - bnd);
+                    entity.y = MathUtils.clamp(enemy.y + MathUtils.randomRange(-10, 10), bnd, gameObj.world.height - bnd);
                     
                     // 🧃 [JUICE] Poof! (End location explosion)
                     gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#aa00ff', count: 15, type: 'splatter'});
@@ -109,6 +110,9 @@ export const CursedRelicsExpansion = {
                     game.eco[data.team].pumpkins -= 80;
                     game.eco[data.team].dew -= 30;
                     
+                    // 🛡️ [FIX] Increment population immediately to prevent spam-click bypass!
+                    game.pop[data.team]++; 
+                    
                     let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
                     
                     // 🚀 [LOGIC FIX] Point the base class to the correct sprite target!
@@ -146,7 +150,6 @@ export const CursedRelicsExpansion = {
                         let secondaryEnemy = null;
                         
                         // 🚀 [PERFORMANCE] Fast Spatial Grid Secondary Scan
-                        // Instead of running `getNearestEnemy` again, we just peek into the grid cell the first enemy was in!
                         const CELL_SIZE = 250;
                         const maxGridX = Math.ceil(gameObj.world.width / CELL_SIZE);
                         const maxGridY = Math.ceil(gameObj.world.height / CELL_SIZE);
@@ -154,16 +157,26 @@ export const CursedRelicsExpansion = {
                         const cx = MathUtils.clamp((enemy.x / CELL_SIZE) | 0, 0, maxGridX);
                         const cy = MathUtils.clamp((enemy.y / CELL_SIZE) | 0, 0, maxGridY);
                         
-                        const key = (cx << 16) | cy;
-                        const cell = gameObj.spatialGrid.get(key);
-                        
-                        if (cell) {
-                            for (let i = 0; i < cell.length; i++) {
-                                let possibleTarget = cell[i];
-                                if (possibleTarget.team && possibleTarget.team !== this.team && possibleTarget.hp > 0 && possibleTarget !== enemy) {
-                                    if (MathUtils.distSq(enemy.x, enemy.y, possibleTarget.x, possibleTarget.y) < (CURSED_CONFIG.obelisk.chainRange * CURSED_CONFIG.obelisk.chainRange)) {
-                                        secondaryEnemy = possibleTarget;
-                                        break; // Found one, chain complete!
+                        // 🛡️ [FIX] Use 3x3 grid scan to prevent border-line misses, and add bitwise Y mask
+                        outerLoop: for (let nx = cx - 1; nx <= cx + 1; nx++) {
+                            if (nx < 0 || nx > maxGridX) continue;
+                            for (let ny = cy - 1; ny <= cy + 1; ny++) {
+                                if (ny < 0 || ny > maxGridY) continue;
+                                
+                                const key = (nx << 16) | (ny & 0xFFFF);
+                                const cell = gameObj.spatialGrid.get(key);
+                                
+                                if (!cell) continue;
+
+                                for (let i = 0; i < cell.length; i++) {
+                                    let possibleTarget = cell[i];
+                                    
+                                    // 🛡️ [FIX] Skip cloaked targets and projectiles!
+                                    if (possibleTarget.team && possibleTarget.team !== this.team && possibleTarget.hp > 0 && possibleTarget !== enemy && !possibleTarget.isCloaked) {
+                                        if (MathUtils.distSq(enemy.x, enemy.y, possibleTarget.x, possibleTarget.y) < (CURSED_CONFIG.obelisk.chainRange * CURSED_CONFIG.obelisk.chainRange)) {
+                                            secondaryEnemy = possibleTarget;
+                                            break outerLoop; // Found one, chain complete! Escapes the 3D loop.
+                                        }
                                     }
                                 }
                             }
