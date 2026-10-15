@@ -172,7 +172,8 @@ export const CaravansExpansion = {
         game.expansions.patchClass(game.constructor, 'update', function(original) {
             original.call(this);
 
-            if (this.gameState === 'playing' && this.tick === this.nextCaravanTick) {
+            // 🛡️ [FIX] Changed `===` to `>=` so the spawn event isn't skipped by lag or time-skips!
+            if (this.gameState === 'playing' && this.tick >= this.nextCaravanTick) {
                 
                 // Pick a random side to spawn on (0=Top, 1=Right, 2=Bottom, 3=Left)
                 const side = MathUtils.randomInt(0, 3);
