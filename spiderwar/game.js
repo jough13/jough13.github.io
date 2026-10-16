@@ -761,8 +761,8 @@ export class Game {
                     let e = cell[i];
                     
                     // Fast early-exits
-                    // Added `e.hp === undefined` to properly ignore Spells and Toxic Puddles!
-                    if (!e.team || e.team === team || e.hp === undefined || e.hp <= 0 || e.isCloaked || e instanceof Projectile) continue;
+                    // 🛡️ [FIX] Added `e.team === 'dead'` exclusion to prevent corpses from tanking hits!
+                    if (!e.team || e.team === team || e.team === 'dead' || e.hp === undefined || e.hp <= 0 || e.isCloaked || e instanceof Projectile) continue;
                     
                     let dSq = MathUtils.distSq(x, y, e.x, e.y);
                     
