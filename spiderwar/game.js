@@ -706,6 +706,9 @@ export class Game {
                 
                 // 🛡️ [FIX] Trigger onDeath hook before deleting the entity so loot drops!
                 if (e.onDeath) e.onDeath(this);
+                
+                // 🛡️ [FIX] Broadcast death event for listeners (like Necromancy.js)
+                this.bus.emit('entityDeath', e);
 
                 if (this.selectedStructure === e) { this.selectedStructure = null; this.bus.emit('closeModal'); }
                 
