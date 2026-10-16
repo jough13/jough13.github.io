@@ -58,8 +58,8 @@ export const SwarmDynamicsExpansion = {
                     for (let ny = cy - 1; ny <= cy + 1; ny++) {
                         if (ny < 0 || ny > maxGridY) continue;
                         
-                        // ZERO-ALLOCATION BITWISE LOOKUP
-                        const key = (nx << 16) | ny;
+                        // 🛡️ [FIX] ZERO-ALLOCATION BITWISE LOOKUP with Y-mask protection
+                        const key = (nx << 16) | (ny & 0xFFFF);
                         const cell = this.spatialGrid.get(key);
                         if (!cell) continue;
 
@@ -71,6 +71,9 @@ export const SwarmDynamicsExpansion = {
                             if (other === e || !other.size || other.hp <= 0) continue;
                             if (other.active !== undefined && other.speed && !other.role) continue; // Skips projectiles
                             if (other.captureRadius !== undefined) continue; // Skips Control Points
+                            
+                            // 🛡️ [FIX] Spiders shouldn't trip over Corpses or hidden EggTraps!
+                            if (other.team === 'dead' || other.isCloaked) continue;
 
                             let dx = e.x - other.x;
                             let dy = e.y - other.y;
