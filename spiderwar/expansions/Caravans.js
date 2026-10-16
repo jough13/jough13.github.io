@@ -68,6 +68,10 @@ export class GoldenCaravan extends Spider {
         const distSq = (dx * dx) + (dy * dy);
         
         if (distSq > 400) { // Keep walking
+            
+            // 🛡️ [FIX] Recalculate angle so swarm physics deflections don't steer it permanently off course!
+            this.angle = Math.atan2(dy, dx);
+            
             this.x += Math.cos(this.angle) * this.speed;
             this.y += Math.sin(this.angle) * this.speed;
             
