@@ -171,8 +171,8 @@ export const CursedRelicsExpansion = {
                                 for (let i = 0; i < cell.length; i++) {
                                     let possibleTarget = cell[i];
                                     
-                                    // 🛡️ [FIX] Skip cloaked targets and projectiles!
-                                    if (possibleTarget.team && possibleTarget.team !== this.team && possibleTarget.hp > 0 && possibleTarget !== enemy && !possibleTarget.isCloaked) {
+                                    // 🛡️ [FIX] Skip cloaked targets, projectiles, and dead corpses!
+                                    if (possibleTarget.team && possibleTarget.team !== this.team && possibleTarget.team !== 'dead' && possibleTarget.hp > 0 && possibleTarget !== enemy && !possibleTarget.isCloaked) {
                                         if (MathUtils.distSq(enemy.x, enemy.y, possibleTarget.x, possibleTarget.y) < (CURSED_CONFIG.obelisk.chainRange * CURSED_CONFIG.obelisk.chainRange)) {
                                             secondaryEnemy = possibleTarget;
                                             break outerLoop; // Found one, chain complete! Escapes the 3D loop.
