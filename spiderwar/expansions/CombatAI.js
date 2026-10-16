@@ -352,9 +352,8 @@ export const CombatAndHarvesterExpansion = {
             }
         };
         
-        // Attach the renderer to all standard combat entities
+        // 🛡️ [FIX] Redundant Queen.draw patch removed because Spider.draw natively covers it!
         game.expansions.patchClass(Spider, 'draw', function(original, ctx, gameObj) { original.call(this, ctx, gameObj); drawHealth.call(this, ctx); });
-        game.expansions.patchClass(Queen, 'draw', function(original, ctx, gameObj) { original.call(this, ctx, gameObj); drawHealth.call(this, ctx); });
         game.expansions.patchClass(Structure, 'draw', function(original, ctx, gameObj) { original.call(this, ctx, gameObj); drawHealth.call(this, ctx); });
     }
 };
