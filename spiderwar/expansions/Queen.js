@@ -174,57 +174,10 @@ export class Queen extends Spider {
 
     // 🛡️ [FIX] Added game parameter so breathing animation inherits correctly
     draw(ctx, game) {
-        // ==========================================
-        // 🛠️ BUG FIX: Inherit Status Effect Graphics
-        // ==========================================
-        // Temporarily hide the sprite so the base class only draws the magic auras/ice blocks
-        // and doesn't accidentally draw a squished double-sprite underneath the Queen!
-        const tempSprite = this.sprite;
-        const tempLoaded = this.imageLoaded;
-        this.sprite = null;
-        this.imageLoaded = false;
         
+        // 🛡️ [FIX] `Spider.prototype.draw` now natively supports aspect ratios, so we can just 
+        // cleanly inherit the standard rendering sequence without dirty sprite-swapping hacks!
         super.draw(ctx, game); 
-        
-        this.sprite = tempSprite;
-        this.imageLoaded = tempLoaded;
-
-        // 🚀 [LOGIC FIX] Pull the preloaded image directly from the RAM Cache!
-        if (!this.imageLoaded && game && game.assets) {
-            this.sprite = game.assets.get(this.spriteSrc);
-            if (this.sprite) this.imageLoaded = true;
-        }
-
-        ctx.save(); 
-        ctx.translate(this.x, this.y); 
-
-        // 🧃 [JUICE] High-Performance Drop Shadow (Drawn before rotation so it stays flat on the ground)
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-        ctx.beginPath();
-        ctx.ellipse(0, this.size * 0.4, this.size * 0.9, this.size * 0.5, 0, 0, MathUtils.TWO_PI);
-        ctx.fill();
-
-        ctx.rotate(this.angle); 
-        
-        // 🧃 [JUICE] Organic breathing animation! Faster when walking or fighting.
-        const tick = game ? game.tick : 0;
-        const breathSpeed = (this.commandTarget || this.cooldown > 0) ? 0.2 : 0.05;
-        // Toned down breathing animation from 0.05 to 0.002
-        const breath = 1 + Math.sin(tick * breathSpeed + this.animOffset) * 0.002;
-        ctx.scale(breath, 1 / breath);
-        
-        // ASPECT RATIO FIX: Queen sprites can now be rectangular!
-        if (this.imageLoaded && this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) { 
-            const aspect = this.sprite.naturalWidth / this.sprite.naturalHeight;
-            const drawH = this.size * 2;
-            const drawW = drawH * aspect;
-            ctx.drawImage(this.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
-        } else {
-            // Fallback rendering
-            ctx.fillStyle = this.team; ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
-            ctx.fillStyle = 'white'; ctx.fillRect(this.size/2, -3, 4, 6);
-        }
-        ctx.restore();
         
         // Draw the tactical command line for the player (Obsidian Brood)
         if (this.team === 'black' && this.commandTarget) {
@@ -236,6 +189,7 @@ export class Queen extends Spider {
             // "Marching Ants" animation effect flowing toward the target
             ctx.lineDashOffset = -this.age; 
             
+            // Because Spider.draw finished and restored the context, we are safely back in global world space!
             ctx.beginPath(); 
             ctx.moveTo(this.x, this.y); 
             ctx.lineTo(this.commandTarget.x, this.commandTarget.y); 
