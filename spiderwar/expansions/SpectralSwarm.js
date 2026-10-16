@@ -68,13 +68,16 @@ export const SpectralSwarmExpansion = {
                         for (let ny = cy - 1; ny <= cy + 1; ny++) {
                             if (ny < 0 || ny > maxGridY) continue;
                             
-                            const key = (nx << 16) | ny;
+                            // 🛡️ [FIX] Bitwise isolation protects against negative Y coordinate corruption bugs!
+                            const key = (nx << 16) | (ny & 0xFFFF);
                             const cell = gameObj.spatialGrid.get(key);
                             if (!cell) continue;
 
                             for (let i = 0; i < cell.length; i++) {
                                 let e = cell[i];
-                                if (e.team && e.team !== entity.team && e.hp > 0) {
+                                
+                                // 🛡️ [FIX] Prevent Phantoms from draining HP out of dead corpses!
+                                if (e.team && e.team !== entity.team && e.team !== 'dead' && e.hp > 0) {
                                     // Fast AABB check to skip circle math
                                     if (Math.abs(entity.x - e.x) > radius || Math.abs(entity.y - e.y) > radius) continue;
                                     
@@ -132,13 +135,16 @@ export const SpectralSwarmExpansion = {
 
                     for (let cx = minCx; cx <= maxCx; cx++) {
                         for (let cy = minCy; cy <= maxCy; cy++) {
-                            const key = (cx << 16) | cy;
+                            
+                            // 🛡️ [FIX] Bitwise isolation protects against negative Y coordinate corruption bugs!
+                            const key = (cx << 16) | (cy & 0xFFFF);
                             const cell = game.spatialGrid.get(key);
                             if (!cell) continue;
 
                             for (let i = 0; i < cell.length; i++) {
                                 let e = cell[i];
                                 // Target LIVING ENEMIES
+                                // (Instanceof Spider check prevents Corpses from being frozen natively)
                                 if (e.team && e.team !== data.team && e.hp > 0 && (e instanceof Spider || e.constructor.name === 'CentipedeBoss')) {
                                     // Fast AABB check
                                     if (Math.abs(e.x - data.x) > radius || Math.abs(e.y - data.y) > radius) continue;
@@ -219,7 +225,8 @@ export const SpectralSwarmExpansion = {
                         for (let ny = cy - 1; ny <= cy + 1; ny++) {
                             if (ny < 0 || ny > maxGridY) continue;
                             
-                            const key = (nx << 16) | ny;
+                            // 🛡️ [FIX] Bitwise isolation protects against negative Y coordinate corruption bugs!
+                            const key = (nx << 16) | (ny & 0xFFFF);
                             const cell = gameObj.spatialGrid.get(key);
                             if (!cell) continue;
 
