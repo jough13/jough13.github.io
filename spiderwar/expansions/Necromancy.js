@@ -214,6 +214,14 @@ export const NecromancyExpansion = {
         game.assets.register('assets/zombie_black.png');
         game.assets.register('assets/zombie_red.png');
 
+        // 🛡️ [FIX] Replaced O(N) entity loop hack with clean, instantaneous event bus listener
+        game.bus.on('entityDeath', (e) => {
+            if (e instanceof Spider && !e.isZombie && !e.corpseSpawned && e.role !== 'broodling') {
+                e.corpseSpawned = true; // Safety flag
+                game.addEntity(new Corpse(e.x, e.y, e.size));
+            }
+        });
+
         // Handle UI spell cast
         game.bus.on('castSpell', (data) => {
             if (data.type === 'reanimate') {
@@ -245,7 +253,7 @@ export const NecromancyExpansion = {
 
                     for (let cx = minCx; cx <= maxCx; cx++) {
                         for (let cy = minCy; cy <= maxCy; cy++) {
-                            const key = (cx << 16) | cy;
+                            const key = (cx << 16) | (cy & 0xFFFF);
                             const cell = game.spatialGrid.get(key);
                             if (!cell) continue;
 
@@ -284,24 +292,6 @@ export const NecromancyExpansion = {
     },
 
     patch: (game) => {
-        // Intercept the main game loop to drop corpses right BEFORE a spider is culled
-        game.expansions.patchClass(game.constructor, 'update', function(original) {
-            
-            // 🚀 PERFORMANCE FIX: Native for-loop is vastly faster than .forEach for the main update tick
-            const entities = this.entities;
-            const entLen = entities.length;
-            for (let i = 0; i < entLen; i++) {
-                let e = entities[i];
-                
-                // If a spider dies, and it wasn't already a zombie, drop a corpse!
-                // 🛡️ LOGIC FIX: Exclude 'broodling' suicide units to prevent infinite zombie cheese and map clutter
-                if (e.hp <= 0 && e instanceof Spider && !e.isZombie && !e.corpseSpawned && e.role !== 'broodling') {
-                    e.corpseSpawned = true; // Safety flag to prevent double-spawns
-                    this.addEntity(new Corpse(e.x, e.y, e.size));
-                }
-            }
-            
-            original.call(this); // Continue normal engine update to actually cull the dead entities
-        });
+        // The previous looping hack was cleanly removed in favor of the event listener!
     }
 };
