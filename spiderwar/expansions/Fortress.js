@@ -37,6 +37,9 @@ export class MortarShell {
         this.team = team;
         this.active = true;
         
+        // 🛡️ [FIX] Explicitly define size so game.js viewport culling never pops the shell out of existence mid-flight
+        this.size = 10; 
+        
         const totalDist = MathUtils.dist(startX, startY, targetX, targetY);
         this.flightFrames = Math.max(1, totalDist / FORTRESS_CONFIG.mortarShellSpeed); 
         this.currentFrame = 0;
@@ -75,15 +78,16 @@ export class MortarShell {
                 for (let ny = cy - 1; ny <= cy + 1; ny++) {
                     if (ny < 0 || ny > maxGridY) continue;
                     
-                    const key = (nx << 16) | ny;
+                    const key = (nx << 16) | (ny & 0xFFFF);
                     const cell = game.spatialGrid.get(key);
                     if (!cell) continue;
 
                     for (let i = 0; i < cell.length; i++) {
                         let e = cell[i];
                         
-                        // Fast Early Exits
-                        if (!e.team || e.team === this.team || e.team === 'nature' || e.hp === undefined || e.hp <= 0) continue;
+                        // 🛡️ [FIX] Removed 'nature' immunity! Artillery does not discriminate. 
+                        // It will now properly hit the CentipedeBoss, Caravans, and tiny Aphids.
+                        if (!e.team || e.team === this.team || e.hp === undefined || e.hp <= 0) continue;
                         
                         // Fast AABB check skips expensive circle math for distant units
                         if (Math.abs(this.targetX - e.x) > FORTRESS_CONFIG.mortarSplashRadius || Math.abs(this.targetY - e.y) > FORTRESS_CONFIG.mortarSplashRadius) continue;
@@ -210,7 +214,7 @@ export const FortressExpansion = {
                         for (let ny = cy - 1; ny <= cy + 1; ny++) {
                             if (ny < 0 || ny > maxGridY) continue;
                             
-                            const key = (nx << 16) | ny;
+                            const key = (nx << 16) | (ny & 0xFFFF);
                             const cell = gameObj.spatialGrid.get(key);
                             if (!cell) continue;
 
