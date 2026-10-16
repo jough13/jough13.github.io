@@ -36,7 +36,8 @@ export const SpectralSwarmExpansion = {
         UNIT_DATA['phantom'] = { 
             size: 14, hp: 80, damage: 15, attackSpeed: 30, 
             baseSpeedMin: 1.5, baseSpeedMax: 1.9, 
-            traits: ['ethereal'] // Handled by TraitManager!
+            // 🛡️ [FIX] Added 'melee' and 'escort' so the Phantom actually has movement and combat AI!
+            traits: ['ethereal', 'melee', 'escort'] 
         };
 
         STRUCTURE_DATA['monolith'] = { 
@@ -167,6 +168,9 @@ export const SpectralSwarmExpansion = {
                 if (game.eco[data.team].pumpkins >= 60 && game.eco[data.team].dew >= 20 && game.pop[data.team] < game.maxPop[data.team]) {
                     game.eco[data.team].pumpkins -= 60;
                     game.eco[data.team].dew -= 20;
+                    
+                    // 🛡️ [FIX] Increment population immediately to prevent spam-click bypass!
+                    game.pop[data.team]++; 
                     
                     let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
                     s.sprite = game.assets.get(data.team === 'black' ? 'assets/phantom_black.png' : 'assets/phantom_red.png');
