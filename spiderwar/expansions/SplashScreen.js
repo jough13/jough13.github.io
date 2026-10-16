@@ -214,11 +214,15 @@ export const SplashScreenExpansion = {
         };
         applyHoverSounds();
 
+        let hasSaveData = false;
         try {
             const rawSaveData = localStorage.getItem('spiderRTS_saveData');
             if (rawSaveData) {
                 const parsedData = JSON.parse(rawSaveData);
-                if (parsedData && parsedData.eco) document.getElementById('btnLoadGame').disabled = false;
+                if (parsedData && parsedData.eco) {
+                    hasSaveData = true;
+                    document.getElementById('btnLoadGame').disabled = false;
+                }
             }
         } catch (e) {
             localStorage.removeItem('spiderRTS_saveData');
@@ -279,6 +283,10 @@ export const SplashScreenExpansion = {
 
         const startPreload = (isLoadGame) => {
             game.bus.emit('playSound', 'shoot');
+            
+            // 🛡️ [FIX] In case this was triggered via PWA shortcut before showMenu() occurred
+            if (!menuShown) showMenu();
+            
             viewMenu.style.display = 'none';
             viewLoading.style.display = 'flex';
             
@@ -328,5 +336,24 @@ export const SplashScreenExpansion = {
 
         document.getElementById('btnNewGame').addEventListener('click', () => { startPreload(false); });
         document.getElementById('btnLoadGame').addEventListener('click', () => { startPreload(true); });
+
+        // ==========================================
+        // 🛡️ [FIX] PWA Shortcut & Deep-Link Handlers
+        // ==========================================
+        const urlParams = new URLSearchParams(window.location.search);
+        const action = urlParams.get('action');
+
+        if (action) {
+            // Clean up the URL visibly so refreshing doesn't loop the action
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState(null, null, window.location.pathname);
+            }
+            
+            if (action === 'load' && hasSaveData) {
+                startPreload(true);
+            } else if (action === 'new') {
+                startPreload(false);
+            }
+        }
     }
 };
