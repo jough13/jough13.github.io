@@ -182,7 +182,11 @@ export class Spider {
         ctx.scale(breath, 1 / breath); // Squish and stretch volume preservation
         
         if (this.imageLoaded && this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) { 
-            ctx.drawImage(this.sprite, -this.size, -this.size, this.size * 2, this.size * 2); 
+            // 🛡️ [FIX] Universal Aspect Ratio support enables rectangular sprites (like the Queen) natively!
+            const aspect = this.sprite.naturalWidth / this.sprite.naturalHeight;
+            const drawH = this.size * 2;
+            const drawW = drawH * aspect;
+            ctx.drawImage(this.sprite, -drawW / 2, -drawH / 2, drawW, drawH); 
         } else {
             // Fallback geometric rendering
             ctx.fillStyle = this.team === 'black' ? '#222' : '#822'; 
@@ -713,8 +717,21 @@ export class Game {
                 if (this.selectedStructure === e) { this.selectedStructure = null; this.bus.emit('closeModal'); }
                 
             } else {
+                let oldX = e.x;
+                let oldY = e.y;
+                
                 // Execute behavior (Now safely queries the fully populated spatial grid!)
                 if (e.update) e.update(this);
+                
+                // 🛡️ [FIX] Universal Speed Tracker! Automatically sets speed to 0 if the unit didn't move this frame.
+                // This fixes animations, DayNight buffs, and particle trails universally!
+                if (e.role !== undefined && e.baseSpeed !== undefined) {
+                    if (Math.abs(e.x - oldX) > 0.05 || Math.abs(e.y - oldY) > 0.05) {
+                        e.speed = e.baseSpeed;
+                    } else {
+                        e.speed = 0;
+                    }
+                }
                 
                 // Pack alive entities tightly into the start of the array
                 this.entities[aliveCount] = e; 
