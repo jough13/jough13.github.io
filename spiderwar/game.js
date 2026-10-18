@@ -119,7 +119,7 @@ export const UNIT_DATA = {
 export const STRUCTURE_DATA = {
     nest:   { hp: 200, size: 40, territory: 400 },
     eggsac: { hp: 200, size: 25, territory: 0 },
-    turret: { hp: 200, size: 20, territory: 0, traits: ['siege_attacker'] }, 
+    turret: { hp: 200, size: 20, damage: 35, attackSpeed: 45, territory: 0, traits: ['siege_attacker'] }, 
     wall:   { hp: 500, size: 35, territory: 0 },
     pylon:  { hp: 200, size: 18, territory: 250 }
 };
@@ -262,10 +262,16 @@ export class Structure {
         this.size = stats.size;
         this.territory = stats.territory;
         
+        // Initialize combat and orientation variables for traits
+        this.damage = stats.damage || 0;
+        this.attackSpeed = stats.attackSpeed || 60;
+        this.angle = 0;
+        this.traits = stats.traits ? [...stats.traits] : [];
+        
         // 🧃 [JUICE] Spawn-in animation tracking
         this.spawnScale = 0.1;
         
-        if(type === 'turret') this.cooldown = 0; 
+        if(type === 'turret') this.cooldown = 0;
 
         // 🚀 [LOGIC FIX] Store the SRC target
         this.spriteSrc = `assets/${type}_${team}.png`;
