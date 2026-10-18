@@ -26,6 +26,9 @@ export class Queen extends Spider {
         // Inherit from Spider, assign special 'queen' role
         super(x, y, team, 'queen'); 
         
+        // [FIX] Explicitly override the 'harvester' fallback traits from the base class
+        this.traits = ['queen'];
+        
         this.size = QUEEN_CONFIG.size; 
         this.baseSpeed = QUEEN_CONFIG.speed; 
         this.hp = QUEEN_CONFIG.hp; 
