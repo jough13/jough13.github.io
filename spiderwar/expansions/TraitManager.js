@@ -99,6 +99,14 @@ export const TraitManagerExpansion = {
                 if (enemy) {
                     entity.state = 1; // SPIDER_STATE.COMBAT
                     
+                    // [FIX] Calculate current speed factoring in Tech Level, Terrain, and Status Effects!
+                    const techLvl = gameObj.techLevel[entity.team] || 0; 
+                    const terrain = gameObj.getTerrainAt(entity.x, entity.y); 
+                    let tMod = (terrain === 'water') ? 0.05 : ((terrain === 'grass') ? 1.3 : 1.0);
+                    let currentSpeed = ((entity.baseSpeed || 0) + (techLvl * 0.15)) * tMod;
+                    if (entity.isSlowed) currentSpeed *= 0.3;
+                    entity.isSlowed = false; // Reset status
+                    
                     // [JUICE] Smooth organic turning instead of snapping!
                     const targetAngle = Math.atan2(enemy.y - entity.y, enemy.x - entity.x);
                     entity.angle += MathUtils.angleWrap(targetAngle - entity.angle) * 0.2;
@@ -142,10 +150,10 @@ export const TraitManagerExpansion = {
                             }
                         }
                     } else {
-                        entity.x += Math.cos(entity.angle) * entity.baseSpeed; 
-                        entity.y += Math.sin(entity.angle) * entity.baseSpeed;
+                        entity.x += Math.cos(entity.angle) * currentSpeed; 
+                        entity.y += Math.sin(entity.angle) * currentSpeed;
                     }
-                    return true; 
+                    return true;
                 }
                 return false; 
             }
