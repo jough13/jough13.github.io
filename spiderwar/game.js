@@ -506,7 +506,8 @@ export class Game {
                         this.bus.emit('commandQueen', { x: worldX, y: worldY, team: 'black' });
                         this.activeTool = 'select'; this.bus.emit('toolChanged', 'select'); 
                     }
-                    else if (['venomStrike', 'silkTrap', 'reanimate', 'ambush', 'contagion', 'vortex', 'subjugate'].includes(this.activeTool)) {
+                    // [FIX] Added 'paralyze', 'eclipse', and 'bloodlust' to the spell whitelist!
+                    else if (['venomStrike', 'silkTrap', 'reanimate', 'ambush', 'contagion', 'vortex', 'subjugate', 'paralyze', 'eclipse', 'bloodlust'].includes(this.activeTool)) {
                         this.bus.emit('castSpell', { x: worldX, y: worldY, type: this.activeTool, team: 'black' });
                         this.activeTool = 'select'; this.bus.emit('toolChanged', 'select');
                     }
