@@ -63,7 +63,11 @@ class PooledParticle {
         }
 
         this.vx = Math.cos(angle) * speed; 
-        this.vy = Math.sin(angle) * speed;
+        
+        // [FIX] Protect the custom upward drift velocity for magic particles
+        if (this.type !== 'magic') {
+            this.vy = Math.sin(angle) * speed;
+        }
 
         this.maxLife = this.life; 
         if (this.type !== 'ring') {
