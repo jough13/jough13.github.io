@@ -403,7 +403,20 @@ export const ContextUIExpansion = {
             'voidweaver':{ reqTech: 3, icon: '👁️', img: 'assets/voidweaver_black.png', name: 'Weaver', cost: '100🎃30💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'voidweaver'}) }, 
             'goliath':   { reqTech: 3, icon: '🔥', name: 'Goliath', cost: '400🎃150💧', type: 'instant', fn: (t) => game.bus.emit('spawnSpider', {x:t.x, y:t.y, team:'black', role:'goliath'}) }, 
             
-            'tech':      { reqTech: 0, icon: '🧬', img: 'assets/icon_tech.png', name: 'Evolve', cost: '250🎃', type: 'instant', fn: (t) => { if(game.eco.black.pumpkins>=250){ game.eco.black.pumpkins-=250; game.techLevel.black++; game.bus.emit('playSound','spell');} } },
+            'tech':      { reqTech: 0, icon: '🧬', img: 'assets/icon_tech.png', name: 'Evolve', cost: '250🎃', type: 'instant', fn: (t) => { 
+                if(game.eco.black.pumpkins>=250){ 
+                    game.eco.black.pumpkins-=250; 
+                    game.techLevel.black++; 
+                    // [FIX] Apply tech HP bonus to all existing entities instantly
+                    for (let i = 0; i < game.entities.length; i++) {
+                        let e = game.entities[i];
+                        if (e.team === 'black' && e.hp > 0 && e.role !== 'queen' && (e instanceof Spider || e instanceof Structure)) {
+                            e.maxHp += 20; e.hp += 20;
+                        }
+                    }
+                    game.bus.emit('playSound','spell');
+                } 
+            }},
             'cancel':    { reqTech: 0, icon: '🛑', img: 'assets/icon_cancel.png', name: 'Stop', cost: '', type: 'instant', fn: () => { 
                 game.activeTool = 'select'; game.bus.emit('toolChanged', 'select');
                 if (game.selectedUnits) {
