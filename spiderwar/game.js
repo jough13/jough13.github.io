@@ -429,12 +429,12 @@ export class Game {
     }
 
     get spiders() { return this.entities.filter(e => e.role && e.cargo !== undefined); }
-    get queens() { return this.entities.filter(e => e.constructor.name === 'Queen'); }
+    get queens() { return this.entities.filter(e => e.role === 'queen'); }
     get structures() { return this.entities.filter(e => e instanceof Structure); }
     get resourceNodes() { return this.entities.filter(e => e instanceof ResourceNode); }
     get projectiles() { return this.entities.filter(e => e instanceof Projectile); }
     get critters() { return this.entities.filter(e => e.team === 'nature'); }
-    get bosses() { return this.entities.filter(e => e.constructor.name === 'CentipedeBoss'); }
+    get bosses() { return this.entities.filter(e => e.isBoss); }
     
     addEntity(entity) { this.entities.push(entity); }
     
@@ -712,8 +712,8 @@ export class Game {
 
             if (dead) {
                 // 🧃 Death Particles & Sound
-                if (e instanceof Spider || e instanceof Structure || e.constructor.name === 'CentipedeBoss' || e.team === 'nature') {
-                    this.bus.emit('particles', {x: e.x, y: e.y, color: e.color || e.team || '#888', count: e.constructor.name === 'CentipedeBoss' ? 100 : 30});
+                if (e instanceof Spider || e instanceof Structure || e.isBoss || e.team === 'nature') {
+                    this.bus.emit('particles', {x: e.x, y: e.y, color: e.color || e.team || '#888', count: e.isBoss ? 100 : 30});
                     this.bus.emit('playSound', e.team === 'nature' ? 'harvest' : 'death');
                 }
                 
