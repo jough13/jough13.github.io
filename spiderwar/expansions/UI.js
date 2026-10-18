@@ -618,9 +618,7 @@ export const ContextUIExpansion = {
 
             // 🚀 [PERFORMANCE FIX] Update the DOM nodes directly without recreating them!
             if (currentSelection && currentSelection.hp !== undefined) {
-                let max = currentSelection.maxHp;
-                if (currentSelection.team === 'black' && !(currentSelection instanceof Queen)) max += (this.techLevel.black * 20);
-                
+                let max = currentSelection.maxHp; // [FIX] Rely natively on this.maxHp
                 let pct = Math.max(0, currentSelection.hp / max) * 100;
                 let barColor = pct > 50 ? '#00ff00' : (pct > 25 ? '#ffff00' : '#ff0000');
                 
