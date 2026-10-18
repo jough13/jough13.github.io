@@ -148,6 +148,9 @@ export const SpecialUnitsExpansion = {
                 if (game.eco[data.team]?.pumpkins >= config.cost && game.pop[data.team] < game.maxPop[data.team]) {
                     game.eco[data.team].pumpkins -= config.cost;
                     
+                    // [FIX] Increment population instantly to prevent spam-click bypass!
+                    game.pop[data.team]++;
+                    
                     let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
                     
                     if (data.role === 'spitter') {
