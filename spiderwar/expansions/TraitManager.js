@@ -58,7 +58,8 @@ export const TraitManagerExpansion = {
 
                             for (let i = 0; i < cell.length; i++) {
                                 let e = cell[i];
-                                if (e.team && e.team !== entity.team && e.hp > 0) {
+                                // [FIX] Ignore dead corpses
+                                if (e.team && e.team !== entity.team && e.team !== 'dead' && e.hp > 0) {
                                     if (MathUtils.distSq(entity.x, entity.y, e.x, e.y) < radiusSq) {
                                         e.hp -= 2; // Burn damage
                                         burned = true;
@@ -141,7 +142,8 @@ export const TraitManagerExpansion = {
 
                                 for (let i = 0; i < cell.length; i++) {
                                     let e = cell[i];
-                                    if (e.team && e.team !== entity.team && e.hp > 0) {
+                                    // [FIX] Ignore dead corpses
+                                    if (e.team && e.team !== entity.team && e.team !== 'dead' && e.hp > 0) {
                                         if (MathUtils.distSq(entity.x, entity.y, e.x, e.y) < splashRadiusSq) {
                                             e.hp -= entity.damage; 
                                         }
