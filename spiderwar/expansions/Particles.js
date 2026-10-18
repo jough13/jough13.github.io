@@ -240,10 +240,13 @@ export const ParticleExpansion = {
             else if (c === 'red') c = '#ff2200';    // Crimson Swarm Magic
             else if (c === 'nature') c = '#00ff00'; // Neutral Bug Guts
             
-            // Determine type based on source if not explicitly provided
-            let type = data.type || 'standard';
-            if (c === '#00ff00' || c === '#aaffaa' || c === '#00ffff') type = 'magic'; // Healing/Spells
-            if (c === '#ff0000') type = 'splatter'; // Blood
+            // [FIX] Only infer type from color if the emitter didn't explicitly provide one
+            let type = data.type;
+            if (!type) {
+                if (c === '#00ff00' || c === '#aaffaa' || c === '#00ffff') type = 'magic'; // Healing/Spells
+                else if (c === '#ff0000') type = 'splatter'; // Blood
+                else type = 'standard';
+            }
             
             game.particleSystem.emit(data.x, data.y, c, data.count, type);
         });
