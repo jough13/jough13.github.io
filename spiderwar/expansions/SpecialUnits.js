@@ -153,20 +153,12 @@ export const SpecialUnitsExpansion = {
                     
                     let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
                     
-                    if (data.role === 'spitter') {
-                        // Inherits from Spider, but we ensure it uses the specific asset
-                        s.sprite = game.assets.get(data.team === 'black' ? 'assets/spitter_black.png' : 'assets/spitter_red.png');
-                        
-                        // Inject configuration stats into the entity so the Trait can read them
-                        if (s.hasTrait('ranged_attacker')) {
-                            s.range = config.range; 
-                            s.rangeSq = config.rangeSq; 
-                        }
-                    } else if (data.role === 'tarantula') {
-                        s.sprite = game.assets.get(data.team === 'black' ? 'assets/tarantula_black.png' : 'assets/tarantula_red.png');
+                    // [FIX] Removed manual sprite injection. Spider.draw() now lazily loads it using spriteSrc!
+                    if (data.role === 'spitter' && s.hasTrait('ranged_attacker')) {
+                        s.range = config.range; 
+                        s.rangeSq = config.rangeSq; 
                     }
                     
-                    s.imageLoaded = true; 
                     game.addEntity(s);
                     game.bus.emit('playSound', 'harvest'); 
                 }
