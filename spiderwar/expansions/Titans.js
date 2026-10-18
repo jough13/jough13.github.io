@@ -286,9 +286,7 @@ export const TitansExpansion = {
                     
                     let s = new Spider(data.x + MathUtils.randomRange(-30, 30), data.y + MathUtils.randomRange(-30, 30), data.team, data.role);
                     
-                    if (data.role === 'widow') s.sprite = game.assets.get(data.team === 'black' ? 'assets/widow_black.png' : 'assets/widow_red.png');
-                    if (data.role === 'goliath') s.sprite = game.assets.get(data.team === 'black' ? 'assets/goliath_black.png' : 'assets/goliath_red.png');
-
+                    // [FIX] Removed manual sprite injection. Spider.draw() handles it lazily!
                     // ECS Trait Setup
                     if (s.hasTrait('stealth')) {
                         s.isCloaked = true; 
@@ -299,7 +297,6 @@ export const TitansExpansion = {
                         s.rangeSq = config.rangeSq; 
                     }
 
-                    s.imageLoaded = true; 
                     game.addEntity(s);
                     game.bus.emit('playSound', 'spell');
                 }
