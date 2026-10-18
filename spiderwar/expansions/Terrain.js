@@ -168,35 +168,48 @@ export const TerrainExpansion = {
         game.expansions.patchClass(game.constructor, 'update', function(original) {
             original.call(this);
 
-            if (this.gameState === 'playing' && this.tick === 1 && !this.terrainBaked) {
-                this.terrainBaked = true;
-                this.tiles = {};
+            if (this.gameState === 'playing' && !this.terrainBaked) {
+                
+                if (!this.tiles) this.tiles = {};
+                let allLoaded = true;
 
                 for (const [key, src] of Object.entries(this.mapAssetsDict)) {
-                    this.tiles[key] = this.assets.get(src);
-                    const img = this.tiles[key];
-                    
-                    if (img && img.complete && img.naturalHeight !== 0) {
-                        if (img.width > 0 && img.height > 0) {
-                            const c = document.createElement('canvas');
-                            c.width = this.tileSize; 
-                            c.height = this.tileSize;
-                            const ctx = c.getContext('2d');
-                            
-                            ctx.imageSmoothingEnabled = false; 
+                    // [FIX] Only attempt to bake if this specific tile hasn't been baked yet
+                    if (!this.bakedTiles[key]) {
+                        this.tiles[key] = this.assets.get(src);
+                        const img = this.tiles[key];
+                        
+                        // Check if the image is actually fully loaded and decoded into memory
+                        if (img && img.complete && img.naturalHeight !== 0) {
+                            if (img.width > 0 && img.height > 0) {
+                                const c = document.createElement('canvas');
+                                c.width = this.tileSize; 
+                                c.height = this.tileSize;
+                                const ctx = c.getContext('2d');
+                                
+                                ctx.imageSmoothingEnabled = false; 
 
-                            if (img.width < this.tileSize && !key.startsWith('water_')) {
-                                for (let y = 0; y < this.tileSize; y += img.height) {
-                                    for (let x = 0; x < this.tileSize; x += img.width) { 
-                                        ctx.drawImage(img, x, y); 
+                                if (img.width < this.tileSize && !key.startsWith('water_')) {
+                                    for (let y = 0; y < this.tileSize; y += img.height) {
+                                        for (let x = 0; x < this.tileSize; x += img.width) { 
+                                            ctx.drawImage(img, x, y); 
+                                        }
                                     }
+                                } else {
+                                    ctx.drawImage(img, 0, 0, this.tileSize, this.tileSize);
                                 }
-                            } else {
-                                ctx.drawImage(img, 0, 0, this.tileSize, this.tileSize);
+                                this.bakedTiles[key] = c; 
                             }
-                            this.bakedTiles[key] = c; 
+                        } else {
+                            // If even one image isn't ready, we flag that we need to keep checking next frame
+                            allLoaded = false;
                         }
                     }
+                }
+
+                // [FIX] Only shut off the baking loop once EVERY asset has been successfully processed
+                if (allLoaded) {
+                    this.terrainBaked = true;
                 }
             }
         });
