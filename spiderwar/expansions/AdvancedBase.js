@@ -256,6 +256,14 @@ export const AdvancedBaseExpansion = {
                     this.techLevel.red = (this.techLevel.red || 0) + 1;
                     upgradedTech = true;
                     
+                    // [FIX] Apply tech HP bonus to all existing entities instantly
+                    for (let i = 0; i < this.entities.length; i++) {
+                        let e = this.entities[i];
+                        if (e.team === 'red' && e.hp > 0 && e.role !== 'queen' && (e instanceof Spider || e instanceof Structure)) {
+                            e.maxHp += 20; e.hp += 20;
+                        }
+                    }
+                    
                     if (this.showSystemMessage) this.showSystemMessage(`CRIMSON SWARM TECH LVL ${this.techLevel.red}`, '#ff0000');
                     
                     // 🧃 [JUICE] Tech Upgrade Visuals for the AI!
