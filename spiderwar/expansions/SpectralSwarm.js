@@ -185,9 +185,15 @@ export const SpectralSwarmExpansion = {
 
     patch: (game) => {
         
-        // 5. GLOBAL DEBUFF MANAGER: PARALYSIS
+        // 5. GLOBAL DEBUFF MANAGER: PARALYSIS & STEALTH
         game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
             
+            // [FIX] Move timer decrements to update() so they process even when off-screen!
+            if (this.stealthAuraTimer > 0) {
+                this.stealthAuraTimer--;
+                if (this.stealthAuraTimer <= 0) this.isCloaked = false; // Uncloak when leaving aura
+            }
+
             // --- DEBUFF: STUNNED ---
             // Because ANY unit can be stunned, this stays as a patch to intercept the AI!
             if (this.stunTimer > 0) {
