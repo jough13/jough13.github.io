@@ -436,7 +436,19 @@ export class Game {
     get critters() { return this.entities.filter(e => e.team === 'nature'); }
     get bosses() { return this.entities.filter(e => e.isBoss); }
     
-    addEntity(entity) { this.entities.push(entity); }
+    addEntity(entity) { 
+        // [FIX] Apply tech HP bonus directly to this.hp and this.maxHp upon creation
+        if (entity.team && entity.role !== 'queen' && entity.hp && (entity instanceof Spider || entity instanceof Structure)) {
+            const tech = this.techLevel[entity.team] || 0;
+            if (tech > 0 && !entity._techHpApplied) {
+                const boost = tech * 20;
+                if (entity.hp === entity.maxHp) entity.hp += boost;
+                entity.maxHp += boost;
+                entity._techHpApplied = true;
+            }
+        }
+        this.entities.push(entity); 
+    }
     
     // 🧃 [JUICE] Hit-stop freeze frames for heavy impacts!
     triggerShake(power) { 
