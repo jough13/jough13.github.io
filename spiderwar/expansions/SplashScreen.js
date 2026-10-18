@@ -340,20 +340,22 @@ export const SplashScreenExpansion = {
         // ==========================================
         // 🛡️ [FIX] PWA Shortcut & Deep-Link Handlers
         // ==========================================
-        const urlParams = new URLSearchParams(window.location.search);
-        const action = urlParams.get('action');
+        window.addEventListener('SpiderWarsReady', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const action = urlParams.get('action');
 
-        if (action) {
-            // Clean up the URL visibly so refreshing doesn't loop the action
-            if (window.history && window.history.replaceState) {
-                window.history.replaceState(null, null, window.location.pathname);
+            if (action) {
+                // Clean up the URL visibly so refreshing doesn't loop the action
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState(null, null, window.location.pathname);
+                }
+                
+                if (action === 'load' && hasSaveData) {
+                    startPreload(true);
+                } else if (action === 'new') {
+                    startPreload(false);
+                }
             }
-            
-            if (action === 'load' && hasSaveData) {
-                startPreload(true);
-            } else if (action === 'new') {
-                startPreload(false);
-            }
-        }
+        });
     }
 };
