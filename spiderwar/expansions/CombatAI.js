@@ -330,12 +330,10 @@ export const CombatAndHarvesterExpansion = {
         // UNIVERSAL HEALTH BAR RENDERING
         // ==========================================
         const drawHealth = function(ctx) {
-            const techBoost = (game.techLevel[this.team] || 0) * 20;
-            const absoluteMaxHp = this.maxHp + techBoost;
-
-            if (this.hp !== undefined && this.hp > 0 && this.hp < absoluteMaxHp) {
+            // [FIX] Rely natively on this.maxHp
+            if (this.hp !== undefined && this.hp > 0 && this.hp < this.maxHp) {
                 const w = this.size * 1.5; 
-                const hpPct = Math.max(0, this.hp) / absoluteMaxHp;
+                const hpPct = Math.max(0, this.hp) / this.maxHp;
 
                 let barColor = '#00ff00';
                 if (hpPct < 0.5) barColor = '#ffff00';
