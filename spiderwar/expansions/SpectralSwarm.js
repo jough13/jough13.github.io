@@ -85,9 +85,8 @@ export const SpectralSwarmExpansion = {
                                     if (MathUtils.distSq(entity.x, entity.y, e.x, e.y) < radiusSq) {
                                         e.hp -= SPECTRAL_CONFIG.lifestealAmount;
                                         
-                                        // [FIX] Dynamically calculate absolute max HP based on current Tech Level!
-                                        const techBoost = (gameObj.techLevel[entity.team] || 0) * 20;
-                                        entity.hp = Math.min(entity.maxHp + techBoost, entity.hp + SPECTRAL_CONFIG.lifestealAmount);
+                                        // [FIX] Rely natively on maxHp!
+                                        entity.hp = Math.min(entity.maxHp, entity.hp + SPECTRAL_CONFIG.lifestealAmount);
                                         healed = true;
                                         
                                         // Visual soul-leech effect
