@@ -83,7 +83,7 @@ export class ExplosiveProjectile {
                         if (Math.abs(this.x - e.x) > splashRad || Math.abs(this.y - e.y) > splashRad) continue;
 
                         if (MathUtils.distSq(this.x, this.y, e.x, e.y) < splashRadSq) { 
-                            if (e instanceof Spider || e.constructor.name === 'CentipedeBoss') e.hp -= this.damage;
+                            if (e instanceof Spider || e.isBoss) e.hp -= this.damage;
                             else e.hp -= (this.damage * 0.5); 
                         }
                     }
