@@ -276,10 +276,9 @@ export const SpectralSwarmExpansion = {
             let restoreAlpha = false;
 
             if (this.stealthAuraTimer > 0) {
-                this.stealthAuraTimer--;
+                // [FIX] Timer and logic moved to update(). Just handle visuals here!
                 ctx.globalAlpha = 0.35; // Ghostly transparent
                 restoreAlpha = true;
-                if (this.stealthAuraTimer <= 0) this.isCloaked = false; // Uncloak when leaving aura
             } else if (this.role === 'phantom' && ctx.globalAlpha === 1.0) {
                 ctx.globalAlpha = 0.7; // Phantoms are naturally semi-transparent
                 restoreAlpha = true;
