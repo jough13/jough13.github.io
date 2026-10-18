@@ -25,9 +25,10 @@ export class CentipedeBoss {
         this.id = Math.random().toString(36).substring(2, 11);
         this.x = x; this.y = y; 
         this.team = 'nature'; 
+        this.isBoss = true; // [FIX] Minification-safe identifier!
         
         // 🛡️ [FIX] Defined `size` prevents viewport culling pop-in AND provides a solid hitbox!
-        this.size = 30; 
+        this.size = 30;
         
         this.hp = BOSS_CONFIG.maxHp; 
         this.maxHp = BOSS_CONFIG.maxHp; 
