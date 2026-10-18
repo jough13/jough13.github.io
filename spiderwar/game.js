@@ -146,12 +146,15 @@ export class Spider {
         // 🚀 [PERFORMANCE] Convert ID string to a number once for deterministic animation offsets
         this.animOffset = parseInt(this.id, 36) % 100;
         
-        // 🚀 [LOGIC FIX] Store the SRC target instead of creating a raw Image object
-        if (role === 'soldier') this.spriteSrc = team === 'black' ? 'assets/soldier_black.png' : 'assets/soldier_red.png';
-        else this.spriteSrc = team === 'black' ? 'assets/black_spider.png' : 'assets/red_spider.png';
+        // [FIX] Dynamically resolve spriteSrc so custom unit expansions load correctly from saves!
+        if (role === 'harvester') {
+            this.spriteSrc = team === 'black' ? 'assets/black_spider.png' : 'assets/red_spider.png';
+        } else {
+            this.spriteSrc = `assets/${role}_${team}.png`;
+        }
         
         this.sprite = null;
-        this.imageLoaded = false; 
+        this.imageLoaded = false;
     }
     
     hasTrait(traitName) { return this.traits.includes(traitName); }
