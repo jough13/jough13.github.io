@@ -281,6 +281,9 @@ export const TitansExpansion = {
                     game.eco[data.team].pumpkins -= config.costP; 
                     game.eco[data.team].dew -= config.costD;
                     
+                    // [FIX] Increment population instantly to prevent spam-click bypass!
+                    game.pop[data.team]++;
+                    
                     let s = new Spider(data.x + MathUtils.randomRange(-30, 30), data.y + MathUtils.randomRange(-30, 30), data.team, data.role);
                     
                     if (data.role === 'widow') s.sprite = game.assets.get(data.team === 'black' ? 'assets/widow_black.png' : 'assets/widow_red.png');
