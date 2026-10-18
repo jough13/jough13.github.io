@@ -196,6 +196,20 @@ export const TerrainExpansion = {
                                         }
                                     }
                                 } else {
+                                    if (key.startsWith('water_')) {
+                                        // Bake the deep black water base natively
+                                        ctx.fillStyle = '#000';
+                                        ctx.fillRect(0, 0, this.tileSize, this.tileSize);
+                                        
+                                        // Bake an inner shadow by casting a shadow from the borders inward
+                                        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                                        ctx.shadowBlur = 10;
+                                        ctx.strokeStyle = '#000';
+                                        ctx.lineWidth = 8;
+                                        ctx.strokeRect(0, 0, this.tileSize, this.tileSize);
+                                        
+                                        ctx.shadowBlur = 0; // Reset
+                                    }
                                     ctx.drawImage(img, 0, 0, this.tileSize, this.tileSize);
                                 }
                                 this.bakedTiles[key] = c; 
@@ -253,13 +267,6 @@ export const TerrainExpansion = {
                         let renderY = drawY;
                         
                         if (tileData.type === 'water') {
-                            // [JUICE] Inner shadow creates depth, making the river look carved into the dirt!
-                            ctx.shadowColor = 'rgba(0,0,0,0.5)';
-                            ctx.shadowBlur = 10;
-                            ctx.fillStyle = '#000';
-                            ctx.fillRect(drawX, drawY, game.tileSize, game.tileSize);
-                            ctx.shadowBlur = 0; // Reset
-                            
                             // [JUICE] Rippling water animation
                             renderY += Math.sin(game.tick * 0.05 + x) * 2;
                         }
