@@ -76,8 +76,8 @@ export class ExplosiveProjectile {
                     for (let i = 0; i < cell.length; i++) {
                         let e = cell[i];
                         
-                        // Fast early-exit checks
-                        if (!e.team || e.team === this.team || e.team === 'nature' || e.hp === undefined || e.hp <= 0) continue;
+                        // [FIX] Allow nature units to take splash damage, but ignore dead corpses
+                        if (!e.team || e.team === this.team || e.team === 'dead' || e.hp === undefined || e.hp <= 0) continue;
                         
                         // Fast AABB check to avoid heavy circle math for distant units
                         if (Math.abs(this.x - e.x) > splashRad || Math.abs(this.y - e.y) > splashRad) continue;
