@@ -1,5 +1,6 @@
 // expansions/DarkRituals.js
 import { Spider, Structure, MathUtils, UNIT_DATA, STRUCTURE_DATA } from '../game.js';
+import { Queen } from './Queen.js';
 
 // ==========================================
 // 1. CONFIGURATION & BALANCING
@@ -33,8 +34,7 @@ export const DarkRitualsExpansion = {
         UNIT_DATA['tick'] = { 
             size: 10, hp: 20, damage: 100, attackSpeed: 45, 
             baseSpeedMin: 2.2, baseSpeedMax: 2.8, 
-            range: 250, rangeSq: 62500, // Used by siege_attacker trait
-            traits: ['siege_attacker'] 
+            traits: ['kamikaze'] // [FIX] Swapped to the correct suicide bomber trait!
         };
 
         STRUCTURE_DATA['extractor'] = { 
@@ -107,12 +107,6 @@ export const DarkRitualsExpansion = {
                     
                     // 🚀 [LOGIC FIX] Point the base class to the correct sprite target!
                     s.spriteSrc = data.team === 'black' ? 'assets/tick_black.png' : 'assets/tick_red.png';
-                    
-                    // ECS Trait Setup for Tick's Siege capabilities
-                    if (s.hasTrait('siege_attacker')) {
-                        s.range = UNIT_DATA['tick'].range;
-                        s.rangeSq = UNIT_DATA['tick'].rangeSq;
-                    }
 
                     game.addEntity(s);
                     game.bus.emit('playSound', 'harvest'); 
@@ -143,6 +137,24 @@ export const DarkRitualsExpansion = {
             }
 
             original.call(this, gameObj); // Run normal AI (or TraitManager AI!)
+
+            this.baseSpeed = originalSpeed;
+            this.damage = originalDamage;
+        });
+
+        // [FIX] Apply Bloodlust buff to the Queen specifically, since her custom AI runs *after* super.update()
+        game.expansions.patchClass(Queen, 'update', function(original, gameObj) {
+            let originalSpeed = this.baseSpeed;
+            let originalDamage = this.damage;
+            
+            if (this.bloodlustTimer > 0) {
+                // We do NOT decrement the timer here, because original.call runs super.update(), 
+                // which triggers the Spider patch above to handle the decrement safely!
+                this.baseSpeed *= RITUAL_CONFIG.bloodlustSpeedMult; 
+                this.damage += RITUAL_CONFIG.bloodlustDamageBonus;     
+            }
+
+            original.call(this, gameObj); 
 
             this.baseSpeed = originalSpeed;
             this.damage = originalDamage;
