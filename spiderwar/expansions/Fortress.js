@@ -93,7 +93,8 @@ export class MortarShell {
                         if (Math.abs(this.targetX - e.x) > FORTRESS_CONFIG.mortarSplashRadius || Math.abs(this.targetY - e.y) > FORTRESS_CONFIG.mortarSplashRadius) continue;
 
                         if (MathUtils.distSq(this.targetX, this.targetY, e.x, e.y) < radiusSq) {
-                            if (e.role || e.constructor.name === 'CentipedeBoss') {
+                            // [FIX] Minification-safe boss check
+                            if (e.role || e.isBoss) {
                                 e.hp -= this.damage;
                             } else {
                                 e.hp -= (this.damage * 0.5); // 50% damage to buildings
@@ -196,7 +197,6 @@ export const FortressExpansion = {
                     let healed = false;
                     
                     // Pre-calculate variables outside the loop for maximum performance
-                    const techBoost = (gameObj.techLevel[this.team] || 0) * 20;
                     const radius = FORTRESS_CONFIG.shrineHealRadius;
                     const radiusSq = FORTRESS_CONFIG.shrineHealRadiusSq;
 
@@ -221,14 +221,15 @@ export const FortressExpansion = {
                             for (let i = 0; i < cell.length; i++) {
                                 let e = cell[i];
                                 
-                                // Fast early-exits: Must be friendly, alive, and missing health!
-                                if (e.team !== this.team || e.hp <= 0 || e.hp >= e.maxHp + techBoost) continue;
+                                // [FIX] Fast early-exits: Rely natively on this.maxHp!
+                                if (e.team !== this.team || e.hp <= 0 || e.hp >= e.maxHp) continue;
 
                                 // Fast AABB check
                                 if (Math.abs(this.x - e.x) > radius || Math.abs(this.y - e.y) > radius) continue;
 
                                 if (MathUtils.distSq(this.x, this.y, e.x, e.y) < radiusSq) {
-                                    e.hp = Math.min(e.maxHp + techBoost, e.hp + FORTRESS_CONFIG.shrineHealAmount);
+                                    // [FIX] Cap healing strictly at native maxHp
+                                    e.hp = Math.min(e.maxHp, e.hp + FORTRESS_CONFIG.shrineHealAmount);
                                     healed = true;
                                     // Emit a tiny green sparkle on the healed unit
                                     gameObj.bus.emit('particles', {x: e.x, y: e.y, color: '#00ff00', count: 1, type: 'magic'});
