@@ -3321,8 +3321,10 @@ const RADIONUCLIDE_DATA = [{
       category: 'Medical',
       commonality: 'Moderate',
       commonalityReason: 'A highly effective and increasingly common therapeutic isotope for treating neuroendocrine tumors (PRRT).',
+      gammaConstant: '0.028 R·m²/hr·Ci',
       sourceRef: {
-         halfLife: 'nndc'
+         halfLife: 'nndc',
+         gammaConstant: 'plexus_nsd'
       },
       shipping: {
          A1: 30,
@@ -4552,8 +4554,10 @@ const RADIONUCLIDE_DATA = [{
       category: 'Medical',
       commonality: 'Moderate',
       commonalityReason: 'A clinically approved alpha-emitter for treating bone metastases from prostate cancer.',
+      gammaConstant: '0.325 R·m²/hr·Ci',
       sourceRef: {
-         halfLife: 'nndc'
+         halfLife: 'nndc',
+         gammaConstant: 'plexus_nsd'
       },
       dValue: 0.07,
       shipping: {
@@ -5326,8 +5330,10 @@ const RADIONUCLIDE_DATA = [{
       category: 'Medical',
       commonality: 'Moderate',
       commonalityReason: 'A clinically used therapeutic isotope for palliative treatment of bone pain from cancer.',
+      gammaConstant: '0.090 R·m²/hr·Ci',
       sourceRef: {
-         halfLife: 'nndc'
+         halfLife: 'nndc',
+         gammaConstant: 'plexus_nsd'
       },
       shipping: {
          A1: 9,
@@ -7557,8 +7563,10 @@ const RADIONUCLIDE_DATA = [{
       category: 'Medical',
       commonality: 'Moderate',
       commonalityReason: 'A high-energy pure beta-emitter used for liver cancer therapy and other treatments.',
+      gammaConstant: '0.00056 R·m²/hr·Ci',
       sourceRef: {
-         halfLife: 'nndc'
+         halfLife: 'nndc',
+         gammaConstant: 'estimated_bremsstrahlung'
       },
       shipping: {
          A1: 0.3,
