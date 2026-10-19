@@ -3402,24 +3402,24 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const actTBq = singleItemActTBq * qty; 
         const actBq = actTBq * 1e12;
         
-        const massGrams = safeParseFloat(packageMass);
-        const specActivityBq_g = massGrams > 0 ? actBq / massGrams : Infinity;
-
         const isInstrument = newItemCategory === 'instrument';
         const isSpecialForm = newItemForm === 'A1';
         const hasFissile = FISSILE_ISOTOPES.includes(newItemSymbol);
 
-        // --- Calculate LSA Status & Hint FIRST ---
+        // Only allow mass dilution if the item is explicitly bulk material
+        const massGrams = safeParseFloat(packageMass);
+        const specActivityTBq_g = (!isInstrument && massGrams > 0) ? actTBq / massGrams : Infinity;
+        const specActivityBq_g = (!isInstrument && massGrams > 0) ? actBq / massGrams : Infinity;
+
         const a2Raw = selectedNuclideData.shipping.A2;
         const a2Val = (typeof a2Raw === 'string' && a2Raw.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(a2Raw);
         
         let lsaHint = null;
         let suggestedPSN = '';
         
-        if (massGrams > 0 && a2Val !== Infinity && !isInstrument) {
-            const specActivityTBq_g = actTBq / massGrams;
+        // LSA applies ONLY to bulk material, never to instruments/articles
+        if (!isInstrument && massGrams > 0 && a2Val !== Infinity) {
             const lsa2LimitMultiplier = newItemState === 'liquid' ? 1e-5 : 1e-4;
-
             if (specActivityTBq_g <= lsa2LimitMultiplier * a2Val) {
                 lsaHint = 'LSA-II';
             } else if (specActivityTBq_g <= 2e-3 * a2Val && newItemState === 'solid') {
@@ -3427,12 +3427,12 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             }
         }
         
-        // --- DOT Exemption Check ---
         const exemptLimitBq = selectedNuclideData.shipping.exemptConsignmentBq || 0;
         const exemptConcLimitBq_g = selectedNuclideData.shipping.exemptConcLimitBq_g || 0; 
 
+        // Consignment limit applies to everything. Concentration limit applies ONLY to bulk materials.
         const exceedsConsignment = exemptLimitBq === 0 || actBq > exemptLimitBq;
-        const exceedsConcentration = exemptConcLimitBq_g === 0 || specActivityBq_g > exemptConcLimitBq_g;
+        const exceedsConcentration = isInstrument || exemptConcLimitBq_g === 0 || specActivityBq_g > exemptConcLimitBq_g;
         
         if (!(exceedsConsignment && exceedsConcentration)) {
             return { ...defaultResult, suggestedPSN: PSN_OPTIONS[15], actTBq, actBq, specActivityBq_g, singleItemActTBq, lsaHint }; 
@@ -3443,7 +3443,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         
         let matPkgMult = 0; let instItemMult = 0; let instPkgMult = 0;
         
-        // H-3 multipliers specifically apply to gaseous Tritium
         if (newItemSymbol === 'H-3' && newItemState === 'gas') { 
             matPkgMult = 2e-2; instItemMult = 2e-2; instPkgMult = 2e-1; 
         } else if (newItemState === 'liquid') { 
@@ -3451,21 +3450,20 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         } else if (newItemState === 'gas') {
             matPkgMult = newItemForm === 'A1' ? 1e-3 : 1e-4; 
             instItemMult = 1e-3; instPkgMult = 1e-2;
-        } else { // Solid
+        } else { 
             matPkgMult = 1e-3; instItemMult = 1e-2; instPkgMult = 1; 
         }
 
         const pkgLimitExc = limitTBq * (isInstrument ? instPkgMult : matPkgMult);
         const itemLimitExc = isInstrument ? limitTBq * instItemMult : Infinity;
 
-        // --- Routing Logic ---
         if (actTBq <= pkgLimitExc && singleItemActTBq <= itemLimitExc) {
             suggestedPSN = isInstrument ? PSN_OPTIONS[1] : PSN_OPTIONS[0];
         } 
         else if (lsaHint === 'LSA-II') {
-            suggestedPSN = PSN_OPTIONS[5]; // UN3321
+            suggestedPSN = PSN_OPTIONS[5]; 
         } else if (lsaHint === 'LSA-III') {
-            suggestedPSN = PSN_OPTIONS[6]; // UN3322
+            suggestedPSN = PSN_OPTIONS[6]; 
         } 
         else if (actTBq <= limitTBq) {
             suggestedPSN = isSpecialForm ? PSN_OPTIONS[9] : PSN_OPTIONS[8];
@@ -3580,11 +3578,14 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         
         let anyItemFailsExc = false;
         let hasFissile = false;
+        let allItemsMaterial = true;
 
         const pMass = safeParseFloat(packageMass);
         const unshieldedMrem = !isNaN(safeParseFloat(unshieldedDose3m)) ? toMremHr(safeParseFloat(unshieldedDose3m), unshieldedDoseUnit) : 0;
 
         packageItems.forEach(item => {
+            if (item.category === 'instrument') allItemsMaterial = false;
+
             totalTBq += item.actTBq;
             sumFracTypeA += item.fracTypeA;
             sumFracExcPkg += item.fracExcPkg;
@@ -3614,13 +3615,16 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         let lsaMethodologyNote = '';
         const isRQ = sumFracRQ >= 1.0;
 
-        const isExemptConsignment = Number(sumExemptAct.toFixed(5)) <= 1.0 || (pMass > 0 && Number((sumExemptConc / pMass).toFixed(5)) <= 1.0);
+        // Concentration exemption only applies to uniformly distributed bulk material
+        const isExemptConsignment = Number(sumExemptAct.toFixed(5)) <= 1.0 || 
+            (allItemsMaterial && pMass > 0 && Number((sumExemptConc / pMass).toFixed(5)) <= 1.0);
+            
         const qualifiesExcepted = Number(sumFracExcPkg.toFixed(5)) <= 1.0 && !anyItemFailsExc;
         
-        let qualifiesLSA2 = pMass > 0 && Number((sumLSA2 / pMass).toFixed(5)) <= 1.0 && !packageItems.some(i => i.category === 'instrument');
-        let qualifiesLSA3 = pMass > 0 && Number((sumLSA3 / pMass).toFixed(5)) <= 1.0 && !packageItems.some(i => i.category === 'instrument');
+        // LSA only applies to uniformly distributed bulk material
+        let qualifiesLSA2 = allItemsMaterial && pMass > 0 && Number((sumLSA2 / pMass).toFixed(5)) <= 1.0;
+        let qualifiesLSA3 = allItemsMaterial && pMass > 0 && Number((sumLSA3 / pMass).toFixed(5)) <= 1.0;
 
-        // 49 CFR 173.427(a)(1) - Unshielded Limit Prohibition
         if (unshieldedMrem > 1000) {
             qualifiesLSA2 = false;
             qualifiesLSA3 = false;
