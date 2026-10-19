@@ -1425,6 +1425,9 @@ return (
 /**
 * @description A React component that renders a line chart for simple decay (Parent/Daughter) using Chart.js.
 */
+/**
+* @description A React component that renders a line chart for simple decay (Parent/Daughter) using Chart.js.
+*/
 const DecayChart = ({ chartData, useLogScale, theme }) => {
     const chartRef = React.useRef(null);
     const chartInstance = React.useRef(null);
@@ -1446,9 +1449,14 @@ const DecayChart = ({ chartData, useLogScale, theme }) => {
             let safeMin = undefined;
             if (useLogScale) {
                 // Combine parent and daughter data to find the range
-                const allValues = [...chartData.parentData];
-                if (chartData.daughterData) {
-                    allValues.push(...chartData.daughterData);
+                let allValues = [];
+                if (chartData.datasets) {
+                    allValues = chartData.datasets.flatMap(d => d.data);
+                } else {
+                    allValues = [...(chartData.parentData || [])];
+                    if (chartData.daughterData) {
+                        allValues.push(...chartData.daughterData);
+                    }
                 }
                 
                 const maxVal = Math.max(...allValues);
@@ -1460,6 +1468,29 @@ const DecayChart = ({ chartData, useLogScale, theme }) => {
                     safeMin = 1e-5;
                 }
             }
+
+            const datasets = chartData.datasets || [
+                {
+                    label: chartData.parentName,
+                    data: chartData.parentData,
+                    borderColor: '#0284c7', // Sky-600
+                    backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                    fill: true,
+                    tension: 0, // Straight lines for log scale accuracy
+                    pointRadius: 0,
+                    pointHoverRadius: 6
+                },
+                ...(chartData.daughterData ? [{
+                    label: chartData.daughterName,
+                    data: chartData.daughterData,
+                    borderColor: '#e11d48', // Rose-600
+                    backgroundColor: 'rgba(225, 29, 72, 0.1)',
+                    fill: true,
+                    tension: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 6
+                }] : [])
+            ];
 
             chartInstance.current = new Chart(ctx, {
                 type: 'line',
@@ -1476,28 +1507,7 @@ const DecayChart = ({ chartData, useLogScale, theme }) => {
                             ctx.restore();
                         }
                     }],
-                    datasets: [
-                        {
-                            label: chartData.parentName,
-                            data: chartData.parentData,
-                            borderColor: '#0284c7', // Sky-600
-                            backgroundColor: 'rgba(2, 132, 199, 0.1)',
-                            fill: true,
-                            tension: 0, // Straight lines for log scale accuracy
-                            pointRadius: 0,
-                            pointHoverRadius: 6
-                        },
-                        ...(chartData.daughterData ? [{
-                            label: chartData.daughterName,
-                            data: chartData.daughterData,
-                            borderColor: '#e11d48', // Rose-600
-                            backgroundColor: 'rgba(225, 29, 72, 0.1)',
-                            fill: true,
-                            tension: 0,
-                            pointRadius: 0,
-                            pointHoverRadius: 6
-                        }] : [])
-                    ]
+                    datasets: datasets
                 },
                 options: {
                     responsive: true,
@@ -1511,7 +1521,7 @@ const DecayChart = ({ chartData, useLogScale, theme }) => {
                         },
                         y: {
                             type: useLogScale ? 'logarithmic' : 'linear',
-                            title: { display: true, text: 'Activity', color: textColor, padding: { bottom: 10 }  },
+                            title: { display: true, text: chartData.yAxisLabel || 'Activity', color: textColor, padding: { bottom: 10 }  },
                             min: safeMin,
                             beginAtZero: !useLogScale,
                             ticks: { 
@@ -1541,14 +1551,14 @@ const DecayChart = ({ chartData, useLogScale, theme }) => {
     }, [chartData, useLogScale, theme]);
 
     const handleExport = () => {
-    if (chartInstance.current) {
-        const link = document.createElement('a');
-        link.href = chartInstance.current.toBase64Image();
-        const filename = `Decay_Chart.png`; // Or use dynamic name
-        link.download = filename;
-        link.click();
-    }
-};
+        if (chartInstance.current) {
+            const link = document.createElement('a');
+            link.href = chartInstance.current.toBase64Image();
+            const filename = `Decay_Chart.png`; // Or use dynamic name
+            link.download = filename;
+            link.click();
+        }
+    };
 
     return (
         <div className="mt-4">
