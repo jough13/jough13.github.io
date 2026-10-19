@@ -591,6 +591,7 @@ const SourceCorrectionCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
 
 const StandardDecayCalculator = ({
     radionuclides,
+    preselectedNuclide, 
     selectedNuclide,
     setSelectedNuclide,
     calculationMode,
@@ -679,6 +680,19 @@ const StandardDecayCalculator = ({
             return a.name.localeCompare(b.name);
         });
     }, [radionuclides]);
+
+    // --- Safely handle pre-selected nuclide ---
+    React.useEffect(() => {
+        if (preselectedNuclide) {
+            const symbol = typeof preselectedNuclide === 'object' && preselectedNuclide !== null 
+                ? preselectedNuclide.symbol 
+                : preselectedNuclide;
+            const n = sortedRadionuclides.find(r => r.symbol === symbol);
+            if (n && n.symbol !== selectedNuclide?.symbol) {
+                setSelectedNuclide(n);
+            }
+        }
+    }, [preselectedNuclide, sortedRadionuclides, setSelectedNuclide, selectedNuclide]);
 
     // --- Branching Path Detection ---
     React.useEffect(() => {
@@ -3102,13 +3116,11 @@ const ShippingPaper = ({
 
                             return (
                                 <tr key={item.id || idx}>
-                                    <td className="border border-black p-2 text-center font-bold text-lg">{isItemRegulatedLive ? 'X' : ''}</td>
-                                    <td className="border border-black p-2 font-bold">
-                                        {displayRQ && <span className="mr-1 text-red-600">RQ,</span>}
-                                        {item.psn}
+                                    <td className="border border-black p-2 text-center font-bold text-lg">
+                                        {isItemRegulatedLive ? 'X' : ''}
                                     </td>
                                     <td className="border border-black p-2 font-bold">
-                                        {item.fracRQ >= 1.0 && <span className="mr-1 text-red-600">RQ,</span>}
+                                        {displayRQ && <span className="mr-1 text-red-600">RQ,</span>}
                                         {item.psn}
                                     </td>
                                     <td className="border border-black p-2">{item.symbol}</td>
@@ -3349,9 +3361,15 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const selectedNuclideData = React.useMemo(() => 
         transportNuclides.find(n => n.symbol === newItemSymbol), [newItemSymbol, transportNuclides]);
 
+    // --- Hook to handle pre-selection from NuclideCard ---
     React.useEffect(() => {
-        if (preselectedNuclide && transportNuclides.some(n => n.symbol === preselectedNuclide)) {
-            setNewItemSymbol(preselectedNuclide);
+        if (preselectedNuclide) {
+            const symbol = typeof preselectedNuclide === 'object' && preselectedNuclide !== null 
+                ? preselectedNuclide.symbol 
+                : preselectedNuclide;
+            if (symbol && transportNuclides.some(n => n.symbol === symbol)) {
+                setSelectedSymbol(symbol);
+            }
         }
     }, [preselectedNuclide, transportNuclides]);
 
@@ -4259,15 +4277,17 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                     label={labelResult}
                     doseRates={{ 
                         surface: surfaceDoseRate, 
-                        surfaceUnit: surfaceDoseRateUnit, // Pass specific surface unit
+                        surfaceUnit: surfaceDoseRateUnit, 
                         at1m: doseRateAt1m, 
-                        unit1m: doseRateUnit              // Pass specific 1m unit
+                        unit1m: doseRateUnit              
                     }}
                     emergencyContact={emergencyContact}
                     comments={bolComments}
                     shipper={{ name: shipperName, address: shipperAddress }}
                     consignee={{ name: consigneeName, address: consigneeAddress }}
                     dimensions={packageDimensions}
+                    packageMass={packageMass}
+                    forceRegulated={forceRegulated}
                 />
             )}
 
@@ -5291,16 +5311,38 @@ const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
                                 
                                 {/* Split Artifact UI into Forward (Causes) and Reverse (Caused By) */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-slate-600">
+                                    
+                                    {/* Forward Math: If this is a photopeak, where are its artifacts? */}
+                                    <div className="p-3">
+                                        <p className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400 mb-2">If Photopeak, expect artifacts at:</p>
+                                        <div className="space-y-1 text-xs">
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-500">Compton Edge:</span>
+                                                <span className="font-mono font-medium">{analysis.comptonEdge} keV</span>
+                                            </div>
+                                            {analysis.singleEscape && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-slate-500">Single Escape:</span>
+                                                    <span className="font-mono font-medium">{analysis.singleEscape} keV</span>
+                                                </div>
+                                            )}
+                                            {analysis.doubleEscape && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-slate-500">Double Escape:</span>
+                                                    <span className="font-mono font-medium">{analysis.doubleEscape} keV</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Reverse Math: If this is an artifact, what was the parent photopeak? */}
                                     <div className="p-3">
                                         <p className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400 mb-2">If Artifact, the parent was:</p>
                                         <div className="space-y-1 text-xs">
-                                            {/* Compton Edge parent is always calculated, so this can stay bare */}
                                             <div className="flex justify-between">
                                                 <span className="text-slate-500">from Compton Edge:</span>
                                                 <span className="font-mono font-medium">{analysis.parentFromCE} keV</span>
                                             </div>
-                                            
-                                            {/* Conditional guards stop 'null keV' from printing to the screen */}
                                             {analysis.parentFromSE && (
                                                 <div className="flex justify-between">
                                                     <span className="text-slate-500">from Single Escape:</span>
@@ -5315,14 +5357,7 @@ const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
                                             )}
                                         </div>
                                     </div>
-                                    <div className="p-3">
-                                        <p className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400 mb-2">If Artifact, the parent was:</p>
-                                        <div className="space-y-1 text-xs">
-                                            <div className="flex justify-between"><span className="text-slate-500">from Compton Edge:</span><span className="font-mono font-medium">{analysis.parentFromCE} keV</span></div>
-                                            <div className="flex justify-between"><span className="text-slate-500">from Single Escape:</span><span className="font-mono font-medium">{analysis.parentFromSE} keV</span></div>
-                                            <div className="flex justify-between"><span className="text-slate-500">from Double Escape:</span><span className="font-mono font-medium">{analysis.parentFromDE} keV</span></div>
-                                        </div>
-                                    </div>
+                                    
                                 </div>
                                 
                                 {/* Warnings */}
@@ -7449,7 +7484,28 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
         if (!intakeUnits.includes(intakeUnit)) setIntakeUnit(intakeUnits[2] || intakeUnits[0]);
     }, [settings.unitSystem, activityUnits, distanceUnits, intakeUnits, activityUnit, distanceUnit, intakeUnit]);
 
-    React.useEffect(() => { if (preselectedNuclide) { setNuclideSymbol(preselectedNuclide.symbol); setInputMode(INPUT_MODE_DB); } }, [preselectedNuclide]);
+    // --- Handle Pre-selection ---
+    React.useEffect(() => {
+        if (preselectedNuclide) {
+            const symbol = typeof preselectedNuclide === 'object' && preselectedNuclide !== null 
+                ? preselectedNuclide.symbol 
+                : preselectedNuclide;
+                
+            const isGamma = gammaNuclides.some(n => n.symbol === symbol);
+            const isBeta = betaNuclides.some(n => n.symbol === symbol);
+            
+            if (isGamma) {
+                setNuclideSymbol(symbol);
+                setCalcMode('gamma');
+                setGeometryMode('point');
+                setInputMode('fromSource');
+            } else if (isBeta) {
+                setNuclideSymbol(symbol);
+                setCalcMode('beta');
+                setInputMode('fromSource');
+            }
+        }
+    }, [preselectedNuclide, gammaNuclides, betaNuclides]);
 
     // Data Filtering
     const gammaNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
@@ -8182,6 +8238,19 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
         localStorage.setItem('shielding_calcMode', calcMode);
         localStorage.setItem('shielding_nuclideSymbol', nuclideSymbol);
     }, [calcMode, nuclideSymbol]);
+
+    React.useEffect(() => {
+        if (preselectedNuclide) {
+            const symbol = typeof preselectedNuclide === 'object' && preselectedNuclide !== null 
+                ? preselectedNuclide.symbol 
+                : preselectedNuclide;
+                
+            if (shieldingNuclides.find(n => n.symbol === symbol)) {
+                setNuclideSymbol(symbol);
+                setCalcMode('fromSource');
+            }
+        }
+    }, [preselectedNuclide, shieldingNuclides]);
     
     const shieldingNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant && HVL_DATA[n.symbol]).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
     const betaNuclides = React.useMemo(() => radionuclides.filter(n => n.emissionEnergies?.beta?.length > 0).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
@@ -8712,16 +8781,18 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
     React.useEffect(() => { if (!doseRateUnits.includes(manualDoseRateUnit)) setManualDoseRateUnit(doseRateUnits[1]); }, [doseRateUnits, manualDoseRateUnit]);
     React.useEffect(() => { if (!doseUnits.includes(doseLimitUnit)) setDoseLimitUnit(doseUnits[1]); }, [doseUnits, doseLimitUnit]);
     
-    // Handle Preselection
     React.useEffect(() => {
         if (preselectedNuclide) {
-            const gammaNuclides = radionuclides.filter(n => n.gammaConstant);
-            if (gammaNuclides.find(n => n.symbol === preselectedNuclide)) {
-                setNuclideSymbol(preselectedNuclide);
-                setInputMode(INPUT_MODE_SOURCE);
+            const symbol = typeof preselectedNuclide === 'object' && preselectedNuclide !== null 
+                ? preselectedNuclide.symbol 
+                : preselectedNuclide;
+                
+            if (gammaNuclides.find(n => n.symbol === symbol)) {
+                setNuclideSymbol(symbol);
+                setInputMode('fromSource');
             }
         }
-    }, [preselectedNuclide, radionuclides]);
+    }, [preselectedNuclide, gammaNuclides]);
     
     const gammaNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
     
