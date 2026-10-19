@@ -5465,24 +5465,27 @@ const EMC_Calculator = () => {
 
                 if (chartRef.current && chartData) {
                     const ctx = chartRef.current.getContext('2d');
+                    
+                    const datasets = chartData.datasets || [
+                        {
+                            label: chartData.parentName,
+                            data: chartData.parentData,
+                            borderColor: '#0284c7', // sky-600
+                            tension: 0.1
+                        },
+                        ...(chartData.daughterData ? [{
+                            label: chartData.daughterName,
+                            data: chartData.daughterData,
+                            borderColor: '#e11d48', // rose-600
+                            tension: 0.1
+                        }] : [])
+                    ];
+
                     chartInstance.current = new Chart(ctx, {
                         type: 'line',
                         data: {
                             labels: chartData.labels,
-                            datasets: [
-                                {
-                                    label: chartData.parentName,
-                                    data: chartData.parentData,
-                                    borderColor: '#0284c7', // sky-600
-                                    tension: 0.1
-                                },
-                                ...(chartData.daughterData ? [{
-                                    label: chartData.daughterName,
-                                    data: chartData.daughterData,
-                                    borderColor: '#e11d48', // rose-600
-                                    tension: 0.1
-                                }] : [])
-                            ]
+                            datasets: datasets
                         },
                         options: {
                             responsive: true,
