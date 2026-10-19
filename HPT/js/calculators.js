@@ -3406,7 +3406,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const isSpecialForm = newItemForm === 'A1';
         const hasFissile = FISSILE_ISOTOPES.includes(newItemSymbol);
 
-        // Only allow mass dilution if the item is explicitly bulk material
         const massGrams = safeParseFloat(packageMass);
         const specActivityTBq_g = (!isInstrument && massGrams > 0) ? actTBq / massGrams : Infinity;
         const specActivityBq_g = (!isInstrument && massGrams > 0) ? actBq / massGrams : Infinity;
@@ -3417,7 +3416,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         let lsaHint = null;
         let suggestedPSN = '';
         
-        // LSA applies ONLY to bulk material, never to instruments/articles
         if (!isInstrument && massGrams > 0 && a2Val !== Infinity) {
             const lsa2LimitMultiplier = newItemState === 'liquid' ? 1e-5 : 1e-4;
             if (specActivityTBq_g <= lsa2LimitMultiplier * a2Val) {
@@ -3430,7 +3428,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const exemptLimitBq = selectedNuclideData.shipping.exemptConsignmentBq || 0;
         const exemptConcLimitBq_g = selectedNuclideData.shipping.exemptConcLimitBq_g || 0; 
 
-        // Consignment limit applies to everything. Concentration limit applies ONLY to bulk materials.
         const exceedsConsignment = exemptLimitBq === 0 || actBq > exemptLimitBq;
         const exceedsConcentration = isInstrument || exemptConcLimitBq_g === 0 || specActivityBq_g > exemptConcLimitBq_g;
         
@@ -3448,7 +3445,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         } else if (newItemState === 'liquid') { 
             matPkgMult = 1e-4; instItemMult = 1e-3; instPkgMult = 1e-1; 
         } else if (newItemState === 'gas') {
-            matPkgMult = newItemForm === 'A1' ? 1e-3 : 1e-4; 
+            matPkgMult = 1e-3; 
             instItemMult = 1e-3; instPkgMult = 1e-2;
         } else { 
             matPkgMult = 1e-3; instItemMult = 1e-2; instPkgMult = 1; 
@@ -3498,13 +3495,12 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
         let matPkgMult = 0; let instItemMult = 0; let instPkgMult = 0;
 
-        // FIXED: H-3 multipliers specifically apply to gaseous Tritium
         if (newItemSymbol === 'H-3' && newItemState === 'gas') { 
             matPkgMult = 2e-2; instItemMult = 2e-2; instPkgMult = 2e-1; 
         } else if (newItemState === 'liquid') { 
             matPkgMult = 1e-4; instItemMult = 1e-3; instPkgMult = 1e-1; 
         } else if (newItemState === 'gas') {
-            matPkgMult = newItemForm === 'A1' ? 1e-3 : 1e-4; 
+            matPkgMult = 1e-3; 
             instItemMult = 1e-3; instPkgMult = 1e-2;
         } else { 
             matPkgMult = 1e-3; instItemMult = 1e-2; instPkgMult = 1; 
@@ -3539,7 +3535,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             fracRQ: rqLimitTBq === Infinity ? 0 : actTBq / rqLimitTBq,
             fracHRCQ: hrcqLimitTBq === 0 ? 0 : actTBq / hrcqLimitTBq,
             psnOverride: itemManualPSN,
-            
             suggestedPSN: suggestedPSN,
             psn: itemManualPSN || suggestedPSN,
             isRegulated: !((exemptLimitBq === 0 || actBq <= exemptLimitBq) && (exemptConcLimitBq_g === 0 || specActivityBq_g <= exemptConcLimitBq_g)),
