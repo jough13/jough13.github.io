@@ -115,7 +115,6 @@ export const CombatAndHarvesterExpansion = {
                 if (!entity.target) {
                     entity.searchDelay = (entity.searchDelay || 0) - 1;
                     if (entity.searchDelay <= 0) {
-                        entity.searchDelay = MathUtils.randomInt(10, 20); 
                         let closest = null; 
                         let minD = Infinity;
 
@@ -151,11 +150,15 @@ export const CombatAndHarvesterExpansion = {
                             }
                         }
                         entity.target = closest;
+                        
+                        // [FIX] Only delay the next search if we completely failed to find a target!
+                        if (!closest) {
+                            entity.searchDelay = MathUtils.randomInt(10, 20); 
+                        }
                     } else {
                         return true; 
                     }
                 }
-
                 if (entity.target) {
                     const dx = entity.target.x - entity.x; 
                     const dy = entity.target.y - entity.y;
