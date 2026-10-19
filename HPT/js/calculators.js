@@ -3417,7 +3417,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         let suggestedPSN = '';
         
         if (!isInstrument && massGrams > 0 && a2Val !== Infinity) {
-            const lsa2LimitMultiplier = newItemState === 'liquid' ? 1e-5 : 1e-4;
+            const lsa2LimitMultiplier = (newItemState === 'liquid' || newItemState === 'gas') ? 1e-5 : 1e-4;
             if (specActivityTBq_g <= lsa2LimitMultiplier * a2Val) {
                 lsaHint = 'LSA-II';
             } else if (specActivityTBq_g <= 2e-3 * a2Val && newItemState === 'solid') {
@@ -3590,7 +3590,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             sumExemptAct += item.exemptLimitBq === 0 ? Infinity : item.actBq / item.exemptLimitBq;
             sumExemptConc += item.exemptConcLimitBq_g === 0 ? Infinity : item.actBq / item.exemptConcLimitBq_g;
 
-            const lsa2Mult = item.state === 'liquid' ? 1e-5 : 1e-4;
+            const lsa2Mult = (item.state === 'liquid' || item.state === 'gas') ? 1e-5 : 1e-4;
             const lsa2Limit = item.A2Val * lsa2Mult;
             sumLSA2 += (lsa2Limit === 0 || lsa2Limit === Infinity) ? 0 : item.actTBq / lsa2Limit;
 
@@ -3610,13 +3610,11 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         let lsaMethodologyNote = '';
         const isRQ = sumFracRQ >= 1.0;
 
-        // Concentration exemption only applies to uniformly distributed bulk material
         const isExemptConsignment = Number(sumExemptAct.toFixed(5)) <= 1.0 || 
             (allItemsMaterial && pMass > 0 && Number((sumExemptConc / pMass).toFixed(5)) <= 1.0);
             
         const qualifiesExcepted = Number(sumFracExcPkg.toFixed(5)) <= 1.0 && !anyItemFailsExc;
         
-        // LSA only applies to uniformly distributed bulk material
         let qualifiesLSA2 = allItemsMaterial && pMass > 0 && Number((sumLSA2 / pMass).toFixed(5)) <= 1.0;
         let qualifiesLSA3 = allItemsMaterial && pMass > 0 && Number((sumLSA3 / pMass).toFixed(5)) <= 1.0;
 
@@ -3628,7 +3626,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
         const allItemsLSA = qualifiesLSA2 || qualifiesLSA3;
 
-        // Check 49 CFR 173.453 Fissile Exceptions (a) and (b)
         const fMass = safeParseFloat(fissileMass);
         const nonFissileMass = Math.max(0, pMass - fMass);
         
@@ -3638,7 +3635,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         
         const isFissileRegulated = hasFissile && fMass > 0 && !isFissileExcepted;
 
-        // --- ROUTING LOGIC ---
         if (isExemptConsignment && !forceRegulated && !isFissileRegulated) {
             classification = 'EXEMPT';
             methodology = 'Not Regulated as Class 7 (Consignment mixture satisfies the unity rule for exemptions under 49 CFR 173.433).';
@@ -3647,10 +3643,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             methodology = 'Sum of Fractions ≤ 1.0 (Excepted Limits) AND all individual items meet Item Limits.';
         } else if (allItemsLSA && !isFissileRegulated) {
             classification = 'LSA';
-            
-            // Check qualifiesLSA2 FIRST to prioritize the less restrictive tier
             const assignedLSA = qualifiesLSA2 ? 'LSA-II' : 'LSA-III'; 
-            
             const hasLiquidGas = packageItems.some(i => i.state === 'liquid' || i.state === 'gas');
             
             let requiredIP = 'IP-1';
