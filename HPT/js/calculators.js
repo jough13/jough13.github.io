@@ -3693,26 +3693,23 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             if (!isNaN(rate1m) && rate1m > 0) {
                 let mremAt1m = toMremHr(rate1m, doseRateUnit);
                 if (mremAt1m <= 0.05) TI = 0;
-                else TI = Math.ceil(mremAt1m * 10) / 10;
+                else TI = Math.ceil(Number((mremAt1m * 10).toFixed(6))) / 10;
             }
 
             const surfMrem = !isNaN(rateSurface) ? toMremHr(rateSurface, surfaceDoseRateUnit) : 0;
 
             let standardLabel = "Check Limits";
             
-            // Added 1000 mrem/h trap for absolute maximum
             if (surfMrem > 1000) standardLabel = "❌ INVALID (Surface > 1000 mrem/h limit per 173.441)";
             else if (surfMrem <= 0.5 && TI === 0) standardLabel = "White-I";
             else if (surfMrem <= 50 && TI <= 1) standardLabel = "Yellow-II";
             else if (surfMrem <= 200 && TI <= 10) standardLabel = "Yellow-III";
             else if (surfMrem > 200 || TI > 10) standardLabel = "Yellow-III (Exclusive Use)";
 
-            // Pull regulatory status directly from the verified source of truth
             const isFissileRegulated = classificationResult?.isFissileRegulated;
             const csiVal = safeParseFloat(csi);
             const fissileAppend = isFissileRegulated ? ` + FISSILE (CSI: ${isNaN(csiVal) ? '?' : csiVal.toFixed(1)})` : '';
 
-            // Automatically upgrade label to Exclusive Use if CSI > 50
             if (isFissileRegulated && csiVal > 50 && !standardLabel.includes('Exclusive Use')) {
                 standardLabel += " (Exclusive Use)";
             }
@@ -3735,7 +3732,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                 }
             }
 
-            // CSI Conveyance Limit Verification
             if (isFissileRegulated && csiVal > 100) {
                 labelCategory = "❌ INVALID (CSI > 100 per conveyance prohibited)";
             }
