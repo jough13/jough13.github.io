@@ -1496,19 +1496,19 @@ const DecayChart = ({ chartData, useLogScale, theme }) => {
                 type: 'line',
                 data: {
                     labels: chartData.labels,
-                    plugins: [{
-                        id: 'customCanvasBackgroundColor',
-                        beforeDraw: (chart, args, options) => {
-                            const {ctx} = chart;
-                            ctx.save();
-                            ctx.globalCompositeOperation = 'destination-over';
-                            ctx.fillStyle = '#ffffff'; // Force white background in the actual pixel data
-                            ctx.fillRect(0, 0, chart.width, chart.height);
-                            ctx.restore();
-                        }
-                    }],
                     datasets: datasets
                 },
+                plugins: [{
+                    id: 'customCanvasBackgroundColor',
+                    beforeDraw: (chart, args, options) => {
+                        const {ctx} = chart;
+                        ctx.save();
+                        ctx.globalCompositeOperation = 'destination-over';
+                        ctx.fillStyle = '#ffffff'; // Force white background in the actual pixel data
+                        ctx.fillRect(0, 0, chart.width, chart.height);
+                        ctx.restore();
+                    }
+                }],
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
