@@ -4343,7 +4343,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 /**
  * @description React component acting as a container for various medical physics tools.
  */
-
 const MedicalCalculator = ({ radionuclides }) => {
     const [activeTab, setActiveTab] = React.useState('xrayShielding');
     const { settings } = React.useContext(SettingsContext);
@@ -4366,10 +4365,10 @@ const MedicalCalculator = ({ radionuclides }) => {
     const [pr_nuclideSymbol, setPr_nuclideSymbol] = React.useState('');
     const [pr_activity, setPr_activity] = React.useState('30');
     const [pr_activityUnit, setPr_activityUnit] = React.useState(settings.unitSystem === 'si' ? 'GBq' : 'mCi');
-    const [pr_measuredRate, setPr_measuredRate] = React.useState(''); // NEW: 1m Rate Check
+    const [pr_measuredRate, setPr_measuredRate] = React.useState(''); 
     const [pr_occupancyFactor, setPr_occupancyFactor] = React.useState('0.25');
     const [pr_distance, setPr_distance] = React.useState('1');
-    const [pr_attenuation, setPr_attenuation] = React.useState('0.8');
+    const [pr_attenuation, setPr_attenuation] = React.useState('1.0');
     const [pr_effectiveHalfLife, setPr_effectiveHalfLife] = React.useState('');
     const [pr_effectiveHalfLifeUnit, setPr_effectiveHalfLifeUnit] = React.useState('hours');
     const [pr_result, setPr_result] = React.useState(null);
@@ -4384,18 +4383,11 @@ const MedicalCalculator = ({ radionuclides }) => {
     // Dynamic Units
     const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['MBq', 'GBq', 'TBq'] : ['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
     
-    // FIX 2: Updated dependency array to include all referenced variables
     React.useEffect(() => {
         if (!activityUnits.includes(pr_activityUnit)) {
             setPr_activityUnit(activityUnits[1]);
         }
     }, [activityUnits, pr_activityUnit]);
-    
-    // Auto-set Attenuation for I-131
-    React.useEffect(() => {
-        if (pr_nuclideSymbol === 'I-131') setPr_attenuation('0.8');
-        else setPr_attenuation('1.0');
-    }, [pr_nuclideSymbol]);
     
     const handleClearActiveCalculator = () => {
         if (activeTab === 'xrayShielding') {
@@ -4404,11 +4396,10 @@ const MedicalCalculator = ({ radionuclides }) => {
             setXray_shieldMaterial('Lead'); setXray_result(null); setXray_error('');
         } else if (activeTab === 'patientRelease') {
             setPr_nuclideSymbol(''); setPr_activity('30'); setPr_measuredRate('');
-            setPr_occupancyFactor('0.25'); setPr_distance('1'); setPr_attenuation('0.8');
+            setPr_occupancyFactor('0.25'); setPr_distance('1'); setPr_attenuation('1.0');
             setPr_effectiveHalfLife(''); setPr_result(null); setPr_error('');
-            setPr_activityUnit(activityUnits[1]); // Reset unit to standard default
+            setPr_activityUnit(activityUnits[1]); 
         } else if (activeTab === 'decayStorage') {
-            // FIX 1: Added setDis_limit('0.02') to fully clear the tab
             setDis_nuclideSymbol(''); setDis_currentRate('5.0'); setDis_limit('0.02'); setDis_result(null);
         }
     };
