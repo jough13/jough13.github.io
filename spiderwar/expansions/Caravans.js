@@ -133,26 +133,34 @@ export class GoldenCaravan extends Spider {
 
     // 🛡️ [FIX] Pass game object down to super.draw to preserve RAM Cache and animations!
     draw(ctx, game) {
+        // 🧃 [JUICE] Massive golden shadow/glow underneath
         ctx.save();
         ctx.translate(this.x, this.y);
-        
-        // 🧃 [JUICE] Flash bright white when damaged
-        if (this.flashFrames > 0) ctx.filter = 'brightness(2.5)';
-        
-        // 🧃 [JUICE] Heavy waddling animation
-        const tick = game ? game.tick : 0;
-        const waddle = Math.sin(tick * 0.1 + this.animOffset) * 0.15;
-        ctx.rotate(waddle);
-        
-        // 🧃 [JUICE] Massive golden shadow/glow
         ctx.shadowColor = '#ffea00';
         ctx.shadowBlur = 15;
-        
-        ctx.translate(-this.x, -this.y); // Undo translation so super.draw handles it cleanly
-        
-        super.draw(ctx, game);
-        
+        ctx.fillStyle = 'rgba(255, 234, 0, 0.2)';
+        ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
         ctx.restore();
+        
+        // Temporarily inject the waddle into the angle so super.draw rotates the sprite organically
+        const tick = game ? game.tick : 0;
+        const waddle = Math.sin(tick * 0.1 + this.animOffset) * 0.15;
+        const tempAngle = this.angle;
+        this.angle += waddle;
+        
+        super.draw(ctx, game); // Inherits sprite drawing and patched health bar cleanly!
+        
+        this.angle = tempAngle;
+        
+        // 🧃 [JUICE] Flash bright white when damaged (Additive Blending instead of slow CSS filters!)
+        if (this.flashFrames > 0) {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
+            ctx.restore();
+        }
     }
 }
 
