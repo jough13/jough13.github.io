@@ -122,8 +122,10 @@ export const SplashScreenExpansion = {
         ui.id = 'preGameUI';
         ui.innerHTML = `
             <div id="introView">
-                <video id="introVideo" src="assets/intro.mp4" autoplay loop muted playsinline></video>
+                <!-- [FIX] Removed 'loop' so the 'ended' event can properly fire! -->
+                <video id="introVideo" src="assets/intro.mp4" autoplay muted playsinline></video>
                 <div id="introInteractBlocker">[ CLICK TO INITIALIZE ENGINE ]</div>
+
                 <div id="splashText">
                     <h1>SpiderWars!</h1>
                     <p>[ CLICK TO COMMAND THE SWARM ]</p>
