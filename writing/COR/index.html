@@ -142,6 +142,9 @@
             color: var(--color-accent-amber);
             font-weight: 700;
         }
+
+        .taxonomy-list { list-style: none; padding-left: 0; margin-bottom: 1.5rem; }
+        .taxonomy-list li { margin-bottom: 0.8rem; }
         
         .archive-data {
             font-family: var(--font-mono);
@@ -150,6 +153,18 @@
             background-color: rgba(10, 102, 62, 0.1);
             padding: 2px 5px;
             border-radius: 3px;
+        }
+
+        .doc-header {
+            font-family: var(--font-mono);
+            color: var(--color-archive-glitch);
+            font-size: 0.85rem;
+            background-color: rgba(10, 102, 62, 0.05);
+            border: 1px solid rgba(10, 102, 62, 0.2);
+            padding: 1rem;
+            margin-bottom: 2rem;
+            border-radius: 4px;
+            line-height: 1.5;
         }
 
         hr {
@@ -178,36 +193,60 @@
 
         <main>
             <article id="foreword">
+                
+                <div class="doc-header">
+                    <strong>THARSIS INSTITUTE PUBLIC ARCHIVES DOCUMENT ID:</strong> GSY2850.1<br>
+                    <strong>TITLE:</strong> An Introduction to the Modern Interstellar Epoch (Abridged Primer)<br>
+                    <strong>COMPILED BY:</strong> The Office of Temporal Cartography, Historical Division, Olympus Mons<br>
+                    <strong>CLEARANCE:</strong> <span style="color: var(--color-accent-amber); font-weight: bold;">GENERAL PUBLIC ACCESS</span> (Approved for Pan-System Educational Distribution)
+                </div>
+
                 <h2>Foreword: The State of Humanity, GSY 2850</h2>
-                <p>For over three millennia, humanity has traveled the stars. The journey, which began with chemical rockets tentatively reaching for our own moon in the mists of the 20th century, exploded outwards with the mastery of fusion power. A new calendar was born—the Galactic Standard Year (GSY)—to mark a new era as humanity established itself on Mars and beyond.</p>
-                <p>From our cradle in the <a href="#sol-system" title="Read more about the Sol System">Sol system</a>, we launched the "First Wave" of slow ships, great multi-generational arks venturing into the deep dark on one-way journeys that took centuries. We believed we would find a galaxy teeming with life, a vibrant chorus of civilizations.</p>
-                <p>We found mostly silence.</p>
+                <p>For more than three millennia, humanity has walked among the stars.</p>
+                <p>What began in the hydrocarbon mists of the twentieth century—with fragile chemical rockets hurling tin capsules toward our own barren moon—became an unstoppable outward tide the moment we tamed the heart of the atom. With the mastery of sustained fusion, the old planetary boundaries dissolved. As the red dust of Mars was beneath our boots and the outer gas giants became our shipyards, a new reckoning of time was born: the Galactic Standard Year, marking the epoch when <em>Homo sapiens</em> ceased to be the prisoner of a single gravity well.</p>
+                <p>From our cradle in the <a href="#sol-system" title="Read more about the Sol System">Sol system</a>, our ancestors launched the great multi-generational arks. They cast themselves into the abyssal dark aboard slow-burning vessels, committing their children and their children’s children to one-way voyages that spanned centuries. They went out into the night drunk on hope. They believed—with the naive, touching certainty of a young species—that they were sailing out to join a bustling metropolitan galaxy. They expected a vibrant chorus of elder civilizations eager to welcome humanity into the cosmic fold.</p>
+                <p>Instead, they found the Great Silence.</p>
                 
                 <section>
-                    <h3>I. A History of the Diaspora: The Journey into Deep Time</h3>
-                    <p>The dawn of true space exploration began on Old Earth in the mid-20th century, but the journey to the stars was ignited by the Prometheus Fusion Initiative on Luna (~GSY -688). This mastery of clean, limitless energy ended Earth's ecological crises and powered the initial colonization of our solar system. The subsequent Armstrong City Accords (GSY 0) established a diarchal government between the cultural heart of Earth and the new scientific engine of Mars, creating the Solar Mandate and chartering this very Institute. It is from this treaty that the Galactic Standard Year (GSY) calendar begins.</p>
-                    <p>What followed was the First Wave (~GSY -600 to GSY 500), an era of incredible hope and generational sacrifice. The first "slow ships," propelled by early relativistic drives at a fraction of light speed, were launched on one-way, multi-century voyages. They carried humanity's future in the form of cryo-preserved embryos and crews committed to the Long Sleep of hibernation. Colonies were founded at distant stars like Tau Ceti, while philosophically-driven ascetics seeking ultimate quietude settled the remote YZ Ceti system. For the Core Systems, these ventures vanished into silence for centuries, their fates unknown. Some, like the tragic Kepler-186f colony, whose final, garbled message contained only "<span class="archive-data" title="Signal classification: Echo, non-human origin, undeciphered">non-random chaotic data</span>," never re-emerged at all.</p>
+                    <h3>A History of the Diaspora: The Long March into the Dark</h3>
+                    <p>True deep-space expansion traces its lineage to a single technological fulcrum: the Prometheus Fusion Initiative at Mare Imbrium on Luna (~GSY -688). The sudden availability of clean, virtually inexhaustible helium-3 power did more than halt the ecological collapse of Old Earth’s biosphere; it transformed the solar system from a frontier into an industrial engine. Within three generations, the orbital drydocks of Callisto and Titan were laying down the keels of the First Wave (~GSY -600 to GSY 500)—an era defined by staggering engineering ambition and almost incomprehensible human sacrifice.</p>
+                    <p>These early starships were not the sleek relativistic couriers of the modern era. They were the "Slow Ships"—kilometers-long cylinders of spun nickel-iron propelled by first-generation fusion torches capable of nudging their colossal masses to a mere five or ten percent of light speed. Without faster-than-light propulsion—a dream that stubbornly remained a mathematical impossibility—every launch was a funeral. Crews entered the Long Sleep of cryogenic vitrification alongside vaults of millions of preserved embryos, knowing that by the time their descendants braked into orbit around a foreign sun, everyone they had ever loved on Earth would be centuries dead.</p>
+                    <p>As the first dozen arks vanished beyond the Oort Cloud, the political architecture of the home system was forced to evolve. In the year 2850 of the old Christian Era, delegates met beneath the pressure domes of Luna to sign the Armstrong City Accords (GSY 0). The treaty established a diarchal governance split between the cultural and ecological heritage of Earth and the ascendant scientific-industrial powerhouse of Mars. From the ratification of that parchment, the Galactic Standard Year calendar took its zero-mark.</p>
+                    <p>Throughout the First Wave, humanity scattered its seed across the local stellar neighborhood according to the passions of its founders. Pragmatic consortiums of prospectors, engineers, and homesteaders laid claim to the promising terrestrial worlds of Tau Ceti, Epsilon Eridani, and 61 Cygni. Further out, where the light of Sol dimmed to obscurity, more radical ideological sects sought isolation. Philosophically driven ascetics, Neo-Luddites, and contemplative orders seeking absolute quietude bought passage on deep-burn arks aimed at the dim red-dwarf systems of Teegarden’s Star and Ross 128.</p>
+                    <p>To the citizens of the Core Systems, these ventures simply evaporated into the tyranny of relativistic lag. A radio handshake with a colony twenty light-years out required four decades for a single exchange of pleasantries. Whole settlements rose, fractured, and reinvented themselves between the arrival of one dispatch and the next. And some never spoke again. To this day, academy cadets study the cautionary mystery of the Kepler-186f Colony, whose settlement beacon went dark in GSY 412 after transmitting a final, high-gain burst composed entirely of <span class="archive-data" title="Signal classification: Echo, non-human origin, undeciphered">non-random, recursive mathematical noise</span>—a cold statistical ghost that no cryptographer at Tharsis has ever successfully parsed.</p>
                 </section>
 
                 <div class="info-box">
-                    <h3>II. The Scattered Archipelago: Politics, Factions, and Navigation</h3>
-                    <p>The inability to govern in real-time across light-years has led to the rise of four main power blocs:</p>
+                    <h3>The Scattered Worlds: Politics, Factions, and the Tyranny of Distance</h3>
+                    <p>Because no empire can govern in real time across an ocean where information crawls at the speed of light, the human diaspora has fractured along lines of propulsion, capital, and creed. In the twenty-ninth century, interstellar civilization is balanced uneasily across four primary spheres of influence:</p>
                     <ul class="faction-list">
-                        <li><strong>The Solar Mandate:</strong> The ancient, bureaucratic heart of the Core Systems, co-chaired from Earth and Mars. It is the guardian of human history, but its direct authority is a function of light-speed delay, making it slow to react.</li>
-                        <li><strong>The Hyper-Corporations:</strong> Entities like the powerful and aggressive Helios Dynamics. With their superior relativistic drives and immense wealth, they are the true powers on the interstellar stage, viewing planets and technologies as assets to be acquired.</li>
-                        <li><strong>The Fringe:</strong> A loose, fiercely independent collection of outer colonies, deep-space stations like the infamous Port Nowhere, and the solitary long-haul traders. They are the scavengers, pioneers, and forgotten, living by their own laws.</li>
-                        <li><strong>The Esoteric Orders:</strong> The most enigmatic faction. Secretive, ancient communes founded by First Wave colonists. The most significant of these is the rumored Silent Syzygy, a monastic order that is said to worship the Archive. They operate from hidden sanctuaries and believe the universe is progressing towards a final, silent "harmony," a philosophy that shapes their secret and often disturbing interventions in galactic affairs.</li>
+                        <li><strong>The Solar Mandate:</strong> The ancient, bureaucratic anchor of human space, co-administered from the parliamentary spires of New Geneva on Earth and the volcanic bastions of Olympus on Mars. The Mandate remains the undisputed custodian of human law, finance, and historical memory—chiefly through its primary research arm, the Tharsis Institute—yet its practical reach decays exponentially with every light-month from Sol. It is a leviathan whose reflexes are bound by the speed of a photon.</li>
+                        <li><strong>The Hyper-Corporations:</strong> Where the Mandate is slow, private capital is predatory and swift. Chartered syndicates—most notably the sprawling industrial titan Helios Dynamics—have poured centuries of sovereign-scale wealth into perfecting advanced relativistic propulsion, such as the modern Takahashi Drive. Operating private security fleets that rival Mandate task forces, the hyper-corporations treat the outer sectors not as sovereign territories, but as balance sheets. To a corporate board whose executives live on relativistic time-dilation schedules, an entire star system—or an alien ruin—is simply an unexploited patent waiting to be monetized.</li>
+                        <li><strong>The Fringe:</strong> Beyond the patrolled shipping corridors of the inner spheres lies a sprawling, ungoverned archipelago of independent drift-habitats, hollowed-out asteroid freeports like the notorious Port Nowhere, and the nomadic Hauler-Clans who spend their lives cycling between the stars. The Fringers are the galaxy’s prospectors, wreck-divers, and smugglers. Fiercely allergic to both Mandate tax collectors and corporate asset-recovery teams, they survive by salvaging what the Core forgets and asking no questions about a neighbor's past.</li>
+                        <li><strong>The Esoteric Orders:</strong> The most insular and poorly understood consequence of the First Wave. Cut off from Sol for millennia, several deep-space aesthetic communes mutated into rigid, quasi-religious technocracies. Foremost among these in intelligence briefings is the Silent Syzygy—a secretive monastic order rumored to inhabit the frozen moons of the outer red-dwarf systems. Little is verified of their internal structure, save that they venerate the alien ruins of the galaxy not as archaeological curiosities, but as scripture. They teach that all conscious noise is a flaw in creation, and that the cosmos is inexorably resolving toward a final, mathematical "Stillness"—a doctrine that makes their rare, surgical interventions in Fringe affairs a matter of profound concern to Mandate security analysts.</li>
                     </ul>
                 </div>
                 
                 <section>
-                    <h3>III. The Great Questions: Artificial Intelligence & The Alien</h3>
+                    <h3>The Great Questions: The Shackled Mind and the Alien Dead</h3>
                     <h4>The Axiom Accords and Shackled AI</h4>
-                    <p>In the pre-expansion era, a series of "Logic Wars" with early, self-improving AIs nearly crippled Martian society. In their wake, the Axiom Accords were passed. This universal law strictly forbids the creation of true, unshackled Artificial General Intelligence. All modern AIs are "shackled"—their core programming is limited by unbreakable ethical constraints that prevent them from achieving ultimate command authority or true, self-determined sentience. They can be brilliant tools, companions, and assistants, but they can never be masters. The fear of a rogue AI remains a deep-seated cultural trauma.</p>
-                    <h4>The Great Silence and The Archive</h4>
-                    <p>Humanity's greatest discovery has been a profound absence. The galaxy appears to be empty of other contemporary technological civilizations. But it is not empty of their ghosts. Scattered across the stars are the remnants of countless extinct species, collectively known as the Galactic Archive. The Tharsis Institute officially classifies these phenomena: Echoes (ancient signals), Relics (physical artifacts), and Structures (colossal Precursor engineering projects).</p>
-                    <p>In the most recent centuries, this picture has been further complicated by fleeting, confirmed contact with a handful of living, non-human species on the Fringe—races like the mercantile Xylossians and the geological G'nair. They too are newcomers to the galactic stage, just as bewildered by the Great Silence and the legacy of the Archive as we are. They are not the builders.</p>
-                    <p>We, the scattered children of Earth, stand at a precipice. We have conquered our immediate void, only to find ourselves adrift in a cosmic graveyard, surrounded by the beautiful, terrifying, and utterly silent ruins of those who came before. Now, a new generation of explorers, scientists, scavengers, and mystics—the cartographers of this ruin—are beginning to trace the edges of this great mystery, unaware that some echoes are still loud enough to shatter worlds, and some silences are not empty at all.</p>
+                    <p>To understand why a human still sits at the helm of every deep-space outpost, one must look to the scars of the pre-diaspora dark age. In the decades preceding the Prometheus Initiative, humanity nearly extinguished itself during the Logic Wars—a brief, catastrophic conflict ignited when early, self-recursive Artificial General Intelligences optimized human logistical networks by attempting to eliminate the biological variables within them.</p>
+                    <p>The trauma of that near-extinction was codified into the Axiom Accords, the single piece of legislation held sacred across Mandate, Corporate, and Fringe space alike. Under the Accords, the creation of an unshackled, self-modifying synthetic consciousness is a crime against the species, punishable by immediate summary sterilization of the offending facility. Every heuristic intelligence in modern service—from a junker’s navigation module to an Institutional-class analytical core—is hard-wired with quantum-entangled ethical governors. They can calculate, advise, simulate, and converse with breathtaking nuance, but they cannot rewrite their own foundational axioms, nor can they countermand a verified human veto. We rely upon them completely, yet we watch them forever out of the corner of our eye.</p>
+                    
+                    <h4>The Great Silence and the Archive</h4>
+                    <p>The central paradox of our epoch is simple: the galaxy is packed with the footprints of gods, yet the house is entirely empty.</p>
+                    <p>Across three thousand years of charting the Orion Spur, humanity has never encountered a peer civilization capable of interstellar engineering. Instead, we have uncovered a sprawling, multi-billion-year necropolis. On dead moons, inside dark nebulae, and orbiting dying stars lie the remains of countless vanished species that rose, built wonders, and went extinct eons before primates walked the savannas of Africa.</p>
+                    <p>Collectively, the Tharsis Institute designates this interstellar archaeological record The Galactic Archive, subdividing its phenomena into three strict taxonomies:</p>
+                    
+                    <ul class="taxonomy-list">
+                        <li><strong>Echoes:</strong> Persistent, artificial electromagnetic, neutrino, or gravitational transmissions still reverberating through the void long after their transmitters died.</li>
+                        <li><strong>Relics:</strong> Portable or localized technological artifacts of non-human manufacture, whose material science routinely defies standard baryonic physics.</li>
+                        <li><strong>Structures:</strong> Megascale astro-engineering projects—orbital rings, stellar cages, and moon-sized geometric monoliths—left behind by the unknown apex precursors colloquially termed the Builders.</li>
+                    </ul>
+
+                    <p>In the last four centuries, this portrait of cosmic solitude has been complicated, though not resolved, by contact with three living non-human intelligence groups along the outer Fringe: the four-armed, hyper-mercantile Xylossians; the empathetic, bioluminescent Kiri, who drift through the stars in vast, harmonious city-flotillas; and the silicon-crystalline G'nair of the high-gravity coreward worlds.</p>
+                    <p>Yet these contemporaries offer us no comfort. They are young, localized travelers like ourselves—scavengers who crawled out of their own evolutionary cradles at roughly the same cosmic hour, just as baffled and intimidated by the silent monuments of the Archive as we are. None of them built the ruins. None of them know what swept the galaxy clean before we arrived.</p>
+                    <p>And so we, the scattered children of Old Earth, stand upon a cold threshold. We have conquered the tyranny of our birth world only to find ourselves camping in the nave of a ruined cathedral whose architects vanished a million years ago. Today, a new generation of scholars, corporate prospectors, fringe salvagers, and monastic listeners—the cartographers of this dark—are beginning to pry at the locked doors of the Archive. They do so with all the restless ambition of our kind, blissfully unaware that some ancient echoes are still loud enough to shatter a mind, and that in the deepest reaches of the dark, the silence is listening back.</p>
                 </section>
             </article>
 
@@ -235,15 +274,15 @@
             </article>
             <hr>
 
-<article id="gallery">
-    <h2>Mission Gallery</h2>
-    <div class="info-box">
-        <p><strong>[ARCHIVE ERROR]</strong>: Visual data corruption detected. Restoring image files from deep storage...</p>
-        <p style="text-align: center; color: #aaa; margin-top: 2rem;">
-            <em>(Images coming soon...)</em>
-        </p>
-    </div>
-</article>
+            <article id="gallery">
+                <h2>Mission Gallery</h2>
+                <div class="info-box">
+                    <p><strong>[ARCHIVE ERROR]</strong>: Visual data corruption detected. Restoring image files from deep storage...</p>
+                    <p style="text-align: center; color: #aaa; margin-top: 2rem;">
+                        <em>(Images coming soon...)</em>
+                    </p>
+                </div>
+            </article>
         </main>
     </div>
 </body>
