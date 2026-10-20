@@ -134,6 +134,9 @@ export const CursedRelicsExpansion = {
             if (this.type === 'obelisk' && !this.isConstructing && this.hp > 0) {
                 if (!this.zapCooldown) this.zapCooldown = 0;
                 if (this.zapCooldown > 0) this.zapCooldown--;
+                
+                // [FIX] Decrement visual timer in update() so it clears even when off-screen
+                if (this.zapVisual && this.zapVisual.timer > 0) this.zapVisual.timer--;
 
                 if (this.zapCooldown <= 0) {
                     let enemy = gameObj.getNearestEnemy(this.x, this.y, this.team, CURSED_CONFIG.obelisk.zapRange);
@@ -210,7 +213,6 @@ export const CursedRelicsExpansion = {
             
             // Draw Procedural Lightning Strike
             if (this.type === 'obelisk' && this.zapVisual && this.zapVisual.timer > 0) {
-                this.zapVisual.timer--;
                 
                 ctx.save();
                 ctx.strokeStyle = this.team === 'black' ? '#aa00ff' : '#ff0000';
@@ -268,17 +270,24 @@ export const CursedRelicsExpansion = {
             }
         });
         
+        // [FIX] Move flashFrames decrement to update() so it clears off-screen!
+        game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
+            if (this.flashFrames && this.flashFrames > 0) this.flashFrames--;
+            original.call(this, gameObj);
+        });
+
         // 7. WRAITH AFTERIMAGE RENDER
         game.expansions.patchClass(Spider, 'draw', function(original, ctx, gameObj) {
-            // 🧃 [JUICE] Flash bright white immediately after a teleport
+            original.call(this, ctx, gameObj); // Draw normally first
+            
+            // 🧃 [JUICE] Flash bright white immediately after a teleport (Additive Blending)
             if (this.flashFrames && this.flashFrames > 0) {
-                this.flashFrames--;
                 ctx.save();
-                ctx.filter = 'brightness(3.0)';
-                original.call(this, ctx, gameObj);
+                ctx.translate(this.x, this.y);
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
                 ctx.restore();
-            } else {
-                original.call(this, ctx, gameObj);
             }
         });
     }
