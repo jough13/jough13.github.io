@@ -56,7 +56,9 @@ class ToxicPuddle {
                     
                     // Fast early exits
                     if (!e.team || e.team === this.team || e.hp === undefined || e.hp <= 0) continue;
-                    if (!(e instanceof Spider || e.constructor.name === 'CentipedeBoss')) continue;
+                    
+                    // [FIX] Minification-safe boss check, and hazards can melt!
+                    if (!(e instanceof Spider || e.isBoss || e.isHazard)) continue;
                     
                     // Fast AABB check
                     if (Math.abs(this.x - e.x) > this.radius || Math.abs(this.y - e.y) > this.radius) continue;
@@ -239,7 +241,8 @@ export const ToxicPlagueExpansion = {
                             for (let i = 0; i < cell.length; i++) {
                                 let e = cell[i];
                                 
-                                if (e.team && e.team !== data.team && e.hp > 0 && (e instanceof Spider || e.constructor.name === 'CentipedeBoss')) {
+                                // [FIX] Minification-safe boss check, and hazards can be infected!
+                                if (e.team && e.team !== data.team && e.hp > 0 && (e instanceof Spider || e.isBoss || e.isHazard)) {
                                     if (Math.abs(e.x - data.x) > radius || Math.abs(e.y - data.y) > radius) continue;
                                     
                                     if (MathUtils.distSq(e.x, e.y, data.x, data.y) < radiusSq) {
@@ -270,15 +273,16 @@ export const ToxicPlagueExpansion = {
                 }
 
                 if (canSpawn) {
+                    // [FIX] Increment population instantly to prevent spam-click bypass!
+                    game.pop[data.team]++;
+                    
                     let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
                     
-                    if (data.role === 'defiler') s.sprite = game.assets.get(data.team === 'black' ? 'assets/defiler_black.png' : 'assets/defiler_red.png');
+                    // [FIX] Removed manual sprite injection. Spider.draw() handles it lazily using base dynamic string!
                     if (data.role === 'parasite') {
-                        s.sprite = game.assets.get(data.team === 'black' ? 'assets/parasite_black.png' : 'assets/parasite_red.png');
                         s.isZombie = true; // Prevents Necromancy.js from dropping corpses for parasites
                     }
                     
-                    s.imageLoaded = true; 
                     game.addEntity(s);
                     if (data.role === 'defiler') game.bus.emit('playSound', 'harvest'); 
                 }
