@@ -248,8 +248,9 @@ export const TerrainExpansion = {
                 for (let x = startCol; x <= endCol; x++) {
                     
                     const tileData = game.mapGrid[y][x];
-                    const drawX = tileData.drawX;
-                    const drawY = tileData.drawY;
+                    // [FIX] Lazy-evaluate draw coordinates if missing from a save file
+                    const drawX = tileData.drawX !== undefined ? tileData.drawX : x * game.tileSize;
+                    const drawY = tileData.drawY !== undefined ? tileData.drawY : y * game.tileSize;
 
                     // 1. Draw solid dirt foundation (Everything sits on top of this)
                     if (dirtTile) ctx.drawImage(dirtTile, drawX, drawY); 
