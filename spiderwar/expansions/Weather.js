@@ -125,7 +125,7 @@ export const WeatherSystemExpansion = {
             if (w.current === 'acid' && gameObj.tick % 30 === this.animOffset % 30) {
                 
                 // Nature units and Bosses are immune to acid
-                if (this.team !== 'nature' && this.constructor.name !== 'CentipedeBoss') {
+                if (this.team !== 'nature' && !this.isBoss) {
                     
                     let isSafe = false;
                     const structs = gameObj.structures;
