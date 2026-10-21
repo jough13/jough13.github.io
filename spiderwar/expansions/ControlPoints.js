@@ -97,12 +97,18 @@ export class JackOLantern {
 
         // 3. Capture Logic
         if (dominantTeam) {
-            if (this.controllingTeam !== dominantTeam) {
-                this.captureProgress += CP_CONFIG.captureSpeed; 
+            // [FIX] Enemy must neutralize the point first!
+            if (this.controllingTeam && this.controllingTeam !== dominantTeam) {
+                this.captureProgress = Math.max(0, this.captureProgress - CP_CONFIG.captureSpeed);
+                if (this.captureProgress === 0) this.controllingTeam = null;
+            } 
+            // Build up capture progress (or heal it if returning to a decayed point)
+            else if (this.captureProgress < 100) {
+                this.captureProgress = Math.min(100, this.captureProgress + CP_CONFIG.captureSpeed);
                 
-                if (this.captureProgress >= 100) {
+                // Only trigger the massive visual feedback if ownership ACTUALLY changes hands
+                if (this.captureProgress >= 100 && this.controllingTeam !== dominantTeam) {
                     this.controllingTeam = dominantTeam;
-                    this.captureProgress = 100;
                     
                     // 🧃 [JUICE] Massive visual feedback when a point is secured!
                     if (game.triggerShake) game.triggerShake(8); 
