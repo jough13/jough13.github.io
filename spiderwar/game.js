@@ -422,6 +422,10 @@ export class Game {
         this.techLevel = { black: 0, red: 0 }; 
         
         this.activeTool = 'select'; this.gameState = 'playing'; this.selectedStructure = null; 
+        
+        // [FIX] Initialize UI hooks early so expansions can register buttons regardless of load order!
+        this.customUIHooks = [];
+        this.uiActions = {};
 
         this.resize(); window.addEventListener('resize', () => this.resize());
         this.setupInputs(); 
