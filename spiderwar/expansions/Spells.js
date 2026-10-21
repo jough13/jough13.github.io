@@ -74,7 +74,9 @@ export class Spell {
                     
                     // Fast early-exit: Ignore dead units, allies, and non-spider/boss entities
                     if (!e.team || e.team === this.team || e.hp === undefined || e.hp <= 0) continue;
-                    if (!(e instanceof Spider || e.constructor.name === 'CentipedeBoss')) continue;
+                    
+                    // [FIX] Use minification-safe isBoss flag, and allow spells to damage Hazards!
+                    if (!(e instanceof Spider || e.isBoss || e.isHazard)) continue;
                     
                     // Fast AABB early-exit
                     if (Math.abs(this.x - e.x) > this.radius || Math.abs(this.y - e.y) > this.radius) continue;
