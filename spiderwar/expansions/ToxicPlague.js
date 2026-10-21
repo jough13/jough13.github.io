@@ -295,9 +295,11 @@ export const ToxicPlagueExpansion = {
                 for (let i = 0; i < this.entities.length; i++) {
                     let e = this.entities[i];
                     if (e.infectedTimer > 0) {
-                        e.infectedTimer--;
+                        // [FIX] Decrement by 30 since this loop only runs every 30 frames!
+                        e.infectedTimer -= 30;
                         
-                        e.hp -= PLAGUE_CONFIG.infectionDot; 
+                        e.hp -= PLAGUE_CONFIG.infectionDot;
+
                         this.bus.emit('particles', {x: e.x, y: e.y, color: '#55ff00', count: 2, type: 'magic'});
                         
                         // CHESTBURSTER EFFECT: If it dies from infection!
