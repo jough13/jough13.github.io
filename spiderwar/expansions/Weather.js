@@ -134,7 +134,8 @@ export const WeatherSystemExpansion = {
                     // Check if standing under a friendly Nest or Shrine
                     for (let i = 0; i < structLen; i++) {
                         let s = structs[i];
-                        if (s.team === this.team && (s.type === 'nest' || s.type === 'shrine') && s.hp > 0) {
+                        // [FIX] Ensure the building is actually finished before it acts as an umbrella!
+                        if (s.team === this.team && (s.type === 'nest' || s.type === 'shrine') && s.hp > 0 && !s.isConstructing) {
                             // 🚀 Fast AABB Check
                             if (Math.abs(this.x - s.x) < WEATHER_CONFIG.safeZoneRadius && Math.abs(this.y - s.y) < WEATHER_CONFIG.safeZoneRadius) {
                                 isSafe = true; break;
