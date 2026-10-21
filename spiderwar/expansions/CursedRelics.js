@@ -139,7 +139,7 @@ export const CursedRelicsExpansion = {
                 if (this.zapVisual && this.zapVisual.timer > 0) this.zapVisual.timer--;
 
                 if (this.zapCooldown <= 0) {
-                    let enemy = gameObj.getNearestEnemy(this.x, this.y, this.team, CURSED_CONFIG.obelisk.zapRange);
+                    let enemy = gameObj.getNearestEnemy(this.x, this.y, this.team, CURSED_CONFIG.obelisk.zapRange, true);
                     
                     if (enemy) {
                         const baseDamage = CURSED_CONFIG.obelisk.baseDamage + ((gameObj.techLevel[this.team]||0) * 10);
