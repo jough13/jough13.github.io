@@ -776,7 +776,8 @@ export class Game {
         this.entities.length = aliveCount;
     }
 
-    getNearestEnemy(x, y, team, maxDist) {
+    // [FIX] Added targetHazards parameter (defaults to false)
+    getNearestEnemy(x, y, team, maxDist, targetHazards = false) {
         const CELL_SIZE = 250;
         
         // 🚀 [PERFORMANCE] Pre-calculate and clamp bounds outside the loop
@@ -806,6 +807,9 @@ export class Game {
                     // Fast early-exits
                     // 🛡️ [FIX] Added `e.team === 'dead'` exclusion to prevent corpses from tanking hits!
                     if (!e.team || e.team === team || e.team === 'dead' || e.hp === undefined || e.hp <= 0 || e.isCloaked || e instanceof Projectile) continue;
+                    
+                    // [FIX] Melee and Gatherers ignore hazards to prevent suicide!
+                    if (!targetHazards && e.isHazard) continue;
                     
                     let dSq = MathUtils.distSq(x, y, e.x, e.y);
                     
