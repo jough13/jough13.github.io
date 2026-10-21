@@ -171,7 +171,7 @@ export const FortressExpansion = {
                 if (this.fireAnim > 0) this.fireAnim--;
                 
                 if (this.cooldown <= 0) {
-                    let target = gameObj.getNearestEnemy(this.x, this.y, this.team, FORTRESS_CONFIG.mortarRange);
+                    let target = gameObj.getNearestEnemy(this.x, this.y, this.team, FORTRESS_CONFIG.mortarRange, true);
                     
                     // Minimum range check (Can't fire at things right at its base, mimicking real artillery)
                     if (target && MathUtils.distSq(this.x, this.y, target.x, target.y) > FORTRESS_CONFIG.mortarMinRangeSq) {
