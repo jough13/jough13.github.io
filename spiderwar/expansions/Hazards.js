@@ -24,7 +24,8 @@ export class VenusFlytrap {
         this.size = 20; 
         this.cooldown = 0;
         this.team = 'nature'; 
-        this.hp = HAZARD_CONFIG.flytrapHp; 
+        this.isHazard = true; // [FIX] Flag so AI can filter it
+        this.hp = HAZARD_CONFIG.flytrapHp;
         this.maxHp = HAZARD_CONFIG.flytrapHp;
         
         // 🧃 [JUICE] Animation Offsets & Damage Tracking
