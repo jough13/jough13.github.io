@@ -203,7 +203,7 @@ export const TitansExpansion = {
                 const effectiveRangeSq = entity.rangeSq || 90000;
                 const detectRadius = Math.sqrt(effectiveRangeSq) + 50 + (techLvl * 10);
                 
-                let nearestEnemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, detectRadius);
+                let nearestEnemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, detectRadius, true);
 
                 // COMBAT OVERRIDE
                 if (nearestEnemy) {
