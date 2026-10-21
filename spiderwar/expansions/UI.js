@@ -266,7 +266,7 @@ export const ContextUIExpansion = {
         if (document.getElementById('rtsUI')) return;
 
         // [EXPANDABILITY] Hooks for external mods
-        game.customUIHooks = [];
+        game.customUIHooks = game.customUIHooks || [];
 
         const style = document.createElement('style');
         style.innerHTML = `
@@ -367,7 +367,7 @@ export const ContextUIExpansion = {
         // ==========================================
         // MASTER DICTIONARY
         // ==========================================
-        game.uiActions = {
+        Object.assign(game.uiActions, {
             'nest':      { reqTech: 0, icon: '🕸️', img: 'assets/nest_black.png', name: 'Nest', cost: '150🎃', type: 'tool', val: 'nest' },
             'eggsac':    { reqTech: 0, icon: '🥚', img: 'assets/eggsac_black.png', name: 'Sac', cost: '50🎃', type: 'tool', val: 'eggsac' },
             'pylon':     { reqTech: 0, icon: '🗼', img: 'assets/pylon_black.png', name: 'Pylon', cost: '25🎃', type: 'tool', val: 'pylon' },
@@ -431,7 +431,7 @@ export const ContextUIExpansion = {
                 game.selectedUnits.forEach(u => { u.isManual = false; u.commandTarget = null; u.target = null; }); 
                 game.bus.emit('playSound', 'spell'); 
             }},
-        };
+        });
 
         game.lastSelection = 'INIT'; 
         
