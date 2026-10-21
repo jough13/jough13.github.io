@@ -490,9 +490,9 @@ export const SaveLoadExpansion = {
                         });
                     }
                     else if (u instanceof ResourceNode) resNodes.push({id: u.id, x: u.x, y: u.y, type: u.type, resources: u.resources});
-                    else if (u.team === 'nature' && u.constructor.name !== 'CentipedeBoss') critters.push({id: u.id, x: u.x, y: u.y, hp: u.hp, color: u.color, type: u.type || u.constructor.name});
-                    else if (u.constructor.name === 'CentipedeBoss') bosses.push({id: u.id, x: u.x, y: u.y, hp: u.hp});
-                    else if (u instanceof VenusFlytrap) hazards.push({id: u.id, x: u.x, y: u.y, hp: u.hp, cooldown: u.cooldown});
+                    else if (u instanceof VenusFlytrap) hazards.push({id: u.id, x: u.x, y: u.y, hp: u.hp, cooldown: u.cooldown}); // [FIX] Placed above Critters!
+                    else if (u.team === 'nature' && !u.isBoss) critters.push({id: u.id, x: u.x, y: u.y, hp: u.hp, color: u.color, type: u.type || u.constructor.name});
+                    else if (u.isBoss) bosses.push({id: u.id, x: u.x, y: u.y, hp: u.hp}); // [FIX] Safe minification checks
                     else if (u instanceof JackOLantern) cps.push({id: u.id, x: u.x, y: u.y, team: u.controllingTeam, prog: u.captureProgress});
                     else if (u instanceof Corpse) corpses.push({id: u.id, x: u.x, y: u.y, life: u.life, size: u.size});
                     else if (u instanceof EggTrap) eggTraps.push({x: u.x, y: u.y, team: u.team, hp: u.hp});
@@ -503,6 +503,7 @@ export const SaveLoadExpansion = {
                     
                     mapGrid: game.mapGrid.map(row => row.map(tile => ({
                         type: tile.type, sprite: tile.sprite, angle: tile.angle, 
+                        drawX: tile.drawX, drawY: tile.drawY, // [FIX] Save drawing coordinates!
                         discovered: tile.discovered, visible: tile.visible
                     }))),
                     
