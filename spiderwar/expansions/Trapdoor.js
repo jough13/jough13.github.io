@@ -17,6 +17,13 @@ export const TrapdoorExpansion = {
         game.assets.register('assets/trapdoor_red.png');
         game.assets.register('assets/dirt_mound.png');
 
+        // [FIX] Register the Trapdoor in UNIT_DATA so it doesn't fall back to Harvester!
+        UNIT_DATA['trapdoor'] = { 
+            size: 16, hp: 120, damage: 35, attackSpeed: 30, 
+            baseSpeedMin: 1.2, baseSpeedMax: 1.6, 
+            traits: ['burrow_ambush', 'melee'] 
+        };
+
         if (game.customUIHooks) {
             game.uiActions['trapdoor'] = { 
                 reqTech: TRAPDOOR_CONFIG.requiredTech, icon: '🕳️', name: 'Assassin', 
@@ -35,6 +42,9 @@ export const TrapdoorExpansion = {
                     game.eco[data.team].pumpkins -= TRAPDOOR_CONFIG.costP;
                     game.eco[data.team].dew -= TRAPDOOR_CONFIG.costD;
                     
+                    // [FIX] Increment population instantly to prevent spam-click bypass!
+                    game.pop[data.team]++;
+                    
                     let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
                     s.spriteSrc = data.team === 'black' ? 'assets/trapdoor_black.png' : 'assets/trapdoor_red.png';
                     s.moundSrc = 'assets/dirt_mound.png'; // 🚀 New property!
@@ -49,7 +59,9 @@ export const TrapdoorExpansion = {
         game.registerTrait('burrow_ambush', {
             update: (entity, gameObj) => {
                 if (entity.burrowState === 0) {
-                    if (!entity.commandTarget && !entity.target) {
+                    // [FIX] Use getNearestEnemy so it doesn't instantly re-burrow while fighting!
+                    const nearest = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, 150);
+                    if (!entity.commandTarget && !nearest) {
                         entity.burrowState = 1; entity.burrowTimer = TRAPDOOR_CONFIG.burrowFrames;
                     }
                     return false; 
