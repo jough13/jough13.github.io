@@ -217,11 +217,15 @@ export const FogOfWarExpansion = {
         applyFoWToClass(ExplosiveProjectile, true, false);
         applyFoWToClass(MortarShell, true, false);
 
-        // Blurs the blocky 1x1 tile mask to create a beautiful smooth shadow
+        // 🚀 [PERFORMANCE] Let the GPU do the heavy lifting!
         game.bus.on('postDraw', (ctx) => {
             if (!game.fowCanvas) return;
             ctx.save();
-            ctx.filter = game.systemConfig.fowBlur; 
+            
+            // [FIX] Turn on image smoothing just for this draw call to get free GPU bilinear interpolation!
+            ctx.imageSmoothingEnabled = true; 
+            
+            // Draw the tiny 24x24 canvas scaled up to the full map size
             ctx.drawImage(
                 game.fowCanvas, 
                 0, 0, 
@@ -284,7 +288,7 @@ export const SaveLoadExpansion = {
                 const CHUNK_SIZE = 500; 
                 
                 game.decor.forEach(d => {
-                    if (game.assets) d.sprite = game.assets.get(d.src);
+                    if (game.assets) d.sprite = game.assets.get(d.spriteSrc);
 
                     const chunkKey = ((d.x / CHUNK_SIZE) | 0) << 16 | ((d.y / CHUNK_SIZE) | 0);
                     let chunk = game.decorChunks.get(chunkKey);
@@ -337,33 +341,23 @@ export const SaveLoadExpansion = {
             
             state.spiders.forEach(s => { 
                 let o;
-                if (s.isZombie) { 
+                // [FIX] Ensure role isn't 'parasite' before blindly casting to ZombieSpider!
+                if (s.isZombie && s.role !== 'parasite') { 
                     o = new ZombieSpider(s.x, s.y, s.team, s.size); 
                 } else if (s.role === 'broodling') {
                     o = new Broodling(s.x, s.y, s.team);
                 } else {
                     o = new Spider(s.x, s.y, s.team, s.role);
                     
-                    if (s.role === 'spitter') { 
-                        o.range = 250; o.rangeSq = 62500; 
-                        if (game.assets) o.sprite = game.assets.get(s.team === 'black' ? 'assets/spitter_black.png' : 'assets/spitter_red.png');
-                        o.imageLoaded = true;
-                    } 
-                    else if (s.role === 'tarantula') {
-                        if (game.assets) o.sprite = game.assets.get(s.team === 'black' ? 'assets/tarantula_black.png' : 'assets/tarantula_red.png');
-                        o.imageLoaded = true;
-                    } 
-                    else if (s.role === 'widow') { 
-                        o.isCloaked = s.isCloaked; 
-                        o.cloakCooldown = s.cloakCooldown; 
-                        if (game.assets) o.sprite = game.assets.get(s.team === 'black' ? 'assets/widow_black.png' : 'assets/widow_red.png');
-                        o.imageLoaded = true;
-                    } 
-                    else if (s.role === 'goliath') {
-                        o.range = 300; o.rangeSq = 90000;
-                        if (game.assets) o.sprite = game.assets.get(s.team === 'black' ? 'assets/goliath_black.png' : 'assets/goliath_red.png');
-                        o.imageLoaded = true;
-                    }
+                    // [FIX] Centralized sprite loading handles images. Just inject ECS trait vars!
+                    if (s.role === 'spitter') { o.range = 250; o.rangeSq = 62500; } 
+                    else if (s.role === 'tick') { o.range = 250; o.rangeSq = 62500; } // Same range requirement as Spitter
+                    else if (s.role === 'voidweaver') { o.range = 250; o.rangeSq = 62500; } 
+                    else if (s.role === 'goliath') { o.range = 300; o.rangeSq = 90000; }
+                    else if (s.role === 'widow') { o.isCloaked = s.isCloaked; o.cloakCooldown = s.cloakCooldown; }
+                    else if (s.role === 'trapdoor') { o.burrowState = s.burrowState; o.burrowTimer = s.burrowTimer; o.moundSrc = 'assets/dirt_mound.png'; }
+                    
+                    // Parasite 'isZombie' flag is restored via restoreUnitState
                 }
                 
                 restoreUnitState(o, s);
@@ -510,7 +504,7 @@ export const SaveLoadExpansion = {
                     decor: game.decor ? game.decor.map(d => ({
                         x: d.x, y: d.y, type: d.type, size: d.size, renderSize: d.renderSize, 
                         angle: d.angle, alpha: d.alpha, fallbackColor: d.fallbackColor, 
-                        src: d.sprite ? 'assets/' + d.sprite.src.split('/').pop() : null
+                        behavior: d.behavior, spriteSrc: d.spriteSrc // [FIX] Save correct keys!
                     })) : [],
                     
                     spiders: spiders, structures: structures, resourceNodes: resNodes, queens: queens,
