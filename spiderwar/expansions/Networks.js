@@ -45,11 +45,23 @@ export const SilkNetworkExpansion = {
             // Toned down territory pulse
             const pulseAlpha = 0.15 + Math.sin(game.tick * 0.05) * 0.005; 
 
-            for (let i = 0; i < game.structures.length; i++) {
-                let s = game.structures[i];
+            const structs = game.structures; // Cache getter
+            const structLen = structs.length;
+            const tileSize = game.tileSize || 256;
+            
+            for (let i = 0; i < structLen; i++) {
+                let s = structs[i];
                 
                 if (s.territory > 0 && s.hp > 0 && !s.isConstructing) {
                     if (s.x < viewL || s.x > viewR || s.y < viewT || s.y > viewB) continue;
+
+                    // [FIX] Fog of War Culling: Don't draw enemy bases if they aren't actively visible!
+                    if (game.mapGrid && s.team !== 'black') {
+                        const tX = (s.x / tileSize) | 0;
+                        const tY = (s.y / tileSize) | 0;
+                        const tile = game.mapGrid[tY] && game.mapGrid[tY][tX];
+                        if (!tile || !tile.visible) continue;
+                    }
 
                     let grad = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.territory);
                     if (s.team === 'black') {
@@ -181,17 +193,33 @@ export const WebNetworkExpansion = {
             const viewT = game.camera.y - padding;
             const viewB = game.camera.y + game.canvas.height + padding;
 
+            // 🚀 [PERFORMANCE] Cache getters!
+            const allSpiders = game.spiders;
+            const spdLen = allSpiders.length;
+            const tileSize = game.tileSize || 256;
+            
             const visibleSpiders = [];
-            for (let i = 0; i < game.spiders.length; i++) {
-                let s = game.spiders[i];
+            for (let i = 0; i < spdLen; i++) {
+                let s = allSpiders[i];
                 if (s.hp > 0 && s.x >= viewL && s.x <= viewR && s.y >= viewT && s.y <= viewB) {
+                    // [FIX] Fog of War Culling for web nodes
+                    if (game.mapGrid && s.team !== 'black') {
+                        const tX = (s.x / tileSize) | 0;
+                        const tY = (s.y / tileSize) | 0;
+                        const tile = game.mapGrid[tY] && game.mapGrid[tY][tX];
+                        if (!tile || !tile.visible) continue;
+                    }
                     visibleSpiders.push(s);
                 }
             }
 
+            // 🚀 [PERFORMANCE] Cache getters!
+            const allStructs = game.structures;
+            const structLen = allStructs.length;
             const aliveStructs = [];
-            for (let i = 0; i < game.structures.length; i++) {
-                if (game.structures[i].hp > 0) aliveStructs.push(game.structures[i]);
+            for (let i = 0; i < structLen; i++) {
+                let s = allStructs[i];
+                if (s.hp > 0) aliveStructs.push(s);
             }
 
             const structDist = NETWORK_CONFIG.structLinkDist;
