@@ -344,7 +344,8 @@ export const ToxicPlagueExpansion = {
         // 7. DRAWING LOGIC: INFECTED AURA
         // [FIX] Signature updated to accept (original, ctx, gameObj)
         game.expansions.patchClass(Spider, 'draw', function(original, ctx, gameObj) {
-            // [JUICE] A sickly, pulsing green tint over the whole spider
+            
+            // 1. Draw the pulsing under-aura FIRST
             if (this.infectedTimer > 0) {
                 ctx.save();
                 ctx.translate(this.x, this.y);
@@ -354,16 +355,24 @@ export const ToxicPlagueExpansion = {
                 
                 ctx.fillStyle = `rgba(85, 255, 0, 0.3)`;
                 ctx.beginPath(); ctx.arc(0, 0, this.size + 4 + pulse, 0, MathUtils.TWO_PI); ctx.fill();
-                
-                ctx.globalCompositeOperation = 'source-atop';
-                ctx.fillStyle = 'rgba(85, 255, 0, 0.4)';
-                ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
-                ctx.globalCompositeOperation = 'source-over';
-                
                 ctx.restore();
             }
             
+            // 2. Draw the spider sprite ON TOP of the aura
             original.call(this, ctx, gameObj);
+            
+            // 3. Draw the sickness tint OVER the spider
+            if (this.infectedTimer > 0) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                
+                // [FIX] 'lighter' additive blending creates a great sickly wash without clipping into the dirt
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.fillStyle = 'rgba(85, 255, 0, 0.4)';
+                ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
+                
+                ctx.restore();
+            }
         });
         
         // Structure fallback drawing & animations
