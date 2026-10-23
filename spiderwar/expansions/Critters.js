@@ -286,3 +286,14 @@ export class GoldenBug {
         }
     }
 }
+
+// ==========================================
+// 4. EXPANSION LOGIC
+// ==========================================
+export const CrittersExpansion = {
+    init: (game) => {
+        // [FIX] Ensure critter assets are properly registered with the asset manager!
+        game.assets.register('assets/aphid.png');
+        game.assets.register('assets/goldenbug.png');
+    }
+};
