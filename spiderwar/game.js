@@ -533,6 +533,9 @@ export class Game {
                         if (!this.keys['shift']) { this.activeTool = 'select'; this.bus.emit('toolChanged', 'select'); }
                     }
                     else {
+                        // [FIX] Yield selection logic entirely to the Controls expansion if it is loaded!
+                        if (this.expansions.expansions['AdvancedUnitControl']) return;
+                        
                         let clickedStruct = this.structures.find(s => s.team === 'black' && MathUtils.distSq(s.x, s.y, worldX, worldY) < (s.size * s.size));
                         this.selectedStructure = clickedStruct; 
                         if(clickedStruct) this.bus.emit('openModal', clickedStruct);
