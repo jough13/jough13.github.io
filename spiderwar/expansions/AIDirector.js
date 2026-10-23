@@ -193,7 +193,8 @@ export const AIDirectorExpansion = {
 
                     for (let i = 0; i < entLen; i++) {
                         let e = entities[i];
-                        if (e.team === 'black' && e.hp > 0) {
+                        // [FIX] The Director is no longer telepathic! Ignore cloaked units and hidden traps.
+                        if (e.team === 'black' && e.hp > 0 && !e.isCloaked) {
                             
                             // Check weight dict (structures use type, spiders use role)
                             const weightKey = e.type || e.role || 'default';
