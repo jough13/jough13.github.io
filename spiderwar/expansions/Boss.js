@@ -163,6 +163,8 @@ export class CentipedeBoss {
             this.x = MathUtils.clamp(this.x, 100, game.world.width - 100); 
             this.y = MathUtils.clamp(this.y, 100, game.world.height - 100);
         }
+        // [FIX] Clear status ailments so they must be actively reapplied by spells/hazards
+        this.isSlowed = false;
     }
 
     // 🛡️ [FIX] The Death Loot Drop is now safely handled here so it isn't skipped by GC
