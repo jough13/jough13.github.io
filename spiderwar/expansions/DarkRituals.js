@@ -126,8 +126,12 @@ export const DarkRitualsExpansion = {
             // --- BUFF: BLOODLUST ---
             if (this.bloodlustTimer > 0) {
                 this.bloodlustTimer--;
-                this.baseSpeed *= RITUAL_CONFIG.bloodlustSpeedMult; 
-                this.damage += RITUAL_CONFIG.bloodlustDamageBonus;     
+                
+                // [FIX] Guard against double-buffing the Queen during her super.update() call!
+                if (this.role !== 'queen') {
+                    this.baseSpeed *= RITUAL_CONFIG.bloodlustSpeedMult; 
+                    this.damage += RITUAL_CONFIG.bloodlustDamageBonus;     
+                }
                 
                 // 🧃 [JUICE] Bloody particle trail while enraged (only drops if actively moving)
                 // 🛡️ [FIX] Checking actual frame diffs on coordinates prevents trail overlap when walking into walls
