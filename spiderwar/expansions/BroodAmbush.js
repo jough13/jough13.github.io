@@ -72,7 +72,8 @@ export class EggTrap {
         // 3. Detection Phase
         let triggerTarget = game.getNearestEnemy(this.x, this.y, this.team, AMBUSH_CONFIG.triggerRadius);
 
-        if (triggerTarget) {
+        // [FIX] Ignore harmless nature critters like Aphids and Golden Bugs!
+        if (triggerTarget && (triggerTarget.team !== 'nature' || triggerTarget.isBoss)) {
             // 🧃 [JUICE] Trigger the "Click" of the mine!
             this.detonating = true;
             this.fuseTimer = AMBUSH_CONFIG.fuseTimer;
@@ -118,7 +119,8 @@ export class EggTrap {
                         if (Math.abs(this.x - e.x) > AMBUSH_CONFIG.splashRadius || Math.abs(this.y - e.y) > AMBUSH_CONFIG.splashRadius) continue;
 
                         if (MathUtils.distSq(this.x, this.y, e.x, e.y) < radiusSq) {
-                            if (e.role || e.constructor.name === 'CentipedeBoss') {
+                            // [FIX] Use minification-safe isBoss flag!
+                            if (e.role || e.isBoss) {
                                 e.hp -= AMBUSH_CONFIG.explosionDamageUnit; 
                             } else {
                                 e.hp -= AMBUSH_CONFIG.explosionDamageStruct; 
