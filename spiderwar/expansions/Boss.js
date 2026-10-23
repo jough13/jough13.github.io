@@ -79,6 +79,14 @@ export class CentipedeBoss {
             return; // Cannot move or attack while unburrowing!
         }
 
+        // [FIX] Support global stun debuffs!
+        if (this.stunTimer > 0) {
+            this.stunTimer--;
+            // Emit freeze particles while stunned
+            if (game.tick % 15 === 0) game.bus.emit('particles', {x: this.x, y: this.y - 10, color: '#00ffff', count: 1, type: 'magic'});
+            return;
+        }
+
         // 🧃 [JUICE] Damage Flashing Tracker
         if (this.hp < this._lastHp) this.flashFrames = 4;
         this._lastHp = this.hp;
@@ -121,10 +129,13 @@ export class CentipedeBoss {
             const distSq = MathUtils.distSq(this.x, this.y, this.target.x, this.target.y);
             const combatRangeSq = (this.target.size ? this.target.size + 20 : 30) ** 2;
 
+            // [FIX] Support global slow debuffs!
+            const currentSpeed = this.isSlowed ? this.speed * 0.5 : this.speed;
+            
             if (distSq > combatRangeSq) { 
                 // Move towards target
-                this.x += Math.cos(this.angle) * this.speed; 
-                this.y += Math.sin(this.angle) * this.speed; 
+                this.x += Math.cos(this.angle) * currentSpeed; 
+                this.y += Math.sin(this.angle) * currentSpeed; 
             } else { 
                 // Melee Attack
                 this.cooldown--; 
@@ -142,8 +153,11 @@ export class CentipedeBoss {
         } else {
             // Idle Wandering
             if (Math.random() < 0.05) this.angle += (Math.random() - 0.5);
-            this.x += Math.cos(this.angle) * (this.speed * 0.5); 
-            this.y += Math.sin(this.angle) * (this.speed * 0.5);
+            
+            // [FIX] Support global slow debuffs!
+            const currentSpeed = this.isSlowed ? this.speed * 0.5 : this.speed;
+            this.x += Math.cos(this.angle) * (currentSpeed * 0.5); 
+            this.y += Math.sin(this.angle) * (currentSpeed * 0.5);
             
             // Bounce off world bounds cleanly
             this.x = MathUtils.clamp(this.x, 100, game.world.width - 100); 
