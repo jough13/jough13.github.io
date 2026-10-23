@@ -142,7 +142,7 @@ export const TitansExpansion = {
             size: TITAN_CONFIG.widow.size, hp: TITAN_CONFIG.widow.hp, 
             damage: TITAN_CONFIG.widow.damage, attackSpeed: TITAN_CONFIG.widow.attackSpeed, 
             baseSpeedMin: TITAN_CONFIG.widow.baseSpeedMin, baseSpeedMax: TITAN_CONFIG.widow.baseSpeedMax,
-            traits: ['melee', 'stealth'] 
+            traits: ['stealth', 'melee'] // [FIX] Passives must run before active traits!
         };
         
         UNIT_DATA['goliath'] = { 
