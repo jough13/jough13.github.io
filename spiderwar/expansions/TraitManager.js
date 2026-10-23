@@ -168,17 +168,17 @@ export const TraitManagerExpansion = {
         // ==========================================
 
         const processTraitsUpdate = function(entity, gameObj, originalUpdate) {
-            let skipDefaultAI = false;
-
             if (entity.traits && entity.traits.length > 0) {
                 for (let i = 0; i < entity.traits.length; i++) {
                     const traitLogic = gameObj.traitRegistry[entity.traits[i]];
                     if (traitLogic && traitLogic.update) {
-                        if (traitLogic.update(entity, gameObj)) skipDefaultAI = true;
+                        // [FIX] Short-circuit ECS execution if an active trait takes control of the unit!
+                        if (traitLogic.update(entity, gameObj)) break;
                     }
                 }
             }
-            if (!skipDefaultAI) originalUpdate.call(entity, gameObj);
+            // Always call originalUpdate (it handles engine fundamentals like debuffs, which we patched in other files)
+            originalUpdate.call(entity, gameObj);
         };
 
         // [FIX] Update signature to receive gameObj for animations
