@@ -286,8 +286,20 @@ export const AdvancedBaseExpansion = {
                         if (queens[i].team === 'red') { redQueen = queens[i]; break; }
                     }
                     
+                    // [FIX] Prevent the AI from building random bases in the middle of the map while marching to attack!
+                    let redNest = null;
+                    const structs = this.structures;
+                    for (let i = 0; i < structs.length; i++) {
+                        if (structs[i].team === 'red' && structs[i].type === 'nest') { redNest = structs[i]; break; }
+                    }
+
                     if (redQueen && redQueen.hp > 0 && !redQueen.activeConstruction && !redQueen.buildTarget) {
                         
+                        // [FIX] Only build if she is relatively close to her home base (within 600px)
+                        if (redNest && MathUtils.distSq(redQueen.x, redQueen.y, redNest.x, redNest.y) > 360000) {
+                            return; // Stop processing the build loop, she's out on a mission!
+                        }
+
                         const type = this.aiConfig.activeBuildPool[MathUtils.randomInt(0, this.aiConfig.activeBuildPool.length - 1)];
                         let cost = this.aiConfig.buildCosts[type];
                         
