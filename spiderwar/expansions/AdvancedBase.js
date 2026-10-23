@@ -149,11 +149,13 @@ export const AdvancedBaseExpansion = {
                     if (valid) {
                         let clusterSize = MathUtils.randomInt(5, 10);
                         for (let p = 0; p < clusterSize; p++) {
-                            this.addEntity(new ResourceNode(
-                                MathUtils.clamp(pX + MathUtils.randomRange(-150, 150), 0, this.world.width), 
-                                MathUtils.clamp(pY + MathUtils.randomRange(-150, 150), 0, this.world.height), 
-                                'pumpkin'
-                            ));
+                            // [FIX] Ensure the scattered coordinates don't land in the river!
+                            const nX = MathUtils.clamp(pX + MathUtils.randomRange(-150, 150), 0, this.world.width);
+                            const nY = MathUtils.clamp(pY + MathUtils.randomRange(-150, 150), 0, this.world.height);
+                            
+                            if (this.getTerrainAt(nX, nY) !== 'water') {
+                                this.addEntity(new ResourceNode(nX, nY, 'pumpkin'));
+                            }
                         }
                     }
                 }
