@@ -111,16 +111,12 @@ export const AdvancedUnitControlExpansion = {
             }
         });
         
-        // Throttled mousemove for buttery smooth selection boxes
+        // [FIX] Synchronous mousemove prevents fatal async race conditions with mouseup!
         window.addEventListener('mousemove', e => {
-            if (isDraggingBox && game.dragBox && !ticking) {
-                ticking = true;
-                requestAnimationFrame(() => {
-                    const pos = getLocalPos(e.clientX, e.clientY);
-                    game.dragBox.w = pos.x - startX;
-                    game.dragBox.h = pos.y - startY;
-                    ticking = false;
-                });
+            if (isDraggingBox && game.dragBox) {
+                const pos = getLocalPos(e.clientX, e.clientY);
+                game.dragBox.w = pos.x - startX;
+                game.dragBox.h = pos.y - startY;
             }
         });
 
