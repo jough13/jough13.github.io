@@ -367,7 +367,8 @@ export const ContextUIExpansion = {
         // ==========================================
         // MASTER DICTIONARY
         // ==========================================
-        Object.assign(game.uiActions, {
+        // [FIX] Bulletproof assignment ensures no crashes if game.js or other expansions failed to initialize the dictionary
+        game.uiActions = Object.assign(game.uiActions || {}, {
             'nest':      { reqTech: 0, icon: '🕸️', img: 'assets/nest_black.png', name: 'Nest', cost: '150🎃', type: 'tool', val: 'nest' },
             'eggsac':    { reqTech: 0, icon: '🥚', img: 'assets/eggsac_black.png', name: 'Sac', cost: '50🎃', type: 'tool', val: 'eggsac' },
             'pylon':     { reqTech: 0, icon: '🗼', img: 'assets/pylon_black.png', name: 'Pylon', cost: '25🎃', type: 'tool', val: 'pylon' },
