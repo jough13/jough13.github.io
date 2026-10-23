@@ -265,6 +265,7 @@ export const AIDirectorExpansion = {
                     for (let bug of dir.squad) {
                         bug.isManual = false;
                         bug.commandTarget = null;
+                        bug.isSquad = false; // [FIX] Strip squad tag so they return to normal duties
                     }
                     
                     dir.squad.clear(); // Release survivors to gather/patrol normally
