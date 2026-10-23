@@ -78,7 +78,7 @@ class VortexEntity {
                 for (let i = 0; i < cell.length; i++) {
                     let e = cell[i];
                     
-                    // [FIX] Ensure the Vortex doesn't suck in friendly units!
+                    // [FIX] Ensure the Vortex doesn't suck in friendly units! (And safe boss check)
                     if (e.team && e.team !== this.team && e.hp > 0 && (e instanceof Spider || e.isBoss) && e.role !== 'queen') {
                         
                         // Fast AABB check
@@ -247,6 +247,9 @@ export const VoidWhispersExpansion = {
                     game.eco[data.team].pumpkins -= 100;
                     game.eco[data.team].dew -= 30;
                     
+                    // [FIX] Increment population instantly to prevent spam-click bypass!
+                    game.pop[data.team]++;
+                    
                     let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
                     s.sprite = game.assets.get(data.team === 'black' ? 'assets/voidweaver_black.png' : 'assets/voidweaver_red.png');
                     s.imageLoaded = true; 
@@ -297,8 +300,8 @@ export const VoidWhispersExpansion = {
                         for (let i = 0; i < cell.length; i++) {
                             let e = cell[i];
                             
-                            // Only pull enemies (Units and Bosses)
-                            if (e.team && e.team !== this.team && e.hp > 0 && (e instanceof Spider || e.constructor.name === 'CentipedeBoss')) {
+                            // [FIX] Minification-safe Boss check!
+                            if (e.team && e.team !== this.team && e.hp > 0 && (e instanceof Spider || e.isBoss)) {
                                 
                                 // Fast AABB Check
                                 if (Math.abs(this.x - e.x) > pullRadius || Math.abs(this.y - e.y) > pullRadius) continue;
@@ -323,8 +326,8 @@ export const VoidWhispersExpansion = {
                                         gameObj.bus.emit('playSound', 'death');
                                         gameObj.bus.emit('particles', {x: this.x, y: this.y, color: '#ff0000', count: 30, type: 'splatter'});
                                         
-                                        // Bosses are too big, they damage the maw when bitten
-                                        if (e.constructor.name === 'CentipedeBoss') {
+                                        // [FIX] Bosses are too big, they damage the maw when bitten
+                                        if (e.isBoss) {
                                             this.hp -= 50; 
                                         }
                                     }
@@ -336,13 +339,18 @@ export const VoidWhispersExpansion = {
             }
         });
 
+        // [FIX] Decouple visual state from rendering loop to prevent stale beams off-screen!
+        game.expansions.patchClass(Spider, 'update', function(original, gameObj) {
+            if (this.beamVisual && this.beamVisual.timer > 0) this.beamVisual.timer--;
+            original.call(this, gameObj);
+        });
+
         // 7. DRAWING MODIFICATIONS
         // [FIX] Pass `gameObj` through to original calls
         game.expansions.patchClass(Spider, 'draw', function(original, ctx, gameObj) {
             
             // Draw Voidweaver Cosmic Tractor Beam BEFORE the spider, so it renders underneath
             if (this.hasTrait('gravity_pull') && this.beamVisual && this.beamVisual.timer > 0) {
-                this.beamVisual.timer--;
                 ctx.save();
                 
                 // [JUICE] Glowing, glitchy energy beam
