@@ -190,7 +190,11 @@ export const SpectralSwarmExpansion = {
             // [FIX] Move timer decrements to update() so they process even when off-screen!
             if (this.stealthAuraTimer > 0) {
                 this.stealthAuraTimer--;
-                if (this.stealthAuraTimer <= 0) this.isCloaked = false; // Uncloak when leaving aura
+                
+                // [FIX] Ensure the Monolith doesn't strip native cloaking from Widows or buried Trapdoors!
+                if (this.stealthAuraTimer <= 0 && this.burrowState !== 2 && !this.hasTrait('stealth')) {
+                    this.isCloaked = false; 
+                }
             }
 
             // --- DEBUFF: STUNNED ---
