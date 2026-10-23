@@ -58,6 +58,10 @@ export const AdvancedBaseExpansion = {
         game.basesInitialized = false;
         if (!game.aiDifficulty) game.aiDifficulty = 'normal'; 
         
+        // [FIX] Register critter assets so they don't fall back to generic ellipses!
+        game.assets.register('assets/aphid.png');
+        game.assets.register('assets/goldenbug.png');
+        
         // 🔌 [EXPANDABILITY] Expose configuration to the game instance so other mods can inject into the AI!
         game.aiConfig = {
             profiles: AI_PROFILES,
