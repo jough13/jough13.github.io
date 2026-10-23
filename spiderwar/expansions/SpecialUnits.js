@@ -132,6 +132,7 @@ export const SpecialUnitsExpansion = {
 
                     } else {
                         entity.commandTarget = null; // Target reached
+                        entity.isManual = false;     // [FIX] Release manual control so abilities can resume!
                     }
                     return true; // RETURN TRUE: Prevent standard melee AI from running
                 }
