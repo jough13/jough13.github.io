@@ -66,8 +66,12 @@ export class Aphid {
             this.angle = MathUtils.angleWrap(this.angle); // Keep normalized
         }
 
+        // [FIX] Apply Terrain Modifiers!
+        const terrain = game.getTerrainAt(this.x, this.y); 
+        let tMod = (terrain === 'water') ? 0.05 : ((terrain === 'grass') ? 1.3 : 1.0);
+
         // Fleeing AI: Run away quickly if attacked!
-        let currentSpeed = this.speed;
+        let currentSpeed = this.speed * tMod;
         if (this.hp < this.maxHp) {
             currentSpeed *= CRITTER_CONFIG.aphid.fleeMultiplier; 
         }
@@ -75,8 +79,13 @@ export class Aphid {
         this.x += Math.cos(this.angle) * currentSpeed; 
         this.y += Math.sin(this.angle) * currentSpeed;
         
-        // Bounce off world bounds cleanly (Dynamic based on size)
+        // [FIX] Bounce off world bounds by reversing angle!
         const bound = this.size * 2;
+        if (this.x <= bound || this.x >= game.world.width - bound || this.y <= bound || this.y >= game.world.height - bound) {
+            this.angle += Math.PI; // 180 degree turn
+            this.angle = MathUtils.angleWrap(this.angle);
+        }
+        
         this.x = MathUtils.clamp(this.x, bound, game.world.width - bound); 
         this.y = MathUtils.clamp(this.y, bound, game.world.height - bound);
     }
@@ -171,8 +180,12 @@ export class GoldenBug {
             this.angle = MathUtils.angleWrap(this.angle);
         }
 
+        // [FIX] Apply Terrain Modifiers!
+        const terrain = game.getTerrainAt(this.x, this.y); 
+        let tMod = (terrain === 'water') ? 0.05 : ((terrain === 'grass') ? 1.3 : 1.0);
+
         // Fleeing AI: Run away quickly if attacked!
-        let currentSpeed = this.speed;
+        let currentSpeed = this.speed * tMod;
         if (this.hp < this.maxHp) {
             currentSpeed *= CRITTER_CONFIG.goldenBug.fleeMultiplier; 
             // 🧃 JUICE: The golden bug sheds golden particles when panicking/bleeding!
@@ -187,8 +200,13 @@ export class GoldenBug {
         this.x += Math.cos(this.angle) * currentSpeed; 
         this.y += Math.sin(this.angle) * currentSpeed;
         
-        // Bounce off world bounds cleanly
+        // [FIX] Bounce off world bounds by reversing angle!
         const bound = this.size * 2;
+        if (this.x <= bound || this.x >= game.world.width - bound || this.y <= bound || this.y >= game.world.height - bound) {
+            this.angle += Math.PI; // 180 degree turn
+            this.angle = MathUtils.angleWrap(this.angle);
+        }
+        
         this.x = MathUtils.clamp(this.x, bound, game.world.width - bound); 
         this.y = MathUtils.clamp(this.y, bound, game.world.height - bound);
     }
