@@ -1,5 +1,6 @@
 // expansions/AdvancedBase.js
-import { Structure, ResourceNode, MathUtils } from '../game.js';
+// [FIX] Imported Spider to prevent fatal ReferenceError crashes during Tech Upgrades!
+import { Spider, Structure, ResourceNode, MathUtils } from '../game.js';
 import { Aphid, GoldenBug } from './Critters.js';
 
 // ==========================================
