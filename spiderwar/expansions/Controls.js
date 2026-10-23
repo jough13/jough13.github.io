@@ -474,12 +474,21 @@ export const ConstructionExpansion = {
                     let s = entities[i];
                     if (s instanceof Structure) {
                         if (s.team === 'black') hasBase = true;
-                        
-                        // Prevent Stacking: Check if the new click is too close to an existing building
-                        // We use (size * 2) squared for a generous, safe bounding box
                         if (MathUtils.distSq(s.x, s.y, data.x, data.y) < (s.size * 2) * (s.size * 2)) {
-                            isOverlapping = true;
-                            break; // Stop checking, we already know it's an illegal spot
+                            isOverlapping = true; break;
+                        }
+                    }
+                    // [FIX] Prevent building over pumpkins/dew
+                    else if (s.resources !== undefined) {
+                        if (MathUtils.distSq(s.x, s.y, data.x, data.y) < (s.size * 2) * (s.size * 2)) {
+                            isOverlapping = true; break;
+                        }
+                    }
+                    // [FIX] Prevent stacking blueprints by checking Queens' active build targets!
+                    else if (s.role === 'queen' && s.buildTarget) {
+                        // Assuming standard size 25 for blueprints
+                        if (MathUtils.distSq(s.buildTarget.x, s.buildTarget.y, data.x, data.y) < 2500) {
+                            isOverlapping = true; break;
                         }
                     }
                 }
@@ -666,6 +675,21 @@ export const ConstructionExpansion = {
                 ctx.fillRect(-w/2, -this.size - 14, w * this.buildProgress, 4);
                 
                 ctx.restore();
+                
+                // [FIX] Render universal health bar natively since we bypassed original.call()
+                if (this.hp !== undefined && this.hp > 0 && this.hp < this.maxHp) {
+                    const hpW = this.size * 1.5; 
+                    const hpPct = Math.max(0, this.hp) / this.maxHp;
+                    let barColor = hpPct < 0.25 ? '#ff0000' : (hpPct < 0.5 ? '#ffff00' : '#00ff00');
+                    
+                    ctx.fillStyle = '#000000'; 
+                    ctx.fillRect(this.x - hpW/2 - 1, this.y - this.size - 12, hpW + 2, 6);
+                    ctx.fillStyle = '#550000'; 
+                    ctx.fillRect(this.x - hpW/2, this.y - this.size - 11, hpW, 4);
+                    ctx.fillStyle = barColor; 
+                    ctx.fillRect(this.x - hpW/2, this.y - this.size - 11, hpW * hpPct, 4);
+                }
+
             } else {
                 original.call(this, ctx, gameObj); 
             }
