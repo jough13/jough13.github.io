@@ -117,11 +117,12 @@ export const AudioExpansion = {
                 }
             };
             
+            // [FIX] Removed { once: true } so returning to backgrounded tabs on mobile can wake the audio back up!
             // Listen to modern pointerdown as well as legacy touch/click
-            window.addEventListener('pointerdown', unlock, { once: true });
-            window.addEventListener('click', unlock, { once: true }); 
-            window.addEventListener('touchstart', unlock, { once: true });
-            window.addEventListener('keydown', unlock, { once: true });
+            window.addEventListener('pointerdown', unlock);
+            window.addEventListener('click', unlock); 
+            window.addEventListener('touchend', unlock); // iOS strongly prefers touchend over touchstart
+            window.addEventListener('keydown', unlock);
         } catch (e) { 
             console.warn('[AudioEngine] Web Audio API not supported/disabled.', e); 
         }
