@@ -287,17 +287,23 @@ export const AdvancedUnitControlExpansion = {
                         lastClickTime = now;
                         lastClickedUnit = clickedUnit;
                         game.selectedStructure = null;
+                        game.bus.emit('closeModal'); // [FIX] Ensure structure UI closes!
                         game.bus.emit('selectionChanged');
                         
                     } else if (clickedStruct) {
                         game.selectedStructure = clickedStruct;
                         game.selectedUnits = [];
+                        game.bus.emit('openModal', clickedStruct); // [FIX] Open structure UI!
                         game.bus.emit('selectionChanged');
                     } else {
                         // Clicked bare dirt, clear selection
                         game.selectedUnits = [];
                         game.selectedStructure = null;
+                        game.bus.emit('closeModal'); // [FIX] Clean up UI!
                         game.bus.emit('selectionChanged');
+                        
+                        // 🧃 [JUICE] Visual click indicator on ground
+                        game.bus.emit('particles', {x: worldX, y: worldY, color: 'rgba(255,255,255,0.5)', count: 5});
                     }
                 }
             }
