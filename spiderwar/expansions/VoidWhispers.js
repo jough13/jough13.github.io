@@ -34,6 +34,9 @@ class VortexEntity {
         this.radiusSq = VOID_CONFIG.vortexRadiusSq;
         this.pullStrength = VOID_CONFIG.vortexPullStrength; 
         
+        // [FIX] Explicit size ensures viewport culling won't pop the massive spell out of existence
+        this.size = this.radius;
+        
         // [JUICE] Pop-in scale animation
         this.spawnScale = 0.1;
     }
@@ -75,8 +78,8 @@ class VortexEntity {
                 for (let i = 0; i < cell.length; i++) {
                     let e = cell[i];
                     
-                    // Only affect living physical objects
-                    if (e.hp > 0 && (e instanceof Spider || e.constructor.name === 'CentipedeBoss') && e.role !== 'queen') {
+                    // [FIX] Ensure the Vortex doesn't suck in friendly units!
+                    if (e.team && e.team !== this.team && e.hp > 0 && (e instanceof Spider || e.isBoss) && e.role !== 'queen') {
                         
                         // Fast AABB check
                         if (Math.abs(this.x - e.x) > this.radius || Math.abs(this.y - e.y) > this.radius) continue;
