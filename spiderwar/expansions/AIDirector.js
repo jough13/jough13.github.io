@@ -172,9 +172,10 @@ export const AIDirectorExpansion = {
                     if (e.team === 'red' && e.hp > 0 && e instanceof Spider && e.role !== 'harvester' && e.role !== 'queen') {
                         if (!dir.squad.has(e) && !e.target) {
                             dir.squad.add(e);
+                            e.isSquad = true; // [FIX] Tag them so they ignore base duties
                             // Send them to the rally point
                             e.commandTarget = { 
-                                x: dir.rallyPoint.x + MathUtils.randomRange(-cfg.squadSpread, cfg.squadSpread), 
+                                x: dir.rallyPoint.x + MathUtils.randomRange(-cfg.squadSpread, cfg.squadSpread),
                                 y: dir.rallyPoint.y + MathUtils.randomRange(-cfg.squadSpread, cfg.squadSpread) 
                             };
                             e.isManual = true;
