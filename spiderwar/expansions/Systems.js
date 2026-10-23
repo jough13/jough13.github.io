@@ -31,10 +31,10 @@ export const SYSTEM_CONFIG = {
 export const AtmosphereExpansion = {
     patch: (game) => {
         game.bus.on('atmosphereDraw', (ctx) => {
-            // SAFETY FIX: Prevent overlapping darkness if DayNight expansion is also active
-            if (game.isNight !== undefined && game.dayTime > 0.4) return;
+            // [FIX] Yield completely to DayNight expansion if it is active!
+            if (game.isNight !== undefined) return;
             
-            const cycle = Math.sin(game.tick / 1800); 
+            const cycle = Math.sin(game.tick / 1800);
             const darkness = Math.max(0, cycle * 0.6); 
             
             // JUICE: Dynamic breathing vignette instead of a flat color fill
@@ -53,16 +53,37 @@ export const AtmosphereExpansion = {
         // [FIX] Signature updated to accept gameObj
         game.expansions.patchClass(Structure, 'draw', function(original, ctx, gameObj) {
             const tick = gameObj ? gameObj.tick : 0;
-            const cycle = Math.sin(tick / 1800);
+            // [FIX] Sync with real DayNight if it exists, otherwise use standalone cycle
+            const isDark = (gameObj && gameObj.isNight !== undefined) ? gameObj.isNight : (Math.sin(tick / 1800) > 0);
             
-            if (cycle > 0 && (this.type === 'nest' || this.type === 'turret') && !this.isConstructing) { 
+            if (isDark && (this.type === 'nest' || this.type === 'turret') && !this.isConstructing) { 
                 ctx.save();
-                ctx.shadowBlur = 30 * cycle; 
+                // [JUICE] If using standalone cycle, pulse based on that. If using DayNight, use a steady organic pulse.
+                const glowIntensity = (gameObj && gameObj.isNight !== undefined) ? (0.7 + Math.sin(tick * 0.05) * 0.3) : Math.sin(tick / 1800);
+                
+                ctx.shadowBlur = 30 * glowIntensity; 
                 ctx.shadowColor = this.team === 'black' ? '#aa00ff' : '#ff3300'; 
                 original.call(this, ctx, gameObj); 
                 ctx.restore();
             } else {
                 original.call(this, ctx, gameObj);
+            }
+        });
+
+        game.expansions.patchClass(Queen, 'draw', function(original, ctx, gameObj) {
+            const tick = gameObj ? gameObj.tick : 0;
+            const isDark = (gameObj && gameObj.isNight !== undefined) ? gameObj.isNight : (Math.sin(tick / 1800) > 0);
+            
+            if (isDark) { 
+                ctx.save();
+                const glowIntensity = (gameObj && gameObj.isNight !== undefined) ? (0.7 + Math.sin(tick * 0.05) * 0.3) : Math.sin(tick / 1800);
+                
+                ctx.shadowBlur = 40 * glowIntensity; 
+                ctx.shadowColor = this.team === 'black' ? '#ffffff' : '#ff0000'; 
+                original.call(this, ctx, gameObj); 
+                ctx.restore();
+            } else {
+                original.call(this, ctx, gameObj); 
             }
         });
 
