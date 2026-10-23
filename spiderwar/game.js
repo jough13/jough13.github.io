@@ -481,7 +481,18 @@ export class Game {
             const k = e.key.toLowerCase(); this.keys[k] = true;
             if(k === 'escape') { this.activeTool = 'select'; this.bus.emit('toolChanged', 'select'); this.bus.emit('closeModal'); }
             if(k === 'u' && this.eco.black.pumpkins >= 250) { 
-                this.eco.black.pumpkins -= 250; this.techLevel.black++; this.bus.emit('playSound', 'spell');
+                this.eco.black.pumpkins -= 250; 
+                this.techLevel.black++; 
+                
+                // [FIX] Apply tech HP bonus to all existing entities instantly!
+                for (let i = 0; i < this.entities.length; i++) {
+                    let e = this.entities[i];
+                    if (e.team === 'black' && e.hp > 0 && e.role !== 'queen' && (e instanceof Spider || e instanceof Structure)) {
+                        e.maxHp += 20; e.hp += 20;
+                    }
+                }
+                
+                this.bus.emit('playSound', 'spell');
             }
         });
         window.addEventListener('keyup', e => this.keys[e.key.toLowerCase()] = false);
