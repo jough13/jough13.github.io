@@ -270,9 +270,10 @@ export const CombatAndHarvesterExpansion = {
                 }
 
                 // 2. ESCORT QUEEN BEHAVIOR (If they have the trait)
-                if (entity.hasTrait('escort') && !entity.isManual) {
+                // [FIX] Ignore escort duties if currently drafted into an AI assault squad!
+                if (entity.hasTrait('escort') && !entity.isManual && !entity.isSquad) {
                     let myQueen = null;
-                    const queens = gameObj.queens; 
+                    const queens = gameObj.queens;
                     const queenLen = queens.length;
                     for (let i = 0; i < queenLen; i++) {
                         if (queens[i].team === entity.team) { myQueen = queens[i]; break; }
