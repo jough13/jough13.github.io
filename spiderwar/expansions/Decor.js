@@ -41,10 +41,11 @@ export const DecorExpansion = {
         game.expansions.patchClass(game.constructor, 'update', function(original) {
             original.call(this);
 
-            // [FIX] Removed fragile this.tick === 1 dependency!
-            if (this.gameState === 'playing' && !this.decorInitialized) {
+            // [FIX] Wait until tick 2 so AdvancedBase.js finishes carving out dirt under the bases!
+            if (this.gameState === 'playing' && this.tick >= 2 && !this.decorInitialized) {
                 this.decorInitialized = true;
                 
+                const tileSize = this.tileSize || 256;
                 const maxChunkX = Math.ceil(this.world.width / CHUNK_SIZE);
                 const maxChunkY = Math.ceil(this.world.height / CHUNK_SIZE);
                 
@@ -53,14 +54,24 @@ export const DecorExpansion = {
                     let placed = 0;
                     let attempts = 0;
                     
-                    while (placed < config.count && attempts < config.count * 3) {
+                    // Allow more attempts to hit the narrow water channels
+                    while (placed < config.count && attempts < config.count * 4) {
                         attempts++;
-                        const dx = Math.random() * this.world.width;
-                        const dy = Math.random() * this.world.height;
+                        let dx = Math.random() * this.world.width;
+                        let dy = Math.random() * this.world.height;
                         const terrain = this.getTerrainAt(dx, dy);
                         
                         // Only place the decor if it matches the underlying terrain
                         if (terrain === type) {
+                            
+                            // [FIX] Snap water decor to the narrow inner channel so they don't land on muddy banks
+                            if (type === 'water') {
+                                const tileCenterX = (((dx / tileSize) | 0) + 0.5) * tileSize;
+                                const tileCenterY = (((dy / tileSize) | 0) + 0.5) * tileSize;
+                                dx = tileCenterX + MathUtils.randomRange(-20, 20);
+                                dy = tileCenterY + MathUtils.randomRange(-20, 20);
+                            }
+
                             const rawSize = MathUtils.randomRange(config.minSize, config.maxSize);
                             
                             const decorItem = {
@@ -70,8 +81,9 @@ export const DecorExpansion = {
                                 behavior: config.behavior, // [PERFORMANCE] Cached behavior tag
                                 size: rawSize,
                                 renderSize: rawSize * 2,   // Pre-calculated math saves multiplications per frame
-                                angle: Math.random() * MathUtils.TWO_PI, 
-                                alpha: MathUtils.randomRange(config.minAlpha, config.maxAlpha), 
+                                // [FIX] Keep plants and water upright with a subtle tilt instead of 360 rotation!
+                                angle: config.behavior === 'solid' ? Math.random() * MathUtils.TWO_PI : MathUtils.randomRange(-0.15, 0.15), 
+                                alpha: MathUtils.randomRange(config.minAlpha, config.maxAlpha),
                                 fallbackColor: config.fallbackColor,
                                 
                                 // 🚀 [LOGIC FIX] Store SRC target. Cache lookup happens in the draw loop!
