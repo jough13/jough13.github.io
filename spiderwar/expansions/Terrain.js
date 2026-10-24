@@ -146,8 +146,11 @@ export const TerrainExpansion = {
                         }
                     }
                 }
+                
+                // [FIX] Invalidate minimap cache so it instantly redraws when terrain geometry changes!
+                this.minimapCache = null;
             };
-            this.updateBitmasks(); 
+            this.updateBitmasks();
         };
         
         game.generateMap();
