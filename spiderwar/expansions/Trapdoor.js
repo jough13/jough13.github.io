@@ -24,17 +24,19 @@ export const TrapdoorExpansion = {
             traits: ['burrow_ambush', 'melee'] 
         };
 
-        if (game.customUIHooks) {
-            game.uiActions['trapdoor'] = { 
-                reqTech: TRAPDOOR_CONFIG.requiredTech, icon: '🕳️', name: 'Assassin', 
-                cost: `${TRAPDOOR_CONFIG.costP}🎃${TRAPDOOR_CONFIG.costD}💧`, type: 'instant', 
-                fn: (t) => game.bus.emit('spawnSpider', {x: t.x, y: t.y, team: 'black', role: 'trapdoor'}) 
-            };
+        // [FIX] Initialize UI arrays locally to ensure 100% modular safety regardless of boot order!
+        game.uiActions = game.uiActions || {};
+        game.customUIHooks = game.customUIHooks || [];
 
-            game.customUIHooks.push((currentSelection, addButton) => {
-                if (currentSelection && currentSelection.type === 'nest' && currentSelection.team === 'black') addButton('trapdoor');
-            });
-        }
+        game.uiActions['trapdoor'] = { 
+            reqTech: TRAPDOOR_CONFIG.requiredTech, icon: '🕳️', name: 'Assassin', 
+            cost: `${TRAPDOOR_CONFIG.costP}🎃${TRAPDOOR_CONFIG.costD}💧`, type: 'instant', 
+            fn: (t) => game.bus.emit('spawnSpider', {x: t.x, y: t.y, team: 'black', role: 'trapdoor'}) 
+        };
+
+        game.customUIHooks.push((currentSelection, addButton) => {
+            if (currentSelection && currentSelection.type === 'nest' && currentSelection.team === 'black') addButton('trapdoor');
+        });
 
         game.bus.on('spawnSpider', (data) => {
             if (data.role === 'trapdoor') {
