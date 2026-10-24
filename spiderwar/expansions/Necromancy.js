@@ -216,7 +216,8 @@ export const NecromancyExpansion = {
 
         // 🛡️ [FIX] Replaced O(N) entity loop hack with clean, instantaneous event bus listener
         game.bus.on('entityDeath', (e) => {
-            if (e instanceof Spider && !e.isZombie && !e.corpseSpawned && e.role !== 'broodling') {
+            // [FIX] Explicitly exclude nature units, parasites, and broodlings from dropping corpses
+            if (e instanceof Spider && !e.isZombie && !e.corpseSpawned && e.team !== 'nature' && e.role !== 'broodling' && e.role !== 'parasite') {
                 e.corpseSpawned = true; // Safety flag
                 game.addEntity(new Corpse(e.x, e.y, e.size));
             }
