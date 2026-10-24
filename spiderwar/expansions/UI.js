@@ -720,8 +720,7 @@ export const GameLoopExpansion = {
                 if (!blackQueen || blackQueen.hp <= 0) { 
                     this.gameState = 'lose'; 
                     
-                    // [JUICE] Cinematic Death Freeze
-                    this.freezeFrames = 99999; 
+                    // [JUICE] Cinematic Death Freeze (Handled natively by triggerShake hit-stop!)
                     if (this.triggerShake) this.triggerShake(30);
                     this.bus.emit('playSound', 'roar');
                     
@@ -744,7 +743,7 @@ export const GameLoopExpansion = {
                 else if (!redQueen || redQueen.hp <= 0) { 
                     this.gameState = 'win'; 
                     
-                    this.freezeFrames = 99999;
+                    // [JUICE] Cinematic Death Freeze (Handled natively by triggerShake hit-stop!)
                     if (this.triggerShake) this.triggerShake(30);
                     this.bus.emit('playSound', 'roar');
                     
