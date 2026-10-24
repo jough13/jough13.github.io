@@ -562,7 +562,8 @@ export const ContextUIExpansion = {
                 }
                 else if (this.selectedUnits && this.selectedUnits.length === 1) {
                     let unit = this.selectedUnits[0];
-                    portrait.src = unit.sprite.src || '';
+                    // [FIX] Safely fall back to the raw string path to prevent null pointer crashes!
+                    portrait.src = unit.spriteSrc || unit.sprite?.src || '';
                     
                     if (unit instanceof Queen) {
                         nameEl.innerText = "Obsidian Queen";
@@ -578,7 +579,8 @@ export const ContextUIExpansion = {
                     }
                 }
                 else if (this.selectedStructure) {
-                    portrait.src = this.selectedStructure.sprite.src || '';
+                    // [FIX] Safely fall back to the raw string path to prevent null pointer crashes!
+                    portrait.src = this.selectedStructure.spriteSrc || this.selectedStructure.sprite?.src || '';
                     nameEl.innerText = this.selectedStructure.type === 'nest' ? `Main Nest (Lv ${this.techLevel.black})` : this.selectedStructure.type.toUpperCase();
                     
                     if (this.selectedStructure.type === 'nest' && this.selectedStructure.team === 'black') {
