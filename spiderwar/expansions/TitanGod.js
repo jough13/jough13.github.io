@@ -18,6 +18,7 @@ class SubjugationRune {
         this.life = 60; 
         this.maxLife = 60;
         this.radius = TAMER_CONFIG.spellRadius;
+        this.size = this.radius; // [FIX] Ensure it doesn't get culled prematurely
         
         // 🚀 [ASSET INTEGRATION]
         this.spriteSrc = 'assets/rune_subjugate.png';
