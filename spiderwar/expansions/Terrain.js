@@ -193,29 +193,22 @@ export const TerrainExpansion = {
                                 ctx.imageSmoothingEnabled = false; 
 
                                 if (img.width < this.tileSize && !key.startsWith('water_')) {
-                                    for (let y = 0; y < this.tileSize; y += img.height) {
-                                        for (let x = 0; x < this.tileSize; x += img.width) { 
-                                            ctx.drawImage(img, x, y); 
-                                        }
+                                for (let y = 0; y < this.tileSize; y += img.height) {
+                                    for (let x = 0; x < this.tileSize; x += img.width) { 
+                                        ctx.drawImage(img, x, y); 
                                     }
-                                } else {
-                                    if (key.startsWith('water_')) {
-                                        // Bake the deep black water base natively
-                                        ctx.fillStyle = '#000';
-                                        ctx.fillRect(0, 0, this.tileSize, this.tileSize);
-                                        
-                                        // Bake an inner shadow by casting a shadow from the borders inward
-                                        ctx.shadowColor = 'rgba(0,0,0,0.5)';
-                                        ctx.shadowBlur = 10;
-                                        ctx.strokeStyle = '#000';
-                                        ctx.lineWidth = 8;
-                                        ctx.strokeRect(0, 0, this.tileSize, this.tileSize);
-                                        
-                                        ctx.shadowBlur = 0; // Reset
-                                    }
-                                    ctx.drawImage(img, 0, 0, this.tileSize, this.tileSize);
                                 }
-                                this.bakedTiles[key] = c; 
+                            } else {
+                                // [FIX] Bake the shadow directly onto the sprite's alpha channel!
+                                if (key.startsWith('water_')) {
+                                    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+                                    ctx.shadowBlur = 12;
+                                }
+                                
+                                ctx.drawImage(img, 0, 0, this.tileSize, this.tileSize);
+                                ctx.shadowBlur = 0; // Reset
+                            }
+                            this.bakedTiles[key] = c; 
                             }
                         } else {
                             // If even one image isn't ready, we flag that we need to keep checking next frame
@@ -268,17 +261,10 @@ export const TerrainExpansion = {
                     const img = game.bakedTiles[tileData.sprite];
                     
                     if (img) {
-                        let renderY = drawY;
-                        
-                        if (tileData.type === 'water') {
-                            // [JUICE] Rippling water animation
-                            renderY += Math.sin(game.tick * 0.05 + x) * 2;
-                        }
-
-                        // Apply angle (autotile rotation for water, or organic grid-breaking rotation for land)
+                        // [FIX] Removed renderY so tiles perfectly seamlessly tile without tearing!
                         if (tileData.angle !== 0 || tileData.type === 'water') {
                             ctx.save(); 
-                            ctx.translate(drawX + halfSize, renderY + halfSize); 
+                            ctx.translate(drawX + halfSize, drawY + halfSize); 
                             ctx.rotate(tileData.angle);
                             ctx.drawImage(img, -halfSize, -halfSize); 
                             ctx.restore();
