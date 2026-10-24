@@ -410,18 +410,6 @@ export const AdvancedUnitControlExpansion = {
                 ctx.restore();
             }
         });
-
-        // 🧃 [JUICE] Custom Queen rotation handling (Smoothing her turns!)
-        game.expansions.patchClass(Queen, 'update', function(original, gameObj) {
-            const prevAngle = this.angle || 0;
-            original.call(this, gameObj);
-            
-            if (this.commandTarget) {
-                let targetAngle = Math.atan2(this.commandTarget.y - this.y, this.commandTarget.x - this.x);
-                let diff = MathUtils.angleWrap(targetAngle - prevAngle);
-                this.angle = prevAngle + (diff * 0.10);
-            }
-        });
         
         game.expansions.patchClass(Queen, 'draw', function(original, ctx, gameObj) {
             // Offset sprite drawing angle by 90 degrees if the sprite isn't facing perfectly right
