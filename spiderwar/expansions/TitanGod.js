@@ -72,21 +72,23 @@ export const TitanGodExpansion = {
         game.assets.register('assets/rune_subjugate.png');
         game.assets.register('assets/icon_subjugate.png');
 
-        if (game.customUIHooks) {
-            game.uiActions['subjugate'] = { 
-                reqTech: TAMER_CONFIG.requiredTech, 
-                icon: '🔗', 
-                img: 'assets/icon_subjugate.png', // 🚀 Uses new icon!
-                name: 'Subjugate', 
-                cost: `${TAMER_CONFIG.spellCost}💧`, 
-                type: 'tool', 
-                val: 'subjugate' 
-            };
+        // [FIX] Initialize UI arrays locally to ensure 100% modular safety regardless of boot order!
+        game.uiActions = game.uiActions || {};
+        game.customUIHooks = game.customUIHooks || [];
 
-            game.customUIHooks.push((currentSelection, addButton) => {
-                if (!currentSelection || currentSelection.role === 'queen') addButton('subjugate');
-            });
-        }
+        game.uiActions['subjugate'] = { 
+            reqTech: TAMER_CONFIG.requiredTech, 
+            icon: '⛓️',  
+            img: 'assets/icon_subjugate.png', 
+            name: 'Subjugate', 
+            cost: `${TAMER_CONFIG.spellCost}💧`, 
+            type: 'tool', 
+            val: 'subjugate' 
+        };
+
+        game.customUIHooks.push((currentSelection, addButton) => {
+            if (!currentSelection || currentSelection.role === 'queen') addButton('subjugate');
+        });
 
         game.bus.on('castSpell', (data) => {
             if (data.type === 'subjugate') {
@@ -107,7 +109,12 @@ export const TitanGodExpansion = {
                         if (boss.hp > 0) {
                             if (Math.abs(boss.x - data.x) > TAMER_CONFIG.spellRadius || Math.abs(boss.y - data.y) > TAMER_CONFIG.spellRadius) continue;
                             if (MathUtils.distSq(boss.x, boss.y, data.x, data.y) < TAMER_CONFIG.spellRadiusSq) {
-                                boss.originalTeam = boss.team;
+                                
+                                // [FIX] Only record the original team if it isn't ALREADY under a mind-control spell!
+                                if (!boss.subjugationTimer || boss.subjugationTimer <= 0) {
+                                    boss.originalTeam = boss.team;
+                                }
+                                
                                 boss.team = data.team;
                                 boss.subjugationTimer = TAMER_CONFIG.subjugateDuration;
                                 boss.target = null; 
