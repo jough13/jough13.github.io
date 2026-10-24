@@ -302,7 +302,7 @@ export const AdvancedBaseExpansion = {
                     // [FIX] Prevent the AI from building random bases in the middle of the map while marching to attack!
                     if (redQueen && redQueen.hp > 0 && !redQueen.activeConstruction && !redQueen.buildTarget && !redQueen.isAssaulting) {
                         
-                        const type = this.aiConfig.activeBuildPool[MathUtils.randomInt(0, this.aiConfig.activeBuildPool.length - 1)];v
+                        const type = this.aiConfig.activeBuildPool[MathUtils.randomInt(0, this.aiConfig.activeBuildPool.length - 1)];
                         let cost = this.aiConfig.buildCosts[type];
                         
                         if (cost && this.eco.red.pumpkins >= cost.p && this.eco.red.dew >= cost.d) {
