@@ -111,9 +111,13 @@ export class Queen extends Spider {
                             targetNest = s; break;
                         }
                     }
-                    if (targetNest) this.commandTarget = { x: targetNest.x, y: targetNest.y };
+                    if (targetNest) {
+                        this.commandTarget = { x: targetNest.x, y: targetNest.y };
+                        this.isAssaulting = true; // [FIX] Tag her so AdvancedBase doesn't interrupt the march!
+                    }
                     
                 } else {
+                    this.isAssaulting = false;
                     
                     // Defend own base - Patrol around the Red Nest (🚀 PERFORMANCE: No .filter allocation)
                     let homeNest = null;
