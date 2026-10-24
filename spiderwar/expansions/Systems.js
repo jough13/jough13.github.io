@@ -492,7 +492,9 @@ export const SaveLoadExpansion = {
                 for (let i = 0; i < game.entities.length; i++) {
                     let u = game.entities[i];
                     
-                    if (u instanceof Spider && u.role !== 'queen') spiders.push(saveUnitState(u));
+                    // [FIX] Ensure the GoldenCaravan doesn't get saved as a generic spider!
+                    if (u.role === 'caravan') critters.push({id: u.id, x: u.x, y: u.y, hp: u.hp, type: 'GoldenCaravan', startX: u.startX, startY: u.startY, endX: u.targetNode?.x, endY: u.targetNode?.y, escaped: u.escaped});
+                    else if (u instanceof Spider && u.role !== 'queen') spiders.push(saveUnitState(u));
                     else if (u instanceof Queen) queens.push(saveUnitState(u));
                     else if (u instanceof Structure) {
                         // Ensure it has an ID before saving so Queens can link to it
