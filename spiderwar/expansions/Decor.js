@@ -36,12 +36,13 @@ export const DecorExpansion = {
     patch: (game) => {
         
         // ==========================================
-        // 2. DETERMINISTIC GENERATION (Tick 1)
+        // 2. DETERMINISTIC GENERATION
         // ==========================================
         game.expansions.patchClass(game.constructor, 'update', function(original) {
             original.call(this);
 
-            if (this.gameState === 'playing' && this.tick === 1 && !this.decorInitialized) {
+            // [FIX] Removed fragile this.tick === 1 dependency!
+            if (this.gameState === 'playing' && !this.decorInitialized) {
                 this.decorInitialized = true;
                 
                 const maxChunkX = Math.ceil(this.world.width / CHUNK_SIZE);
