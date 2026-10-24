@@ -170,6 +170,7 @@ class ReanimateAOE {
     constructor(x, y) {
         this.x = x; this.y = y; 
         this.maxRadius = NECRO_CONFIG.spellRadius; 
+        this.size = this.maxRadius; // [FIX] Ensure it doesn't get culled prematurely
         this.life = 30; // 0.5 second animation at 60fps
         this.maxLife = 30;
     }
