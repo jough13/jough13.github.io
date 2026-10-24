@@ -105,7 +105,7 @@ export const DayNightExpansion = {
                 const spawnY = (this.camera.y + Math.random() * this.canvas.height) | 0;
                 
                 this.bus.emit('particles', {
-                    x: spawnX, y: spawnY, color: cfg.fireflyColor, count: 1, type: 'magic'
+                    x: spawnX, y: spawnY, color: cfg.fireflyColor, count: 1, type: 'firefly' // [FIX] Use custom lazy physics
                 });
             }
         });
