@@ -198,7 +198,10 @@ export const MinimapExpansion = {
 
             for (let i = 0; i < game.entities.length; i++) {
                 let ent = game.entities[i];
+                
+                // [FIX] Ignore dead bodies AND cloaked enemy units!
                 if (ent.hp !== undefined && ent.hp <= 0) continue;
+                if (ent.isCloaked && ent.team !== 'black') continue;
 
                 if (ent instanceof Spider) {
                     if (ent.role === 'queen') addDot(ent, ent.team === 'black' ? UI_CONFIG.colors.blackTeam : UI_CONFIG.colors.redTeam, 4, true, false);
@@ -206,8 +209,11 @@ export const MinimapExpansion = {
                 } 
                 else if (ent instanceof Structure) addDot(ent, ent.team === 'black' ? UI_CONFIG.colors.blackTeam : UI_CONFIG.colors.redTeam, 3, true, false);
                 else if (ent.type === 'pumpkin' || ent.type === 'dew') addDot(ent, ent.type === 'pumpkin' ? UI_CONFIG.colors.pumpkin : UI_CONFIG.colors.dew, 1.5, false, true);
-                else if (ent.team === 'nature' && ent.constructor.name !== 'CentipedeBoss') addDot(ent, ent.color || 'gold', 2, true, false);
-                else if (ent.constructor.name === 'CentipedeBoss') addDot(ent, UI_CONFIG.colors.boss, 4, true, false);
+                
+                // [FIX] Minification-safe Boss check, and distinct color for Hazards!
+                else if (ent.isBoss) addDot(ent, UI_CONFIG.colors.boss, 4, true, false);
+                else if (ent.isHazard) addDot(ent, '#8B0000', 2, true, false); // Dark red dots for hazards
+                else if (ent.team === 'nature') addDot(ent, ent.color || 'gold', 2, true, false);
             }
 
             // Draw all batched dots
