@@ -88,9 +88,6 @@ export class GoldenCaravan extends Spider {
             this.escaped = true; // 🛡️ [FIX] Prevents loot explosion
             
             if (game.showSystemMessage) game.showSystemMessage("THE CARAVAN ESCAPED", "#aaaaaa");
-            
-            // Ensure no corpse is dropped by Necromancy.js since it just walked off-screen
-            this.isZombie = true; 
         }
 
         // We do NOT call super.update() because we don't want it to run the default combat/flee AI.
@@ -128,9 +125,6 @@ export class GoldenCaravan extends Spider {
             const dY = MathUtils.clamp(this.y + Math.sin(dropAngle) * dropDist, 50, game.world.height - 50);
             game.addEntity(new ResourceNode(dX, dY, 'dew'));
         }
-        
-        // Prevent Necromancy corpse
-        this.isZombie = true;
     }
 
     // 🛡️ [FIX] Pass game object down to super.draw to preserve RAM Cache and animations!
