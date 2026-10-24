@@ -54,6 +54,10 @@ class PooledParticle {
             this.life = Math.random() * 40 + 20;
             this.vy = (Math.random() * -2) - 0.5; // Drift upwards immediately
             speed *= 0.5; // Less horizontal spread
+        } else if (this.type === 'firefly') {
+            this.life = Math.random() * 60 + 60;  // [FIX] Live much longer (2 to 4 seconds)
+            this.vy = (Math.random() * -0.5) - 0.1; // Very slow upward drift
+            speed *= 0.1; // Almost zero horizontal burst
         } else if (this.type === 'ring') {
             this.life = 20; // 20 frames to expand and fade
             speed = 0; // Rings don't move, they expand
@@ -64,8 +68,8 @@ class PooledParticle {
 
         this.vx = Math.cos(angle) * speed; 
         
-        // [FIX] Protect the custom upward drift velocity for magic particles
-        if (this.type !== 'magic') {
+        // [FIX] Protect the custom upward drift velocity for magic & firefly particles
+        if (this.type !== 'magic' && this.type !== 'firefly') {
             this.vy = Math.sin(angle) * speed;
         }
 
@@ -89,6 +93,10 @@ class PooledParticle {
             // Magic floats up and is caught by the wind
             this.vy = Math.min(this.vy, PARTICLE_CONFIG.magicFloatSpeed);
             this.x += PARTICLE_CONFIG.wind; 
+        } else if (this.type === 'firefly') {
+            // [FIX] Lazy, swaying drift for fireflies
+            this.vy = Math.min(this.vy, -0.2); // Cap upward speed
+            this.x += Math.sin(this.age * 0.05) * 0.5 + (PARTICLE_CONFIG.wind * 0.3); // Wiggle side to side
         } else if (this.type === 'ring') {
             // [JUICE] Expanding Sonar/Shockwave ring
             this.size += 2.5; 
@@ -176,10 +184,12 @@ class ParticleSystem {
                 let currentSize = p.size;
                 let currentAlpha = lifeRatio;
                 
-                if (p.type === 'magic') {
-                    // Magic particles shrink to a pinpoint but stay opaque, and twinkle!
+                if (p.type === 'magic' || p.type === 'firefly') {
+                    // Magic and Fireflies shrink to a pinpoint but stay opaque, and twinkle!
                     currentSize = Math.max(0.5, p.maxSize * lifeRatio);
-                    currentAlpha = 0.5 + Math.sin(p.age * 0.5) * 0.5; // Twinkle effect
+                    // Fireflies twinkle slower (0.1) than frantic magic (0.5)
+                    const twinkleSpeed = p.type === 'firefly' ? 0.1 : 0.5;
+                    currentAlpha = 0.5 + Math.sin(p.age * twinkleSpeed) * 0.5; 
                 }
 
                 // We quantize the alpha to 10 discrete steps (0.1, 0.2, etc.) to keep the batch map small
