@@ -400,7 +400,16 @@ export const SaveLoadExpansion = {
             
             if (state.critters) {
                 state.critters.forEach(c => { 
-                    let o = c.type === 'GoldenBug' ? new GoldenBug(c.x, c.y) : new Aphid(c.x, c.y);
+                    let o;
+                    if (c.type === 'GoldenBug') o = new GoldenBug(c.x, c.y);
+                    else if (c.type === 'GoldenCaravan') {
+                        o = new GoldenCaravan(c.startX || c.x, c.startY || c.y, c.endX || c.x, c.endY || c.y);
+                        o.escaped = c.escaped;
+                    }
+                    else o = new Aphid(c.x, c.y);
+                    
+                    // Restore exact location and stats
+                    o.x = c.x; o.y = c.y;
                     if (c.id) o.id = c.id;
                     o.hp = c.hp; o.color = c.color;
                     game.addEntity(o); 
