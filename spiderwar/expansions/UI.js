@@ -512,7 +512,9 @@ export const ContextUIExpansion = {
                 currentSelection = this.selectedStructure;
             }
 
-            const stateString = (currentSelection ? (currentSelection.id || currentSelection.type || 'group') : 'none') + '_' + this.techLevel.black;
+            // [FIX] Inject the selected units length into the dependency string so the UI actively updates on death/shift-clicking!
+            const groupLen = this.selectedUnits ? this.selectedUnits.length : 0;
+            const stateString = (currentSelection ? (currentSelection.id || currentSelection.type || 'group') : 'none') + '_' + this.techLevel.black + '_' + groupLen;
 
             if (this.lastSelection !== stateString) {
                 this.lastSelection = stateString;
