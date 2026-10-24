@@ -38,6 +38,7 @@ export class GoldenCaravan extends Spider {
         this.spriteSrc = 'assets/caravan.png'; 
         
         // Pathing: Walk from start to end, ignoring everything else
+        this.startX = startX; this.startY = startY; // [FIX] Store for save state!
         this.targetNode = { x: endX, y: endY };
         
         // Face the destination immediately
@@ -72,8 +73,9 @@ export class GoldenCaravan extends Spider {
             // 🛡️ [FIX] Recalculate angle so swarm physics deflections don't steer it permanently off course!
             this.angle = Math.atan2(dy, dx);
             
-            this.x += Math.cos(this.angle) * this.speed;
-            this.y += Math.sin(this.angle) * this.speed;
+            // [FIX] Use baseSpeed so the Universal Speed Tracker doesn't accidentally paralyze the slow-moving caravan!
+            this.x += Math.cos(this.angle) * this.baseSpeed;
+            this.y += Math.sin(this.angle) * this.baseSpeed;
             
             // 🧃 [JUICE] Heavy footsteps
             if (game.tick % 30 === 0) {
