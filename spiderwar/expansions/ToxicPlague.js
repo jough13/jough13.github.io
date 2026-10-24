@@ -278,10 +278,7 @@ export const ToxicPlagueExpansion = {
                     
                     let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
                     
-                    // [FIX] Removed manual sprite injection. Spider.draw() handles it lazily using base dynamic string!
-                    if (data.role === 'parasite') {
-                        s.isZombie = true; // Prevents Necromancy.js from dropping corpses for parasites
-                    }
+                    // (Sprite loading is handled lazily natively by Spider base class)
                     
                     game.addEntity(s);
                     if (data.role === 'defiler') game.bus.emit('playSound', 'harvest'); 
