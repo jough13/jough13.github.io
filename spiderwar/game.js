@@ -870,7 +870,8 @@ export class Game {
         // 🚀 [PERFORMANCE] Viewport Culling! Only process draw calls for entities on-screen
         for (let i = 0; i < this.entities.length; i++) {
             let e = this.entities[i];
-            const renderSize = e.size || 0;
+            // [FIX] Dynamically check for larger radii so AoE spells and Capture Points don't clip off-screen!
+            const renderSize = e.captureRadius || e.radius || e.size || 0;
             if (e.draw && e.x + renderSize >= viewL && e.x - renderSize <= viewR && e.y + renderSize >= viewT && e.y - renderSize <= viewB) {
                 this.renderList.push(e);
             }
