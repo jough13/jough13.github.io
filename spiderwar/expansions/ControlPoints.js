@@ -247,11 +247,12 @@ export const ControlPointsExpansion = {
     },
     
     patch: (game) => {
-        // Deterministic Spawning: Hook into game loop, wait for Tick 1
+        // Deterministic Spawning: Hook into game loop
         game.expansions.patchClass(game.constructor, 'update', function(original) {
             original.call(this);
 
-            if (this.gameState === 'playing' && this.tick === 1 && !this.controlPointsSpawned) {
+            // [FIX] Removed fragile this.tick === 1 dependency!
+            if (this.gameState === 'playing' && !this.controlPointsSpawned) {
                 this.controlPointsSpawned = true;
                 
                 const w = this.world.width;
