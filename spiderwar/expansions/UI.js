@@ -703,7 +703,8 @@ export const GameLoopExpansion = {
 
         game.expansions.patchClass(Game, 'update', function(original) {
             
-            if (this.gameState === 'playing') {
+            // [FIX] Guard against Garbage Collection deleting the dead queen before this loop sees it!
+            if (this.gameState === 'playing' && this.queensSpawned) {
                 let blackQueen = null;
                 let redQueen = null;
                 
@@ -715,40 +716,52 @@ export const GameLoopExpansion = {
                     }
                 }
                 
-                if (blackQueen !== null && redQueen !== null) {
-                    if (blackQueen.hp <= 0) { 
-                        this.gameState = 'lose'; 
+                // If the queen is null, it means the garbage collector already removed her!
+                if (!blackQueen || blackQueen.hp <= 0) { 
+                    this.gameState = 'lose'; 
+                    
+                    // [JUICE] Cinematic Death Freeze
+                    this.freezeFrames = 99999; 
+                    if (this.triggerShake) this.triggerShake(30);
+                    this.bus.emit('playSound', 'roar');
+                    
+                    // Fallback coordinates if she was already deleted
+                    const bx = blackQueen ? blackQueen.x : this.camera.x + this.canvas.width / 2;
+                    const by = blackQueen ? blackQueen.y : this.camera.y + this.canvas.height / 2;
+                    this.bus.emit('particles', {x: bx, y: by, color: '#ff0000', count: 500});
                         
-                        // [JUICE] Cinematic Death Freeze
-                        this.freezeFrames = 99999; 
-                        if (this.triggerShake) this.triggerShake(30);
-                        this.bus.emit('playSound', 'roar');
-                        this.bus.emit('particles', {x: blackQueen.x, y: blackQueen.y, color: '#ff0000', count: 500});
-                        
-                        setTimeout(() => {
-                            const ui = document.getElementById('rtsUI'); 
-                            if (ui) ui.style.display = 'none'; 
+                    setTimeout(() => {
+                        const ui = document.getElementById('rtsUI'); 
+                        if (ui) ui.style.display = 'none'; 
+                        let goModal = document.getElementById('gameOverModal');
+                        if(goModal) {
                             goModal.style.borderColor = '#ff0000';
                             goModal.innerHTML = `<h1 style="color:#ff0000; text-shadow: 0 0 10px #ff0000;">DEFEAT</h1><p>The Obsidian Queen has fallen to the Crimson Swarm.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
                             goModal.style.display = 'block';
-                        }, 1500); // Dramatic pause
-                    } 
-                    else if (redQueen.hp <= 0) { 
-                        this.gameState = 'win'; 
+                        }
+                    }, 1500); // Dramatic pause
+                } 
+                else if (!redQueen || redQueen.hp <= 0) { 
+                    this.gameState = 'win'; 
+                    
+                    this.freezeFrames = 99999;
+                    if (this.triggerShake) this.triggerShake(30);
+                    this.bus.emit('playSound', 'roar');
+                    
+                    const rx = redQueen ? redQueen.x : this.camera.x + this.canvas.width / 2;
+                    const ry = redQueen ? redQueen.y : this.camera.y + this.canvas.height / 2;
+                    this.bus.emit('particles', {x: rx, y: ry, color: '#aa00ff', count: 500});
                         
-                        this.freezeFrames = 99999;
-                        if (this.triggerShake) this.triggerShake(30);
-                        this.bus.emit('playSound', 'roar');
-                        this.bus.emit('particles', {x: redQueen.x, y: redQueen.y, color: '#aa00ff', count: 500});
-                        
-                        setTimeout(() => {
-                            const ui = document.getElementById('rtsUI'); 
-                            if (ui) ui.style.display = 'none'; 
+                    setTimeout(() => {
+                        const ui = document.getElementById('rtsUI'); 
+                        if (ui) ui.style.display = 'none'; 
+                        let goModal = document.getElementById('gameOverModal');
+                        if(goModal) {
                             goModal.style.borderColor = '#aa00ff';
                             goModal.innerHTML = `<h1 style="color:#aa00ff; text-shadow: 0 0 10px #aa00ff;">VICTORY</h1><p>The Pumpkin Patch belongs to the Obsidian Brood.</p><button class="restart-btn" onclick="window.location.reload()">PLAY AGAIN</button>`;
                             goModal.style.display = 'block';
-                        }, 1500);
-                    }
+                        }
+                    }, 1500);
                 }
             }
 
