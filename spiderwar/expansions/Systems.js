@@ -362,8 +362,7 @@ export const SaveLoadExpansion = {
             
             state.spiders.forEach(s => { 
                 let o;
-                // [FIX] Ensure role isn't 'parasite' before blindly casting to ZombieSpider!
-                if (s.isZombie && s.role !== 'parasite') { 
+                if (s.isZombie) { 
                     o = new ZombieSpider(s.x, s.y, s.team, s.size); 
                 } else if (s.role === 'broodling') {
                     o = new Broodling(s.x, s.y, s.team);
