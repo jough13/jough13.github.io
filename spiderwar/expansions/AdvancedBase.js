@@ -290,7 +290,7 @@ export const AdvancedBaseExpansion = {
                     // [FIX] Apply tech HP bonus to all existing entities instantly
                     for (let i = 0; i < this.entities.length; i++) {
                         let e = this.entities[i];
-                        if (e.team === 'red' && e.hp > 0 && e.role !== 'queen' && (e instanceof Spider || e instanceof Structure)) {
+                        if (e.team === 'red' && e.hp > 0 && e.role !== 'queen' && e.role !== 'broodling' && e.role !== 'parasite' && !e.isZombie && (e instanceof Spider || e instanceof Structure)) {
                             e.maxHp += 20; e.hp += 20;
                         }
                     }
