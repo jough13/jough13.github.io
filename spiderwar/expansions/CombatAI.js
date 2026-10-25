@@ -228,7 +228,8 @@ export const CombatAndHarvesterExpansion = {
                 entity.isSlowed = false; 
 
                 // 1. COMBAT AGGRO OVERRIDE
-                let nearestEnemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, COMBAT_CONFIG.meleeAggroRange + (techLvl * 10));
+                // [FIX] Melee combatants should actively clear out hazards!
+                let nearestEnemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, COMBAT_CONFIG.meleeAggroRange + (techLvl * 10), true);
                 
                 if (nearestEnemy) {
                     if (entity.state !== SPIDER_STATE.COMBAT) {
