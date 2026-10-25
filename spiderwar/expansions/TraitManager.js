@@ -96,7 +96,8 @@ export const TraitManagerExpansion = {
         // Trait 3: Kamikaze (Explode on contact)
         game.registerTrait('kamikaze', {
             update: (entity, gameObj) => {
-                let enemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, 200);
+                // [FIX] Suicide bombers should blow up hazards!
+                let enemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, 200, true);
                 if (enemy) {
                     entity.state = 1; // SPIDER_STATE.COMBAT
                     
