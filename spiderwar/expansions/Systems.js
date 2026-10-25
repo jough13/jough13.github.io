@@ -420,6 +420,14 @@ export const SaveLoadExpansion = {
                     let o = new CentipedeBoss(b.x, b.y);
                     if (b.id) o.id = b.id;
                     o.hp = b.hp;
+                    
+                    // 🚨 ADDED: Restore subjugation mind-control state!
+                    if (b.timer > 0) {
+                        o.team = b.team;
+                        o.subjugationTimer = b.timer;
+                        o.originalTeam = b.origTeam;
+                    }
+                    
                     game.addEntity(o);
                 });
             }
@@ -524,7 +532,13 @@ export const SaveLoadExpansion = {
                     else if (u instanceof ResourceNode) resNodes.push({id: u.id, x: u.x, y: u.y, type: u.type, resources: u.resources});
                     else if (u instanceof VenusFlytrap) hazards.push({id: u.id, x: u.x, y: u.y, hp: u.hp, cooldown: u.cooldown}); // [FIX] Placed above Critters!
                     else if (u.team === 'nature' && !u.isBoss) critters.push({id: u.id, x: u.x, y: u.y, hp: u.hp, color: u.color, type: u.type || u.constructor.name});
-                    else if (u.isBoss) bosses.push({id: u.id, x: u.x, y: u.y, hp: u.hp}); // [FIX] Safe minification checks
+                    
+                    // 🚨 FIXED: Now saves the team and mind-control timers!
+                    else if (u.isBoss) bosses.push({
+                        id: u.id, x: u.x, y: u.y, hp: u.hp, 
+                        team: u.team, timer: u.subjugationTimer, origTeam: u.originalTeam
+                    });
+                    
                     else if (u instanceof JackOLantern) cps.push({id: u.id, x: u.x, y: u.y, team: u.controllingTeam, prog: u.captureProgress});
                     else if (u instanceof Corpse) corpses.push({id: u.id, x: u.x, y: u.y, life: u.life, size: u.size});
                     else if (u instanceof EggTrap) eggTraps.push({x: u.x, y: u.y, team: u.team, hp: u.hp});
