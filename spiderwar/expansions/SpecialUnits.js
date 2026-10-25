@@ -63,6 +63,7 @@ export const SpecialUnitsExpansion = {
 
                 // Detect range based on unit's configured range, plus a little buffer
                 const detectRadius = (entity.range || 200) + 50 + (techLvl * 10);
+                // [FIX] Ranged units should shoot hazards!
                 let nearestEnemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, detectRadius, true);
 
                 // COMBAT OVERRIDE: Prioritize shooting over everything else!
