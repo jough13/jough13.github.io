@@ -11,11 +11,11 @@ export const QUEEN_CONFIG = {
     speed: 0.8,
     size: 28,
     attackSpeed: 30,  // Swings once per second
-    aggroRadius: 100, // PERFORMANCE FIX: Reduced from 200. She only bites if you get right in her face!
+    aggroRadius: 100, 
     
     // Crimson Swarm AI Triggers
-    aiAttackTick: 9000, // ~5 mins (When she decides to lead the charge)
-    aiAttackPop: 40     // If her swarm gets this big, she attacks early
+    aiAttackTick: 27000, // [FIX] 7.5 mins at 60 FPS (When she decides to lead the charge)
+    aiAttackPop: 40      // If her swarm gets this big, she attacks early
 };
 
 // ==========================================
