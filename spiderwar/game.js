@@ -112,8 +112,9 @@ export const SPIDER_STATE = {
 
 // 🔌 [EXPANDABILITY] Base stats for the Obsidian Brood and Crimson Swarm
 export const UNIT_DATA = {
-    harvester: { size: 12, hp: 100, damage: 15, attackSpeed: 30, baseSpeedMin: 0.8, baseSpeedMax: 1.8, traits: ['gatherer'] },
-    soldier:   { size: 16, hp: 200, damage: 30, attackSpeed: 20, baseSpeedMin: 1.2, baseSpeedMax: 2.2, traits: ['melee', 'escort'] }
+    // [FIX] Slowed down base units ~20% for better combat readability
+    harvester: { size: 12, hp: 100, damage: 15, attackSpeed: 30, baseSpeedMin: 0.65, baseSpeedMax: 1.35, traits: ['gatherer'] },
+    soldier:   { size: 16, hp: 200, damage: 30, attackSpeed: 20, baseSpeedMin: 0.95, baseSpeedMax: 1.65, traits: ['melee', 'escort'] }
 };
 
 export const STRUCTURE_DATA = {
@@ -416,7 +417,10 @@ export class Game {
         this.decor = []; 
         this.spatialGrid = new Map(); 
         
-        this.eco = { black: { pumpkins: 600, dew: 100 }, red: { pumpkins: 600, dew: 100 } }; 
+        // [FIX] Lower starting resources forces players to explore and harvest before building an army!
+        this.eco = { black: { pumpkins: 250, dew: 50 }, red: { pumpkins: 250, dew: 50 } }; 
+        this.pop = { black: 0, red: 0 }; 
+        this.maxPop = { black: 10, red: 10 };
         this.pop = { black: 0, red: 0 }; 
         this.maxPop = { black: 10, red: 10 };
         this.techLevel = { black: 0, red: 0 }; 
