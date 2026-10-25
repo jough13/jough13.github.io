@@ -203,6 +203,7 @@ export const TitansExpansion = {
                 const effectiveRangeSq = entity.rangeSq || 90000;
                 const detectRadius = Math.sqrt(effectiveRangeSq) + 50 + (techLvl * 10);
                 
+                // [FIX] Siege units should blast hazards!
                 let nearestEnemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, detectRadius, true);
 
                 // COMBAT OVERRIDE
@@ -265,6 +266,7 @@ export const TitansExpansion = {
                         entity.y = MathUtils.clamp(entity.y, bnd, gameObj.world.height - bnd);
                     } else {
                         entity.commandTarget = null; 
+                        entity.isManual = false; // [FIX] Release manual control so abilities can resume!
                     }
                     return true; 
                 }
