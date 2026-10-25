@@ -14,20 +14,24 @@ const MAP_CONFIG = {
 
 export const AI_PROFILES = {
     easy: { 
-        unitTickRate: 180, buildTickRate: 600, techUpgradeCost: 350, 
-        phase2Tick: 5400, phase3Tick: 7200, phase4Tick: 10800 
+        unitTickRate: 360, buildTickRate: 1200, techUpgradeCost: 350, // Unit every 6s, build every 20s
+        phase2Tick: 18000, phase3Tick: 32400, phase4Tick: 46800,      // Fallback: 5m, 9m, 13m
+        maxTechLead: -1, techCooldown: 10800                          // Stays 1 tech behind player
     },
     normal: { 
-        unitTickRate: 120, buildTickRate: 450, techUpgradeCost: 250, 
-        phase2Tick: 3600, phase3Tick: 5400, phase4Tick: 7200 
+        unitTickRate: 270, buildTickRate: 900, techUpgradeCost: 250,  // Unit every 4.5s, build every 15s
+        phase2Tick: 14400, phase3Tick: 25200, phase4Tick: 36000,      // Fallback: 4m, 7m, 10m
+        maxTechLead: 0, techCooldown: 7200                            // Matches player tech level
     },
     hard: { 
-        unitTickRate: 80,  buildTickRate: 300, techUpgradeCost: 200, 
-        phase2Tick: 2400, phase3Tick: 3600, phase4Tick: 4800 
+        unitTickRate: 180, buildTickRate: 600, techUpgradeCost: 200,  // Unit every 3s, build every 10s
+        phase2Tick: 10800, phase3Tick: 18000, phase4Tick: 25200,      // Fallback: 3m, 5m, 7m
+        maxTechLead: 1, techCooldown: 5400                            // Can lead player by 1 tech
     },
     insane: { 
-        unitTickRate: 50,  buildTickRate: 200, techUpgradeCost: 150, 
-        phase2Tick: 1200, phase3Tick: 2400, phase4Tick: 3600 
+        unitTickRate: 120, buildTickRate: 420, techUpgradeCost: 150,  // Unit every 2s, build every 7s
+        phase2Tick: 7200,  phase3Tick: 12600, phase4Tick: 18000,      // Fallback: 2m, 3.5m, 5m
+        maxTechLead: 2, techCooldown: 3600                            // Can lead player by 2 techs
     }
 };
 
@@ -227,19 +231,32 @@ export const AdvancedBaseExpansion = {
                 console.log(`%c[AI Alert] Crimson Swarm reached Phase ${phaseNum}! ${isCatchingUp ? '(Save Loaded)' : ''}`, "color: #ff0000; font-weight: bold;");
             };
 
-            // Use >= so late-game saves instantly unlock the correct tech pools
-            if (this.tick >= ai.phase2Tick && !this.aiConfig.phase2Escalated) { 
-                this.aiConfig.phase2Escalated = true; escalatePhase(2, ai.phase2Tick); 
+            // Adaptive Phase Escalation:
+            // Escalate when the player reaches the corresponding Tech Level/Pop, OR when the long fallback timer expires.
+            // We also enforce a minimum time floor (e.g., 2 mins for Phase 2) so early player rushes don't instant-trigger it.
+            const playerTech = this.techLevel.black || 0;
+            const playerPop = this.pop.black || 0;
+
+            const readyForPhase2 = (this.tick >= 7200 && (playerTech >= 1 || playerPop >= 12)) || this.tick >= ai.phase2Tick;
+            const readyForPhase3 = (this.tick >= 14400 && (playerTech >= 2 || playerPop >= 20)) || this.tick >= ai.phase3Tick;
+            const readyForPhase4 = (this.tick >= 21600 && (playerTech >= 3 || playerPop >= 30)) || this.tick >= ai.phase4Tick;
+
+            if (readyForPhase2 && !this.aiConfig.phase2Escalated) { 
+                this.aiConfig.phase2Escalated = true; escalatePhase(2, this.tick); 
             }
-            if (this.tick >= ai.phase3Tick && !this.aiConfig.phase3Escalated) { 
-                this.aiConfig.phase3Escalated = true; escalatePhase(3, ai.phase3Tick); 
+            if (readyForPhase3 && !this.aiConfig.phase3Escalated) { 
+                this.aiConfig.phase3Escalated = true; escalatePhase(3, this.tick); 
             }
-            if (this.tick >= ai.phase4Tick && !this.aiConfig.phase4Escalated) { 
-                this.aiConfig.phase4Escalated = true; escalatePhase(4, ai.phase4Tick); 
+            if (readyForPhase4 && !this.aiConfig.phase4Escalated) { 
+                this.aiConfig.phase4Escalated = true; escalatePhase(4, this.tick); 
             }
 
-            // Unit Spawning Loop
-            if (this.tick % ai.unitTickRate === 0) {
+            // Adaptive Unit Spawning Rate:
+            // If the AI already outnumbers the player by more than 8 units, slow its spawning down by 50%
+            const popDiff = (this.pop.red || 0) - (this.pop.black || 0);
+            const effectiveUnitRate = popDiff > 8 ? Math.floor(ai.unitTickRate * 1.5) : ai.unitTickRate;
+
+            if (this.tick % effectiveUnitRate === 0) {
                 let redNests = [];
                 const structs = this.structures;
                 for (let i = 0; i < structs.length; i++) {
@@ -254,13 +271,20 @@ export const AdvancedBaseExpansion = {
                 }
             }
 
-            // Base Expansion Loop
+            // Base Expansion & Player-Scaled Tech Loop
             if (this.tick % ai.buildTickRate === 0) {
                 let upgradedTech = false;
+                if (!this.aiConfig.nextTechTick) this.aiConfig.nextTechTick = 10800; // Earliest AI tech upgrade: 3 mins
                 
-                if (this.tick > ai.phase4Tick && this.eco.red.pumpkins >= ai.techUpgradeCost && Math.random() > 0.5) {
+                const maxAllowedRedTech = Math.max(0, (this.techLevel.black || 0) + (ai.maxTechLead ?? 0));
+                const canUpgradeTech = this.tick >= this.aiConfig.nextTechTick &&
+                                       (this.techLevel.red || 0) < maxAllowedRedTech &&
+                                       this.eco.red.pumpkins >= ai.techUpgradeCost;
+
+                if (canUpgradeTech && Math.random() > 0.5) {
                     this.eco.red.pumpkins -= ai.techUpgradeCost;
                     this.techLevel.red = (this.techLevel.red || 0) + 1;
+                    this.aiConfig.nextTechTick = this.tick + (ai.techCooldown || 7200);
                     upgradedTech = true;
                     
                     // [FIX] Apply tech HP bonus to all existing entities instantly
@@ -273,7 +297,6 @@ export const AdvancedBaseExpansion = {
                     
                     if (this.showSystemMessage) this.showSystemMessage(`CRIMSON SWARM TECH LVL ${this.techLevel.red}`, '#ff0000');
                     
-                    // 🧃 [JUICE] Tech Upgrade Visuals for the AI!
                     const queens = this.queens;
                     let redQueen = null;
                     for (let i = 0; i < queens.length; i++) {
