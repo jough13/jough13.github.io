@@ -421,8 +421,6 @@ export class Game {
         this.eco = { black: { pumpkins: 250, dew: 50 }, red: { pumpkins: 250, dew: 50 } }; 
         this.pop = { black: 0, red: 0 }; 
         this.maxPop = { black: 10, red: 10 };
-        this.pop = { black: 0, red: 0 }; 
-        this.maxPop = { black: 10, red: 10 };
         this.techLevel = { black: 0, red: 0 }; 
         
         this.activeTool = 'select'; this.gameState = 'playing'; this.selectedStructure = null; 
@@ -441,7 +439,8 @@ export class Game {
     get structures() { return this.entities.filter(e => e instanceof Structure); }
     get resourceNodes() { return this.entities.filter(e => e instanceof ResourceNode); }
     get projectiles() { return this.entities.filter(e => e instanceof Projectile); }
-    get critters() { return this.entities.filter(e => e.team === 'nature'); }
+    // 🚨 FIXED: Now strictly filters out Bosses, Hazards, and Caravans so they don't get mixed up in neutral wildlife arrays!
+    get critters() { return this.entities.filter(e => e.team === 'nature' && !e.isBoss && !e.isHazard && e.role !== 'caravan'); }
     get bosses() { return this.entities.filter(e => e.isBoss); }
     
     addEntity(entity) { 
@@ -488,7 +487,7 @@ export class Game {
                 this.eco.black.pumpkins -= 250; 
                 this.techLevel.black++; 
                 
-                // [FIX] Apply tech HP bonus to all existing entities instantly!
+                // [FIX] Apply tech HP bonus to all existing entities instantly! (Excluding chaff units)
                 for (let i = 0; i < this.entities.length; i++) {
                     let e = this.entities[i];
                     if (e.team === 'black' && e.hp > 0 && e.role !== 'queen' && e.role !== 'broodling' && e.role !== 'parasite' && !e.isZombie && (e instanceof Spider || e instanceof Structure)) {
