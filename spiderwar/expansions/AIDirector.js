@@ -19,6 +19,10 @@ export const DIRECTOR_CONFIG = {
     retreatPercentage: 0.3,  // Squad retreats if it loses 70% of its forces
     defenseTimerDuration: 5, // How many seconds the AI stays in defense mode after being hit
     
+    // [FIX] Pacing timers
+    gracePeriodTicks: 10800, // 3 minutes (at 60fps) of peace at the start of the game
+    waveCooldownTicks: 5400, // 90 seconds of breathing room between attack waves
+    
     // Threat assessment for target picking
     targetWeights: {
         'queen': 200,      // Kill the leader!
@@ -44,8 +48,9 @@ export const AIDirectorExpansion = {
             squad: new Set(),
             target: null,
             rallyPoint: null,
-            waveSize: 5, 
-            defenseTimer: 0
+            waveSize: 6, 
+            defenseTimer: 0,
+            nextAttackTick: DIRECTOR_CONFIG.gracePeriodTicks // [FIX] Start with the grace period
         };
     },
 
@@ -68,10 +73,11 @@ export const AIDirectorExpansion = {
                 if (bug.hp <= 0 || bug.team !== 'red') dir.squad.delete(bug);
             }
 
-            // 2. ESCALATION: Increase the required wave size as the game goes on
-            if (this.tick > diff.phase2Tick) dir.waveSize = 10;
-            if (this.tick > diff.phase3Tick) dir.waveSize = 15;
-            if (this.tick > diff.phase4Tick) dir.waveSize = 25;
+            // 2. ADAPTIVE ESCALATION: Scale wave size to the player's army size and tech level
+            // [FIX] Rubber-banding prevents the AI from overwhelming a slow player or under-attacking a fast one!
+            const playerArmyEstimate = Math.max(4, Math.floor((this.pop.black || 0) * 0.75));
+            const techBonus = (this.techLevel.black || 0) * 3;
+            dir.waveSize = MathUtils.clamp(playerArmyEstimate + techBonus, 6, 25);
 
             // 3. IDENTIFY BASES & THREATS
             let redNest = null;
@@ -175,7 +181,7 @@ export const AIDirectorExpansion = {
                             e.isSquad = true; // [FIX] Tag them so they ignore base duties
                             // Send them to the rally point
                             e.commandTarget = { 
-                                x: dir.rallyPoint.x + MathUtils.randomRange(-cfg.squadSpread, cfg.squadSpread),
+                                x: dir.rallyPoint.x + MathUtils.randomRange(-cfg.squadSpread, cfg.squadSpread), 
                                 y: dir.rallyPoint.y + MathUtils.randomRange(-cfg.squadSpread, cfg.squadSpread) 
                             };
                             e.isManual = true;
@@ -183,11 +189,10 @@ export const AIDirectorExpansion = {
                     }
                 }
 
-                // If squad is big enough, LAUNCH THE ATTACK!
-                if (dir.squad.size >= dir.waveSize) {
+                // [FIX] Only launch an attack if the opening grace period / wave cooldown has passed!
+                if (this.tick >= dir.nextAttackTick && dir.squad.size >= dir.waveSize) {
                     
                     // 🔌 [EXPANDABILITY] Smart Threat Assessment!
-                    // Instead of hardcoding the Nest, the AI grades all Black targets based on the config weights.
                     let bestTarget = null;
                     let bestScore = -1;
 
@@ -239,11 +244,13 @@ export const AIDirectorExpansion = {
                 if (!dir.target || dir.target.hp <= 0) {
                     dir.target = null;
                     dir.state = AI_STATE.BUILDING; // Temporarily drop to building to trigger re-evaluation on next frame
+                    dir.nextAttackTick = this.tick + cfg.waveCooldownTicks; // [FIX] Apply wave cooldown!
                     
                     // 🛡️ [FIX] Stop marching to the dead target!
                     for (let bug of dir.squad) {
                         bug.isManual = false;
                         bug.commandTarget = null;
+                        bug.isSquad = false; // [FIX] Strip squad tag so they return to normal duties
                     }
                     return; 
                 }
@@ -261,6 +268,7 @@ export const AIDirectorExpansion = {
                 if (dir.squad.size < (dir.waveSize * cfg.retreatPercentage)) { 
                     console.log(`[AI Director] Wave defeated. Retreating to rebuild!`);
                     dir.state = AI_STATE.BUILDING;
+                    dir.nextAttackTick = this.tick + cfg.waveCooldownTicks; // [FIX] Apply wave cooldown!
                     
                     // 🛡️ [FIX] Actually release the survivors so they stop marching to their death!
                     for (let bug of dir.squad) {
