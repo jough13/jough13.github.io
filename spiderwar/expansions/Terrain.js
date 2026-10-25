@@ -108,16 +108,20 @@ export const TerrainExpansion = {
             
             // Generate Organic River (Drunkard's Walk)
             let rX = Math.floor(cols / 2);
+            let lastDir = 0;
             for (let rY = 0; rY < rows; rY++) {
                 this.mapGrid[rY][rX].type = 'water';
                 this.mapGrid[rY][rX].angle = 0; 
                 
                 if (Math.random() > 0.5 && rY < rows - 1) {
-                    const dir = Math.random() > 0.5 ? 1 : -1;
-                    // [FIX] Clamp firmly to prevent array-out-of-bounds crashes
+                    // Keep moving in the same horizontal direction, or pick a random one if we didn't step last row
+                    const dir = lastDir !== 0 ? lastDir : (Math.random() > 0.5 ? 1 : -1);
                     rX = MathUtils.clamp(rX + dir, 1, cols - 2);
                     this.mapGrid[rY][rX].type = 'water';
                     this.mapGrid[rY][rX].angle = 0;
+                    lastDir = dir;
+                } else {
+                    lastDir = 0;
                 }
             }
 
