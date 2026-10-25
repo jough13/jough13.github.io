@@ -414,10 +414,10 @@ export const ContextUIExpansion = {
                 if(game.eco.black.pumpkins>=250){ 
                     game.eco.black.pumpkins-=250; 
                     game.techLevel.black++; 
-                    // [FIX] Apply tech HP bonus to all existing entities instantly
+                    // [FIX] Apply tech HP bonus to all existing entities instantly (Excluding chaff units)
                     for (let i = 0; i < game.entities.length; i++) {
                         let e = game.entities[i];
-                        if (e.team === 'black' && e.hp > 0 && e.role !== 'queen' && (e instanceof Spider || e instanceof Structure)) {
+                        if (e.team === 'black' && e.hp > 0 && e.role !== 'queen' && e.role !== 'broodling' && e.role !== 'parasite' && !e.isZombie && (e instanceof Spider || e instanceof Structure)) {
                             e.maxHp += 20; e.hp += 20;
                         }
                     }
