@@ -113,8 +113,7 @@ export class VenusFlytrap {
         ctx.ellipse(0, this.size * 0.4, this.size * 0.9, this.size * 0.5, 0, 0, MathUtils.TWO_PI);
         ctx.fill();
 
-        // 🧃 [JUICE] Damage flash filter
-        if (this.flashFrames > 0) ctx.filter = 'brightness(2.5)';
+        // 🚨 REMOVED: ctx.filter = 'brightness(2.5)';
         
         // Organic Breathing Animation
         // Pulses fast when hungry, slow when digesting
@@ -151,6 +150,17 @@ export class VenusFlytrap {
                 ctx.beginPath(); ctx.arc(0, 0, 8, 0, MathUtils.TWO_PI); ctx.fill(); 
             }
         }
+        
+        // 🚨 FIXED: High-Performance GPU Damage Flash using Additive Blending
+        // Because it is placed before ctx.restore(), it perfectly inherits the squish/breathe scales!
+        if (this.flashFrames > 0) {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath(); 
+            ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); 
+            ctx.fill();
+        }
+
         ctx.restore();
 
         // Standard Universal Health Bar (Only draw if damaged)
