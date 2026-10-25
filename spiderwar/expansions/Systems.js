@@ -10,7 +10,8 @@ import { JackOLantern } from './ControlPoints.js';
 import { Corpse, ZombieSpider } from './Necromancy.js'; 
 import { EggTrap, Broodling } from './BroodAmbush.js'; 
 import { ExplosiveProjectile } from './Titans.js'; 
-import { MortarShell } from './Fortress.js';       
+import { MortarShell } from './Fortress.js';     
+import { GoldenCaravan } from './Caravans.js'; // 🚨 ADDED THIS LINE  
 
 // ==========================================
 // 1. CONFIGURATION
