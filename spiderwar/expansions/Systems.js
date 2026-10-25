@@ -326,7 +326,10 @@ export const SaveLoadExpansion = {
             state.structures.forEach(s => { 
                 let o = new Structure(s.x, s.y, s.team, s.type); 
                 o.id = s.id || Math.random().toString(36).substring(2, 11);
-                o.hp = s.hp; o.isConstructing = s.isConstructing; o.buildProgress = s.buildProgress;
+                o.hp = s.hp; 
+                if (s.maxHp) o.maxHp = s.maxHp;                       // 🚨 ADDED
+                if (s._techHpApplied) o._techHpApplied = true;        // 🚨 ADDED
+                o.isConstructing = s.isConstructing; o.buildProgress = s.buildProgress;
                 o.territory = s.territory; o.originalTerritory = s.originalTerritory;
                 if (s.cooldown !== undefined) o.cooldown = s.cooldown;
                 if (o.isConstructing) o.isPaused = true; // Safe default
@@ -339,6 +342,8 @@ export const SaveLoadExpansion = {
             const restoreUnitState = (o, s) => {
                 if (s.id) o.id = s.id;
                 o.hp = s.hp; 
+                if (s.maxHp) o.maxHp = s.maxHp;                       // 🚨 ADDED
+                if (s._techHpApplied) o._techHpApplied = true;        // 🚨 ADDED
                 if (s.cargo) o.cargo = s.cargo; 
                 if (s.life !== undefined) o.life = s.life; 
                 
@@ -421,7 +426,7 @@ export const SaveLoadExpansion = {
                     if (b.id) o.id = b.id;
                     o.hp = b.hp;
                     
-                    // 🚨 ADDED: Restore subjugation mind-control state!
+                    // Restore subjugation mind-control state!
                     if (b.timer > 0) {
                         o.team = b.team;
                         o.subjugationTimer = b.timer;
@@ -482,10 +487,12 @@ export const SaveLoadExpansion = {
                 const saveUnitState = (u) => {
                     const data = { 
                         id: u.id, x: u.x, y: u.y, team: u.team, role: u.role, 
-                        hp: u.hp, cargo: u.cargo, size: u.size 
+                        hp: u.hp, maxHp: u.maxHp, cargo: u.cargo, size: u.size // 🚨 ADDED maxHp
                     };
                     
-                    // 🚨 ADD THESE LINES: Trapdoor state serialization
+                    if (u._techHpApplied) data._techHpApplied = true; // 🚨 ADDED _techHpApplied
+                    
+                    // Trapdoor state serialization
                     if (u.burrowState !== undefined) {
                         data.burrowState = u.burrowState;
                         data.burrowTimer = u.burrowTimer;
@@ -515,7 +522,7 @@ export const SaveLoadExpansion = {
                 for (let i = 0; i < game.entities.length; i++) {
                     let u = game.entities[i];
                     
-                    // [FIX] Ensure the GoldenCaravan doesn't get saved as a generic spider!
+                    // Ensure the GoldenCaravan doesn't get saved as a generic spider!
                     if (u.role === 'caravan') critters.push({id: u.id, x: u.x, y: u.y, hp: u.hp, type: 'GoldenCaravan', startX: u.startX, startY: u.startY, endX: u.targetNode?.x, endY: u.targetNode?.y, escaped: u.escaped});
                     else if (u instanceof Spider && u.role !== 'queen') spiders.push(saveUnitState(u));
                     else if (u instanceof Queen) queens.push(saveUnitState(u));
@@ -524,16 +531,17 @@ export const SaveLoadExpansion = {
                         if (!u.id) u.id = Math.random().toString(36).substring(2, 11);
                         
                         structures.push({
-                            id: u.id, x: u.x, y: u.y, team: u.team, type: u.type, hp: u.hp,
+                            id: u.id, x: u.x, y: u.y, team: u.team, type: u.type, hp: u.hp, maxHp: u.maxHp, // 🚨 ADDED maxHp
+                            _techHpApplied: u._techHpApplied, // 🚨 ADDED _techHpApplied
                             isConstructing: u.isConstructing, buildProgress: u.buildProgress,
                             territory: u.territory, originalTerritory: u.originalTerritory, cooldown: u.cooldown
                         });
                     }
                     else if (u instanceof ResourceNode) resNodes.push({id: u.id, x: u.x, y: u.y, type: u.type, resources: u.resources});
-                    else if (u instanceof VenusFlytrap) hazards.push({id: u.id, x: u.x, y: u.y, hp: u.hp, cooldown: u.cooldown}); // [FIX] Placed above Critters!
+                    else if (u instanceof VenusFlytrap) hazards.push({id: u.id, x: u.x, y: u.y, hp: u.hp, cooldown: u.cooldown}); 
                     else if (u.team === 'nature' && !u.isBoss) critters.push({id: u.id, x: u.x, y: u.y, hp: u.hp, color: u.color, type: u.type || u.constructor.name});
                     
-                    // 🚨 FIXED: Now saves the team and mind-control timers!
+                    // Saves the team and mind-control timers!
                     else if (u.isBoss) bosses.push({
                         id: u.id, x: u.x, y: u.y, hp: u.hp, 
                         team: u.team, timer: u.subjugationTimer, origTeam: u.originalTeam
@@ -549,14 +557,14 @@ export const SaveLoadExpansion = {
                     
                     mapGrid: game.mapGrid.map(row => row.map(tile => ({
                         type: tile.type, sprite: tile.sprite, angle: tile.angle, 
-                        drawX: tile.drawX, drawY: tile.drawY, // [FIX] Save drawing coordinates!
+                        drawX: tile.drawX, drawY: tile.drawY,
                         discovered: tile.discovered, visible: tile.visible
                     }))),
                     
                     decor: game.decor ? game.decor.map(d => ({
                         x: d.x, y: d.y, type: d.type, size: d.size, renderSize: d.renderSize, 
                         angle: d.angle, alpha: d.alpha, fallbackColor: d.fallbackColor, 
-                        behavior: d.behavior, spriteSrc: d.spriteSrc // [FIX] Save correct keys!
+                        behavior: d.behavior, spriteSrc: d.spriteSrc 
                     })) : [],
                     
                     spiders: spiders, structures: structures, resourceNodes: resNodes, queens: queens,
