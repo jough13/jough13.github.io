@@ -242,13 +242,13 @@ export const AdvancedBaseExpansion = {
             const readyForPhase4 = (this.tick >= 21600 && (playerTech >= 3 || playerPop >= 30)) || this.tick >= ai.phase4Tick;
 
             if (readyForPhase2 && !this.aiConfig.phase2Escalated) { 
-                this.aiConfig.phase2Escalated = true; escalatePhase(2, this.tick); 
+                this.aiConfig.phase2Escalated = true; escalatePhase(2, this.tick - 10); 
             }
             if (readyForPhase3 && !this.aiConfig.phase3Escalated) { 
-                this.aiConfig.phase3Escalated = true; escalatePhase(3, this.tick); 
+                this.aiConfig.phase3Escalated = true; escalatePhase(3, this.tick - 10); 
             }
             if (readyForPhase4 && !this.aiConfig.phase4Escalated) { 
-                this.aiConfig.phase4Escalated = true; escalatePhase(4, this.tick); 
+                this.aiConfig.phase4Escalated = true; escalatePhase(4, this.tick - 10); 
             }
 
             // Adaptive Unit Spawning Rate:
