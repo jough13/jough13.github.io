@@ -61,10 +61,21 @@ export const CursedRelicsExpansion = {
                     // 🧃 [JUICE] Poof! (Start location implosion)
                     gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#aa00ff', count: 15, type: 'magic'});
                     
-                    // Teleport behind them (🛡️ FIX: Clamped to map boundaries!)
+                    // 🚨 FIXED: Calculate approach angle so the Wraith lands on the OUTSIDE edge of the hitbox!
+                    const angle = Math.atan2(enemy.y - entity.y, enemy.x - entity.x);
                     const bnd = entity.size * 2;
-                    entity.x = MathUtils.clamp(enemy.x + MathUtils.randomRange(-10, 10), bnd, gameObj.world.width - bnd);
-                    entity.y = MathUtils.clamp(enemy.y + MathUtils.randomRange(-10, 10), bnd, gameObj.world.height - bnd);
+                    
+                    // Add a 5px buffer so they don't perfectly touch and trigger SwarmDynamics separation push
+                    const targetRadius = (enemy.size || 10) + entity.size + 5; 
+                    
+                    const blinkX = enemy.x - Math.cos(angle) * targetRadius;
+                    const blinkY = enemy.y - Math.sin(angle) * targetRadius;
+                    
+                    entity.x = MathUtils.clamp(blinkX, bnd, gameObj.world.width - bnd);
+                    entity.y = MathUtils.clamp(blinkY, bnd, gameObj.world.height - bnd);
+                    
+                    // Update angle to face the enemy instantly
+                    entity.angle = angle;
                     
                     // 🧃 [JUICE] Poof! (End location explosion)
                     gameObj.bus.emit('particles', {x: entity.x, y: entity.y, color: '#aa00ff', count: 15, type: 'splatter'});
