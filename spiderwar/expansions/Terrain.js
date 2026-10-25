@@ -7,6 +7,7 @@ import { MathUtils } from '../game.js';
 // [EXPANDABILITY] Exported so mods can add custom biomes and textures!
 export const TERRAIN_CONFIG = {
     tileSize: 256,
+    channelHalfWidth: 48, // [FIX] Half-width (in px) of the actual water stream inside a 256x256 tile
     
     // Base Biomes (Weights determine spawn probability out of 100)
     biomes: {
@@ -151,6 +152,7 @@ export const TerrainExpansion = {
                             const tileData = WATER_BITMASK[mask];
                             this.mapGrid[y][x].sprite = tileData.s;
                             this.mapGrid[y][x].angle = tileData.a;
+                            this.mapGrid[y][x].mask = mask; // [FIX] Store bitmask for sub-tile water collision!
                         }
                     }
                 }
@@ -164,13 +166,33 @@ export const TerrainExpansion = {
         game.generateMap();
 
         game.getTerrainAt = function(x, y) {
-            // [PERFORMANCE] Fast bitwise clamp
             const maxGridX = Math.ceil(this.world.width / this.tileSize) - 1;
             const maxGridY = Math.ceil(this.world.height / this.tileSize) - 1;
             const tX = MathUtils.clamp((x / this.tileSize) | 0, 0, maxGridX); 
             const tY = MathUtils.clamp((y / this.tileSize) | 0, 0, maxGridY);
             
-            return this.mapGrid[tY][tX].type;
+            const tile = this.mapGrid[tY][tX];
+            if (tile.type !== 'water') return tile.type;
+
+            // [FIX] Local coordinates relative to the center (128, 128) of this 256x256 tile
+            const halfTile = this.tileSize * 0.5;
+            const lx = (x - (tX * this.tileSize)) - halfTile;
+            const ly = (y - (tY * this.tileSize)) - halfTile;
+
+            const hw = this.terrainConfig.channelHalfWidth || 48;
+            const mask = tile.mask !== undefined ? tile.mask : 15;
+
+            // 1. Rounded Center Hub (covers dead-ends and smooth 90-degree corner bends)
+            if ((lx * lx) + (ly * ly) <= (hw * hw)) return 'water';
+
+            // 2. Check each connected directional arm of the river
+            if ((mask & 1) && ly < 0 && Math.abs(lx) <= hw) return 'water'; // North arm
+            if ((mask & 2) && lx > 0 && Math.abs(ly) <= hw) return 'water'; // East arm
+            if ((mask & 4) && ly > 0 && Math.abs(lx) <= hw) return 'water'; // South arm
+            if ((mask & 8) && lx < 0 && Math.abs(ly) <= hw) return 'water'; // West arm
+
+            // Outside the channel = dry riverbank!
+            return 'dirt';
         };
     },
 
