@@ -477,6 +477,12 @@ export const SaveLoadExpansion = {
                         hp: u.hp, cargo: u.cargo, size: u.size 
                     };
                     
+                    // 🚨 ADD THESE LINES: Trapdoor state serialization
+                    if (u.burrowState !== undefined) {
+                        data.burrowState = u.burrowState;
+                        data.burrowTimer = u.burrowTimer;
+                    }
+                    
                     if (u.commandTarget) data.commandTarget = u.commandTarget;
                     if (u.buildTarget) data.buildTarget = u.buildTarget;
                     
