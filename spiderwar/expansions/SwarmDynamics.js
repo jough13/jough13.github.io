@@ -68,7 +68,8 @@ export const SwarmDynamicsExpansion = {
                             let other = cell[j];
                             
                             // Don't collide with self, dead things, or non-physical spells/projectiles
-                            if (other === e || !other.size || other.hp <= 0) continue;
+                            // 🚨 FIXED: Explicitly check other.hp === undefined so MortarShells don't shove units!
+                            if (other === e || !other.size || other.hp === undefined || other.hp <= 0) continue;
                             if (other.active !== undefined && other.speed && !other.role) continue; // Skips projectiles
                             if (other.captureRadius !== undefined) continue; // Skips Control Points
                             
