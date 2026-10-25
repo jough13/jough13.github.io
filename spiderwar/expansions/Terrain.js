@@ -36,11 +36,14 @@ const WATER_BITMASK = {
     6:  {s: 'water_corner',   a: HALF_PI}, 
     12: {s: 'water_corner',   a: PI}, 
     9:  {s: 'water_corner',   a: -HALF_PI}, 
-    7:  {s: 'water_t',        a: 0},        
-    14: {s: 'water_t',        a: HALF_PI},    
-    13: {s: 'water_t',        a: PI},   
-    11: {s: 'water_t',        a: -HALF_PI},   
-    15: {s: 'water_cross',    a: 0}      
+    
+    // [FIX] Safe fallbacks mapping intersections to straight lines, 
+    // since we removed the T-junction and Cross sprites to stop 404 errors.
+    7:  {s: 'water_straight', a: 0},        
+    14: {s: 'water_straight', a: HALF_PI},    
+    13: {s: 'water_straight', a: PI},   
+    11: {s: 'water_straight', a: -HALF_PI},   
+    15: {s: 'water_straight', a: 0}      
 };
 
 // ==========================================
@@ -59,8 +62,9 @@ export const TerrainExpansion = {
         game.mapAssetsDict = {
             dirt: 'assets/tile_dirt.png', vines: 'assets/tile_vines.png', 
             pebbles: 'assets/tile_pebbles.png', grass: 'assets/tile_grass.png',
+            // [FIX] Removed water_t and water_cross since the Drunkard's Walk algorithm never generates them!
             water_straight: 'assets/water_straight.png', water_corner: 'assets/water_corner.png', 
-            water_end: 'assets/water_end.png', water_t: 'assets/water_t.png', water_cross: 'assets/water_cross.png'
+            water_end: 'assets/water_end.png'
         };
 
         // --- 1. ASSET REGISTRY ---
