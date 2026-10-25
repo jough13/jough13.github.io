@@ -445,8 +445,8 @@ export class Game {
     get bosses() { return this.entities.filter(e => e.isBoss); }
     
     addEntity(entity) { 
-        // [FIX] Apply tech HP bonus directly to this.hp and this.maxHp upon creation
-        if (entity.team && entity.role !== 'queen' && entity.hp && (entity instanceof Spider || entity instanceof Structure)) {
+        // [FIX] Apply tech HP bonus directly to this.hp and this.maxHp upon creation (Excluding chaff units)
+        if (entity.team && entity.role !== 'queen' && entity.role !== 'broodling' && entity.role !== 'parasite' && !entity.isZombie && entity.hp && (entity instanceof Spider || entity instanceof Structure)) {
             const tech = this.techLevel[entity.team] || 0;
             if (tech > 0 && !entity._techHpApplied) {
                 const boost = tech * 20;
@@ -491,7 +491,7 @@ export class Game {
                 // [FIX] Apply tech HP bonus to all existing entities instantly!
                 for (let i = 0; i < this.entities.length; i++) {
                     let e = this.entities[i];
-                    if (e.team === 'black' && e.hp > 0 && e.role !== 'queen' && (e instanceof Spider || e instanceof Structure)) {
+                    if (e.team === 'black' && e.hp > 0 && e.role !== 'queen' && e.role !== 'broodling' && e.role !== 'parasite' && !e.isZombie && (e instanceof Spider || e instanceof Structure)) {
                         e.maxHp += 20; e.hp += 20;
                     }
                 }
