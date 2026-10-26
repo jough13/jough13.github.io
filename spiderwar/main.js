@@ -30,6 +30,7 @@ import { SwarmDynamicsExpansion } from './expansions/SwarmDynamics.js';
 import { SpellExpansion } from './expansions/Spells.js';
 import { SpecialUnitsExpansion } from './expansions/SpecialUnits.js';
 import { HazardsExpansion } from './expansions/Hazards.js';
+import { CrittersExpansion } from './expansions/Critters.js'; // 🚨 ADDED THIS LINE
 import { CaravansExpansion } from './expansions/Caravans.js'; 
 import { DayNightExpansion } from './expansions/DayNight.js';
 import { WeatherSystemExpansion } from './expansions/Weather.js';
@@ -75,6 +76,7 @@ const expansionManifest = [
     
     { name: 'SpecialUnits',         module: SpecialUnitsExpansion },
     { name: 'Hazards',              module: HazardsExpansion },
+    { name: 'Critters',             module: CrittersExpansion }, // 🚨 ADDED THIS LINE
     { name: 'ResourceCaravans',     module: CaravansExpansion }, 
     { name: 'DayNight',             module: DayNightExpansion },
     { name: 'WeatherSystem',        module: WeatherSystemExpansion }, 
