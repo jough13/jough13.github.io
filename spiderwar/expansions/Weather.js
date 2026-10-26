@@ -157,8 +157,8 @@ export const WeatherSystemExpansion = {
         });
 
         // --- 3. GAMEPLAY MECHANIC: FOGGY VISION DEBUFF ---
-        // Dynamically reduce the aggro range of all units during storms
-        game.expansions.patchClass(Game, 'getNearestEnemy', function(original, x, y, team, maxDist) {
+        // 🚨 FIXED: Forwarded targetHazards parameter so hazards remain targetable during storms!
+        game.expansions.patchClass(Game, 'getNearestEnemy', function(original, x, y, team, maxDist, targetHazards = false) {
             let effectiveDist = maxDist;
             const w = this.weather;
             
@@ -166,7 +166,7 @@ export const WeatherSystemExpansion = {
                 effectiveDist *= (1 - (WEATHER_CONFIG.fogVisionDebuff * w.intensity));
             }
             
-            return original.call(this, x, y, team, effectiveDist);
+            return original.call(this, x, y, team, effectiveDist, targetHazards);
         });
 
         // --- 4. HIGH-PERFORMANCE VISUAL RENDERING ---
