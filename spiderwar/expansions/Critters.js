@@ -122,9 +122,6 @@ export class Aphid {
         const wiggle = Math.sin(tick * wiggleSpeed + this.animOffset) * 0.007;
         ctx.rotate(wiggle);
 
-        // 🧃 [JUICE] Flash bright white when damaged
-        if (this.flashFrames > 0) ctx.filter = 'brightness(2.5)';
-        
         // Render Sprite with dynamic Aspect Ratio
         if (this.spriteLoaded && this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) {
             const aspect = this.sprite.naturalWidth / this.sprite.naturalHeight;
@@ -135,6 +132,13 @@ export class Aphid {
             // Fallback rendering
             ctx.fillStyle = this.color; 
             ctx.beginPath(); ctx.ellipse(0, 0, this.size, this.size - 2, 0, 0, MathUtils.TWO_PI); ctx.fill(); 
+        }
+        
+        // 🚨 FIXED: High-Performance GPU Damage Flash replacing ctx.filter
+        if (this.flashFrames > 0) {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath(); ctx.ellipse(0, 0, this.size, this.size - 2, 0, 0, MathUtils.TWO_PI); ctx.fill();
         }
         
         ctx.restore(); 
@@ -253,9 +257,6 @@ export class GoldenBug {
         const wiggle = Math.sin(tick * wiggleSpeed + this.animOffset) * 0.005;
         ctx.rotate(wiggle);
 
-        // 🧃 [JUICE] Flash bright white when damaged
-        if (this.flashFrames > 0) ctx.filter = 'brightness(2.5)';
-
         // Render Sprite with dynamic Aspect Ratio
         if (this.spriteLoaded && this.sprite && this.sprite.complete && this.sprite.naturalHeight !== 0) {
             const aspect = this.sprite.naturalWidth / this.sprite.naturalHeight;
@@ -282,6 +283,13 @@ export class GoldenBug {
             // Eyes
             ctx.fillStyle = '#fff'; 
             ctx.fillRect(this.size / 2, -2, 4, 4); 
+        }
+        
+        // 🚨 FIXED: High-Performance GPU Damage Flash replacing ctx.filter
+        if (this.flashFrames > 0) {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath(); ctx.ellipse(0, 0, this.size, this.size - 5, 0, 0, MathUtils.TWO_PI); ctx.fill();
         }
         
         ctx.restore();
