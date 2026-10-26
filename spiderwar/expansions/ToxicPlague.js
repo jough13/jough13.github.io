@@ -273,8 +273,10 @@ export const ToxicPlagueExpansion = {
                 }
 
                 if (canSpawn) {
-                    // [FIX] Increment population instantly to prevent spam-click bypass!
-                    game.pop[data.team]++;
+                    // 🚨 FIXED: Only the core Defiler unit increments the population cap. Parasites are free temporary swarms!
+                    if (data.role === 'defiler') {
+                        game.pop[data.team]++;
+                    }
                     
                     let s = new Spider(data.x + MathUtils.randomRange(-25, 25), data.y + MathUtils.randomRange(-25, 25), data.team, data.role);
                     
