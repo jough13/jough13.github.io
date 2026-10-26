@@ -310,6 +310,9 @@ export const TitansExpansion = {
         // [FIX] Updated rendering signature to (original, ctx, gameObj)
         game.expansions.patchClass(Spider, 'draw', function(original, ctx, gameObj) {
             
+            // 🚨 FIXED: Hide enemy cloaked units entirely!
+            if (this.isCloaked && this.team !== 'black') return;
+
             let oldAlpha = ctx.globalAlpha;
             let restoreAlpha = false;
 
