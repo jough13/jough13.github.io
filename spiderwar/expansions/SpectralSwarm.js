@@ -144,8 +144,8 @@ export const SpectralSwarmExpansion = {
                             for (let i = 0; i < cell.length; i++) {
                                 let e = cell[i];
                                 // Target LIVING ENEMIES
-                                // (Instanceof Spider check prevents Corpses from being frozen natively)
-                                if (e.team && e.team !== data.team && e.hp > 0 && (e instanceof Spider || e.constructor.name === 'CentipedeBoss')) {
+                                // 🚨 FIXED: Replaced unsafe string constructor check with reliable e.isBoss flag!
+                                if (e.team && e.team !== data.team && e.hp > 0 && (e instanceof Spider || e.isBoss)) {
                                     // Fast AABB check
                                     if (Math.abs(e.x - data.x) > radius || Math.abs(e.y - data.y) > radius) continue;
                                     
