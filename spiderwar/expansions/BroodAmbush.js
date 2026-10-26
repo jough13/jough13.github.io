@@ -204,8 +204,7 @@ export class EggTrap {
             const swell = 1 + (1 - (this.fuseTimer / AMBUSH_CONFIG.fuseTimer)) * 0.5;
             ctx.scale(swell, swell);
             
-            // 🚨 FIXED: Use additive blending instead of expensive CSS filter
-            ctx.globalCompositeOperation = 'lighter';
+            // 🚨 FIXED: Eradicated ctx.filter! We use 'lighter' overlay at the end of drawing!
             ctx.globalAlpha = 1.0;
         } else {
             // Gentle, deterministic pulsating animation based on age
@@ -229,8 +228,9 @@ export class EggTrap {
             ctx.lineWidth = 2; ctx.stroke();
         }
         
-        // 🚨 FIXED: Flash white overlay if detonating!
+        // 🚨 FIXED: High-Performance GPU Damage Flash using Additive Blending
         if (this.detonating) {
+            ctx.globalCompositeOperation = 'lighter';
             ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
             ctx.beginPath(); ctx.arc(0, 0, this.size, 0, Math.PI*2); ctx.fill();
         }
