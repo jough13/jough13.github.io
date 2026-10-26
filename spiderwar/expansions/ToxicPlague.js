@@ -168,6 +168,17 @@ export const ToxicPlagueExpansion = {
         // Parasite AI Trait
         game.registerTrait('parasite_ai', {
             update: (entity, gameObj) => {
+                // 🚨 FIXED: Pull tech level, terrain, and slow modifiers dynamically!
+                const techLvl = gameObj.techLevel[entity.team] || 0; 
+                const currentDamage = entity.damage + (techLvl * 5); 
+                
+                const terrain = gameObj.getTerrainAt(entity.x, entity.y); 
+                let tMod = (terrain === 'water') ? 0.05 : ((terrain === 'grass') ? 1.3 : 1.0);
+                let currentSpeed = (entity.baseSpeed + (techLvl * 0.15)) * tMod;
+                
+                if (entity.isSlowed) currentSpeed *= 0.3;
+                entity.isSlowed = false; 
+
                 let enemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, 500); 
                 
                 if (enemy) {
@@ -179,15 +190,27 @@ export const ToxicPlagueExpansion = {
                     
                     // [PERFORMANCE] Fast inline distance math
                     const dx = enemy.x - entity.x; const dy = enemy.y - entity.y;
-                    if ((dx*dx + dy*dy) > 400) { 
-                        entity.x += Math.cos(entity.angle) * entity.baseSpeed; 
-                        entity.y += Math.sin(entity.angle) * entity.baseSpeed;
+                    const distSq = (dx * dx) + (dy * dy);
+                    
+                    // 🚨 FIXED: Dynamically calculate hitbox combat range!
+                    const combatRange = (enemy.size || 10) + entity.size + 5;
+                    const combatRangeSq = combatRange * combatRange;
+                    
+                    if (distSq > combatRangeSq) { 
+                        entity.x += Math.cos(entity.angle) * currentSpeed; 
+                        entity.y += Math.sin(entity.angle) * currentSpeed;
                     } else {
+                        if (!entity.cooldown) entity.cooldown = 0;
                         entity.cooldown--;
+                        
                         if (entity.cooldown <= 0) {
-                            enemy.hp -= entity.damage;
+                            enemy.hp -= currentDamage; // 🚨 FIXED: Uses tech-modified damage
                             entity.cooldown = entity.attackSpeed;
-                            entity.x -= Math.cos(entity.angle) * 5; entity.y -= Math.sin(entity.angle) * 5;
+                            
+                            // Tiny Recoil
+                            entity.x -= Math.cos(entity.angle) * 5; 
+                            entity.y -= Math.sin(entity.angle) * 5;
+                            
                             gameObj.bus.emit('playSound', 'harvest');
                             gameObj.bus.emit('particles', {x: enemy.x, y: enemy.y, color: '#55ff00', count: 3, type: 'splatter'});
                         }
@@ -195,11 +218,11 @@ export const ToxicPlagueExpansion = {
                 } else {
                     if (Math.random() < 0.2) entity.angle += MathUtils.randomRange(-0.5, 0.5);
                     entity.angle = MathUtils.angleWrap(entity.angle);
-                    entity.x += Math.cos(entity.angle) * entity.baseSpeed;
-                    entity.y += Math.sin(entity.angle) * entity.baseSpeed;
+                    entity.x += Math.cos(entity.angle) * (currentSpeed * 0.5);
+                    entity.y += Math.sin(entity.angle) * (currentSpeed * 0.5);
                 }
                 
-                // Keep parasites on the map
+                // Keep parasites on the map cleanly
                 const bnd = entity.size * 2;
                 entity.x = MathUtils.clamp(entity.x, bnd, gameObj.world.width - bnd);
                 entity.y = MathUtils.clamp(entity.y, bnd, gameObj.world.height - bnd);
@@ -273,7 +296,7 @@ export const ToxicPlagueExpansion = {
                 }
 
                 if (canSpawn) {
-                    // 🚨 FIXED: Only the core Defiler unit increments the population cap. Parasites are free temporary swarms!
+                    // Only the core Defiler unit increments the population cap. Parasites are free temporary swarms!
                     if (data.role === 'defiler') {
                         game.pop[data.team]++;
                     }
