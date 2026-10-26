@@ -1,5 +1,6 @@
 // expansions/Weather.js
 import { Game, MathUtils, Spider } from '../game.js';
+import { Queen } from './Queen.js'; // 🚨 ADDED THIS LINE
 
 // ==========================================
 // 1. CONFIGURATION & BALANCING
@@ -134,7 +135,6 @@ export const WeatherSystemExpansion = {
                     // Check if standing under a friendly Nest or Shrine
                     for (let i = 0; i < structLen; i++) {
                         let s = structs[i];
-                        // [FIX] Ensure the building is actually finished before it acts as an umbrella!
                         if (s.team === this.team && (s.type === 'nest' || s.type === 'shrine') && s.hp > 0 && !s.isConstructing) {
                             // 🚀 Fast AABB Check
                             if (Math.abs(this.x - s.x) < WEATHER_CONFIG.safeZoneRadius && Math.abs(this.y - s.y) < WEATHER_CONFIG.safeZoneRadius) {
@@ -156,8 +156,22 @@ export const WeatherSystemExpansion = {
             this.baseSpeed = originalSpeed; // Restore base speed for the next frame
         });
 
+        // 🚨 ADDED: Explicit Queen patch so she suffers the Rain Slowdown!
+        game.expansions.patchClass(Queen, 'update', function(original, gameObj) {
+            const w = gameObj.weather;
+            const originalSpeed = this.baseSpeed;
+            
+            if (w.intensity > 0) {
+                this.baseSpeed *= (1 - (WEATHER_CONFIG.rainSpeedDebuff * w.intensity));
+            }
+            
+            // Note: Acid damage is naturally handled by super.update() triggering the Spider patch!
+            original.call(this, gameObj); 
+            
+            this.baseSpeed = originalSpeed; 
+        });
+
         // --- 3. GAMEPLAY MECHANIC: FOGGY VISION DEBUFF ---
-        // 🚨 FIXED: Forwarded targetHazards parameter so hazards remain targetable during storms!
         game.expansions.patchClass(Game, 'getNearestEnemy', function(original, x, y, team, maxDist, targetHazards = false) {
             let effectiveDist = maxDist;
             const w = this.weather;
@@ -179,9 +193,6 @@ export const WeatherSystemExpansion = {
             ctx.fillRect(0, 0, game.canvas.width, game.canvas.height);
 
             // 🚀 [PERFORMANCE] Screen-space Rain Rendering
-            // By keeping the rain in screen-space (ignoring the camera.x/y), we ensure the rain 
-            // covers the screen perfectly without having to simulate millions of drops across the 6000x6000 map!
-            
             ctx.save();
             ctx.globalAlpha = w.intensity;
             ctx.strokeStyle = w.color;
