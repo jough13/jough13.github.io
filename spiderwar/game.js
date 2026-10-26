@@ -682,8 +682,8 @@ export class Game {
                 if (e instanceof Structure && e.type === 'eggsac') {
                     if (e.team === 'black') blackEggs++; else if (e.team === 'red') redEggs++;
                 }
-                // 🛡️ [FIX] Prevents temporary 'broodling' summons and 'zombie' units from taking up population cap!
-                if (e instanceof Spider && !e.hasTrait('queen') && e.role !== 'broodling' && !e.isZombie) {
+                // 🚨 FIXED: Excludes temporary swarms ('broodling', 'parasite', 'zombie') and 'nature' units from population cap!
+                if (e instanceof Spider && !e.hasTrait('queen') && e.role !== 'broodling' && e.role !== 'parasite' && !e.isZombie && e.team !== 'nature') {
                     if (e.team === 'black') blackPop++; else if (e.team === 'red') redPop++;
                 }
             }
