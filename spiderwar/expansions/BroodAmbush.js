@@ -69,11 +69,50 @@ export class EggTrap {
             return; 
         }
 
-        // 3. Detection Phase
-        let triggerTarget = game.getNearestEnemy(this.x, this.y, this.team, AMBUSH_CONFIG.triggerRadius);
+        // 3. Detection Phase (High-Performance Spatial Grid Scan)
+        // 🚨 FIXED: Scans the entire radius for ANY valid enemy, preventing Aphids from blinding the trap!
+        let triggered = false;
+        const CELL_SIZE = 250;
+        const maxGridX = Math.ceil(game.world.width / CELL_SIZE);
+        const maxGridY = Math.ceil(game.world.height / CELL_SIZE);
+        
+        const cx = MathUtils.clamp((this.x / CELL_SIZE) | 0, 0, maxGridX);
+        const cy = MathUtils.clamp((this.y / CELL_SIZE) | 0, 0, maxGridY);
+        const radius = AMBUSH_CONFIG.triggerRadius;
+        const radiusSq = AMBUSH_CONFIG.triggerRadiusSq;
 
-        // [FIX] Ignore harmless nature critters like Aphids and Golden Bugs!
-        if (triggerTarget && (triggerTarget.team !== 'nature' || triggerTarget.isBoss)) {
+        outerLoop: for (let nx = cx - 1; nx <= cx + 1; nx++) {
+            if (nx < 0 || nx > maxGridX) continue;
+            for (let ny = cy - 1; ny <= cy + 1; ny++) {
+                if (ny < 0 || ny > maxGridY) continue;
+                
+                // 🛡️ [FIX] Bitwise isolation protects against negative Y coordinate corruption bugs!
+                const key = (nx << 16) | (ny & 0xFFFF);
+                const cell = game.spatialGrid.get(key);
+                if (!cell) continue;
+
+                for (let i = 0; i < cell.length; i++) {
+                    let e = cell[i];
+                    
+                    // Only trigger on living, uncloaked units (Spiders, Queens, Bosses) of opposing teams
+                    if (e.team && e.team !== this.team && e.team !== 'dead' && e.hp > 0 && !e.isCloaked && (e.role || e.isBoss)) {
+                        
+                        // Ignore harmless nature critters
+                        if (e.team === 'nature' && !e.isBoss) continue;
+
+                        // Fast AABB check
+                        if (Math.abs(this.x - e.x) > radius || Math.abs(this.y - e.y) > radius) continue;
+
+                        if (MathUtils.distSq(this.x, this.y, e.x, e.y) < radiusSq) {
+                            triggered = true;
+                            break outerLoop; // Detonate immediately!
+                        }
+                    }
+                }
+            }
+        }
+
+        if (triggered) {
             // 🧃 [JUICE] Trigger the "Click" of the mine!
             this.detonating = true;
             this.fuseTimer = AMBUSH_CONFIG.fuseTimer;
@@ -164,7 +203,9 @@ export class EggTrap {
             // Swell up rapidly and flash bright white!
             const swell = 1 + (1 - (this.fuseTimer / AMBUSH_CONFIG.fuseTimer)) * 0.5;
             ctx.scale(swell, swell);
-            ctx.filter = 'brightness(2.5)';
+            
+            // 🚨 FIXED: Use additive blending instead of expensive CSS filter
+            ctx.globalCompositeOperation = 'lighter';
             ctx.globalAlpha = 1.0;
         } else {
             // Gentle, deterministic pulsating animation based on age
@@ -187,6 +228,13 @@ export class EggTrap {
             ctx.strokeStyle = this.team === 'black' ? '#aa00ff' : '#ff0000'; 
             ctx.lineWidth = 2; ctx.stroke();
         }
+        
+        // 🚨 FIXED: Flash white overlay if detonating!
+        if (this.detonating) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath(); ctx.arc(0, 0, this.size, 0, Math.PI*2); ctx.fill();
+        }
+        
         ctx.restore();
     }
 }
