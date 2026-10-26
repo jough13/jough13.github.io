@@ -202,6 +202,10 @@ export const WebNetworkExpansion = {
             for (let i = 0; i < spdLen; i++) {
                 let s = allSpiders[i];
                 if (s.hp > 0 && s.x >= viewL && s.x <= viewR && s.y >= viewT && s.y <= viewB) {
+                    
+                    // 🚨 FIXED: Do not draw links tracking hidden assassins!
+                    if (s.isCloaked && s.team !== 'black') continue;
+                    
                     // [FIX] Fog of War Culling for web nodes
                     if (game.mapGrid && s.team !== 'black') {
                         const tX = (s.x / tileSize) | 0;
@@ -219,7 +223,17 @@ export const WebNetworkExpansion = {
             const aliveStructs = [];
             for (let i = 0; i < structLen; i++) {
                 let s = allStructs[i];
-                if (s.hp > 0) aliveStructs.push(s);
+                
+                // 🚨 FIXED: Do not draw links to unbuilt structures or enemy bases shrouded in the fog!
+                if (s.hp > 0 && !s.isConstructing) {
+                    if (game.mapGrid && s.team !== 'black') {
+                        const tX = (s.x / tileSize) | 0;
+                        const tY = (s.y / tileSize) | 0;
+                        const tile = game.mapGrid[tY] && game.mapGrid[tY][tX];
+                        if (!tile || !tile.visible) continue;
+                    }
+                    aliveStructs.push(s);
+                }
             }
 
             const structDist = NETWORK_CONFIG.structLinkDist;
@@ -273,6 +287,9 @@ export const WebNetworkExpansion = {
                             // 🛡️ [FIX] ID Check to prevent Canvas Double-Drawing
                             // Only draw A->B, skip B->A. Also ensure they are actually living Spiders
                             if (s1 === s2 || s1.team !== s2.team || !s2.role || s2.hp <= 0 || s1.id > s2.id) continue;
+                            
+                            // 🚨 FIXED: Do not draw links tracking off-screen hidden assassins!
+                            if (s2.isCloaked && s2.team !== 'black') continue;
 
                             // 🚀 [PERFORMANCE] Fast AABB check before expensive math
                             if (Math.abs(s1.x - s2.x) > spiderDist || Math.abs(s1.y - s2.y) > spiderDist) continue;
