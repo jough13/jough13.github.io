@@ -78,8 +78,8 @@ class VortexEntity {
                 for (let i = 0; i < cell.length; i++) {
                     let e = cell[i];
                     
-                    // [FIX] Ensure the Vortex doesn't suck in friendly units! (And safe boss check)
-                    if (e.team && e.team !== this.team && e.hp > 0 && (e instanceof Spider || e.isBoss) && e.role !== 'queen') {
+                    // 🚨 FIXED: Ensure the Vortex doesn't suck in friendly units, cloaked phantoms/widows, or burrowed trapdoors!
+                    if (e.team && e.team !== this.team && e.hp > 0 && (e instanceof Spider || e.isBoss) && e.role !== 'queen' && !e.isCloaked && e.burrowState !== 2) {
                         
                         // Fast AABB check
                         if (Math.abs(this.x - e.x) > this.radius || Math.abs(this.y - e.y) > this.radius) continue;
@@ -93,6 +93,11 @@ class VortexEntity {
                             
                             e.x += Math.cos(angle) * (this.pullStrength * intensity);
                             e.y += Math.sin(angle) * (this.pullStrength * intensity);
+                            
+                            // 🚨 FIXED: Clamp the unit's coordinates so they aren't sucked completely off the map!
+                            const bnd = (e.size || 10) * 2;
+                            e.x = MathUtils.clamp(e.x, bnd, game.world.width - bnd);
+                            e.y = MathUtils.clamp(e.y, bnd, game.world.height - bnd);
                             
                             // Disrupt their current movement
                             e.isSlowed = true;
@@ -200,12 +205,18 @@ export const VoidWhispersExpansion = {
                         entity.cooldown--;
                         
                         if (entity.cooldown <= 0) {
-                            // Minor damage
-                            enemy.hp -= entity.damage;
+                            // 🚨 FIXED: Apply Tech Level damage bonus!
+                            enemy.hp -= entity.damage + ((gameObj.techLevel[entity.team] || 0) * 5);
                             
                             // THE PULL: Move the enemy directly towards the pulling unit!
                             enemy.x -= Math.cos(entity.angle) * VOID_CONFIG.weaverPullStrength;
                             enemy.y -= Math.sin(entity.angle) * VOID_CONFIG.weaverPullStrength;
+                            
+                            // 🚨 FIXED: Clamp the unit's coordinates so they aren't sucked off the map edge!
+                            const bnd = (enemy.size || 10) * 2;
+                            enemy.x = MathUtils.clamp(enemy.x, bnd, gameObj.world.width - bnd);
+                            enemy.y = MathUtils.clamp(enemy.y, bnd, gameObj.world.height - bnd);
+                            
                             enemy.isSlowed = true; // Disrupts their normal walking
                             
                             entity.cooldown = entity.attackSpeed;
@@ -300,8 +311,8 @@ export const VoidWhispersExpansion = {
                         for (let i = 0; i < cell.length; i++) {
                             let e = cell[i];
                             
-                            // [FIX] Minification-safe Boss check!
-                            if (e.team && e.team !== this.team && e.hp > 0 && (e instanceof Spider || e.isBoss)) {
+                            // 🚨 FIXED: Ignore cloaked units and burrowed trapdoors!
+                            if (e.team && e.team !== this.team && e.hp > 0 && (e instanceof Spider || e.isBoss) && !e.isCloaked && e.burrowState !== 2) {
                                 
                                 // Fast AABB Check
                                 if (Math.abs(this.x - e.x) > pullRadius || Math.abs(this.y - e.y) > pullRadius) continue;
@@ -313,6 +324,11 @@ export const VoidWhispersExpansion = {
                                     const pullAngle = Math.atan2(this.y - e.y, this.x - e.x);
                                     e.x += Math.cos(pullAngle) * 0.8;
                                     e.y += Math.sin(pullAngle) * 0.8;
+                                    
+                                    // 🚨 FIXED: Clamp bounds so units aren't pulled off map
+                                    const bnd = (e.size || 10) * 2;
+                                    e.x = MathUtils.clamp(e.x, bnd, gameObj.world.width - bnd);
+                                    e.y = MathUtils.clamp(e.y, bnd, gameObj.world.height - bnd);
                                     
                                     // If they reach the center, CHOMP!
                                     if (distSq < VOID_CONFIG.mawBiteRadiusSq && this.biteCooldown <= 0) {
