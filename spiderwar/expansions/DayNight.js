@@ -1,5 +1,6 @@
 // expansions/DayNight.js
 import { Game, Spider, MathUtils } from '../game.js';
+import { Queen } from './Queen.js'; // 🚨 ADDED THIS LINE
 
 // ==========================================
 // 1. CONFIGURATION (Easy Tweaking!)
@@ -47,10 +48,6 @@ export const DayNightExpansion = {
         // 2. ENGINE TIME LOOP
         // ==========================================
         game.expansions.patchClass(Game, 'update', function(original) {
-            
-            // 🛡️ [FIX] Removed the hacky `lastTick` time-warp detector here. 
-            // Eclipse is now cleanly driven via the 'triggerEclipse' bus event!
-
             original.call(this);
             
             if (this.gameState !== 'playing') return;
@@ -127,6 +124,20 @@ export const DayNightExpansion = {
                 }
             }
             
+            original.call(this, gameObj); 
+            
+            this.baseSpeed = originalSpeed; 
+        });
+
+        // 🚨 ADDED: Explicit Queen patch so she gets the Nocturnal Speed Buff!
+        game.expansions.patchClass(Queen, 'update', function(original, gameObj) {
+            const originalSpeed = this.baseSpeed;
+            
+            if (gameObj.isNight) {
+                this.baseSpeed *= DAYNIGHT_CONFIG.nocturnalBuff;
+            }
+            
+            // Note: Ghostly trail logic is natively handled by super.update() triggering the Spider patch!
             original.call(this, gameObj); 
             
             this.baseSpeed = originalSpeed; 
