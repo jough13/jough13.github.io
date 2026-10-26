@@ -266,6 +266,9 @@ export const SpectralSwarmExpansion = {
         // [FIX] Signature updated to accept (original, ctx, gameObj)
         game.expansions.patchClass(Spider, 'draw', function(original, ctx, gameObj) {
             
+            // 🚨 FIXED: Completely hide enemy cloaked units from the player!
+            if (this.isCloaked && this.team !== 'black') return;
+            
             // [JUICE] Shiver animation while stunned!
             let shiverX = 0;
             if (this.stunTimer > 0) {
