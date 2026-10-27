@@ -472,8 +472,8 @@ export const ConstructionExpansion = {
                             isOverlapping = true; break;
                         }
                     }
-                    // 🚨 FIXED: Exclude the currently commanding Queen from the overlap check so players can adjust blueprints!
-                    else if (s.role === 'queen' && s !== queen && s.buildTarget) {
+                    // [FIX] Prevent stacking blueprints by checking Queens' active build targets!
+                    else if (s.role === 'queen' && s.buildTarget) {
                         // Assuming standard size 25 for blueprints
                         if (MathUtils.distSq(s.buildTarget.x, s.buildTarget.y, data.x, data.y) < 2500) {
                             isOverlapping = true; break;
