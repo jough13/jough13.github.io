@@ -114,7 +114,11 @@ export class CentipedeBoss {
         // 2. Target Acquisition (Throttled Spatial Grid Lookups!)
         this.repathTimer--;
         if (this.repathTimer <= 0 || !this.target || this.target.hp <= 0) {
-            this.target = game.getNearestEnemy(this.x, this.y, this.team, BOSS_CONFIG.aggroRange);
+            
+            // 🚨 FIXED: If the boss is tamed (team === 'black' or 'red'), it ignores harmless nature critters!
+            // If it is wild (team === 'nature'), it eats everything!
+            this.target = game.getNearestEnemy(this.x, this.y, this.team, BOSS_CONFIG.aggroRange, this.team === 'nature');
+            
             this.repathTimer = 15; // Only scan the massive 800px grid 4 times a second instead of 60!
         }
         
