@@ -282,6 +282,9 @@ export const GodUnitExpansion = {
     init: (game) => {
         // [EXPANDABILITY] Inject config into game so other mods can read/write to it
         game.bossConfig = BOSS_CONFIG;
+        
+        // 🚨 ADDED: Robust flag initialization
+        game.bossSpawned = false;
 
         // --- ASSET REGISTRY ---
         game.assets.register('assets/centipede_head.png');
@@ -315,8 +318,10 @@ export const GodUnitExpansion = {
         game.expansions.patchClass(game.constructor, 'update', function(original) {
             original.call(this);
             
-            // Spawn the Boss dynamically based on the injected configuration
-            if (this.tick === this.bossConfig.spawnTick) { 
+            // 🚨 FIXED: Robust spawn check using >= and the boolean flag
+            if (this.gameState === 'playing' && this.tick >= this.bossConfig.spawnTick && !this.bossSpawned) { 
+                this.bossSpawned = true;
+                
                 const spawnX = this.world.width / 2;
                 const spawnY = this.world.height / 2;
 
