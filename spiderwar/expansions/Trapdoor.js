@@ -103,7 +103,9 @@ export const TrapdoorExpansion = {
 
                             for (let i = 0; i < cell.length; i++) {
                                 let e = cell[i];
-                                if (e.team && e.team !== entity.team && e.hp > 0) {
+                                
+                                // 🚨 FIXED: Exclude Corpses, Hazards, Buildings, and Cloaked enemies!
+                                if (e.team && e.team !== entity.team && e.team !== 'dead' && !e.isCloaked && e.hp > 0 && (e instanceof Spider || e.isBoss)) {
                                     if (Math.abs(entity.x - e.x) > radius || Math.abs(entity.y - e.y) > radius) continue;
                                     if (MathUtils.distSq(entity.x, entity.y, e.x, e.y) < radiusSq) {
                                         e.hp -= TRAPDOOR_CONFIG.burstDamage;
@@ -143,6 +145,10 @@ export const TrapdoorExpansion = {
                 
                 // 🚀 [ASSET INTEGRATION] Draw the pixel art dirt mound!
                 if (this.burrowState === 2) {
+                    
+                    // 🚨 FIXED: The enemy Trapdoor mound is completely invisible to the player until it erupts!
+                    if (this.team !== 'black') return;
+                    
                     if (!this.moundLoaded && gameObj.assets) {
                         this.moundSprite = gameObj.assets.get(this.moundSrc);
                         if (this.moundSprite) this.moundLoaded = true;
