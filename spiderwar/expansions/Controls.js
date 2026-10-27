@@ -303,7 +303,7 @@ export const AdvancedUnitControlExpansion = {
                         game.bus.emit('selectionChanged');
                         
                         // 🧃 [JUICE] Visual click indicator on ground
-                        game.bus.emit('particles', {x: worldX, y: worldY, color: 'rgba(255,255,255,0.5)', count: 5});
+                        if (!clickedStruct) this.bus.emit('particles', {x: worldX, y: worldY, color: 'rgba(255,255,255,0.5)', count: 5});
                     }
                 }
             }
@@ -514,6 +514,13 @@ export const ConstructionExpansion = {
     patch: (game) => {
         game.expansions.patchClass(Queen, 'update', function(original, gameObj) {
             
+            // 🚨 FIXED: If stunned, she cannot build. Pass to original to process the freeze effect!
+            if (this.stunTimer > 0) {
+                if (this.activeConstruction) this.activeConstruction.isPaused = true;
+                original.call(this, gameObj);
+                return;
+            }
+
             // 1. Actively Constructing
             if (this.activeConstruction) {
                 if (this.activeConstruction.hp <= 0) {
@@ -525,6 +532,14 @@ export const ConstructionExpansion = {
                 } 
                 else if (MathUtils.distSq(this.activeConstruction.x, this.activeConstruction.y, this.x, this.y) <= CONTROLS_CONFIG.buildRangeSq) { 
                     
+                    // 🚨 FIXED: If an enemy gets in melee range, pause building and defend yourself!
+                    let nearestEnemy = gameObj.getNearestEnemy(this.x, this.y, this.team, 100, true);
+                    if (nearestEnemy) {
+                        this.activeConstruction.isPaused = true;
+                        original.call(this, gameObj);
+                        return;
+                    }
+
                     this.activeConstruction.buildProgress += CONTROLS_CONFIG.buildSpeed;
                     this.activeConstruction.isPaused = false;
                     
@@ -546,6 +561,13 @@ export const ConstructionExpansion = {
                         gameObj.bus.emit('playSound', 'build'); 
                         this.activeConstruction = null;
                     }
+                    
+                    // 🚨 FIXED: Spoof the command target so original.call processes debuffs but prevents the AI from wandering off!
+                    let cachedTarget = this.commandTarget;
+                    this.commandTarget = { x: this.x, y: this.y };
+                    original.call(this, gameObj); 
+                    this.commandTarget = cachedTarget;
+                    
                     return; 
                 } else {
                     this.activeConstruction.isPaused = true;
