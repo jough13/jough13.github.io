@@ -1050,109 +1050,87 @@ const NEUTRON_ACTIVATION_DATA = [{
         productSymbol: 'Ca-45',
         abundance: 2.086
     },
+    {
+        targetSymbol: 'Cr-50',
+        name: 'Chromium-50',
+        atomicWeight: 49.946,
+        thermalCrossSection_barns: 15.9,
+        productSymbol: 'Cr-51',
+        abundance: 4.345
+    },
+    {
+        targetSymbol: 'Al-27',
+        name: 'Aluminum-27',
+        atomicWeight: 26.981,
+        thermalCrossSection_barns: 0.231,
+        productSymbol: 'Al-28',
+        abundance: 100
+    },
+    {
+        targetSymbol: 'Mg-26',
+        name: 'Magnesium-26',
+        atomicWeight: 25.982,
+        thermalCrossSection_barns: 0.038,
+        productSymbol: 'Mg-27',
+        abundance: 11.01
+    },
+    {
+        targetSymbol: 'Mn-55',
+        name: 'Manganese-55',
+        atomicWeight: 54.938,
+        thermalCrossSection_barns: 13.3,
+        productSymbol: 'Mn-56',
+        abundance: 100
+    },
 ].sort((a, b) => a.name.localeCompare(b.name));
 
-// --- Updated Data: Expanded Material & Shielding Data ---
+// --- Material & Shielding Data ---
 
 // 1. Expanded Composite Materials
 const COMPOSITE_MATERIALS_DATA = {
     'Ordinary Concrete': {
         density_g_cm3: 2.3,
-        composition: [{
-                element: 'Sodium-23',
-                targetSymbol: 'Na-23',
-                massFraction: 0.01
-            },
-            {
-                element: 'Iron-58',
-                targetSymbol: 'Fe-58',
-                massFraction: 0.015 * 0.0028
-            },
-            {
-                element: 'Cobalt-59',
-                targetSymbol: 'Co-59',
-                massFraction: 0.00001
-            },
-            {
-                element: 'Europium-151',
-                targetSymbol: 'Eu-151',
-                massFraction: 0.000001
-            },
-            {
-                element: 'Calcium-44',
-                targetSymbol: 'Ca-44',
-                massFraction: 0.08 * 0.02086
-            }
+        composition: [
+            { element: 'Sodium-23', targetSymbol: 'Na-23', massFraction: 0.01 },
+            { element: 'Iron-58', targetSymbol: 'Fe-58', massFraction: 0.015 },
+            { element: 'Cobalt-59', targetSymbol: 'Co-59', massFraction: 0.00001 },
+            { element: 'Europium-151', targetSymbol: 'Eu-151', massFraction: 0.000001 },
+            { element: 'Calcium-44', targetSymbol: 'Ca-44', massFraction: 0.08 }
         ]
     },
     'Standard Human Tissue': {
         density_g_cm3: 1.0,
-        composition: [{
-            element: 'Sodium-23',
-            targetSymbol: 'Na-23',
-            massFraction: 0.0015
-        }]
+        composition: [
+            { element: 'Sodium-23', targetSymbol: 'Na-23', massFraction: 0.0015 }
+        ]
     },
     'Stainless Steel 304': {
         density_g_cm3: 8.0,
-        composition: [{
-                element: 'Iron-58',
-                targetSymbol: 'Fe-58',
-                massFraction: 0.70 * 0.0028
-            },
-            {
-                element: 'Cobalt-59',
-                targetSymbol: 'Co-59',
-                massFraction: 0.001
-            },
-            {
-                element: 'Chromium-50',
-                targetSymbol: 'Cr-50',
-                massFraction: 0.19 * 0.0435
-            }
+        composition: [
+            { element: 'Iron-58', targetSymbol: 'Fe-58', massFraction: 0.70 },
+            { element: 'Cobalt-59', targetSymbol: 'Co-59', massFraction: 0.001 },
+            { element: 'Chromium-50', targetSymbol: 'Cr-50', massFraction: 0.19 }
         ]
     },
     'Aluminum 6061': {
         density_g_cm3: 2.7,
-        composition: [{
-                element: 'Aluminum-27',
-                targetSymbol: 'Al-27',
-                massFraction: 0.97
-            }, // Activates to Al-28 (short) -> Na-24 (via n,alpha)
-            {
-                element: 'Magnesium-26',
-                targetSymbol: 'Mg-26',
-                massFraction: 0.01 * 0.11
-            }, // Activates to Mg-27
-            {
-                element: 'Copper-63',
-                targetSymbol: 'Cu-63',
-                massFraction: 0.003 * 0.69
-            }
+        composition: [
+            { element: 'Aluminum-27', targetSymbol: 'Al-27', massFraction: 0.97 }, // Activates to Al-28
+            { element: 'Magnesium-26', targetSymbol: 'Mg-26', massFraction: 0.01 }, // Activates to Mg-27
+            { element: 'Copper-63', targetSymbol: 'Cu-63', massFraction: 0.003 }
         ]
     },
     'Standard Soil': {
         density_g_cm3: 1.6,
-        composition: [{
-                element: 'Sodium-23',
-                targetSymbol: 'Na-23',
-                massFraction: 0.006
-            }, // Na-24
-            {
-                element: 'Manganese-55',
-                targetSymbol: 'Mn-55',
-                massFraction: 0.0008
-            }, // Mn-56
-            {
-                element: 'Aluminum-27',
-                targetSymbol: 'Al-27',
-                massFraction: 0.07
-            } // Al-28
+        composition: [
+            { element: 'Sodium-23', targetSymbol: 'Na-23', massFraction: 0.006 }, // Na-24
+            { element: 'Manganese-55', targetSymbol: 'Mn-55', massFraction: 0.0008 }, // Mn-56
+            { element: 'Aluminum-27', targetSymbol: 'Al-27', massFraction: 0.07 } // Al-28
         ]
     }
 };
 
-// 2. Expanded Neutron Shielding Data (Split Fission vs 14 MeV)
+// 2. Neutron Shielding Data (Split Fission vs 14 MeV)
 // Values approximated from NCRP 38 / 79 & IAEA
 const NEUTRON_SHIELDING_DATA = {
     'Water': {
