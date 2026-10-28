@@ -255,6 +255,8 @@ const WRS_Calculator = ({ dcgl, setDcgl, referenceData, setReferenceData, survey
         if (isNaN(dcgl_val)) { setError('DCGL must be a valid number.'); return; }
         if (refData.length < 5 || suData.length < 5) { setError('Need at least 5 data points per area.'); return; }
         
+        const dcglExceeded = suData.some(val => val > dcgl_val);
+
         let combined = [...refData.map(v => ({ value: v + dcgl_val, group: 'ref' })), ...suData.map(v => ({ value: v, group: 'su' }))].sort((a, b) => a.value - b.value);
         
         // Handle Ties
@@ -265,23 +267,26 @@ const WRS_Calculator = ({ dcgl, setDcgl, referenceData, setReferenceData, survey
         }
         
         const W_rs = combined.filter(d => d.group === 'ref').reduce((sum, d) => sum + d.rank, 0);
-        const n = refData.length; const m = suData.length; const N = n + m;
+        
+        // --- FIXED: Swap m and n notation to match MARSSIM ---
+        const m = refData.length; const n = suData.length; const N = m + n;
         
         let C_w, note;
 
         // MARSSIM Rule: Use exact critical values for small sample sizes (<= 20)
-        if (n <= 20 && m <= 20) {
-            // Note: Helper expects (Survey Unit Size, Reference Area Size)
-            C_w = getExactWRSCriticalValue(m, n, safeParseFloat(alpha));
-            note = `Used exact WRS distribution for small samples (Ref=${n}, SU=${m}).`;
+        if (m <= 20 && n <= 20) {
+            // Note: Helper expects (Survey Unit Size, Reference Area Size, Alpha) => (n, m, alpha)
+            C_w = getExactWRSCriticalValue(n, m, safeParseFloat(alpha));
+            note = `Used exact WRS distribution for small samples (Ref=${m}, SU=${n}).`;
         } else {
-            const mean_W = (n * (N + 1)) / 2; 
+            // Mean for Reference Area rank sum
+            const mean_W = (m * (N + 1)) / 2; 
             
             // Variance with tie correction
             const tieGroups = {};
             combined.forEach(item => { tieGroups[item.value] = (tieGroups[item.value] || 0) + 1; });
             const tieCorrection = Object.values(tieGroups).filter(t => t > 1).reduce((sum, t) => sum + (Math.pow(t, 3) - t), 0);
-            const variance_W = ((n * m * (N + 1)) / 12) - ((n * m * tieCorrection) / (12 * N * (N - 1)));
+            const variance_W = ((m * n * (N + 1)) / 12) - ((m * n * tieCorrection) / (12 * N * (N - 1)));
             
             C_w = Math.round(mean_W + (zScores[alpha] * Math.sqrt(variance_W)) + 0.5); 
             note = `Used Large Sample Approximation (Normal) for N=${N}.`;
@@ -295,23 +300,43 @@ const WRS_Calculator = ({ dcgl, setDcgl, referenceData, setReferenceData, survey
         
         let warningMsg = null;
         if (refStats.sd > suStats.sd * 1.5) warningMsg = "Note: Ref area variability is significantly higher than Survey Unit.";
+
+        // EMC Logic
+        let finalConclusion = 'FAIL';
+        let finalReason = `The rank sum (${W_rs}) is less than the critical value (${C_w}).`;
+
+        if (wrsTestPassed) {
+            if (dcglExceeded) {
+                finalConclusion = 'PASS_EMC';
+                finalReason = `The WRS test passes, but an Elevated Measurement Comparison (EMC) is required because at least one measurement exceeds the DCGL.`;
+            } else {
+                finalConclusion = 'PASS';
+                finalReason = `The rank sum (${W_rs}) is greater than or equal to the critical value (${C_w}), and no measurements exceed the DCGL.`;
+            }
+        }
         
         setResult({
-            conclusion: wrsTestPassed ? 'PASS' : 'FAIL',
-            reason: wrsTestPassed ? `Rank Sum (${W_rs}) ≥ Critical Value (${C_w}).` : `Rank Sum (${W_rs}) < Critical Value (${C_w}).`,
-            n, m, W_rs, C_w, note, rankedData: combined, hotCount: hotMeasurements.length, refStats, suStats, warning: warningMsg
+            conclusion: finalConclusion,
+            reason: finalReason,
+            m, n, W_rs, C_w, note, rankedData: combined, hotCount: hotMeasurements.length, refStats, suStats, warning: warningMsg
         });
     };
     
     const handleSaveToHistory = () => {
         if (result) {
-            addHistory({ id: Date.now(), type: 'WRS Test', icon: ICONS.labStats, inputs: `Ref(n)=${result.n}, SU(m)=${result.m}, DCGL=${dcgl} ${useUnityRule ? '(Unity Rule)' : ''}`, result: result.conclusion, view: VIEWS.MARSSIM_TESTS });
+            addHistory({ id: Date.now(), type: 'WRS Test', icon: ICONS.labStats, inputs: `Ref(m)=${result.m}, SU(n)=${result.n}, DCGL=${dcgl} ${useUnityRule ? '(Unity Rule)' : ''}`, result: result.conclusion, view: VIEWS.MARSSIM_TESTS });
             addToast("Saved to history!");
         }
     };
     
     React.useEffect(() => { handleCalculate(); }, [dcgl, referenceData, surveyData, alpha, useUnityRule]);
     
+    const resultStyles = {
+        PASS: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', text: 'text-green-800 dark:text-green-200', display: 'SURVEY UNIT PASSES' },
+        PASS_EMC: { container: 'bg-yellow-100 dark:bg-yellow-900/50', title: 'text-yellow-600 dark:text-yellow-400', text: 'text-yellow-800 dark:text-yellow-200', display: 'PASS (EMC Required)' },
+        FAIL: { container: 'bg-red-100 dark:bg-red-900/50', title: 'text-red-600 dark:text-red-400', text: 'text-red-800 dark:text-red-200', display: 'SURVEY UNIT FAILS' }
+    };
+
     return (
         <div className="space-y-4">
             <div className="p-4 bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800 rounded-lg text-sm text-sky-800 dark:text-sky-200">
@@ -338,11 +363,17 @@ const WRS_Calculator = ({ dcgl, setDcgl, referenceData, setReferenceData, survey
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <div className="flex justify-between items-center"><label className="block text-sm font-medium">Reference Area (n)</label><button onClick={() => setReferenceData('')} className="text-xs text-sky-600 dark:text-sky-400 hover:underline">Clear</button></div>
+                        <div className="flex justify-between items-center">
+                            <label className="block text-sm font-medium">Reference Area (m)</label>
+                            <button onClick={() => setReferenceData('')} className="text-xs text-sky-600 dark:text-sky-400 hover:underline">Clear</button>
+                        </div>
                         <textarea value={referenceData} onChange={e => setReferenceData(e.target.value)} rows="8" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm border border-slate-300 dark:border-slate-600" placeholder="1.2, 1.5..."></textarea>
                     </div>
                     <div>
-                        <div className="flex justify-between items-center"><label className="block text-sm font-medium">Survey Unit (m) {useUnityRule ? '(SOF)' : '(pCi/g)'}</label><button onClick={() => setSurveyData('')} className="text-xs text-sky-600 dark:text-sky-400 hover:underline">Clear</button></div>
+                        <div className="flex justify-between items-center">
+                            <label className="block text-sm font-medium">Survey Unit (n) {useUnityRule ? '(SOF)' : '(pCi/g)'}</label>
+                            <button onClick={() => setSurveyData('')} className="text-xs text-sky-600 dark:text-sky-400 hover:underline">Clear</button>
+                        </div>
                         <textarea value={surveyData} onChange={e => setSurveyData(e.target.value)} rows="8" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm border border-slate-300 dark:border-slate-600" placeholder="2.2, 2.5..."></textarea>
                     </div>
                 </div>
@@ -352,14 +383,17 @@ const WRS_Calculator = ({ dcgl, setDcgl, referenceData, setReferenceData, survey
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             
             {result && (
-                <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${result.conclusion === 'PASS' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-                    <p className={`text-3xl font-extrabold ${result.conclusion === 'PASS' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                        UNIT {result.conclusion === 'PASS' ? 'PASSES' : 'FAILS'}
+                <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${resultStyles[result.conclusion].container}`}>
+                    <p className={`text-3xl font-extrabold ${resultStyles[result.conclusion].title}`}>
+                        {resultStyles[result.conclusion].display}
                     </p>
-                    <p className={`mt-2 text-sm ${result.conclusion === 'PASS' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>{result.reason}</p>
-                    <div className="grid grid-cols-2 gap-4 mt-4 text-sm border-t border-slate-300 dark:border-slate-600 pt-2">
-                        <p>Rank Sum: <span className="font-bold">{result.W_rs}</span></p><p>Critical: <span className="font-bold">{result.C_w}</span></p>
-                        <p>Hot Spots ({'>'}Max Ref): <span className="font-bold">{result.hotCount}</span></p>
+                    <p className={`mt-2 text-sm ${resultStyles[result.conclusion].text}`}>{result.reason}</p>
+                    <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-2 text-sm">
+                        <p>Reference Samples (m): <span className="font-bold">{result.m}</span></p>
+                        <p>Survey Samples (n): <span className="font-bold">{result.n}</span></p>
+                        <p>Rank Sum (W&darr;rs): <span className="font-bold">{result.W_rs}</span></p>
+                        <p>Critical Value (C&darr;w): <span className="font-bold">{result.C_w}</span></p>
+                        <p className="col-span-2">Hot Spots ({'>'}Max Ref): <span className="font-bold">{result.hotCount}</span></p>
                     </div>
                     <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 opacity-80">{result.note}</p>
                 </div>
@@ -368,7 +402,7 @@ const WRS_Calculator = ({ dcgl, setDcgl, referenceData, setReferenceData, survey
     );
 };
 
-// 3. UPDATED: EMC Evaluation (Multi-Spot Support)
+// 3. EMC Evaluation (Multi-Spot Support)
 const EMC_Evaluation_Calculator = ({ dcglw, setDcglw, areaFactor, setAreaFactor, avgConc, setAvgConc, maxConc, setMaxConc, result, setResult, error, setError }) => {
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
