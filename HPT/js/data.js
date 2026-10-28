@@ -1464,6 +1464,9 @@ const NRC_EXEMPT_QUANTITIES = {
 
 const getNrcExemptQuantity = (nuclide) => {
     if (!nuclide) return null;
+    
+    // Stable isotopes are not radioactive and therefore do not have an exempt quantity
+    if (nuclide.halfLife === 'Stable' || nuclide.category === 'Stable/Reference') return null;
 
     // 1. Check explicit table
     if (NRC_EXEMPT_QUANTITIES[nuclide.symbol]) {
