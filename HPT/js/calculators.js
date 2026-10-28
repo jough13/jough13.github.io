@@ -7820,12 +7820,12 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                 if (doseMethod === METHOD_10CFR20) {
                     const I_uCi = I_val * intakeUnitFactors[intakeUnit];
                     const ALI = selectedNuclide.dosimetry.ALI?.[dataKey];
-                    if (!ALI) { setError(`ALI not found for ${dataKey}`); setResult(null); return; }
+                    if (ALI === undefined || ALI === null) { setError(`ALI not found for ${dataKey}`); setResult(null); return; }
                     cede_mrem = (I_uCi / ALI) * 5000;
                 } else {
                     const I_Bq = I_val * intakeUnitFactorsBq[intakeUnit];
                     const DCF = selectedNuclide.dosimetry.DCF?.[dataKey];
-                    if (!DCF) { setError(`DCF not found for ${dataKey}`); setResult(null); return; }
+                    if (DCF === undefined || DCF === null) { setError(`DCF not found for ${dataKey}`); setResult(null); return; }
                     cede_mrem = (I_Bq * DCF) * 100000;
                 }
                 setResult({ 
