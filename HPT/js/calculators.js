@@ -4620,23 +4620,19 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
                 const factors = { 'hours': 1, 'days': 24 };
                 T_half_hours_eff = effHL * factors[effectiveHalfLifeUnit];
                 
-                // SAFETY: Clamp T_eff instead of throwing error
                 if (T_half_hours_eff > T_half_hours_phys) {
                     T_half_hours_eff = T_half_hours_phys;
-                    // Warning toast could go here, but silent clamp prevents crash
                 }
             } else { T_half_hours_eff = T_half_hours_phys; }
             
             // 3. Dose Calc (NUREG-1556 Vol 9 Eq 1)
             const gamma_app = safeParseFloat(selectedNuclide.gammaConstant); // R·m²/hr·Ci
 
-            // Define 'E' and 'att' from state so the math formulas don't throw ReferenceErrors
             const E = safeParseFloat(occupancyFactor);
             const att = safeParseFloat(attenuation);
 
-            // Standardize inputs to match the constant's native units
             const A0_Ci = A0_mCi / 1000; 
-            const d_m = safeParseFloat(distance); // 'distance' state is already in meters
+            const d_m = safeParseFloat(distance); 
 
             if (isNaN(E) || isNaN(att) || isNaN(d_m) || d_m <= 0) {
                 throw new Error("Please ensure Occupancy, Distance, and Attenuation are valid numbers.");
@@ -4647,8 +4643,8 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
             
             if (!isNaN(rateCheck) && rateCheck > 0) {
                 const rate_mrem_hr_at_1m = rateCheck; 
-                // Simply convert mrem to rem (R)
-                rate_R_hr = rate_mrem_hr_at_1m / 1000; 
+                // Convert mrem to rem (R) and apply inverse square law for the target distance
+                rate_R_hr = (rate_mrem_hr_at_1m / 1000) / Math.pow(d_m, 2); 
                 basisText = 'Measured 1m rate basis';
             } else {
                 // Fall back to theoretical calculation using the nuclide's gamma constant
@@ -4699,7 +4695,6 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
                 <div><label className="text-xs font-bold mb-1 block">Distance (m)</label><input type="number" inputMode="decimal" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
             </div>
 
-            {/* Added missing UI fields for Attenuation and Effective Half-Life */}
             <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-200 dark:border-slate-700">
                 <div>
                     <label className="text-xs font-bold mb-1 block">Tissue Atten. Factor</label>
@@ -4720,7 +4715,7 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             {result && (
                 <div className={`p-4 rounded-lg text-center mt-4 relative ${result.pass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-                    <div className="absolute top-2 right-2"><button onClick={handleSave}><Icon path={ICONS.notepad} className="w-5 h-5 text-slate-500 hover:text-black"/></button></div>
+                    <div className="absolute top-2 right-2"><button onClick={handleSave} className="text-slate-400 hover:text-black dark:hover:text-white transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></div>
                     <p className={`text-2xl font-extrabold ${result.pass ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>{result.title}</p>
                     <div className="mt-2 text-sm font-medium text-slate-700 dark:text-slate-300">{result.details.map((d,i) => <p key={i}>{d}</p>)}</div>
                 </div>
