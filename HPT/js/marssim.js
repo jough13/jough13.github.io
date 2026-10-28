@@ -185,6 +185,7 @@ const SignTest_Calculator = ({ dcgl, setDcgl, dataInput, setDataInput, alpha, se
                         <p>Crit (k): <span className="font-bold">{result.k_val}</span></p>
                     </div>
                     {result.note && <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 opacity-80">{result.note}</p>}
+                    {result.warning && <p className="mt-2 text-xs font-bold text-amber-600 dark:text-amber-400">{result.warning}</p>}
                 </div>
             )}
         </div>
@@ -403,6 +404,7 @@ const WRS_Calculator = ({ dcgl, setDcgl, referenceData, setReferenceData, survey
                         <p className="col-span-2">Hot Spots ({'>'}Max Ref): <span className="font-bold">{result.hotCount}</span></p>
                     </div>
                     <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 opacity-80">{result.note}</p>
+                    {result.warning && <p className="mt-2 text-xs font-bold text-amber-600 dark:text-amber-400">{result.warning}</p>}
                 </div>
             )}
         </div>
@@ -802,27 +804,17 @@ const MARSSIM_Statistical_Tests = () => {
             
             // Clears ONLY the statistical samples (Random, Square, Triangular)
             const handleClearPoints = () => {
-            const biasedOnly = plottedPoints.filter(p => p.type === 'Biased');
-            setPlottedPoints(biasedOnly);
-            
-            // Remove layers that are NOT the origin marker and NOT matched to a biased point ID
-            samplePointsLayerRef.current.eachLayer(layer => {
-            if (layer !== originMarkerRef.current) {
-              // Check if this layer corresponds to a biased point we are keeping
-              // Biased points are stored in state, so we can check IDs if we attached them to layers
-              // Simplified approach: Clear all points layer, re-add biased points
-              samplePointsLayerRef.current.removeLayer(layer);
-            }
-            });
-            
-            // Re-add biased points visually
-            biasedOnly.forEach(p => {
-            const latLng = { lat: p.lat, lng: p.lng };
-            const popupContent = `<b>Bias Sample Point #${p.id}</b><br>Type: Biased<br>Lat: ${p.lat.toFixed(7)}<br>Lng: ${p.lng.toFixed(7)}`;
-            const marker = L.circleMarker(latLng, { radius: 4, className: 'biased-sample-marker' }).bindPopup(popupContent);
-            marker.myCustomId = p.id;
-            drawnItemsRef.current.addLayer(marker); // Biased points live in drawnItems so they persist
-            });
+                // Use the ref to ensure we have the most up-to-date points during draw events
+                const biasedOnly = plottedPointsRef.current.filter(p => p.type === 'Biased');
+                setPlottedPoints(biasedOnly);
+                
+                if (samplePointsLayerRef.current) {
+                    samplePointsLayerRef.current.eachLayer(layer => {
+                        if (layer !== originMarkerRef.current) {
+                            samplePointsLayerRef.current.removeLayer(layer);
+                        }
+                    });
+                }
             };
             
             const handleClearAll = () => {
@@ -1123,14 +1115,26 @@ const MARSSIM_Statistical_Tests = () => {
                   marker.bindPopup(popupContent);
             
                   marker.on('contextmenu', () => {
-                       // Remove from map
-                       samplePointsLayerRef.current.removeLayer(marker);
+                       // Remove from the correct map layer
+                       if (point.type === 'Biased') {
+                           drawnItemsRef.current.removeLayer(marker);
+                       } else {
+                           samplePointsLayerRef.current.removeLayer(marker);
+                       }
                        
                        // Update state
                        setPlottedPoints(prev => prev.filter(p => p.id !== point.id));
                        
                        addToast(`Point #${point.id} removed.`);
                    });
+            
+                  // Add to ONLY the correct layer
+                  if (point.type === 'Biased') {
+                      marker.myCustomId = point.id;
+                      drawnItemsRef.current.addLayer(marker); // Biased points live in drawnItems
+                  } else {
+                      marker.addTo(samplePointsLayerRef.current); // Grid points live in samplePointsLayer
+                  }
             
                   marker.addTo(samplePointsLayerRef.current);
             
