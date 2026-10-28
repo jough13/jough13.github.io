@@ -698,8 +698,13 @@
             }, [scientificCalculatorState]);
             
             const [scratchpadNotes, setScratchpadNotes] = React.useState(
-            () => localStorage.getItem('user_scratchpad_notes') || ''
+                () => localStorage.getItem('user_scratchpad_notes') || ''
             );
+            
+            // --- Save Scratchpad notes to localStorage ---
+            React.useEffect(() => {
+                localStorage.setItem('user_scratchpad_notes', scratchpadNotes);
+            }, [scratchpadNotes]);
             
             const [sortBy, setSortBy] = React.useState(() => localStorage.getItem('filterSortBy') || 'name');
             const [sortOrder, setSortOrder] = React.useState(() => localStorage.getItem('filterSortOrder') || 'asc');
@@ -1071,22 +1076,15 @@
             const renderActiveView = () => {
             const filterProps = { sortBy, setSortBy, sortOrder, setSortOrder, selectedCategory, setSelectedCategory, allCategories, selectedEmissionType, setSelectedEmissionType, allEmissionTypes, selectedCommonality, setSelectedCommonality, allCommonalityCategories, minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy, minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy, minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy, minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit, clearFilters: handleClearFilters };
             switch (activeView) {
-            case VIEWS.DATABASE: return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} scrollPositionRef={scrollPositionRef} handleClearFilters={handleClearFilters} />;
-            case VIEWS.CALCULATOR: return <DecayTools radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} theme={theme} />;
-            case VIEWS.MDA:
-               return <MDACalculator onNavClick={handleNavClick} onDeepLink={handleGoToDetectorResponse} />;
-            case VIEWS.MARSSIM_SAMPLES: return <MARSSIM_SampleDesign />;
-            case VIEWS.WRS_TEST: return <WRS_Calculator />;
-            case VIEWS.EMC_TEST: return <EMC_Calculator />;
-            
-            case VIEWS.SERIES_CALCULATOR:
-            return <DecaySeriesCalculator
-            radionuclides={radionuclides}
-            decaySeriesData={decaySeriesData}
-            theme={theme}
-            onNuclideClick={handleNuclideSelection}
-            />;
-            case VIEWS.EQUILIBRIUM: return <EquilibriumCalculator radionuclides={radionuclides} theme={theme} />;
+            case 'database': return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} />;
+            case 'calculator': return <DecayCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
+            case 'mda': return <MDACalculator />;
+            case 'marssim': return <MARSSIM_SampleDesign />; // FIXED: Was MARSSIM_SampleCalculator
+            case 'marssimTests': return <MARSSIM_Statistical_Tests />; // ADDED
+            case 'wrs': return <MARSSIM_Statistical_Tests />; // FIXED: Points to parent container
+            case 'emc': return <MARSSIM_Statistical_Tests />; // FIXED: Points to parent container
+            case 'seriesCalculator': return <DecaySeriesCalculator radionuclides={radionuclides} decaySeriesData={decaySeriesData} />;
+            case 'equilibrium': return <EquilibriumCalculator radionuclides={radionuclides} />;
             case VIEWS.RADON: return <RadonCalculator />;
             case VIEWS.COMPARE: return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} comparisonList={comparisonList} onAddToCompare={handleAddToCompare} onRemoveFromCompare={handleRemoveFromCompare} onClearCompare={handleClearCompare} />;
             case VIEWS.ACTIVITY_MASS: return <ActivityAndMassTools radionuclides={radionuclides} />;
