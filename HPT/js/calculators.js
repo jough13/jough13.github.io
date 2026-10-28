@@ -696,39 +696,36 @@ const StandardDecayCalculator = ({
 
     // --- Branching Path Detection ---
     React.useEffect(() => {
-        if (selectedNuclide) {
-            const dStr = selectedNuclide.daughter || '';
-            const rawFraction = selectedNuclide.branchingFraction || 1.0;
+        if (parentNuclide) {
+            const dStr = parentNuclide.daughter || '';
+            const rawFraction = parentNuclide.branchingFraction || 1.0;
             let newPaths = [];
 
-            if (dStr.includes(' or ')) {
-                const parts = dStr.split(' or ');
+            if (dStr.includes(' or ') || dStr.includes(' / ')) {
+                const parts = dStr.split(/\s+or\s+|\s*\/\s*/);
                 const path1Name = parts[0].split('(')[0].trim();
                 const path2Name = parts[1].split('(')[0].trim();
 
                 newPaths.push({ name: path1Name, fraction: rawFraction, label: parts[0].trim() });
-                
                 const remainder = rawFraction < 1.0 ? (1.0 - rawFraction) : 0;
                 newPaths.push({ name: path2Name, fraction: safeParseFloat(remainder.toFixed(4)), label: parts[1].trim() });
                 
                 setDecayPaths(newPaths);
                 setSelectedPathIndex(0);
-                if (calculationMode === MODE_DAUGHTER) setBranchingFraction(newPaths[0].fraction.toString());
+                setBranchingFraction(newPaths[0].fraction.toString());
             } 
             else {
                 const cleanName = dStr.split('(')[0].trim();
                 newPaths.push({ name: cleanName, fraction: rawFraction, label: dStr });
                 setDecayPaths(newPaths);
                 setSelectedPathIndex(0);
-                
-                if (calculationMode === MODE_DAUGHTER) {
-                    setBranchingFraction(rawFraction.toString());
-                }
+                setBranchingFraction(rawFraction.toString());
             }
         } else {
             setDecayPaths([]);
+            setDaughterNuclide(null);
         }
-    }, [selectedNuclide, calculationMode, setBranchingFraction]);
+    }, [parentNuclide]);
 
     const handlePathChange = (e) => {
         const idx = parseInt(e.target.value);
@@ -932,7 +929,12 @@ const StandardDecayCalculator = ({
             if (calculationMode === MODE_DAUGHTER) {
                 const activePath = decayPaths[selectedPathIndex];
                 const daughterName = activePath ? activePath.name : selectedNuclide.daughter.split('(')[0].trim();
-                daughter = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
+                
+                // FIX: Check both name and symbol
+                daughter = radionuclides.find(n => 
+                    normalizeString(n.name) === normalizeString(daughterName) || 
+                    normalizeString(n.symbol) === normalizeString(daughterName)
+                );
                 
                 if (daughter) {
                     const T_half_daughter_seconds = parseHalfLifeToSeconds(daughter.halfLife);
@@ -1716,10 +1718,10 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
 
     // --- CONFIG ---
     const DETECTORS = React.useMemo(() => ({
-        'nai_1x1': { label: '1" x 1" NaI(Tl)', type: 'gamma_only', refCpmPerMicroR: 175, radius_cm: 1.27 },
-        'nai_2x2': { label: '2" x 2" NaI(Tl)', type: 'gamma_only', refCpmPerMicroR: 900, radius_cm: 2.54 },
-        'gm_pancake': { label: 'Pancake GM (Ludlum 44-9)', type: 'mix', refBetaEff: 0.20, alphaEff: 0.15, gammaCpmPerMicroR: 3.3, radius_cm: 2.2 },
-        'zns_alpha': { label: 'ZnS(Ag) Scintillator', type: 'alpha_only', alphaEff: 0.25, radius_cm: 2.5 }
+        'nai_1x1': { label: '1" x 1" NaI(Tl)', type: 'gamma_only', refCpmPerMicroR: 175, radius_cm: 1.27, window_g_cm2: 0 },
+        'nai_2x2': { label: '2" x 2" NaI(Tl)', type: 'gamma_only', refCpmPerMicroR: 900, radius_cm: 2.54, window_g_cm2: 0 },
+        'gm_pancake': { label: 'Pancake GM (Ludlum 44-9)', type: 'mix', refBetaEff: 0.20, alphaEff: 0.15, gammaCpmPerMicroR: 3.3, radius_cm: 2.2, window_g_cm2: 0.0017 },
+        'zns_alpha': { label: 'ZnS(Ag) Scintillator', type: 'alpha_only', alphaEff: 0.25, radius_cm: 2.5, window_g_cm2: 0.0008 }
     }), []);
             
     // Updated Fallbacks to be Conservative (Co-60 energies)
@@ -1888,7 +1890,8 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                     const shield_g_cm2 = shieldMaterial !== 'None' ? t_cm * shieldDensity : 0;
                     const densityAir = 0.0012; 
                     const air_g_cm2 = d_cm * densityAir;
-                    const total_g_cm2 = shield_g_cm2 + air_g_cm2;
+                    // FIX: Add the detector window density thickness
+                    const total_g_cm2 = shield_g_cm2 + air_g_cm2 + (detInfo.window_g_cm2 || 0);
                     let betasBlocked = 0;
 
                     selectedNuclide.emissionEnergies.beta.forEach(betaStr => {
@@ -1910,7 +1913,7 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
 
                     if (betasBlocked > 0) {
                         if (betasBlocked === selectedNuclide.emissionEnergies.beta.length) {
-                            attenuationMsg.push("All betas ranged out or blocked by shield/air.");
+                            attenuationMsg.push("All betas ranged out or blocked by shield/air/window.");
                         } else {
                             attenuationMsg.push("Some lower-energy betas in the spectrum were blocked.");
                         }
@@ -4810,29 +4813,13 @@ const EffectiveHalfLifeCalculator = ({ radionuclides }) => {
             'minutes': 1/60, 
             'hours': 1, 
             'days': 24, 
-            'months': 730.5, // Added to prevent silent hour fallbacks
-            'years': 8766    // Updated from 8760 for cross-component consistency
+            'months': 730.5, 
+            'years': 8766    
         }; 
         return val * (factors[unit] || 1); 
     };
+    
     const formatTime = (hours) => { if (hours < 1) return `${(hours * 60).toFixed(2)} min`; if (hours > 48) return `${(hours / 24).toFixed(2)} days`; return `${hours.toFixed(2)} hours`; };
-    const parseDbHalfLife = (hlString) => {
-        if (!hlString || hlString === 'Stable') return null;
-        const parts = hlString.split(' '); 
-        if (parts.length < 2) return null;
-        const val = safeParseFloat(parts[0]); 
-        const unit = parts[1].toLowerCase();
-        let normUnit = 'hours';
-        
-        if (unit.startsWith('s')) normUnit = 'seconds'; 
-        else if (unit.startsWith('m') && !unit.startsWith('mo')) normUnit = 'minutes'; 
-        else if (unit.startsWith('mo')) normUnit = 'months'; // Fix: Intercept month units cleanly
-        else if (unit.startsWith('h')) normUnit = 'hours'; 
-        else if (unit.startsWith('d')) normUnit = 'days'; 
-        else if (unit.startsWith('y')) normUnit = 'years';
-        
-        return toHours(val, normUnit);
-    };
 
     const handleCalculate = () => {
         setError(''); setResult(null);
@@ -4848,9 +4835,10 @@ const EffectiveHalfLifeCalculator = ({ radionuclides }) => {
         } else {
             if (!selectedSymbol) { setError('Please select a radionuclide.'); return; }
             const nuclide = radionuclides.find(n => n.symbol === selectedSymbol);
-            tp_hours = parseDbHalfLife(nuclide.halfLife);
             
-            // FIX 2: Added Infinity check to prevent NaN math if 'Stable' somehow sneaks through
+            // FIX: Use the robust standard parser instead of the faulty custom split
+            tp_hours = parseHalfLifeToSeconds(nuclide.halfLife) / 3600;
+            
             if (!tp_hours || tp_hours === Infinity) { setError('Invalid or stable physical half-life in database.'); return; }
         }
 
@@ -4858,7 +4846,6 @@ const EffectiveHalfLifeCalculator = ({ radionuclides }) => {
         if (isNaN(bioVal) || bioVal <= 0) { setError('Please enter a valid biological half-life.'); return; }
         const tb_hours = toHours(bioVal, bioUnit);
         
-        // Teff = (Tp * Tb) / (Tp + Tb)
         const teff_hours = (tp_hours * tb_hours) / (tp_hours + tb_hours);
         setResult({ nuclide: displaySym, Tp: tp_hours, Tb: tb_hours, Teff: teff_hours, formattedTp: formatTime(tp_hours), formattedTb: formatTime(tb_hours), formattedTeff: formatTime(teff_hours), ratio: (teff_hours / tp_hours) });
     };
