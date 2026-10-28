@@ -7798,8 +7798,8 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                     const A_Ci = A_val * activityFactorsCi[activityUnit];
                     const d_m = d_val * distanceFactorsM[distanceUnit];
                     
-                    // Brems Rule: 6e-4 * Z * E^2 * Activity
-                    const doseRate_R_hr_1m = (6e-4 * matProps.Z * Math.pow(E_max, 2) * A_Ci);
+                    // Brems Rule: 5.8e-5 * Z * E^2 * Activity
+                    const doseRate_R_hr_1m = (5.8e-5 * matProps.Z * Math.pow(E_max, 2) * A_Ci);
                     const finalRate = doseRate_R_hr_1m / Math.pow(d_m, 2);
                     const fraction = 3.5e-4 * matProps.Z * E_max;
                     
@@ -8201,15 +8201,15 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
     }, [calcMode, nuclideSymbol]);
 
     React.useEffect(() => {
-        if (preselectedNuclide) {
-            const symbol = typeof preselectedNuclide === 'object' && preselectedNuclide !== null 
-                ? preselectedNuclide.symbol 
-                : preselectedNuclide;
-                
-            if (shieldingNuclides.find(n => n.symbol === symbol)) {
-                setNuclideSymbol(symbol);
-                setCalcMode('fromSource');
-            }
+        const sym = typeof preselectedNuclide === 'object' && preselectedNuclide !== null 
+            ? preselectedNuclide.symbol 
+            : preselectedNuclide;
+            
+        if (sym && shieldingNuclides.find(n => n.symbol === sym)) {
+            setNuclideSymbol(sym);
+            setCalcMode(MODE_GAMMA_DOSE);
+            setInputMode(INPUT_MODE_DB);
+            setDefinitionMode(DEFINE_BY_SOURCE);
         }
     }, [preselectedNuclide, shieldingNuclides]);
     
@@ -8244,10 +8244,9 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
             // 1. BETA CALCULATION
             if (calcMode === MODE_BETA_RANGE) {
                 let E_max = 0;
-                if (inputMode === INPUT_MODE_DB) {
-                    if (!nuclideSymbol) return;
+                // If a nuclide is selected from the dropdown, use its energy, otherwise use manual input
+                if (nuclideSymbol) {
                     const n = radionuclides.find(r => r.symbol === nuclideSymbol);
-                    // Safely parse the first beta energy directly from the array
                     if (n?.emissionEnergies?.beta?.length > 0) {
                         const betaStr = n.emissionEnergies.beta[0];
                         E_max = safeParseFloat(betaStr);
@@ -8743,15 +8742,13 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
     React.useEffect(() => { if (!doseUnits.includes(doseLimitUnit)) setDoseLimitUnit(doseUnits[1]); }, [doseUnits, doseLimitUnit]);
     
     React.useEffect(() => {
-        if (preselectedNuclide) {
-            const symbol = typeof preselectedNuclide === 'object' && preselectedNuclide !== null 
-                ? preselectedNuclide.symbol 
-                : preselectedNuclide;
-                
-            if (gammaNuclides.find(n => n.symbol === symbol)) {
-                setNuclideSymbol(symbol);
-                setInputMode('fromSource');
-            }
+        const sym = typeof preselectedNuclide === 'object' && preselectedNuclide !== null 
+            ? preselectedNuclide.symbol 
+            : preselectedNuclide;
+            
+        if (sym && gammaNuclides.find(n => n.symbol === sym)) {
+            setNuclideSymbol(sym);
+            setInputMode(INPUT_MODE_SOURCE);
         }
     }, [preselectedNuclide, gammaNuclides]);
     
@@ -10337,7 +10334,7 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
             }
             
             let newExpression = currentState.expression;
-            const isOperator = ['+', '-', '*', '/', '^', '%', '!', '^2', '×', '÷'].includes(val);
+            const isOperator = ['+', '-', '*', '/', '^', '%', '!', '^2', '×', '÷', '^-1'].includes(val);
             
             // Smart Decimal: Prefix "0." if empty or after operator
             if (val === '.') {
@@ -10561,7 +10558,7 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
                 <button onClick={() => handleInput('^2')} className={styles.func}>x²</button>
                 <button onClick={() => handleInput('^')} className={styles.func}>xʸ</button>
                 <button onClick={() => handleInput('sqrt(')} className={styles.func}>√</button>
-                <button onClick={() => handleInput('1/')} className={styles.func}>1/x</button>
+                <button onClick={() => handleInput('^-1')} className={styles.func}>1/x</button>
                 <button onClick={() => handleInput('!')} className={styles.func}>n!</button>
                 
                 <button onClick={() => handleInput('(')} className={styles.func}>(</button>
