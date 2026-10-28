@@ -51,6 +51,54 @@ const RADIONUCLIDE_DATA = [{
       ansiCategory: 'alpha_very_high'
    },
    {
+      name: 'Aluminum-28',
+      symbol: 'Al-28',
+      emissionType: ['Beta-minus', 'Gamma'],
+      emissionEnergies: {
+         beta: ['2.85 MeV (max)'],
+         gamma: ['1.779 MeV'],
+         alpha: []
+      },
+      avgBetaEnergy: '1.24 MeV',
+      halfLife: '2.241 minutes',
+      decayConstant: '0.309 min⁻¹',
+      specificActivity: '1.17 x 10^18 Bq/g',
+      parent: 'Aluminum-27 (n,γ)',
+      daughter: 'Silicon-28 (stable)',
+      commonUses: ['Neutron activation analysis'],
+      category: 'Industrial',
+      commonality: 'Rare',
+      commonalityReason: 'A short-lived activation product.',
+      sourceRef: { halfLife: 'nndc' },
+      shipping: {},
+      regGuideCategory: 'beta_gamma',
+      ansiCategory: 'beta_gamma'
+   },
+   {
+      name: 'Magnesium-27',
+      symbol: 'Mg-27',
+      emissionType: ['Beta-minus', 'Gamma'],
+      emissionEnergies: {
+         beta: ['1.77 MeV (max)'],
+         gamma: ['0.844 MeV', '1.014 MeV'],
+         alpha: []
+      },
+      avgBetaEnergy: '0.74 MeV',
+      halfLife: '9.458 minutes',
+      decayConstant: '0.0733 min⁻¹',
+      specificActivity: '2.8 x 10^17 Bq/g',
+      parent: 'Magnesium-26 (n,γ)',
+      daughter: 'Aluminum-27 (stable)',
+      commonUses: ['Neutron activation analysis'],
+      category: 'Industrial',
+      commonality: 'Rare',
+      commonalityReason: 'A short-lived activation product.',
+      sourceRef: { halfLife: 'nndc' },
+      shipping: {},
+      regGuideCategory: 'beta_gamma',
+      ansiCategory: 'beta_gamma'
+   },
+   {
       name: 'Actinium-227',
       symbol: 'Ac-227',
       emissionType: ['Beta-minus', 'Alpha'],
