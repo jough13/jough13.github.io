@@ -3444,7 +3444,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         } else if (newItemState === 'gas') {
             matPkgMult = 1e-3; 
             instItemMult = 1e-3; instPkgMult = 1e-2;
-        } else { 
+        } else { // Solid
             matPkgMult = 1e-3; instItemMult = 1e-2; instPkgMult = 1; 
         }
 
@@ -3488,7 +3488,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const a2Raw = nuclideData.shipping.A2;
         const a2Val = (typeof a2Raw === 'string' && a2Raw.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(a2Raw);
 
-        const hrcqLimitTBq = Math.min(3000 * limitTBq, 1000);
+        const hrcqLimitTBq = limitTBq === Infinity ? Infinity : Math.min(3000 * limitTBq, 1000);
 
         let matPkgMult = 0; let instItemMult = 0; let instPkgMult = 0;
 
@@ -3605,7 +3605,13 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         let classification = '';
         let methodology = '';
         let lsaMethodologyNote = '';
-        const isRQ = sumFracRQ >= 1.0;
+        // Group RQ fractions by nuclide symbol so multiple items of the same isotope sum together,
+        // while distinct known isotopes are evaluated against their individual RQ per 49 CFR 172.101 App A Para 7(b)
+        const rqBySymbol = {};
+        packageItems.forEach(item => {
+            rqBySymbol[item.symbol] = (rqBySymbol[item.symbol] || 0) + item.fracRQ;
+        });
+        const isRQ = Object.values(rqBySymbol).some(frac => Number(frac.toFixed(5)) >= 1.0);
 
         const isExemptConsignment = Number(sumExemptAct.toFixed(5)) <= 1.0 || 
             (allItemsMaterial && pMass > 0 && Number((sumExemptConc / pMass).toFixed(5)) <= 1.0);
