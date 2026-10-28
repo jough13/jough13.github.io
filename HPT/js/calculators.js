@@ -591,7 +591,7 @@ const SourceCorrectionCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
 
 const StandardDecayCalculator = ({
     radionuclides,
-    preselectedNuclide, 
+    preselectedNuclide, // <-- Added prop
     selectedNuclide,
     setSelectedNuclide,
     calculationMode,
@@ -663,11 +663,10 @@ const StandardDecayCalculator = ({
         'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 
     };
     
-    // FIX 1: Memoize factors with missing environmental units added
     const activityFactors = React.useMemo(() => ({
         'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'TBq': 1e12,
         'Ci': 3.7e10, 'mCi': 3.7e7, 'µCi': 3.7e4, 'uCi': 3.7e4,
-        'nCi': 37, 'pCi': 0.037, // Environmental Units Added
+        'nCi': 37, 'pCi': 0.037, 
         'dps': 1, 'dpm': 1 / 60
     }), []);
 
@@ -681,7 +680,7 @@ const StandardDecayCalculator = ({
         });
     }, [radionuclides]);
 
-    // --- Safely handle pre-selected nuclide ---
+    // --- FIX: Safely handle pre-selected nuclide from deep links ---
     React.useEffect(() => {
         if (preselectedNuclide) {
             const symbol = typeof preselectedNuclide === 'object' && preselectedNuclide !== null 
@@ -694,11 +693,11 @@ const StandardDecayCalculator = ({
         }
     }, [preselectedNuclide, sortedRadionuclides, setSelectedNuclide, selectedNuclide]);
 
-    // --- Branching Path Detection ---
+    // --- Branching Path Detection (Fixed for " / " separator) ---
     React.useEffect(() => {
-        if (parentNuclide) {
-            const dStr = parentNuclide.daughter || '';
-            const rawFraction = parentNuclide.branchingFraction || 1.0;
+        if (selectedNuclide) {
+            const dStr = selectedNuclide.daughter || '';
+            const rawFraction = selectedNuclide.branchingFraction || 1.0;
             let newPaths = [];
 
             if (dStr.includes(' or ') || dStr.includes(' / ')) {
@@ -707,25 +706,28 @@ const StandardDecayCalculator = ({
                 const path2Name = parts[1].split('(')[0].trim();
 
                 newPaths.push({ name: path1Name, fraction: rawFraction, label: parts[0].trim() });
+                
                 const remainder = rawFraction < 1.0 ? (1.0 - rawFraction) : 0;
                 newPaths.push({ name: path2Name, fraction: safeParseFloat(remainder.toFixed(4)), label: parts[1].trim() });
                 
                 setDecayPaths(newPaths);
                 setSelectedPathIndex(0);
-                setBranchingFraction(newPaths[0].fraction.toString());
+                if (calculationMode === MODE_DAUGHTER) setBranchingFraction(newPaths[0].fraction.toString());
             } 
             else {
                 const cleanName = dStr.split('(')[0].trim();
                 newPaths.push({ name: cleanName, fraction: rawFraction, label: dStr });
                 setDecayPaths(newPaths);
                 setSelectedPathIndex(0);
-                setBranchingFraction(rawFraction.toString());
+                
+                if (calculationMode === MODE_DAUGHTER) {
+                    setBranchingFraction(rawFraction.toString());
+                }
             }
         } else {
             setDecayPaths([]);
-            setDaughterNuclide(null);
         }
-    }, [parentNuclide]);
+    }, [selectedNuclide, calculationMode, setBranchingFraction]);
 
     const handlePathChange = (e) => {
         const idx = parseInt(e.target.value);
@@ -804,13 +806,10 @@ const StandardDecayCalculator = ({
             else if (lambda < 1e-4) { displayLambda = lambda * 86400; lambdaUnit = 'd⁻¹'; }
             else if (lambda < 0.1) { displayLambda = lambda * 3600; lambdaUnit = 'hr⁻¹'; }
 
-            // --- CALCULATION LOGIC ---
-
             if (calculationMode === MODE_REMAINING) {
                 if (isNaN(A0_Bq)) throw new Error('Initial activity must be a valid number.');
                 const finalActivity_Bq = A0_Bq * Math.exp(-lambda * t_seconds);
                 
-                // FIX 2: If calculating reverse-time, set the chart to start at the higher past value
                 if (t_seconds < 0) {
                     plotA0_Bq = finalActivity_Bq;
                 }
@@ -849,7 +848,6 @@ const StandardDecayCalculator = ({
                         lambdaUnit: lambdaUnit
                     });
                     
-                    // Sync the state variables so the UI updates
                     if (timeElapsed !== convertedTime) setTimeElapsed(convertedTime);
                     if (timeUnit !== bestUnit.toLowerCase()) setTimeUnit(bestUnit.toLowerCase());
                     
@@ -872,10 +870,13 @@ const StandardDecayCalculator = ({
                 
                 const activePath = decayPaths[selectedPathIndex];
                 const daughterName = activePath ? activePath.name : selectedNuclide.daughter.split('(')[0].trim();
+                
+                // FIX: Check both name and symbol for daughter
                 const daughter = radionuclides.find(n => 
                     normalizeString(n.symbol) === normalizeString(daughterName) || 
                     normalizeString(n.name) === normalizeString(daughterName)
                 );
+                
                 if (!daughter) throw new Error('Daughter nuclide data not found.');
 
                 const T_half_daughter_seconds = parseHalfLifeToSeconds(daughter.halfLife);
@@ -921,7 +922,6 @@ const StandardDecayCalculator = ({
             const tenHalfLives = 15 * T_half_seconds;
             const effectivePlotTime = Math.min(plotTimeAbs, tenHalfLives);
 
-            // Pre-calculate daughter metadata OUTSIDE the 101-iteration loop
             let daughter = null;
             let lambda2 = 0;
             let A0_daughter_Bq_Chart = 0;
@@ -930,10 +930,10 @@ const StandardDecayCalculator = ({
                 const activePath = decayPaths[selectedPathIndex];
                 const daughterName = activePath ? activePath.name : selectedNuclide.daughter.split('(')[0].trim();
                 
-                // FIX: Check both name and symbol
+                // FIX: Check both name and symbol for daughter
                 daughter = radionuclides.find(n => 
-                    normalizeString(n.name) === normalizeString(daughterName) || 
-                    normalizeString(n.symbol) === normalizeString(daughterName)
+                    normalizeString(n.symbol) === normalizeString(daughterName) || 
+                    normalizeString(n.name) === normalizeString(daughterName)
                 );
                 
                 if (daughter) {
@@ -951,7 +951,6 @@ const StandardDecayCalculator = ({
 
                 const timePoint_display = timePoint_seconds / unitConversions[bestChartUnit];
                 
-                // Dynamic X-Axis Labels 4-tier smoothing
                 let label;
                 if (plotTimeConverted < 0.1) {
                     label = timePoint_display.toExponential(2);
@@ -965,13 +964,11 @@ const StandardDecayCalculator = ({
                 
                 labels.push(label);
 
-                // Parent Decay Plotting
                 let p_val_bq = (plotA0_Bq * Math.exp(-lambda * timePoint_seconds));
                 p_val_bq = Math.max(0, p_val_bq);
                 if (useLogScale && p_val_bq < CUTOFF) p_val_bq = CUTOFF;
                 parentData.push(p_val_bq / plotFactor);
 
-                // Daughter Accumulation Plotting (Now using lightweight scalar variables)
                 if (calculationMode === MODE_DAUGHTER && daughter) {
                     let d_val_bq;
 
@@ -1037,7 +1034,6 @@ const StandardDecayCalculator = ({
         <div className="space-y-4">
             <ContextualNote type="info">Calculates remaining activity, time, or daughter products.</ContextualNote>
             
-            {/* 1. Nuclide Selection */}
             <div>
                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
                 <div className="mt-1 min-h-[42px]">
@@ -1049,7 +1045,6 @@ const StandardDecayCalculator = ({
                 </div>
             </div>
 
-            {/* Mode Selection */}
             <div>
                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Calculate</label>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-2">
@@ -1070,10 +1065,8 @@ const StandardDecayCalculator = ({
                     renderUnitField("Remaining Activity", remainingActivity, setRemainingActivity, remainingUnit, setRemainingUnit, calculationMode === MODE_TIME || calculationMode === MODE_INITIAL)
                 }
 
-                {/* Use Daughter Unit State here */}
                 {calculationMode === MODE_DAUGHTER && renderUnitField("Initial Daughter Activity", initialDaughterActivity, setInitialDaughterActivity, daughterUnit, setDaughterUnit, true)}
 
-                {/* --- Branching Path Selector --- */}
                 {calculationMode === MODE_DAUGHTER && decayPaths.length > 1 && (
                     <div className="col-span-1 md:col-span-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
                         <label className="block text-xs font-bold text-amber-800 dark:text-amber-200 mb-1">Select Decay Path</label>
@@ -1096,7 +1089,6 @@ const StandardDecayCalculator = ({
                     </div>
                 )}
 
-                {/* Time Input Section */}
                 {calculationMode !== MODE_TIME && (
                     <div className="md:col-span-2">
                         <div className="flex justify-between items-center mb-1">
