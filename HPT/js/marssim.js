@@ -31,13 +31,21 @@ const SignTest_Calculator = ({ dcgl, setDcgl, dataInput, setDataInput, alpha, se
         if (useUnityRule) setDcgl('1.0');
     }, [useUnityRule, setDcgl]);
 
-    // Critical Values Lookup (MARSSIM Table I.3)
-    const signTestCriticalValues = {
-        '0.05': { 5: 5, 6: 6, 7: 7, 8: 7, 9: 8, 10: 8, 11: 9, 12: 10, 13: 11, 14: 11, 15: 12, 16: 12, 17: 13, 18: 14, 19: 14, 20: 15, 21: 16, 22: 16, 23: 17, 24: 17, 25: 18, 26: 19, 27: 19, 28: 20, 29: 21, 30: 21 },
-        '0.025': { 5: 5, 6: 6, 7: 7, 8: 8, 9: 8, 10: 9, 11: 10, 12: 10, 13: 11, 14: 12, 15: 12, 16: 13, 17: 14, 18: 14, 19: 15, 20: 15, 21: 16, 22: 17, 23: 17, 24: 18, 25: 19, 26: 19, 27: 20, 28: 20, 29: 21, 30: 22 },
-        '0.01': { 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 9, 11: 10, 12: 11, 13: 11, 14: 12, 15: 13, 16: 13, 17: 14, 18: 15, 19: 15, 20: 16, 21: 17, 22: 17, 23: 18, 24: 18, 25: 19, 26: 20, 27: 20, 28: 21, 29: 22, 30: 22 },
-        '0.10': { 5: 4, 6: 5, 7: 6, 8: 6, 9: 7, 10: 8, 11: 8, 12: 9, 13: 10, 14: 10, 15: 11, 16: 11, 17: 12, 18: 13, 19: 13, 20: 14, 21: 15, 22: 15, 23: 16, 24: 16, 25: 17, 26: 18, 27: 18, 28: 19, 29: 20, 30: 20 }
+    // Dynamic Critical Value Calculation (Matches MARSSIM Table I.3 exactly)
+    const getExactSignCriticalValue = (N, alphaVal) => {
+        let cumulative = 0;
+        const total = Math.pow(2, N);
+        let binom = 1; // C(N, N)
+        for (let c = N; c >= 0; c--) {
+            if (c < N) binom = (binom * (c + 1)) / (N - c);
+            cumulative += binom;
+            if (cumulative / total > alphaVal) {
+                return c + 1; // Minimum S+ required to pass (k + 1)
+            }
+        }
+        return 0;
     };
+
     const zScores = { '0.05': 1.645, '0.025': 1.960, '0.01': 2.326, '0.10': 1.282 };
     
     const parseData = (dataString) => dataString.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
@@ -73,24 +81,27 @@ const SignTest_Calculator = ({ dcgl, setDcgl, dataInput, setDataInput, alpha, se
         if (n_adjusted === 0) { setError('All data points are equal to the DCGL; the test cannot be performed.'); return; }
         
         const S_plus = validData.filter(val => (dcgl_val - val) > 0).length;
-        let Cs; let note = '';
-        const tableValue = signTestCriticalValues[alpha]?.[n_adjusted];
+        let Cs; let k_val; let note = '';
         
-        if (tableValue !== undefined) {
-            Cs = tableValue; note = `Used MARSSIM Table I.3 for N=${n_adjusted}.`;
+        if (n_adjusted <= 50) {
+            Cs = getExactSignCriticalValue(n_adjusted, parseFloat(alpha));
+            k_val = Cs - 1; // MARSSIM Table I.3 defines 'k' where rejection is S+ > k
+            note = `Used exact Binomial distribution (MARSSIM Table I.3 eq) for N=${n_adjusted}.`;
         } else {
             const zAlpha = zScores[alpha];
             Cs = Math.ceil((n_adjusted / 2) + (zAlpha * Math.sqrt(n_adjusted) / 2));
+            k_val = Cs - 1;
             note = `Used Large Sample Approximation for N=${n_adjusted}.`;
         }
         
-        const testPassed = S_plus >= Cs;
+        // Prevent impossible pass condition (e.g., N=5, alpha=0.01 needs S+ >= 6)
+        const testPassed = S_plus >= Cs && Cs <= n_adjusted;
         
         setResult({
             conclusion: testPassed ? 'PASS' : 'FAIL',
-            reason: `S+ (${S_plus}) is ${testPassed ? '≥' : '<'} Critical Value (${Cs}).`,
+            reason: `S+ (${S_plus}) is ${testPassed ? '>' : '≤'} Critical Value k (${k_val}).`,
             n: measurements.length,
-            n_adjusted, ties, S_plus, Cs, note,
+            n_adjusted, ties, S_plus, Cs, k_val, note,
             stats: getStats(measurements),
             dcgl: dcgl_val,
             warning: droppedCount > 0 ? `Warning: ${droppedCount} non-numeric values were ignored.` : null, 
@@ -161,9 +172,12 @@ const SignTest_Calculator = ({ dcgl, setDcgl, dataInput, setDataInput, alpha, se
                             <div className="absolute top-0 bottom-0 w-0.5 bg-black" style={{ left: `${Math.min((result.stats.max / result.dcgl) * 100, 100)}%` }} title="Max Value"></div>
                         </div>
                     </div>
-                    <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-2 text-sm">
-                        <p>N: <span className="font-bold">{result.n}</span></p><p>S+: <span className="font-bold">{result.S_plus}</span></p>
+                    <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-3 gap-2 text-sm">
+                        <p>N: <span className="font-bold">{result.n}</span></p>
+                        <p>S+: <span className="font-bold">{result.S_plus}</span></p>
+                        <p>Crit (k): <span className="font-bold">{result.k_val}</span></p>
                     </div>
+                    {result.note && <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 opacity-80">{result.note}</p>}
                 </div>
             )}
         </div>
