@@ -905,7 +905,8 @@ const UnitConverter = () => {
                 'Sv/hr': 1, 'mSv/hr': 1e-3, 'µSv/hr': 1e-6,
                 'rem/hr': 0.01, 'mrem/hr': 1e-5, 'µrem/hr': 1e-8,
                 'Gy/hr': 1, 'mGy/hr': 1e-3, 'mrad/hr': 1e-5,
-                'R/hr': 0.00877, 'mR/hr': 8.77e-6
+                'R/hr': 0.01, 'mR/hr': 1e-5,
+                'R/hr (dry air)': 0.00877
             }
         },
         'Energy': {
