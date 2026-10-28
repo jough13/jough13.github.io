@@ -39,9 +39,9 @@ const NuclideContextDisplay = ({ nuclide }) => {
             value: (nuclide.emissionEnergies?.beta || [])[0]?.replace(' (max)', ''),
             condition: nuclide.emissionEnergies?.beta?.length > 0
         },
-{
+        {
             label: 'β Eₐᵥ₉',
-            value: `${nuclide.avgBetaEnergy} MeV`,
+            value: nuclide.avgBetaEnergy,
             condition: nuclide.avgBetaEnergy
         },
         {
@@ -1340,7 +1340,7 @@ if (chartRef.current && chartData) {
                 const {ctx} = chart;
                 ctx.save();
                 ctx.globalCompositeOperation = 'destination-over';
-                ctx.fillStyle = '#ffffff'; // Force white background in the actual pixel data
+                ctx.fillStyle = isDarkMode ? '#1e293b' : '#ffffff';
                 ctx.fillRect(0, 0, chart.width, chart.height);
                 ctx.restore();
             }
@@ -1504,7 +1504,7 @@ const DecayChart = ({ chartData, useLogScale, theme }) => {
                         const {ctx} = chart;
                         ctx.save();
                         ctx.globalCompositeOperation = 'destination-over';
-                        ctx.fillStyle = '#ffffff'; // Force white background in the actual pixel data
+                        ctx.fillStyle = isDarkMode ? '#1e293b' : '#ffffff';
                         ctx.fillRect(0, 0, chart.width, chart.height);
                         ctx.restore();
                     }
