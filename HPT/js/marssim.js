@@ -525,15 +525,8 @@ const MARSSIM_Statistical_Tests = () => {
     const [sign_alpha, setSign_alpha] = React.useState(() => localStorage.getItem('sign_alpha') || '0.05');
     const [sign_subtractBkg, setSign_subtractBkg] = React.useState(() => JSON.parse(localStorage.getItem('sign_subtractBkg')) || false);
     const [sign_background, setSign_background] = React.useState(() => localStorage.getItem('sign_background') || '0');
-    
     const [sign_result, setSign_result] = React.useState(null);
     const [sign_error, setSign_error] = React.useState('');
-    
-    // Persistence for new Sign Test fields
-    React.useEffect(() => {
-        localStorage.setItem('sign_subtractBkg', JSON.stringify(sign_subtractBkg));
-        localStorage.setItem('sign_background', sign_background);
-    }, [sign_subtractBkg, sign_background]);
     
     // EMC Evaluation State
     const [emc_dcglw, setEmc_dcglw] = React.useState(() => localStorage.getItem('emcEval_dcglw') || '100');
@@ -542,6 +535,29 @@ const MARSSIM_Statistical_Tests = () => {
     const [emc_maxConc, setEmc_maxConc] = React.useState(() => localStorage.getItem('emcEval_maxConc') || '150');
     const [emc_result, setEmc_result] = React.useState(null);
     const [emc_error, setEmc_error] = React.useState('');
+
+    // --- NEW: Persistence Effects ---
+    React.useEffect(() => {
+        localStorage.setItem('wrs_dcgl', wrs_dcgl);
+        localStorage.setItem('wrs_referenceData', wrs_referenceData);
+        localStorage.setItem('wrs_surveyData', wrs_surveyData);
+        localStorage.setItem('wrs_alpha', wrs_alpha);
+    }, [wrs_dcgl, wrs_referenceData, wrs_surveyData, wrs_alpha]);
+    
+    React.useEffect(() => {
+        localStorage.setItem('sign_dcgl', sign_dcgl);
+        localStorage.setItem('sign_data', sign_data);
+        localStorage.setItem('sign_alpha', sign_alpha);
+        localStorage.setItem('sign_subtractBkg', JSON.stringify(sign_subtractBkg));
+        localStorage.setItem('sign_background', sign_background);
+    }, [sign_dcgl, sign_data, sign_alpha, sign_subtractBkg, sign_background]);
+    
+    React.useEffect(() => {
+        localStorage.setItem('emcEval_dcglw', emc_dcglw);
+        localStorage.setItem('emcEval_areaFactor', emc_areaFactor);
+        localStorage.setItem('emcEval_avgConc', emc_avgConc);
+        localStorage.setItem('emcEval_maxConc', emc_maxConc);
+    }, [emc_dcglw, emc_areaFactor, emc_avgConc, emc_maxConc]);
     
     const handleClearActiveCalculator = () => {
         if (activeTest === TEST_WRS) {
@@ -1323,7 +1339,7 @@ const MARSSIM_Statistical_Tests = () => {
                                 ) : (
                                     <div className="text-center">
                                         <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Grid Spacing (meters)</label>
-                                        <input type="number" value={gridSpacing} onChange={(e) => setGridSpacing(parseInt(e.target.value, 10) || 0)} className="persistent-spinner w-24 text-center text-2xl font-bold text-sky-600 dark:text-sky-400 p-1 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:outline-none" />
+                                        <input type="number" step="any" value={gridSpacing} onChange={(e) => setGridSpacing(e.target.value)} className="persistent-spinner w-24 text-center text-2xl font-bold text-sky-600 dark:text-sky-400 p-1 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:outline-none" />
                                     </div>
                                 )}
                             </div>
@@ -1480,13 +1496,13 @@ const MARSSIM_Statistical_Tests = () => {
             const { addHistory } = useCalculationHistory();
             const { addToast } = useToast();
             
-            const [alpha, setAlpha] = React.useState('0.05');
-            const [beta, setBeta] = React.useState('0.05');
-            const [sigma, setSigma] = React.useState('15');
-            const [dcgl, setDcgl] = React.useState('100');
-            const [lbgr, setLbgr] = React.useState('50');
-            const [cv, setCv] = React.useState('0.3');
-            const [backgroundPresence, setBackgroundPresence] = React.useState('insignificant');
+            const [alpha, setAlpha] = React.useState(() => localStorage.getItem('marssim_alpha') || '0.05');
+            const [beta, setBeta] = React.useState(() => localStorage.getItem('marssim_beta') || '0.05');
+            const [sigma, setSigma] = React.useState(() => localStorage.getItem('marssim_sigma') || '15');
+            const [dcgl, setDcgl] = React.useState(() => localStorage.getItem('marssim_dcgl') || '100');
+            const [lbgr, setLbgr] = React.useState(() => localStorage.getItem('marssim_lbgr') || '50');
+            const [cv, setCv] = React.useState(() => localStorage.getItem('marssim_cv') || '0.3');
+            const [backgroundPresence, setBackgroundPresence] = React.useState(() => localStorage.getItem('marssim_bg') || 'insignificant');
             
             const [result, setResult] = React.useState(null);
             const [error, setError] = React.useState('');
