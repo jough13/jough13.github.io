@@ -3363,7 +3363,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                 ? preselectedNuclide.symbol 
                 : preselectedNuclide;
             if (symbol && transportNuclides.some(n => n.symbol === symbol)) {
-                setSelectedSymbol(symbol);
+                setNewItemSymbol(symbol);
             }
         }
     }, [preselectedNuclide, transportNuclides]);
