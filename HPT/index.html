@@ -1076,14 +1076,14 @@
             const renderActiveView = () => {
             const filterProps = { sortBy, setSortBy, sortOrder, setSortOrder, selectedCategory, setSelectedCategory, allCategories, selectedEmissionType, setSelectedEmissionType, allEmissionTypes, selectedCommonality, setSelectedCommonality, allCommonalityCategories, minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy, minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy, minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy, minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit, clearFilters: handleClearFilters };
             switch (activeView) {
-            case 'database': return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} />;
+            case 'database': return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} scrollPositionRef={scrollPositionRef} handleClearFilters={handleClearFilters} />;
             case 'calculator': return <DecayTools radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} theme={theme} />;
             case 'mda': return <MDACalculator />;
-            case 'marssim': return <MARSSIM_SampleDesign />; // FIXED: Was MARSSIM_SampleCalculator
-            case 'marssimTests': return <MARSSIM_Statistical_Tests />; // ADDED
-            case 'wrs': return <MARSSIM_Statistical_Tests />; // FIXED: Points to parent container
-            case 'emc': return <MARSSIM_Statistical_Tests />; // FIXED: Points to parent container
-            case 'seriesCalculator': return <DecaySeriesCalculator radionuclides={radionuclides} decaySeriesData={decaySeriesData} theme={theme} />;
+            case 'marssim': return <MARSSIM_SampleDesign />;
+            case 'marssimTests': return <MARSSIM_Statistical_Tests />;
+            case 'wrs': return <MARSSIM_Statistical_Tests />;
+            case 'emc': return <MARSSIM_Statistical_Tests />;
+            case 'seriesCalculator': return <DecaySeriesCalculator radionuclides={radionuclides} decaySeriesData={decaySeriesData} theme={theme} onNuclideClick={handleNuclideSelection} />;
             case 'equilibrium': return <EquilibriumCalculator radionuclides={radionuclides} theme={theme}/>;
             case VIEWS.RADON: return <RadonCalculator />;
             case VIEWS.COMPARE: return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} comparisonList={comparisonList} onAddToCompare={handleAddToCompare} onRemoveFromCompare={handleRemoveFromCompare} onClearCompare={handleClearCompare} />;
