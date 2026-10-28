@@ -198,7 +198,7 @@ const RADIONUCLIDE_DATA = [{
          DCF: {
             ingestion: 0,
             inhalation_D: 8.33e-8,
-            inhalation_W: 2.46e-6,
+            inhalation_W: 2.46e-8,
             inhalation_Y: 3.39e-8
          },
          sourceRef: '10CFR20'
@@ -1650,7 +1650,7 @@ const RADIONUCLIDE_DATA = [{
             ingestion: 0,
             inhalation_D: 5.29e-11,
             inhalation_W: 6.93e-11,
-            inhalation_Y: 7.48e-10
+            inhalation_Y: 7.48e-11
          },
          sourceRef: '10CFR20'
       },
@@ -2338,7 +2338,7 @@ const RADIONUCLIDE_DATA = [{
             ingestion: 0,
             inhalation_D: 3.87e-10,
             inhalation_W: 8.20e-10,
-            inhalation_Y: 8.87e-9
+            inhalation_Y: 8.87e-10
          },
          sourceRef: '10CFR20'
       },
@@ -2429,7 +2429,7 @@ const RADIONUCLIDE_DATA = [{
          },
          DCF: {
             ingestion: 0,
-            inhalation_D: 2.92e-11,
+            inhalation_D: 2.92e-10,
             inhalation_W: 2.09e-10
          },
          sourceRef: '10CFR20'
@@ -2709,7 +2709,7 @@ const RADIONUCLIDE_DATA = [{
          },
          DCF: {
             ingestion: 0,
-            inhalation_D: 8.89e-8
+            inhalation_D: 8.89e-9
          },
          sourceRef: '10CFR20'
       },
@@ -3444,8 +3444,8 @@ const RADIONUCLIDE_DATA = [{
          },
          DCF: {
             ingestion: 0,
-            inhalation_D: 1.42e-10,
-            inhalation_W: 1.81e-10
+            inhalation_D: 1.42e-9,
+            inhalation_W: 1.81e-9
          },
          sourceRef: '10CFR20'
       },
@@ -3945,7 +3945,7 @@ const RADIONUCLIDE_DATA = [{
          DCF: {
             ingestion: 0,
             inhalation_D: 1.64e-9,
-            inhalation_W: 4.19e-8
+            inhalation_W: 4.19e-9
          },
          sourceRef: '10CFR20'
       },
