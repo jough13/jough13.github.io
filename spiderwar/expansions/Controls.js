@@ -165,8 +165,8 @@ export const AdvancedUnitControlExpansion = {
                     let u = entities[i];
                     
                     if (u.team === 'black' && u.hp > 0) {
-                        // Check Units (Spiders/Queens)
-                        if (u.role || u instanceof Queen) {
+                        // 🚨 FIXED: Allow clicking Subjugated Bosses!
+                        if (u.role || u instanceof Queen || u.isBoss) {
                             const clickRadius = u.size + CONTROLS_CONFIG.clickHitboxPadding;
                             // Fast AABB check before MathUtils.distSq
                             if (Math.abs(u.x - worldX) > clickRadius || Math.abs(u.y - worldY) > clickRadius) continue;
@@ -233,7 +233,8 @@ export const AdvancedUnitControlExpansion = {
                     const entLen = entities.length;
                     for (let i = 0; i < entLen; i++) {
                         let u = entities[i];
-                        if (u.team === 'black' && u.hp > 0 && (u.role || u instanceof Queen)) {
+                        // 🚨 FIXED: Allow drag-selecting Subjugated Bosses!
+                        if (u.team === 'black' && u.hp > 0 && (u.role || u instanceof Queen || u.isBoss)) {
                             if (u.x >= x1 && u.x <= x2 && u.y >= y1 && u.y <= y2) {
                                 game.selectedUnits.push(u);
                             }
@@ -265,7 +266,8 @@ export const AdvancedUnitControlExpansion = {
                             const entLen = entities.length;
                             for (let i = 0; i < entLen; i++) {
                                 let u = entities[i];
-                                if (u.team === 'black' && u.hp > 0 && u.role === clickedUnit.role) {
+                                // Check for identical role (or lack thereof if both are Bosses)
+                                if (u.team === 'black' && u.hp > 0 && u.role === clickedUnit.role && u.isBoss === clickedUnit.isBoss) {
                                     // Only select units currently visible on screen
                                     if (u.x >= viewL && u.x <= viewR && u.y >= viewT && u.y <= viewB) {
                                         game.selectedUnits.push(u);
@@ -472,8 +474,8 @@ export const ConstructionExpansion = {
                             isOverlapping = true; break;
                         }
                     }
-                    // [FIX] Prevent stacking blueprints by checking Queens' active build targets!
-                    else if (s.role === 'queen' && s.buildTarget) {
+                    // 🚨 FIXED: Exclude the currently commanding Queen from the overlap check so players can adjust blueprints!
+                    else if (s.role === 'queen' && s !== queen && s.buildTarget) {
                         // Assuming standard size 25 for blueprints
                         if (MathUtils.distSq(s.buildTarget.x, s.buildTarget.y, data.x, data.y) < 2500) {
                             isOverlapping = true; break;
