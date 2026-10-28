@@ -1670,6 +1670,7 @@ const SurfaceContaminationCalculator = ({
                              <p className="text-xs font-bold text-slate-400 uppercase">Static Average</p>
                              <p className="text-2xl font-black text-slate-800 dark:text-white my-1">{result.total_avg !== null ? result.total_avg.toFixed(0) : '-'}</p>
                              {result.total_avg !== null && result.rg && <Badge label="Reg Guide" pass={result.rg.total_pass} limit={result.rg.total_limit} />}
+                             {result.total_avg !== null && result.ansi && <Badge label="ANSI N13.12" pass={result.ansi.total_pass} limit={result.ansi.total_limit} />}
                         </div>
                         <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded border border-slate-100 dark:border-slate-700 flex flex-col justify-center">
                              <p className="text-xs font-bold text-slate-400 uppercase">Static Max</p>
@@ -1680,6 +1681,7 @@ const SurfaceContaminationCalculator = ({
                              <p className="text-xs font-bold text-slate-400 uppercase">Removable</p>
                              <p className="text-2xl font-black text-slate-800 dark:text-white my-1">{result.removable !== null ? result.removable.toFixed(0) : '-'}</p>
                              {result.removable !== null && result.rg && <Badge label="Reg Guide" pass={result.rg.removable_pass} limit={result.rg.removable_limit} />}
+                             {result.removable !== null && result.ansi && <Badge label="ANSI N13.12" pass={result.ansi.removable_pass} limit={result.ansi.removable_limit} />}
                         </div>
                     </div>
                 </div>
@@ -5421,6 +5423,13 @@ const DecaySeriesCalculator = ({ radionuclides, decaySeriesData, theme, onNuclid
     const activityUnits = React.useMemo(() => settings?.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] : ['µCi', 'mCi', 'Ci'], [settings?.unitSystem]);
     const massUnitsList = ['µg', 'mg', 'g', 'kg'];
     const timeUnitsList = ['seconds', 'minutes', 'hours', 'days', 'years', 'kiloyears', 'megayears', 'gigayears'];
+
+    // Keep inputUnit synced when in activity mode
+    React.useEffect(() => {
+        if (inputMode === 'activity' && !activityUnits.includes(inputUnit)) {
+            setInputUnit(activityUnits[0]);
+        }
+    }, [activityUnits, inputMode, inputUnit]);
     
     // Factors
     const activityFactorsBq = { 
@@ -5636,6 +5645,7 @@ const DecaySeriesCalculator = ({ radionuclides, decaySeriesData, theme, onNuclid
         setSelectedSeriesValue(availableSeries[0]?.value || '');
         setInputValue('100');
         setInputMode('activity');
+        setInputUnit(activityUnits[0]);
         setTimeElapsed('100');
         setTimeUnit('years');
         setResults([]);
@@ -6364,8 +6374,8 @@ const EquilibriumCalculator = ({ radionuclides, theme }) => {
             const rawFraction = parentNuclide.branchingFraction || 1.0;
             let newPaths = [];
 
-            if (dStr.includes(' or ')) {
-                const parts = dStr.split(' or ');
+            if (dStr.includes(' or ') || dStr.includes(' / ')) {
+                const parts = dStr.split(/\s+or\s+|\s*\/\s*/);
                 const path1Name = parts[0].split('(')[0].trim();
                 const path2Name = parts[1].split('(')[0].trim();
 
@@ -6882,6 +6892,8 @@ const ConcentrationDoseModule = ({ calcMode, setCalcMode, concentration, setConc
                 )}
             </div>
             
+            {error && <p className="text-red-500 text-sm text-center font-bold mb-4">{error}</p>}
+            
             {result && (
                 <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg animate-fade-in shadow-inner border border-slate-200 dark:border-slate-600">
                     <div className={`text-center pb-4 mb-4 ${safety ? 'border-b border-slate-300 dark:border-slate-600' : ''}`}>
@@ -6892,6 +6904,13 @@ const ConcentrationDoseModule = ({ calcMode, setCalcMode, concentration, setConc
                         </div>
                         <p className="text-4xl font-black text-sky-600 dark:text-sky-400 mt-1">{hero.value} <span className="text-xl font-bold opacity-75">{hero.unit}</span></p>
                         {hero.subtext && <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{hero.subtext}</p>}
+                        
+                        {/* --- NEW DOSE BASIS WARNING --- */}
+                        {(calcMode === 'doseFromConc' || calcMode === 'doseFromWL') && (
+                            <p className="text-[10px] text-slate-400 dark:text-slate-400 mt-3 italic px-4 leading-tight">
+                                * Dose estimate uses 1,250 mrem/WLM (10 CFR 20 occupational basis). Traditional residential models (e.g., UNSCEAR, NCRP 93) use lower conversion factors (~400–600 mrem/WLM).
+                            </p>
+                        )}
                     </div>
                     
                     {safety && (
@@ -6990,6 +7009,8 @@ const RadonIngrowthCalculator = ({ result, setResult, error, setError, amount, s
                     </div>
                 </div>
             </div>
+            {error && <p className="text-red-500 text-sm text-center font-bold mb-4">{error}</p>}
+            
             {result && (
                 <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg text-center animate-fade-in shadow-inner border border-slate-200 dark:border-slate-600">
                     <p className="font-bold text-xs uppercase text-slate-500 mb-1">Rn-222 Ingrowth</p>
@@ -7226,6 +7247,14 @@ const RadonCalculator = ({ onNavClick }) => {
     const [kusnetz_efficiency, setKusnetz_efficiency] = React.useState(() => localStorage.getItem('kusnetz_efficiency') || '30');
     const [kusnetz_result, setKusnetz_result] = React.useState(null);
     const [kusnetz_error, setKusnetz_error] = React.useState('');
+    
+    React.useEffect(() => {
+        const state = { 
+            kusnetz_flowRate, kusnetz_sampleTime, kusnetz_delayTime, 
+            kusnetz_grossCounts, kusnetz_countDuration, kusnetz_backgroundCpm, kusnetz_efficiency 
+        };
+        Object.entries(state).forEach(([k, v]) => localStorage.setItem(k, v));
+    }, [kusnetz_flowRate, kusnetz_sampleTime, kusnetz_delayTime, kusnetz_grossCounts, kusnetz_countDuration, kusnetz_backgroundCpm, kusnetz_efficiency]);
     
     // Auto-switch units if system setting changes
     React.useEffect(() => {
@@ -8984,14 +9013,14 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
                             {isTimerRunning ? (
                                 <div className="mb-4 animate-pulse">
                                     <span className="text-5xl font-black text-red-500 font-mono tracking-wider">{formatCountdown(timeLeft)}</span>
-                                    <div className="mt-2"><button onClick={() => setIsTimerRunning(false)} className="px-4 py-1 text-xs font-bold bg-red-100 text-red-700 rounded-full hover:bg-red-200">STOP TIMER</button></div>
+                                    <div className="mt-2"><button onClick={() => setIsTimerRunning(false)} className="px-4 py-1 text-xs font-bold bg-red-100 text-red-700 rounded-full hover:bg-red-200 shadow-sm transition">STOP TIMER</button></div>
                                 </div>
                             ) : (
-                                <div className="mb-4 group relative">
+                                <div className="mb-4 flex flex-col items-center justify-center gap-2">
                                     <span className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">{result.stayTime}</span>
                                     {result.seconds < Infinity && (
-                                        <button onClick={handleStartTimer} className="absolute -right-8 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-2 text-sky-500 hover:text-sky-700">
-                                            <Icon path={ICONS.play || "M8 5v14l11-7z"} className="w-6 h-6" />
+                                        <button onClick={handleStartTimer} className="flex items-center gap-1 px-4 py-1.5 text-xs font-bold bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300 rounded-full hover:bg-sky-200 dark:hover:bg-sky-800 transition-colors shadow-sm">
+                                            <Icon path={ICONS.play || "M8 5v14l11-7z"} className="w-4 h-4" /> Start Timer
                                         </button>
                                     )}
                                 </div>
@@ -11063,11 +11092,22 @@ const LabStatistics = () => {
     const [fw_result, setFw_result] = React.useState(null);
     
     const handleClear = () => {
-        if(activeTab === 'mda') { setMda_bkgCounts('50'); setMda_result(null); }
-        if(activeTab === 'chi') { setChi_data(''); setChi_result(null); }
-        if(activeTab === 'dt') { setDt_obs('50000'); setDt_result(null); }
-        if(activeTab === 'rpd') { setRpd_s1(''); setRpd_result(null); }
-        if(activeTab === 'fwhm') { setFw_cent(''); setFw_result(null); }
+        if(activeTab === 'mda') { 
+            setMda_bkgCounts('50'); setMda_countTime('1'); setMda_bkgTime('1'); 
+            setMda_eff('10'); setMda_effUnit('%'); setMda_area('100'); setMda_result(null); 
+        }
+        if(activeTab === 'chi') { 
+            setChi_data(''); setChi_alpha('0.05'); setChi_result(null); setChi_error(''); 
+        }
+        if(activeTab === 'dt') { 
+            setDt_obs('50000'); setDt_tau('100'); setDt_result(null); setDt_error(''); 
+        }
+        if(activeTab === 'rpd') { 
+            setRpd_s1('1250'); setRpd_s2('1180'); setRpd_result(null); 
+        }
+        if(activeTab === 'fwhm') { 
+            setFw_cent('661.7'); setFw_low('658.2'); setFw_up('665.2'); setFw_result(null); 
+        }
     };
     
     return (
