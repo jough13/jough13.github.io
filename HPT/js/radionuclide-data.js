@@ -426,7 +426,7 @@ const RADIONUCLIDE_DATA = [{
          },
          sourceRef: '10CFR20 (Default Alpha)'
       },
-      regGuideCategory: 'beta_gamma',
+      regGuideCategory: 'transuranics',
       ansiCategory: 'beta_gamma'
    },
    {
@@ -682,7 +682,7 @@ const RADIONUCLIDE_DATA = [{
          halfLife: 'nndc'
       },
       shipping: {},
-      regGuideCategory: 'beta_gamma',
+      regGuideCategory: 'transuranics',
       ansiCategory: 'beta_gamma'
    },
    {
@@ -4036,7 +4036,7 @@ const RADIONUCLIDE_DATA = [{
          DCF: {},
          sourceRef: '10CFR20 (Po-210 Proxy)'
       },
-      regGuideCategory: 'beta_gamma',
+      regGuideCategory: 'transuranics',
       ansiCategory: 'alpha_high'
    },
    {
@@ -7220,7 +7220,7 @@ const RADIONUCLIDE_DATA = [{
          },
          sourceRef: '10CFR20'
       },
-      regGuideCategory: 'u_nat',
+      regGuideCategory: 'sr_90',
       ansiCategory: 'alpha_high'
    },
    {
