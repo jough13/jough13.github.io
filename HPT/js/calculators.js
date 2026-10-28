@@ -9879,9 +9879,58 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         }
         
         let timeToTarget = null;
+        let timeToTargetMsg = null;
         const target = safeParseFloat(targetLimit);
+        
         if (outputUnit !== 'counts' && !isNaN(target) && target > 0 && finalMDA > target) {
-            timeToTarget = Ts * Math.pow(finalMDA / target, 2);
+            // 1. Convert the target limit back into a Net CPM target
+            const Y = yield_pct / 100.0;
+            const E_total = getTotalEfficiency(ei, es);
+            
+            let target_cpm;
+            if (outputUnit === 'cpm') {
+                target_cpm = target;
+            } else {
+                let target_dpm;
+                if (MDA_UNIT_CONFIG[outputUnit].category === 'Activity') {
+                    target_dpm = target / dpmFactors[outputUnit];
+                } else if (outputUnit === 'dpm/100cm²') {
+                    target_dpm = target * (A / 100);
+                } else if (outputUnit === 'Bq/L') {
+                    target_dpm = target * V * 60;
+                } else if (outputUnit === 'pCi/g') {
+                    target_dpm = target * M * 2.22;
+                }
+                target_cpm = target_dpm * (E_total * Y);
+            }
+
+            // 2. Exact Time Reverse-Calculation
+            if (backgroundMode === 'counts') {
+                // Check if target is below the mathematical asymptote for the given Tb
+                const floorCpm = 3.29 * Math.sqrt(bkgRate / Tb);
+                if (target_cpm <= floorCpm) {
+                    timeToTargetMsg = `Infinite (Target is below the mathematical floor of ${floorCpm.toFixed(2)} cpm. Increase Bkg Time.)`;
+                } else {
+                    // Exact quadratic solution for 1/Ts in counts mode
+                    const a_coef = 9;
+                    const b_coef = -(6 * target_cpm + 10.8241 * bkgRate);
+                    const c_coef = Math.pow(target_cpm, 2) - (10.8241 * bkgRate / Tb);
+                    const discriminant = Math.pow(b_coef, 2) - 4 * a_coef * c_coef;
+                    
+                    if (discriminant >= 0) {
+                        // The valid physical solution corresponds to the smaller 1/Ts (minus root)
+                        const y = (-b_coef - Math.sqrt(discriminant)) / (2 * a_coef);
+                        if (y > 0) {
+                            timeToTarget = (1 / y).toFixed(1);
+                        }
+                    }
+                }
+            } else {
+                // Rate mode exact formulation (infinite Tb)
+                const num = 3.29 * Math.sqrt(bkgRate) + Math.sqrt(10.8241 * bkgRate + 12 * target_cpm);
+                const den = 2 * target_cpm;
+                timeToTarget = Math.pow(num / den, 2).toFixed(1);
+            }
         }
         
         setResult({ 
@@ -9890,7 +9939,8 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             LD: Ld_counts.toFixed(1), 
             MDA: finalMDA.toPrecision(3), 
             unit: outputUnit,
-            timeToTarget: timeToTarget ? timeToTarget.toFixed(1) : null,
+            timeToTarget: timeToTarget,
+            timeToTargetMsg: timeToTargetMsg,
             netCpm: (Ld_counts / Ts).toFixed(1),
             grossCpm: ((Ld_counts / Ts) + bkgRate).toFixed(1),
             grossCounts: (Ld_counts + (bkgRate * Ts)).toFixed(0)
@@ -10099,9 +10149,13 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
                                 {targetLimit && (
                                     <div className={`mt-3 mb-4 p-3 rounded text-center border-l-4 ${safeParseFloat(result.MDA) <= safeParseFloat(targetLimit) ? 'bg-green-100 border-green-500 text-green-800' : 'bg-red-100 border-red-500 text-red-800'}`}>
                                         <p className="font-bold text-sm">{safeParseFloat(result.MDA) <= safeParseFloat(targetLimit) ? "PASS: Meets Limit" : "FAIL: Exceeds Limit"}</p>
-                                        {safeParseFloat(result.MDA) > safeParseFloat(targetLimit) && result.timeToTarget && (
+                                        {safeParseFloat(result.MDA) > safeParseFloat(targetLimit) && (result.timeToTarget || result.timeToTargetMsg) && (
                                             <p className="text-xs mt-1">
-                                                To reach {targetLimit} {result.unit}, increase sample time to <strong>{result.timeToTarget} min</strong>.
+                                                {result.timeToTarget ? (
+                                                    <>To reach {targetLimit} {result.unit}, increase sample time to <strong>{result.timeToTarget} min</strong>.</>
+                                                ) : (
+                                                    <strong>{result.timeToTargetMsg}</strong>
+                                                )}
                                             </p>
                                         )}
                                     </div>
