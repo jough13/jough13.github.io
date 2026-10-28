@@ -6437,10 +6437,10 @@ const EquilibriumCalculator = ({ radionuclides, theme }) => {
             
             theoreticalRatio = (lambda2 / (lambda2 - lambda1)) * br; // Adjusted for branching
 
-            // FIX 2: Safety check for nearly identical half-lives
+            // Safety check for nearly identical half-lives
             if (Math.abs(lambda1 - lambda2) > 1e-12) {
                 timeToMax = Math.log(lambda2 / lambda1) / (lambda2 - lambda1);
-                timeToEq = timeToMax * 2; 
+                timeToEq = Math.log(100) / (lambda2 - lambda1); 
             }
             message = `Half-lives are comparable. Daughter will rise, exceed parent, then decay in lock-step.`;
         }
