@@ -11,7 +11,7 @@ import { Corpse, ZombieSpider } from './Necromancy.js';
 import { EggTrap, Broodling } from './BroodAmbush.js'; 
 import { ExplosiveProjectile } from './Titans.js'; 
 import { MortarShell } from './Fortress.js';     
-import { GoldenCaravan } from './Caravans.js'; // 🚨 ADDED THIS LINE  
+import { GoldenCaravan } from './Caravans.js'; 
 
 // ==========================================
 // 1. CONFIGURATION
@@ -165,8 +165,10 @@ export const FogOfWarExpansion = {
                 for (let i = 0; i < this.entities.length; i++) {
                     let e = this.entities[i];
                     if (e.team === 'black' && e.hp > 0) {
-                        if (e instanceof Spider) {
-                            reveal(e.x, e.y, e.role === 'queen' ? 3 : 2);
+                        
+                        // 🚨 FIXED: Allow tamed Bosses to push back the Fog of War!
+                        if (e instanceof Spider || e.isBoss) {
+                            reveal(e.x, e.y, (e.role === 'queen' || e.isBoss) ? 3 : 2);
                         } else if (e instanceof Structure && !e.isConstructing) {
                             let r = e.type === 'nest' ? 4 : (e.type === 'mortar' ? 4 : (e.type === 'pylon' ? 3 : 2));
                             reveal(e.x, e.y, r);
@@ -327,8 +329,8 @@ export const SaveLoadExpansion = {
                 let o = new Structure(s.x, s.y, s.team, s.type); 
                 o.id = s.id || Math.random().toString(36).substring(2, 11);
                 o.hp = s.hp; 
-                if (s.maxHp) o.maxHp = s.maxHp;                       // 🚨 ADDED
-                if (s._techHpApplied) o._techHpApplied = true;        // 🚨 ADDED
+                if (s.maxHp) o.maxHp = s.maxHp;                       
+                if (s._techHpApplied) o._techHpApplied = true;        
                 o.isConstructing = s.isConstructing; o.buildProgress = s.buildProgress;
                 o.territory = s.territory; o.originalTerritory = s.originalTerritory;
                 if (s.cooldown !== undefined) o.cooldown = s.cooldown;
@@ -342,8 +344,8 @@ export const SaveLoadExpansion = {
             const restoreUnitState = (o, s) => {
                 if (s.id) o.id = s.id;
                 o.hp = s.hp; 
-                if (s.maxHp) o.maxHp = s.maxHp;                       // 🚨 ADDED
-                if (s._techHpApplied) o._techHpApplied = true;        // 🚨 ADDED
+                if (s.maxHp) o.maxHp = s.maxHp;                       
+                if (s._techHpApplied) o._techHpApplied = true;        
                 if (s.cargo) o.cargo = s.cargo; 
                 if (s.life !== undefined) o.life = s.life; 
                 
@@ -487,10 +489,10 @@ export const SaveLoadExpansion = {
                 const saveUnitState = (u) => {
                     const data = { 
                         id: u.id, x: u.x, y: u.y, team: u.team, role: u.role, 
-                        hp: u.hp, maxHp: u.maxHp, cargo: u.cargo, size: u.size // 🚨 ADDED maxHp
+                        hp: u.hp, maxHp: u.maxHp, cargo: u.cargo, size: u.size 
                     };
                     
-                    if (u._techHpApplied) data._techHpApplied = true; // 🚨 ADDED _techHpApplied
+                    if (u._techHpApplied) data._techHpApplied = true; 
                     
                     // Trapdoor state serialization
                     if (u.burrowState !== undefined) {
@@ -531,8 +533,8 @@ export const SaveLoadExpansion = {
                         if (!u.id) u.id = Math.random().toString(36).substring(2, 11);
                         
                         structures.push({
-                            id: u.id, x: u.x, y: u.y, team: u.team, type: u.type, hp: u.hp, maxHp: u.maxHp, // 🚨 ADDED maxHp
-                            _techHpApplied: u._techHpApplied, // 🚨 ADDED _techHpApplied
+                            id: u.id, x: u.x, y: u.y, team: u.team, type: u.type, hp: u.hp, maxHp: u.maxHp, 
+                            _techHpApplied: u._techHpApplied, 
                             isConstructing: u.isConstructing, buildProgress: u.buildProgress,
                             territory: u.territory, originalTerritory: u.originalTerritory, cooldown: u.cooldown
                         });
