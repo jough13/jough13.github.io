@@ -875,98 +875,88 @@ const UnitConverter = () => {
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
     
-    // --- 1. DEFINITIONS (Unchanged) ---
+    // --- 1. DEFINITIONS ---
     const CATEGORIES = {
         'Activity': {
             base: 'Bq',
             units: {
-                'Bq': 1,
-                'kBq': 1e3,
-                'MBq': 1e6,
-                'GBq': 1e9,
-                'TBq': 1e12,
-                'Ci': 3.7e10,
-                'mCi': 3.7e7,
-                'µCi': 37000,
-                'nCi': 37,
-                'pCi': 0.037,
-                'dpm': 1 / 60,
-                'dps': 1
+                'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'TBq': 1e12,
+                'Ci': 3.7e10, 'mCi': 3.7e7, 'µCi': 37000, 'nCi': 37, 'pCi': 0.037,
+                'dpm': 1 / 60, 'dps': 1
             }
         },
         'Dose Equivalent': {
             base: 'Sv',
             units: {
-                'Sv': 1,
-                'mSv': 1e-3,
-                'µSv': 1e-6,
-                'rem': 0.01,
-                'mrem': 1e-5,
-                'µrem': 1e-8
+                'Sv': 1, 'mSv': 1e-3, 'µSv': 1e-6,
+                'rem': 0.01, 'mrem': 1e-5, 'µrem': 1e-8
             }
         },
         'Absorbed Dose': {
             base: 'Gy',
             units: {
-                'Gy': 1,
-                'mGy': 1e-3,
-                'µGy': 1e-6,
-                'rad': 0.01,
-                'mrad': 1e-5
+                'Gy': 1, 'mGy': 1e-3, 'µGy': 1e-6,
+                'rad': 0.01, 'mrad': 1e-5
+            }
+        },
+        'Dose Rate': {
+            base: 'Sv/hr',
+            units: {
+                'Sv/hr': 1, 'mSv/hr': 1e-3, 'µSv/hr': 1e-6,
+                'rem/hr': 0.01, 'mrem/hr': 1e-5, 'µrem/hr': 1e-8,
+                'Gy/hr': 1, 'mGy/hr': 1e-3, 'mrad/hr': 1e-5,
+                'R/hr': 0.00877, 'mR/hr': 8.77e-6
+            }
+        },
+        'Energy': {
+            base: 'J',
+            units: {
+                'J': 1,
+                'eV': 1.60218e-19,
+                'keV': 1.60218e-16,
+                'MeV': 1.60218e-13
+            }
+        },
+        'Radioactive Concentration': {
+            base: 'Bq/L',
+            units: {
+                'Bq/L': 1,
+                'Bq/m³': 0.001,
+                'pCi/L': 0.037,
+                'µCi/mL': 3.7e7
             }
         },
         'Exposure': {
             base: 'C/kg',
             units: {
-                'C/kg': 1,
-                'R': 2.58e-4,
-                'mR': 2.58e-7,
-                'µR': 2.58e-10
+                'C/kg': 1, 'R': 2.58e-4, 'mR': 2.58e-7, 'µR': 2.58e-10
             }
         },
         'Contamination': {
             base: 'Bq/cm²',
             units: {
-                'Bq/cm²': 1,
-                'kBq/m²': 0.1,
-                'dpm/100cm²': 1 / 6000,
-                'µCi/cm²': 37000,
-                'µCi/m²': 3.7,
-                'pCi/100cm²': 0.037 / 100
+                'Bq/cm²': 1, 'kBq/m²': 0.1, 'dpm/100cm²': 1 / 6000,
+                'µCi/cm²': 37000, 'µCi/m²': 3.7, 'pCi/100cm²': 0.037 / 100
             }
         },
         'Length': {
             base: 'm',
             units: {
-                'm': 1,
-                'cm': 0.01,
-                'mm': 0.001,
-                'µm': 1e-6,
-                'in': 0.0254,
-                'ft': 0.3048,
-                'yd': 0.9144,
-                'mi': 1609.34
+                'm': 1, 'cm': 0.01, 'mm': 0.001, 'µm': 1e-6,
+                'in': 0.0254, 'ft': 0.3048, 'yd': 0.9144, 'mi': 1609.34
             }
         },
         'Mass': {
             base: 'g',
             units: {
-                'g': 1,
-                'kg': 1000,
-                'mg': 1e-3,
-                'µg': 1e-6,
-                'lb': 453.592,
-                'oz': 28.3495
+                'g': 1, 'kg': 1000, 'mg': 1e-3, 'µg': 1e-6,
+                'lb': 453.592, 'oz': 28.3495
             }
         },
         'Time': {
             base: 's',
             units: {
-                's': 1,
-                'min': 60,
-                'hr': 3600,
-                'day': 86400,
-                'yr': 31557600
+                's': 1, 'min': 60, 'hr': 3600, 'day': 86400, 'yr': 31557600
             }
         }
     };
@@ -1427,7 +1417,6 @@ const ComparisonView = ({
     const formatGammaSI = (valR) => (valR ? (valR * 0.01) / 3.7e10 : 0);
     const formatTBqToCi = (valTBq) => (valTBq ? valTBq * 27.027 : 0);
     
-    // --- REFACTORED CONFIGURATION ---
     const propertiesToCompare = React.useMemo(() => [
         {
             label: 'Half-life',
@@ -1504,13 +1493,16 @@ const ComparisonView = ({
             getValue: (n) => {
                 const d = n.dosimetry?.ALI;
                 if (!d) return null;
-                return d.inhalation_W || d.inhalation_Y || d.inhalation_D || d.inhalation;
+                const vals = Object.entries(d).filter(([k, v]) => k.startsWith('inhalation') && typeof v === 'number').map(([, v]) => v);
+                return vals.length > 0 ? Math.min(...vals) : null;
             },
             getDisplay: (n) => {
                 const d = n.dosimetry?.ALI;
                 if (!d) return 'N/A';
-                const val = d.inhalation_W || d.inhalation_Y || d.inhalation_D || d.inhalation;
-                const fmt = formatWithUnitSystem(val, 'ali', settings);
+                const vals = Object.entries(d).filter(([k, v]) => k.startsWith('inhalation') && typeof v === 'number').map(([, v]) => v);
+                if (vals.length === 0) return 'N/A';
+                const minVal = Math.min(...vals);
+                const fmt = formatWithUnitSystem(minVal, 'ali', settings);
                 return fmt.value;
             }
         },
@@ -1701,6 +1693,8 @@ const ComparisonView = ({
                                                                             barWidth = ((logVal - logMin) / (logMax - logMin)) * 100;
                                                                         }
                                                                         barWidth = Math.max(barWidth, 5);
+                                                                    } else {
+                                                                        barWidth = (numVal / maxVal) * 100; // Linear fallback
                                                                     }
                                                                 } else {
                                                                     barWidth = (numVal / maxVal) * 100;
