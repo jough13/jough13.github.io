@@ -1099,7 +1099,9 @@
             case VIEWS.PEAK_ID: return <PeakIdentifier radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} />;
             case VIEWS.SETTINGS: return <SettingsPanel />;
             case VIEWS.MARSSIM_TESTS: return <MARSSIM_Statistical_Tests />;
-            case VIEWS.DECAY_SERIES: return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => { setDetailedNuclide(null); handleNavClick(VIEWS.HOME); }} onNuclideClick={handleNuclideSelection} />;
+
+            case VIEWS.DECAY_SERIES: return <DecaySeriesViewer seriesId={currentDecaySeriesId} decaySeriesData={decaySeriesData} radionuclides={radionuclides} onBack={() => { setDetailedNuclide(null); handleNavClick(VIEWS.HOME); }} onNuclideClick={handleNuclideSelection} />;
+               
             case VIEWS.DETAIL:
             
             if (detailedNuclide) {
