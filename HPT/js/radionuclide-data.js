@@ -627,7 +627,7 @@ const RADIONUCLIDE_DATA = [{
          },
          DCF: {
             ingestion: 0,
-            inhalation_D: 8.73e-9,
+            inhalation_D: 8.73e-10,
             inhalation_W: 5.41e-9
          },
          sourceRef: '10CFR20'
@@ -774,7 +774,7 @@ const RADIONUCLIDE_DATA = [{
          DCF: {
             ingestion: 0,
             inhalation_D: 5.83e-9,
-            inhalation_W: 5.17e-8
+            inhalation_W: 5.17e-9
          },
          sourceRef: '10CFR20'
       },
@@ -1285,7 +1285,7 @@ const RADIONUCLIDE_DATA = [{
          },
          DCF: {
             ingestion: 0, // Organic compounds
-            inhalation_W: 7.83e-13, // Particulate
+            inhalation_W: 5.64e-10, // Particulate
             inhalation_Vapor: 6.36e-12 // CO2
          },
          sourceRef: '10CFR20'
@@ -3524,8 +3524,8 @@ const RADIONUCLIDE_DATA = [{
       },
       parent: 'Sodium-22',
       daughter: null, // End of the line
-      category: 'Stable',
-      commonality: 'Natural'
+      category: 'Stable/Reference',
+      commonality: 'Common'
    },
    {
       name: 'Neptunium-237',
@@ -3607,8 +3607,8 @@ const RADIONUCLIDE_DATA = [{
          DCF: {
             ingestion: 0,
             inhalation_D: 7.11e-10,
-            inhalation_W: 1.09e-10,
-            inhalation_Vapor: 1.12e-10
+            inhalation_W: 1.09e-9,
+            inhalation_Vapor: 1.12e-9
          },
          sourceRef: '10CFR20'
       },
@@ -3708,7 +3708,7 @@ const RADIONUCLIDE_DATA = [{
             ingestion: 0,
             inhalation_D: 8.39e-10,
             inhalation_W: 6.22e-10,
-            inhalation_Vapor: 1.70e-10
+            inhalation_Vapor: 1.70e-9
          },
          sourceRef: '10CFR20'
       },
@@ -5032,7 +5032,7 @@ const RADIONUCLIDE_DATA = [{
          DCF: {
             ingestion: 0,
             inhalation_D: 1.80e-12,
-            inhalation_W: 1.47e-12
+            inhalation_W: 1.47e-11
          },
          sourceRef: '10CFR20'
       },
@@ -8347,8 +8347,9 @@ const REPORTABLE_QUANTITIES = {
 
 // --- THE ULTIMATE ENRICHMENT MAPPER ---
 const ENRICHED_RADIONUCLIDE_DATA = RADIONUCLIDE_DATA.map(nuclide => {
-    const exemptLimits = CFR_173_436_LIMITS[nuclide.symbol] || {};
-    const rqLimits = REPORTABLE_QUANTITIES[nuclide.symbol] || {};
+    const lookupSymbol = nuclide.symbol.replace(' eq', '');
+    const exemptLimits = CFR_173_436_LIMITS[lookupSymbol] || {};
+    const rqLimits = REPORTABLE_QUANTITIES[lookupSymbol] || {};
     
     // Dynamically fix missing DCF ingestion values based on ALI
     if (nuclide.dosimetry && nuclide.dosimetry.ALI && nuclide.dosimetry.DCF) {
