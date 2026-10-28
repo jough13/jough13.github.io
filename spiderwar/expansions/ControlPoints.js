@@ -293,15 +293,28 @@ export const ControlPointsExpansion = {
             for (let i = 0; i < entLen; i++) {
                 let j = entities[i];
                 if (j instanceof JackOLantern) {
+                    
+                    // 🚨 FIXED: Minimap FoW checking for Control Points
+                    const tileSize = game.tileSize || 256;
+                    const tileRow = game.mapGrid[(j.y / tileSize) | 0];
+                    const tile = tileRow ? tileRow[(j.x / tileSize) | 0] : null;
+                    
+                    if (!tile || !tile.discovered) continue;
+                    
+                    // Only show enemy ownership/capture pulses if the tile is currently visible (or owned by black)
+                    const showState = tile.visible || j.controllingTeam === 'black';
+
                     let color = '#ffff00'; // Uncaptured (Yellow)
-                    if (j.controllingTeam === 'black') color = '#aa00ff'; // Obsidian Brood
-                    if (j.controllingTeam === 'red') color = '#ff0000';   // Crimson Swarm
+                    if (showState) {
+                        if (j.controllingTeam === 'black') color = '#aa00ff'; // Obsidian Brood
+                        if (j.controllingTeam === 'red') color = '#ff0000';   // Crimson Swarm
+                    }
                     
                     const drawX = startX + (j.x * scaleX);
                     const drawY = startY + (j.y * scaleY);
 
                     // 🧃 [JUICE] Active capturing pulses on the minimap!
-                    if (j.captureProgress > 0 && j.captureProgress < 100) {
+                    if (showState && j.captureProgress > 0 && j.captureProgress < 100) {
                         const pulseRad = 5 + Math.sin(game.tick * 0.2) * 3;
                         ctx.fillStyle = j.isContested ? 'rgba(255,255,255,0.5)' : `rgba(255, 157, 0, 0.5)`;
                         ctx.beginPath(); ctx.arc(drawX, drawY, pulseRad, 0, TWO_PI); ctx.fill();
