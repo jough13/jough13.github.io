@@ -94,8 +94,8 @@ class PooledParticle {
             this.vy = Math.min(this.vy, PARTICLE_CONFIG.magicFloatSpeed);
             this.x += PARTICLE_CONFIG.wind; 
         } else if (this.type === 'firefly') {
-            // [FIX] Lazy, swaying drift for fireflies
-            this.vy = Math.min(this.vy, -0.2); // Cap upward speed
+            // 🚨 FIXED: Correct clamp limits for negative Y velocity!
+            this.vy = MathUtils.clamp(this.vy, -0.4, -0.1); 
             this.x += Math.sin(this.age * 0.05) * 0.5 + (PARTICLE_CONFIG.wind * 0.3); // Wiggle side to side
         } else if (this.type === 'ring') {
             // [JUICE] Expanding Sonar/Shockwave ring
