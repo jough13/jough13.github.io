@@ -7,7 +7,8 @@ import { MathUtils } from '../game.js';
 // 🔌 [EXPANDABILITY] Exported so other mods can inject new biomes and behaviors!
 export const DECOR_CONFIG = {
     // Behaviors: 'liquid' (bobs up/down), 'plant' (sways from base), 'solid' (casts shadow)
-    water:   { src: 'assets/clutter_water.png',   count: 400, minSize: 15, maxSize: 30, minAlpha: 0.6, maxAlpha: 0.9, fallbackColor: '#1a4e6e', behavior: 'liquid' },
+    // 🚨 FIXED: Reduced water count to 80 so it doesn't over-clutter the narrow rivers
+    water:   { src: 'assets/clutter_water.png',   count: 80, minSize: 15, maxSize: 30, minAlpha: 0.6, maxAlpha: 0.9, fallbackColor: '#1a4e6e', behavior: 'liquid' },
     grass:   { src: 'assets/clutter_grass.png',   count: 600, minSize: 10, maxSize: 25, minAlpha: 0.8, maxAlpha: 1.0, fallbackColor: '#1f4d15', behavior: 'plant' },
     pebbles: { src: 'assets/clutter_pebbles.png', count: 500, minSize: 8,  maxSize: 18, minAlpha: 0.7, maxAlpha: 1.0, fallbackColor: '#4a4a4a', behavior: 'solid' },
     
@@ -64,13 +65,8 @@ export const DecorExpansion = {
                         // Only place the decor if it matches the underlying terrain
                         if (terrain === type) {
                             
-                            // [FIX] Snap water decor to the narrow inner channel so they don't land on muddy banks
-                            if (type === 'water') {
-                                const tileCenterX = (((dx / tileSize) | 0) + 0.5) * tileSize;
-                                const tileCenterY = (((dy / tileSize) | 0) + 0.5) * tileSize;
-                                dx = tileCenterX + MathUtils.randomRange(-20, 20);
-                                dy = tileCenterY + MathUtils.randomRange(-20, 20);
-                            }
+                            // 🚨 FIXED: Removed the center-snapping override completely! 
+                            // Terrain.js sub-tile bitmasks already guarantee (dx, dy) is in the water channel!
 
                             const rawSize = MathUtils.randomRange(config.minSize, config.maxSize);
                             
