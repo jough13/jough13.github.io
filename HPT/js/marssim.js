@@ -110,7 +110,14 @@ const SignTest_Calculator = ({ dcgl, setDcgl, dataInput, setDataInput, alpha, se
     
     const handleSaveToHistory = () => {
         if (result) {
-            addHistory({ id: Date.now(), type: 'Sign Test', icon: ICONS.labStats, inputs: `N=${result.n}, DCGL=${dcgl} ${useUnityRule ? '(Unity Rule)' : ''}`, result: `UNIT ${result.conclusion}ES`, view: VIEWS.MARSSIM_TESTS });
+            addHistory({ 
+                id: Date.now(), 
+                type: 'Sign Test', 
+                icon: ICONS.labStats, 
+                inputs: `N=${result.n}, DCGL=${dcgl} ${useUnityRule ? '(Unity Rule)' : ''}`, 
+                result: `UNIT ${result.conclusion === 'PASS' ? 'PASSES' : 'FAILS'}`, 
+                view: VIEWS.MARSSIM_TESTS 
+            });
             addToast("Saved to history!");
         }
     };
@@ -477,6 +484,10 @@ const EMC_Evaluation_Calculator = ({ dcglw, setDcglw, areaFactor, setAreaFactor,
         });
     };
 
+    React.useEffect(() => { 
+        handleCalculate(); 
+    }, [dcglw, avgConc, hotSpots]);
+
     const handleSaveToHistory = () => {
         if (result) {
             addHistory({ id: Date.now(), type: 'EMC Eval', icon: ICONS.labStats, inputs: `${hotSpots.length} Hot Spots`, result: result.pass ? 'PASS' : 'FAIL', view: VIEWS.MARSSIM_TESTS });
@@ -528,6 +539,13 @@ const EMC_Evaluation_Calculator = ({ dcglw, setDcglw, areaFactor, setAreaFactor,
             
             {result && (
                 <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${result.pass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+                    <div className="flex justify-end -mt-3 -mr-3 mb-2">
+                        <Tooltip text="Save to history" widthClass="w-auto">
+                            <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-600 transition-colors">
+                                <Icon path={ICONS.notepad} className="w-5 h-5" />
+                            </button>
+                        </Tooltip>
+                    </div>
                     <p className={`text-3xl font-extrabold ${result.pass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>EMC {result.pass ? 'PASSES' : 'FAILS'}</p>
                     <p className="mt-1 font-bold">Total Unity Value: {result.totalUnity}</p>
                     
@@ -1223,7 +1241,7 @@ const MARSSIM_Statistical_Tests = () => {
                 L.drawLocal.draw.handlers.marker.tooltip.start = 'Click map to place bias sample.';
                 
                 const biasMarkerIcon = new L.DivIcon({ className: 'leaflet-draw-biased-marker-icon', iconSize: new L.Point(12, 12), iconAnchor: new L.Point(8, 8) });
-                const yourStadiaApiKey = 'a7f8d6b2-37be-4661-afa4-0409424b5708';
+                const yourStadiaApiKey = 'a7f8d6b2-37be-4661-afa4-0409424b5708'; // WARNING: Ensure HTTP referrers are restricted in your Stadia dashboard
                 
                 osmLayerRef.current = L.tileLayer('https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.png?api_key={apiKey}', {
                     attribution: '&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a>',
