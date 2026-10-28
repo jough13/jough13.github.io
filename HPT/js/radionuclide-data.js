@@ -92,7 +92,7 @@ const RADIONUCLIDE_DATA = [{
          },
          DAC: {
             inhalation_D: 2e-13,
-            inhalation_W: 7e-12,
+            inhalation_W: 7e-13,
             inhalation_Y: 2e-12
          },
          DCF: {
@@ -598,7 +598,7 @@ const RADIONUCLIDE_DATA = [{
       },
       halfLife: '2.01 x 10^19 years',
       decayConstant: '3.45 x 10⁻²⁰ year⁻¹',
-      specificActivity: '0.0031 Bq/g',
+      specificActivity: '3.15 x 10^-6 Bq/g',
       parent: 'Primordial',
       daughter: 'Thallium-205 (stable)',
       commonUses: ['Considered stable for most practical purposes', 'Recently discovered to be radioactive'],
@@ -1169,7 +1169,7 @@ const RADIONUCLIDE_DATA = [{
       avgBetaEnergy: '0.320 MeV',
       halfLife: '20.36 minutes',
       decayConstant: '0.0340 min⁻¹',
-      specificActivity: '1.9 x 10^18 Bq/g',
+      specificActivity: '3.11 x 10^19 Bq/g',
       parent: 'Boron-11 (p,n)',
       daughter: 'Boron-11 (stable)',
       commonUses: ['PET imaging for various tracers (e.g., methionine for tumors)'],
@@ -2067,7 +2067,7 @@ const RADIONUCLIDE_DATA = [{
       },
       halfLife: '3.26 days',
       decayConstant: '0.213 day⁻¹',
-      specificActivity: '3.8 x 10^15 Bq/g',
+      specificActivity: '2.21 x 10^16 Bq/g',
       parent: 'Zinc-67 (p,n)',
       daughter: 'Zinc-67 (stable)',
       commonUses: ['Tumor imaging (lymphomas, lung cancer)', 'Infection imaging', 'Inflammation imaging'],
@@ -3314,7 +3314,7 @@ const RADIONUCLIDE_DATA = [{
       avgBetaEnergy: '0.166 MeV',
       halfLife: '6.647 days',
       decayConstant: '0.104 day⁻¹',
-      specificActivity: '3.9 x 10^14 Bq/g',
+      specificActivity: '4.11 x 10^15 Bq/g',
       parent: 'Ytterbium-176 (n,γ)',
       daughter: 'Hafnium-177 (stable)',
       commonUses: ['Peptide receptor radionuclide therapy (PRRT) for neuroendocrine tumors'],
@@ -3726,7 +3726,7 @@ const RADIONUCLIDE_DATA = [{
       avgBetaEnergy: '0.400 MeV',
       halfLife: '9.97 minutes',
       decayConstant: '0.0695 min⁻¹',
-      specificActivity: '3.7 x 10^18 Bq/g',
+      specificActivity: '5.37 x 10^19 Bq/g',
       parent: 'Carbon-13 (p,n)',
       daughter: 'Carbon-13 (stable)',
       commonUses: ['Cardiac PET imaging for myocardial perfusion and viability'],
@@ -3784,7 +3784,7 @@ const RADIONUCLIDE_DATA = [{
       avgBetaEnergy: '0.577 MeV',
       halfLife: '122.2 seconds',
       decayConstant: '0.00567 s⁻¹',
-      specificActivity: '3.3 x 10^18 Bq/g',
+      specificActivity: '2.28 x 10^20 Bq/g',
       parent: 'Nitrogen-15 (p,n)',
       daughter: 'Nitrogen-15 (stable)',
       commonUses: ['Brain blood flow', 'Oxygen metabolism PET imaging'],
@@ -5148,7 +5148,7 @@ const RADIONUCLIDE_DATA = [{
       avgBetaEnergy: '1.127 MeV',
       halfLife: '76 seconds',
       decayConstant: '0.00912 s⁻¹',
-      specificActivity: '8.3 x 10^17 Bq/g',
+      specificActivity: '6.70 x 10^19 Bq/g',
       parent: 'Strontium-82',
       daughter: 'Krypton-82 (stable)',
       commonUses: ['Cardiac PET imaging for myocardial perfusion'],
@@ -5164,7 +5164,6 @@ const RADIONUCLIDE_DATA = [{
          unit: 'TBq'
       },
       dosimetry: {
-         // FGR 11 does not list Committed Dose DCFs for Rb-82 (submersion only).
          DAC: {
             inhalation_D: 1e-4 // Submersion approximation
          },
@@ -5323,7 +5322,7 @@ const RADIONUCLIDE_DATA = [{
       avgBetaEnergy: '0.269 MeV',
       halfLife: '46.28 hours',
       decayConstant: '0.0150 hour⁻¹',
-      specificActivity: '3.5 x 10^15 Bq/g',
+      specificActivity: '1.64 x 10^16 Bq/g',
       parent: 'Samarium-152 (n,γ)',
       daughter: 'Europium-153 (stable)',
       commonUses: ['Palliative bone pain therapy (metastatic cancer)'],
@@ -5513,7 +5512,7 @@ const RADIONUCLIDE_DATA = [{
       commonalityReason: 'A popular radiography source for thinner steel sections where Ir-192 is too energetic.',
       sourceRef: {
          halfLife: 'nndc',
-         gammaConstant: 'plexus_nsd'
+         gammaConstant: 'hps'
       },
       shipping: {
          A1: 3,
@@ -5521,7 +5520,7 @@ const RADIONUCLIDE_DATA = [{
          unit: 'TBq'
       },
       dValue: 0.2, // IAEA EPR-D-Values
-      gammaConstant: '0.85951 R·m²/hr·Ci',
+      gammaConstant: '0.203 R·m²/hr·Ci',
       dosimetry: {
          ALI: {
             ingestion: 500,
@@ -6254,15 +6253,13 @@ const RADIONUCLIDE_DATA = [{
          beta: ['0.421 MeV (max)', '1.30 MeV (max)'],
          gamma: ['0.149 MeV (dominant)', '0.774 MeV', '1.21 MeV']
       },
-      // Note: Te-131m has complex branching (IT to Te-131 and Beta to I-131).
-      // For equilibrium testing, we model the effective path to I-131.
       daughterEmissions: {
          from: 'I-131',
          gamma: ['0.364 MeV (81%)']
       },
       halfLife: '33.25 hours',
       decayConstant: '0.0208 hour⁻¹', 
-      specificActivity: '3.0 x 10^7 TBq/g', // ~800,000 Ci/g
+      specificActivity: '2.66 x 10^16 Bq/g',
       parent: 'Fission Product',
       daughter: 'Iodine-131',
       branchingFraction: 0.778,
@@ -6344,7 +6341,7 @@ const RADIONUCLIDE_DATA = [{
       },
       halfLife: '73.1 hours',
       decayConstant: '0.00948 hour⁻¹',
-      specificActivity: '1.74 x 10^15 Bq/g',
+      specificActivity: '7.89 x 10^15 Bq/g',
       parent: 'Lead-201',
       daughter: 'Mercury-201 (stable)',
       commonUses: ['Cardiac imaging (myocardial perfusion)', 'Parathyroid gland imaging'],
@@ -7556,7 +7553,7 @@ const RADIONUCLIDE_DATA = [{
       avgBetaEnergy: '0.934 MeV',
       halfLife: '64.0 hours',
       decayConstant: '0.0108 hour⁻¹',
-      specificActivity: '1.21 x 10^16 Bq/g',
+      specificActivity: '2.01 x 10^16 Bq/g',
       parent: 'Strontium-90',
       daughter: 'Zirconium-90 (stable)',
       commonUses: ['Radioembolization (liver cancer therapy)', 'Radioimmunotherapy', 'Brachytherapy'],
@@ -8305,6 +8302,16 @@ const ENRICHED_RADIONUCLIDE_DATA = RADIONUCLIDE_DATA.map(nuclide => {
     const exemptLimits = CFR_173_436_LIMITS[nuclide.symbol] || {};
     const rqLimits = REPORTABLE_QUANTITIES[nuclide.symbol] || {};
     
+    // Dynamically fix missing DCF ingestion values based on ALI
+    if (nuclide.dosimetry && nuclide.dosimetry.ALI && nuclide.dosimetry.DCF) {
+        if (nuclide.dosimetry.DCF.ingestion === 0 && nuclide.dosimetry.ALI.ingestion) {
+            // FGR-11 DCFs in this app are generally represented in Sv/Bq for internal math
+            // 5 rem = 0.05 Sv. 1 uCi = 37,000 Bq.
+            // DCF (Sv/Bq) = 0.05 / (ALI_uCi * 37000)
+            nuclide.dosimetry.DCF.ingestion = 0.05 / (nuclide.dosimetry.ALI.ingestion * 37000);
+        }
+    }
+    
     return {
         ...nuclide,
         nrcExemptLimit: typeof getNrcExemptQuantity === 'function' ? getNrcExemptQuantity(nuclide) : null,
@@ -8313,7 +8320,7 @@ const ENRICHED_RADIONUCLIDE_DATA = RADIONUCLIDE_DATA.map(nuclide => {
             ...(nuclide.shipping || {}),
             exemptConsignmentBq: exemptLimits.exemptConsignmentBq,
             exemptConsignmentCi: exemptLimits.exemptConsignmentCi,
-            exemptConcLimitBq_g: exemptLimits.exemptConcLimitBq_g, // <-- ADD THIS LINE
+            exemptConcLimitBq_g: exemptLimits.exemptConcLimitBq_g,
             RQ_TBq: rqLimits.RQ_TBq,
             RQ_Ci: rqLimits.RQ_Ci
         }
