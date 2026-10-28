@@ -114,16 +114,31 @@ export class CentipedeBoss {
         // 2. Target Acquisition (Throttled Spatial Grid Lookups!)
         this.repathTimer--;
         if (this.repathTimer <= 0 || !this.target || this.target.hp <= 0) {
-            
-            // 🚨 FIXED: If the boss is tamed (team === 'black' or 'red'), it ignores harmless nature critters!
-            // If it is wild (team === 'nature'), it eats everything!
+            // If the boss is tamed (team === 'black' or 'red'), it ignores harmless nature critters!
             this.target = game.getNearestEnemy(this.x, this.y, this.team, BOSS_CONFIG.aggroRange, this.team === 'nature');
-            
             this.repathTimer = 15; // Only scan the massive 800px grid 4 times a second instead of 60!
         }
         
         // 3. Movement & Combat
-        if (this.target) {
+        // 🚨 FIXED: Manual Move Override for Subjugated Bosses!
+        if (this.isManual && this.commandTarget) {
+            const dx = this.commandTarget.x - this.x;
+            const dy = this.commandTarget.y - this.y;
+            
+            if ((dx * dx + dy * dy) > 225) {
+                const targetAngle = Math.atan2(dy, dx);
+                let diff = MathUtils.angleWrap(targetAngle - this.angle);
+                this.angle += (diff * 0.05);
+                
+                const currentSpeed = this.isSlowed ? this.speed * 0.5 : this.speed;
+                this.x += Math.cos(this.angle) * currentSpeed;
+                this.y += Math.sin(this.angle) * currentSpeed;
+            } else {
+                this.commandTarget = null;
+                this.isManual = false;
+            }
+        }
+        else if (this.target) {
             const targetAngle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
             
             // Safe, glitch-free turning
@@ -207,8 +222,10 @@ export class CentipedeBoss {
             ctx.translate(-this.x, -this.y);
         }
 
-        // 🧃 [JUICE] Damage Flash Filter
-        if (this.flashFrames > 0) ctx.filter = 'brightness(2.5)';
+        // 🚨 FIXED: Fast Additive Blending Flash
+        if (this.flashFrames > 0) {
+            ctx.globalCompositeOperation = 'lighter';
+        }
 
         const tick = game ? game.tick : 0;
 
@@ -238,6 +255,13 @@ export class CentipedeBoss {
                 ctx.fillStyle = i % 2 === 0 ? '#113311' : '#225522'; 
                 ctx.beginPath(); ctx.arc(0, 0, 15, 0, MathUtils.TWO_PI); ctx.fill(); 
             }
+            
+            // 🚨 FIXED: Flash body segments white if damaged
+            if (this.flashFrames > 0) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.beginPath(); ctx.arc(0, 0, 15, 0, MathUtils.TWO_PI); ctx.fill(); 
+            }
+            
             ctx.restore();
         }
 
@@ -266,6 +290,13 @@ export class CentipedeBoss {
             ctx.beginPath(); ctx.arc(8, -8, 4, 0, MathUtils.TWO_PI); 
             ctx.arc(8, 8, 4, 0, MathUtils.TWO_PI); ctx.fill(); 
         }
+        
+        // 🚨 FIXED: Flash head white if damaged
+        if (this.flashFrames > 0) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath(); ctx.arc(0, 0, 20, 0, MathUtils.TWO_PI); ctx.fill(); 
+        }
+        
         ctx.restore();
         
         ctx.restore(); // Restore global context (removes filters/spawn scaling)
@@ -287,7 +318,6 @@ export const GodUnitExpansion = {
         // [EXPANDABILITY] Inject config into game so other mods can read/write to it
         game.bossConfig = BOSS_CONFIG;
         
-        // 🚨 ADDED: Robust flag initialization
         game.bossSpawned = false;
 
         // --- ASSET REGISTRY ---
@@ -322,7 +352,6 @@ export const GodUnitExpansion = {
         game.expansions.patchClass(game.constructor, 'update', function(original) {
             original.call(this);
             
-            // 🚨 FIXED: Robust spawn check using >= and the boolean flag
             if (this.gameState === 'playing' && this.tick >= this.bossConfig.spawnTick && !this.bossSpawned) { 
                 this.bossSpawned = true;
                 
