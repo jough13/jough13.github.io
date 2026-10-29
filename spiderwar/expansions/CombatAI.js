@@ -49,7 +49,9 @@ export const CombatAndHarvesterExpansion = {
                     const targetAngle = Math.atan2(nearestEnemy.y - entity.y, nearestEnemy.x - entity.x);
                     entity.angle += MathUtils.angleWrap(targetAngle - entity.angle) * COMBAT_CONFIG.turnSpeed;
                     
-                    const combatRange = nearestEnemy.size ? nearestEnemy.size + 15 : 20;
+                    // 🚨 FIXED: Use dynamic hitbox math so physics separation doesn't out-push attack range!
+                    const combatRange = (nearestEnemy.size || 15) + entity.size + 6;
+                    
                     if (MathUtils.distSq(entity.x, entity.y, nearestEnemy.x, nearestEnemy.y) > combatRange * combatRange) { 
                         entity.x += Math.cos(entity.angle) * currentSpeed; 
                         entity.y += Math.sin(entity.angle) * currentSpeed;
@@ -168,7 +170,8 @@ export const CombatAndHarvesterExpansion = {
                     const targetAngle = Math.atan2(dy, dx);
                     entity.angle += MathUtils.angleWrap(targetAngle - entity.angle) * COMBAT_CONFIG.turnSpeed;
                     
-                    const targetRadius = entity.target.size ? entity.target.size + 5 : 15;
+                    // 🚨 FIXED: Dynamic hitbox math so physics don't stop slow Harvesters from reaching big Nests!
+                    const targetRadius = (entity.target.size || 15) + entity.size + 6;
                     
                     if (distSq > targetRadius * targetRadius) { 
                         entity.x += Math.cos(entity.angle) * currentSpeed; 
@@ -242,7 +245,9 @@ export const CombatAndHarvesterExpansion = {
                     const targetAngle = Math.atan2(nearestEnemy.y - entity.y, nearestEnemy.x - entity.x);
                     entity.angle += MathUtils.angleWrap(targetAngle - entity.angle) * COMBAT_CONFIG.turnSpeed;
                     
-                    const combatRange = nearestEnemy.size ? nearestEnemy.size + 15 : 20;
+                    // 🚨 FIXED: Use dynamic hitbox math so big Tarantulas can reach big buildings!
+                    const combatRange = (nearestEnemy.size || 15) + entity.size + 6;
+                    
                     if (MathUtils.distSq(entity.x, entity.y, nearestEnemy.x, nearestEnemy.y) > combatRange * combatRange) { 
                         entity.x += Math.cos(entity.angle) * currentSpeed; 
                         entity.y += Math.sin(entity.angle) * currentSpeed;
