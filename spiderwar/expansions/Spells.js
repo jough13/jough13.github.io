@@ -72,11 +72,11 @@ export class Spell {
                 for (let i = 0; i < cell.length; i++) {
                     let e = cell[i];
                     
-                    // Fast early-exit: Ignore dead units, allies, and non-spider/boss entities
+                    // Fast early-exit: Ignore dead units and allies
                     if (!e.team || e.team === this.team || e.hp === undefined || e.hp <= 0) continue;
                     
-                    // [FIX] Use minification-safe isBoss flag, and allow spells to damage Hazards!
-                    if (!(e instanceof Spider || e.isBoss || e.isHazard)) continue;
+                    // 🚨 FIXED: Allow spells to hit Critters (Aphids & GoldenBugs) now that they have the isCritter flag!
+                    if (!(e instanceof Spider || e.isBoss || e.isHazard || e.isCritter)) continue;
                     
                     // Fast AABB early-exit
                     if (Math.abs(this.x - e.x) > this.radius || Math.abs(this.y - e.y) > this.radius) continue;
