@@ -128,7 +128,8 @@ export const AIDirectorExpansion = {
                 const entLen = entities.length;
                 for (let i = 0; i < entLen; i++) {
                     let e = entities[i];
-                    if (e.team === 'red' && e.hp > 0 && e instanceof Spider && e.role !== 'harvester' && e.role !== 'queen') {
+                    // 🚨 FIXED: The AI director no longer recruits fragile, temporary chaff units, nor does it unbury perfectly hidden Trapdoors!
+                    if (e.team === 'red' && e.hp > 0 && e instanceof Spider && e.role !== 'harvester' && e.role !== 'queen' && !e.isZombie && e.role !== 'broodling' && e.role !== 'parasite' && e.burrowState !== 2) {
                         e.commandTarget = { x: redNest.x + MathUtils.randomRange(-100, 100), y: redNest.y + MathUtils.randomRange(-100, 100) };
                         e.isManual = true; // Force them to move
                     }
@@ -175,7 +176,8 @@ export const AIDirectorExpansion = {
                 const entLen = entities.length;
                 for (let i = 0; i < entLen; i++) {
                     let e = entities[i];
-                    if (e.team === 'red' && e.hp > 0 && e instanceof Spider && e.role !== 'harvester' && e.role !== 'queen') {
+                    // 🚨 FIXED: The AI director no longer recruits fragile, temporary chaff units, nor does it unbury perfectly hidden Trapdoors!
+                    if (e.team === 'red' && e.hp > 0 && e instanceof Spider && e.role !== 'harvester' && e.role !== 'queen' && !e.isZombie && e.role !== 'broodling' && e.role !== 'parasite' && e.burrowState !== 2) {
                         if (!dir.squad.has(e) && !e.target) {
                             dir.squad.add(e);
                             e.isSquad = true; // [FIX] Tag them so they ignore base duties
@@ -240,18 +242,10 @@ export const AIDirectorExpansion = {
             if (dir.state === AI_STATE.ATTACKING) {
                 
                 // 🚀 [PERFORMANCE & LOGIC FIX] Target Re-evaluation
-                // If the target dies before the squad gets there, immediately pick a new one or retreat!
+                // 🚨 FIXED: The AI wave now continues attacking relentlessly until wiped out, rather than aborting after killing a single pylon!
                 if (!dir.target || dir.target.hp <= 0) {
                     dir.target = null;
-                    dir.state = AI_STATE.BUILDING; // Temporarily drop to building to trigger re-evaluation on next frame
-                    dir.nextAttackTick = this.tick + cfg.waveCooldownTicks; // [FIX] Apply wave cooldown!
-                    
-                    // 🛡️ [FIX] Stop marching to the dead target!
-                    for (let bug of dir.squad) {
-                        bug.isManual = false;
-                        bug.commandTarget = null;
-                        bug.isSquad = false; // [FIX] Strip squad tag so they return to normal duties
-                    }
+                    dir.state = AI_STATE.BUILDING; // Temporarily drop to building to trigger target re-evaluation on next frame
                     return; 
                 }
 
