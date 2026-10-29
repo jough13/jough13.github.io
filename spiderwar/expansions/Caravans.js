@@ -27,6 +27,9 @@ export class GoldenCaravan extends Spider {
         // Inherits from Spider so it automatically interacts with combat and spatial grids
         super(startX, startY, 'nature', 'caravan');
         
+        // 🚨 FIXED: Remove default 'gatherer' traits so it doesn't try to mine resources!
+        this.traits = [];
+        
         this.size = CARAVAN_CONFIG.size;
         this.hp = CARAVAN_CONFIG.hp;
         this.maxHp = CARAVAN_CONFIG.hp;
@@ -62,6 +65,13 @@ export class GoldenCaravan extends Spider {
         }
         this._lastHp = this.hp;
         if (this.flashFrames > 0) this.flashFrames--;
+        
+        // 🚨 FIXED: Allow the Caravan to be stunned by Paralyze spells!
+        if (this.stunTimer > 0) {
+            this.stunTimer--;
+            if (game.tick % 15 === 0) game.bus.emit('particles', {x: this.x, y: this.y - 10, color: '#00ffff', count: 1, type: 'magic'});
+            return; 
+        }
 
         // 1. Move Towards Destination
         const dx = this.targetNode.x - this.x;
@@ -73,9 +83,12 @@ export class GoldenCaravan extends Spider {
             // 🛡️ [FIX] Recalculate angle so swarm physics deflections don't steer it permanently off course!
             this.angle = Math.atan2(dy, dx);
             
+            // 🚨 FIXED: Apply SilkTrap and VenomStrike slow debuffs correctly!
+            let currentSpeed = this.isSlowed ? (this.baseSpeed * 0.4) : this.baseSpeed;
+            
             // [FIX] Use baseSpeed so the Universal Speed Tracker doesn't accidentally paralyze the slow-moving caravan!
-            this.x += Math.cos(this.angle) * this.baseSpeed;
-            this.y += Math.sin(this.angle) * this.baseSpeed;
+            this.x += Math.cos(this.angle) * currentSpeed;
+            this.y += Math.sin(this.angle) * currentSpeed;
             
             // 🧃 [JUICE] Heavy footsteps
             if (game.tick % 30 === 0) {
@@ -92,6 +105,9 @@ export class GoldenCaravan extends Spider {
 
         // We do NOT call super.update() because we don't want it to run the default combat/flee AI.
         // It should ignore enemies completely and just march forward.
+        
+        // 🚨 FIXED: Clear debuffs at the end of the frame so they must be actively reapplied by spells!
+        this.isSlowed = false; 
     }
 
     // 🛡️ [FIX] The Death Loot Drop is now safely handled here so it isn't skipped by GC
@@ -136,6 +152,18 @@ export class GoldenCaravan extends Spider {
         ctx.shadowBlur = 15;
         ctx.fillStyle = 'rgba(255, 234, 0, 0.2)';
         ctx.beginPath(); ctx.arc(0, 0, this.size, 0, MathUtils.TWO_PI); ctx.fill();
+        
+        // 🚨 FIXED: Draw an icy crystal block over stunned units (Same as Spider.draw in SpectralSwarm)
+        if (this.stunTimer > 0) {
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.4)';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(0, -this.size - 4); ctx.lineTo(this.size + 2, -2); ctx.lineTo(this.size + 4, this.size + 2);
+            ctx.lineTo(-2, this.size + 4); ctx.lineTo(-this.size - 4, 2); ctx.closePath();
+            ctx.fill(); ctx.stroke();
+        }
+        
         ctx.restore();
         
         // Temporarily inject the waddle into the angle so super.draw rotates the sprite organically
