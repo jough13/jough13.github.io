@@ -60,7 +60,8 @@ export class Queen extends Spider {
 
         // 1. Self-Defense Combat Check (Queens hit hard!)
         this.cooldown = (this.cooldown || 0) - 1;
-        let nearestEnemy = game.getNearestEnemy(this.x, this.y, this.team, QUEEN_CONFIG.aggroRadius);
+        // [FIX] Queens should bite hazards if they get too close!
+        let nearestEnemy = game.getNearestEnemy(this.x, this.y, this.team, QUEEN_CONFIG.aggroRadius, true);
         
         if (nearestEnemy) {
             // 🧃 [JUICE] Smooth organic turning towards the enemy
