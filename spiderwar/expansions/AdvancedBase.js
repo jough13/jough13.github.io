@@ -205,7 +205,7 @@ export const AdvancedBaseExpansion = {
             }
 
             // 🧃 [JUICE] Phase Escalation UI & Sound Hooks
-            const escalatePhase = (phaseNum, targetTick) => {
+            const escalatePhase = (phaseNum) => {
                 const phaseStr = `phase${phaseNum}`;
                 
                 // 🛡️ [FIX] Prevent Duplicate Pushing on Save/Load Catchup!
@@ -219,8 +219,8 @@ export const AdvancedBaseExpansion = {
                     if (!this.aiConfig.activeBuildPool.includes(b)) this.aiConfig.activeBuildPool.push(b);
                 });
                 
-                // Mute the SFX/VFX if the game is "catching up" after loading a save file
-                const isCatchingUp = (this.tick > targetTick + 5);
+                // 🚨 FIXED: Explicitly use the justLoadedSave flag so roars aren't permanently muted!
+                const isCatchingUp = Boolean(this._justLoadedSave);
                 
                 if (!isCatchingUp) {
                     if (this.showSystemMessage) this.showSystemMessage(`THE SWARM EVOLVES: PHASE ${phaseNum}`, '#ff0000');
@@ -242,14 +242,17 @@ export const AdvancedBaseExpansion = {
             const readyForPhase4 = (this.tick >= 21600 && (playerTech >= 3 || playerPop >= 30)) || this.tick >= ai.phase4Tick;
 
             if (readyForPhase2 && !this.aiConfig.phase2Escalated) { 
-                this.aiConfig.phase2Escalated = true; escalatePhase(2, this.tick - 10); 
+                this.aiConfig.phase2Escalated = true; escalatePhase(2); 
             }
             if (readyForPhase3 && !this.aiConfig.phase3Escalated) { 
-                this.aiConfig.phase3Escalated = true; escalatePhase(3, this.tick - 10); 
+                this.aiConfig.phase3Escalated = true; escalatePhase(3); 
             }
             if (readyForPhase4 && !this.aiConfig.phase4Escalated) { 
-                this.aiConfig.phase4Escalated = true; escalatePhase(4, this.tick - 10); 
+                this.aiConfig.phase4Escalated = true; escalatePhase(4); 
             }
+            
+            // Wipe the flag now that all phases have been evaluated for this frame
+            this._justLoadedSave = false;
 
             // Adaptive Unit Spawning Rate:
             // If the AI already outnumbers the player by more than 8 units, slow its spawning down by 50%
@@ -290,7 +293,7 @@ export const AdvancedBaseExpansion = {
                     // [FIX] Apply tech HP bonus to all existing entities instantly
                     for (let i = 0; i < this.entities.length; i++) {
                         let e = this.entities[i];
-                        if (e.team === 'red' && e.hp > 0 && e.role !== 'queen' && e.role !== 'broodling' && e.role !== 'parasite' && !e.isZombie && (e instanceof Spider || e instanceof Structure)) {
+                        if (e.team === 'red' && e.hp > 0 && e.role !== 'queen' && (e instanceof Spider || e instanceof Structure)) {
                             e.maxHp += 20; e.hp += 20;
                         }
                     }
