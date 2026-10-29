@@ -113,7 +113,10 @@ export const TraitManagerExpansion = {
                     const targetAngle = Math.atan2(enemy.y - entity.y, enemy.x - entity.x);
                     entity.angle += MathUtils.angleWrap(targetAngle - entity.angle) * 0.2;
                     
-                    if (MathUtils.distSq(entity.x, entity.y, enemy.x, enemy.y) < 900) { 
+                    // 🚨 FIXED: Dynamic hitbox math so Ticks can detonate against massive Titans and Buildings!
+                    const contactDist = (enemy.size || 15) + entity.size + 6;
+                    
+                    if (MathUtils.distSq(entity.x, entity.y, enemy.x, enemy.y) <= contactDist * contactDist) { 
                         entity.hp = 0; // Kill self
                         
                         // [JUICE] Explosion Screen Shake!
