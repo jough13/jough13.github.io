@@ -299,6 +299,12 @@ export const SaveLoadExpansion = {
             game.eco = state.eco; game.pop = state.pop; game.maxPop = state.maxPop; 
             game.techLevel = state.techLevel; game.camera = state.camera; game.tick = state.tick || 0;
             
+            // 🚨 FIXED: The AI Director needs to know this load event just occurred so it doesn't suppress roars!
+            game._justLoadedSave = true;
+            
+            // 🚨 FIXED: Ensure the win/loss condition loop knows the game successfully populated Queens!
+            game.queensSpawned = true;
+            
             if (state.mapGrid) {
                 game.mapGrid = state.mapGrid;
                 if (game.updateBitmasks) game.updateBitmasks();
