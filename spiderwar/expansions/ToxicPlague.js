@@ -57,8 +57,8 @@ class ToxicPuddle {
                     // Fast early exits
                     if (!e.team || e.team === this.team || e.hp === undefined || e.hp <= 0) continue;
                     
-                    // [FIX] Minification-safe boss check, and hazards can melt!
-                    if (!(e instanceof Spider || e.isBoss || e.isHazard)) continue;
+                    // 🚨 FIXED: Check for isCritter so Toxic Puddles can melt Golden Bugs!
+                    if (!(e instanceof Spider || e.isBoss || e.isHazard || e.isCritter)) continue;
                     
                     // Fast AABB check
                     if (Math.abs(this.x - e.x) > this.radius || Math.abs(this.y - e.y) > this.radius) continue;
@@ -168,7 +168,7 @@ export const ToxicPlagueExpansion = {
         // Parasite AI Trait
         game.registerTrait('parasite_ai', {
             update: (entity, gameObj) => {
-                // 🚨 FIXED: Pull tech level, terrain, and slow modifiers dynamically!
+                // Pull tech level, terrain, and slow modifiers dynamically!
                 const techLvl = gameObj.techLevel[entity.team] || 0; 
                 const currentDamage = entity.damage + (techLvl * 5); 
                 
@@ -192,7 +192,7 @@ export const ToxicPlagueExpansion = {
                     const dx = enemy.x - entity.x; const dy = enemy.y - entity.y;
                     const distSq = (dx * dx) + (dy * dy);
                     
-                    // 🚨 FIXED: Dynamically calculate hitbox combat range!
+                    // Dynamically calculate hitbox combat range!
                     const combatRange = (enemy.size || 10) + entity.size + 5;
                     const combatRangeSq = combatRange * combatRange;
                     
@@ -204,7 +204,7 @@ export const ToxicPlagueExpansion = {
                         entity.cooldown--;
                         
                         if (entity.cooldown <= 0) {
-                            enemy.hp -= currentDamage; // 🚨 FIXED: Uses tech-modified damage
+                            enemy.hp -= currentDamage; // Uses tech-modified damage
                             entity.cooldown = entity.attackSpeed;
                             
                             // Tiny Recoil
@@ -264,8 +264,8 @@ export const ToxicPlagueExpansion = {
                             for (let i = 0; i < cell.length; i++) {
                                 let e = cell[i];
                                 
-                                // [FIX] Minification-safe boss check, and hazards can be infected!
-                                if (e.team && e.team !== data.team && e.hp > 0 && (e instanceof Spider || e.isBoss || e.isHazard)) {
+                                // 🚨 FIXED: Allow Contagion to infect Critters (Aphids & GoldenBugs)!
+                                if (e.team && e.team !== data.team && e.hp > 0 && (e instanceof Spider || e.isBoss || e.isHazard || e.isCritter)) {
                                     if (Math.abs(e.x - data.x) > radius || Math.abs(e.y - data.y) > radius) continue;
                                     
                                     if (MathUtils.distSq(e.x, e.y, data.x, data.y) < radiusSq) {
