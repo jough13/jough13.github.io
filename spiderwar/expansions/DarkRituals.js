@@ -34,7 +34,8 @@ export const DarkRitualsExpansion = {
         UNIT_DATA['tick'] = { 
             size: 10, hp: 20, damage: 100, attackSpeed: 45, 
             baseSpeedMin: 2.2, baseSpeedMax: 2.8, 
-            traits: ['kamikaze'] // [FIX] Swapped to the correct suicide bomber trait!
+            // 🚨 FIXED: Added melee and escort so Ticks can take player commands and follow AI Director rallies!
+            traits: ['kamikaze', 'melee', 'escort'] 
         };
 
         STRUCTURE_DATA['extractor'] = { 
