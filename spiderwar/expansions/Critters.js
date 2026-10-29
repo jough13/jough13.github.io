@@ -43,6 +43,9 @@ export class Aphid {
         this.team = 'nature'; 
         this.color = CRITTER_CONFIG.aphid.color;
         
+        // 🚨 ADDED: Explicit flag so AoE spells can target it!
+        this.isCritter = true;
+        
         // 🧃 [JUICE] Animation Offsets & Damage Tracking
         this.animOffset = parseInt(this.id, 36) % 100;
         this._lastHp = this.hp;
@@ -59,6 +62,13 @@ export class Aphid {
         if (this.hp < this._lastHp) this.flashFrames = 4;
         this._lastHp = this.hp;
         if (this.flashFrames > 0) this.flashFrames--;
+        
+        // 🚨 FIXED: Allow the Aphid to be stunned by Paralyze spells!
+        if (this.stunTimer > 0) {
+            this.stunTimer--;
+            if (game.tick % 15 === 0) game.bus.emit('particles', {x: this.x, y: this.y - 10, color: '#00ffff', count: 1, type: 'magic'});
+            return; 
+        }
 
         // Idle AI: Erratic turning
         if (Math.random() < 0.1) {
@@ -75,6 +85,9 @@ export class Aphid {
         if (this.hp < this.maxHp) {
             currentSpeed *= CRITTER_CONFIG.aphid.fleeMultiplier; 
         }
+        
+        // 🚨 FIXED: Allow SilkTraps to snare the bugs!
+        if (this.isSlowed) currentSpeed *= 0.4;
 
         this.x += Math.cos(this.angle) * currentSpeed; 
         this.y += Math.sin(this.angle) * currentSpeed;
@@ -88,6 +101,9 @@ export class Aphid {
         
         this.x = MathUtils.clamp(this.x, bound, game.world.width - bound); 
         this.y = MathUtils.clamp(this.y, bound, game.world.height - bound);
+        
+        // 🚨 FIXED: Reset status condition at the end of the tick
+        this.isSlowed = false;
     }
 
     // 🛡️ [FIX] The Death Loot Drop is now safely handled here so it isn't skipped by GC
@@ -142,6 +158,20 @@ export class Aphid {
         }
         
         ctx.restore(); 
+        
+        // 🚨 FIXED: Draw an icy crystal block over stunned units (Same as Spider.draw in SpectralSwarm)
+        if (this.stunTimer > 0) {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.4)';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(0, -this.size - 4); ctx.lineTo(this.size + 2, -2); ctx.lineTo(this.size + 4, this.size + 2);
+            ctx.lineTo(-2, this.size + 4); ctx.lineTo(-this.size - 4, 2); ctx.closePath();
+            ctx.fill(); ctx.stroke();
+            ctx.restore();
+        }
     }
 }
 
@@ -160,6 +190,9 @@ export class GoldenBug {
         this.speed = CRITTER_CONFIG.goldenBug.speed; 
         this.team = 'nature'; 
         this.color = CRITTER_CONFIG.goldenBug.color;
+        
+        // 🚨 ADDED: Explicit flag so AoE spells can target it!
+        this.isCritter = true;
 
         // 🧃 [JUICE] Animation Offsets & Damage Tracking
         this.animOffset = parseInt(this.id, 36) % 100;
@@ -177,6 +210,13 @@ export class GoldenBug {
         if (this.hp < this._lastHp) this.flashFrames = 4;
         this._lastHp = this.hp;
         if (this.flashFrames > 0) this.flashFrames--;
+        
+        // 🚨 FIXED: Allow the GoldenBug to be stunned by Paralyze spells!
+        if (this.stunTimer > 0) {
+            this.stunTimer--;
+            if (game.tick % 15 === 0) game.bus.emit('particles', {x: this.x, y: this.y - 10, color: '#00ffff', count: 1, type: 'magic'});
+            return; 
+        }
 
         // Idle AI: Slow, gentle turning
         if (Math.random() < 0.05) {
@@ -195,6 +235,9 @@ export class GoldenBug {
             // 🧃 JUICE: The golden bug sheds golden particles when panicking/bleeding!
             if (game.tick % 5 === 0) game.bus.emit('particles', {x: this.x, y: this.y, color: '#ffea00', count: 1});
         }
+        
+        // 🚨 FIXED: Allow SilkTraps to snare the bugs!
+        if (this.isSlowed) currentSpeed *= 0.4;
 
         // 🧃 JUICE: Subtle sparkling trail while walking
         if (game.tick % 15 === 0 && Math.random() > 0.5) {
@@ -213,6 +256,9 @@ export class GoldenBug {
         
         this.x = MathUtils.clamp(this.x, bound, game.world.width - bound); 
         this.y = MathUtils.clamp(this.y, bound, game.world.height - bound);
+        
+        // 🚨 FIXED: Reset status condition at the end of the tick
+        this.isSlowed = false;
     }
 
     // 🛡️ [FIX] The Death Loot Drop is now safely handled here so it isn't skipped by GC
@@ -293,6 +339,20 @@ export class GoldenBug {
         }
         
         ctx.restore();
+        
+        // 🚨 FIXED: Draw an icy crystal block over stunned units (Same as Spider.draw in SpectralSwarm)
+        if (this.stunTimer > 0) {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.4)';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(0, -this.size - 4); ctx.lineTo(this.size + 2, -2); ctx.lineTo(this.size + 4, this.size + 2);
+            ctx.lineTo(-2, this.size + 4); ctx.lineTo(-this.size - 4, 2); ctx.closePath();
+            ctx.fill(); ctx.stroke();
+            ctx.restore();
+        }
         
         // Health Bar (Only visible when damaged)
         if (this.hp < this.maxHp && this.hp > 0) { 
