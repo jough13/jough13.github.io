@@ -219,7 +219,7 @@ export const AdvancedBaseExpansion = {
                     if (!this.aiConfig.activeBuildPool.includes(b)) this.aiConfig.activeBuildPool.push(b);
                 });
                 
-                // 🚨 FIXED: Explicitly use the justLoadedSave flag so roars aren't permanently muted!
+                // Explicitly use the justLoadedSave flag so roars aren't permanently muted!
                 const isCatchingUp = Boolean(this._justLoadedSave);
                 
                 if (!isCatchingUp) {
@@ -318,15 +318,14 @@ export const AdvancedBaseExpansion = {
                         if (queens[i].team === 'red') { redQueen = queens[i]; break; }
                     }
                     
-                    // [FIX] Prevent the AI from building random bases in the middle of the map while marching to attack!
                     let redNest = null;
                     const structs = this.structures;
                     for (let i = 0; i < structs.length; i++) {
                         if (structs[i].team === 'red' && structs[i].type === 'nest') { redNest = structs[i]; break; }
                     }
 
-                    // [FIX] Prevent the AI from building random bases in the middle of the map while marching to attack!
-                    if (redQueen && redQueen.hp > 0 && !redQueen.activeConstruction && !redQueen.buildTarget && !redQueen.isAssaulting) {
+                    // 🚨 FIXED: Ensure the AI builds exclusively within its own territory (near the nest), and doesn't crush pumpkins!
+                    if (redNest && redQueen && redQueen.hp > 0 && !redQueen.activeConstruction && !redQueen.buildTarget && !redQueen.isAssaulting) {
                         
                         const type = this.aiConfig.activeBuildPool[MathUtils.randomInt(0, this.aiConfig.activeBuildPool.length - 1)];
                         let cost = this.aiConfig.buildCosts[type];
@@ -337,25 +336,34 @@ export const AdvancedBaseExpansion = {
                             
                             // Give the AI 5 attempts to find a valid spot
                             for (let attempts = 0; attempts < 5; attempts++) {
-                                bX = MathUtils.clamp(redQueen.x + MathUtils.randomRange(-350, 350), 100, this.world.width - 100);
-                                bY = MathUtils.clamp(redQueen.y + MathUtils.randomRange(-350, 350), 100, this.world.height - 100);
+                                // 🚨 FIXED: Base placement coordinates off the Nest, not the wandering Queen!
+                                bX = MathUtils.clamp(redNest.x + MathUtils.randomRange(-350, 350), 100, this.world.width - 100);
+                                bY = MathUtils.clamp(redNest.y + MathUtils.randomRange(-350, 350), 100, this.world.height - 100);
                                 
                                 // Red AI cannot build in water
                                 if (this.getTerrainAt(bX, bY) === 'water') continue;
+                                
+                                // 🚨 FIXED: Red AI cannot build outside of its own web territory (unless it's a new nest!)
+                                if (type !== 'nest' && !this.checkTerritory(bX, bY, 'red')) continue;
 
                                 let isOverlapping = false;
-                                const structs = this.structures;
+                                
+                                // 🚨 FIXED: Scan ALL entities (including ResourceNodes), not just structures!
+                                const entities = this.entities;
                                 const checkSize = 40; // Max expected size of a new building
                                 
-                                for (let i = 0; i < structs.length; i++) {
-                                    let s = structs[i];
-                                    const safeDist = s.size + checkSize;
+                                for (let i = 0; i < entities.length; i++) {
+                                    let s = entities[i];
                                     
-                                    // 🚀 [PERFORMANCE] Fast AABB Check before expensive distSq math!
-                                    if (Math.abs(s.x - bX) > safeDist || Math.abs(s.y - bY) > safeDist) continue;
-                                    
-                                    if (MathUtils.distSq(s.x, s.y, bX, bY) < (safeDist * safeDist)) {
-                                        isOverlapping = true; break;
+                                    if (s instanceof Structure || s instanceof ResourceNode) {
+                                        const safeDist = s.size + checkSize;
+                                        
+                                        // 🚀 [PERFORMANCE] Fast AABB Check before expensive distSq math!
+                                        if (Math.abs(s.x - bX) > safeDist || Math.abs(s.y - bY) > safeDist) continue;
+                                        
+                                        if (MathUtils.distSq(s.x, s.y, bX, bY) < (safeDist * safeDist)) {
+                                            isOverlapping = true; break;
+                                        }
                                     }
                                 }
 
