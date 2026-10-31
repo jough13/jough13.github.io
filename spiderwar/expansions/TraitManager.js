@@ -96,13 +96,18 @@ export const TraitManagerExpansion = {
         // Trait 3: Kamikaze (Explode on contact)
         game.registerTrait('kamikaze', {
             update: (entity, gameObj) => {
+                const techLvl = gameObj.techLevel[entity.team] || 0; 
+                
+                // 🚨 FIXED: Kamikaze detection radius now strictly matches/scales exactly like the fallback melee detection radius!
+                const searchRadius = 200 + (techLvl * 10);
+                
                 // [FIX] Suicide bombers should blow up hazards!
-                let enemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, 200, true);
+                let enemy = gameObj.getNearestEnemy(entity.x, entity.y, entity.team, searchRadius, true);
+                
                 if (enemy) {
                     entity.state = 1; // SPIDER_STATE.COMBAT
                     
                     // [FIX] Calculate current speed factoring in Tech Level, Terrain, and Status Effects!
-                    const techLvl = gameObj.techLevel[entity.team] || 0; 
                     const terrain = gameObj.getTerrainAt(entity.x, entity.y); 
                     let tMod = (terrain === 'water') ? 0.05 : ((terrain === 'grass') ? 1.3 : 1.0);
                     let currentSpeed = ((entity.baseSpeed || 0) + (techLvl * 0.15)) * tMod;
