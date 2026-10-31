@@ -11,7 +11,10 @@ export const COMBAT_CONFIG = {
     meleeAggroRange: 150,
     turnSpeed: 0.15,          // How fast spiders rotate to face their targets
     harvestDelay: 15,         // Takes 15 frames (~0.25s) to bite a resource node
-    escortOrbitRadiusSq: 6400 // 80px orbit radius
+    escortOrbitRadiusSq: 6400, // 80px orbit radius
+    
+    // 🚨 ADDED: Logistical weighting. A value of 4 means the Queen is treated as 2x further away than she actually is!
+    queenDepositPenaltySq: 4  
 };
 
 export const CombatAndHarvesterExpansion = {
@@ -133,6 +136,7 @@ export const CombatAndHarvesterExpansion = {
                         } else {
                             const structs = gameObj.structures;
                             const structLen = structs.length;
+                            // Search for Static Bases First
                             for (let i = 0; i < structLen; i++) {
                                 let s = structs[i];
                                 if (s.team === entity.team && (s.type === 'nest' || s.type === 'pylon') && s.hp > 0 && !s.isConstructing) {
@@ -141,13 +145,21 @@ export const CombatAndHarvesterExpansion = {
                                 }
                             }
                             
+                            // 🚨 FIXED: Apply Logistical Penalty to the Queen
                             const queens = gameObj.queens;
                             const queenLen = queens.length;
                             for (let i = 0; i < queenLen; i++) {
                                 let q = queens[i];
                                 if (q.team === entity.team && q.hp > 0) {
                                     let dSq = MathUtils.distSq(q.x, q.y, entity.x, entity.y); 
-                                    if(dSq < minD) { minD = dSq; closest = q; } 
+                                    
+                                    // Multiply the Queen's distance by the penalty so Harvesters strongly prefer Nests!
+                                    let penalizedDistSq = dSq * COMBAT_CONFIG.queenDepositPenaltySq;
+                                    
+                                    if(penalizedDistSq < minD) { 
+                                        minD = penalizedDistSq; 
+                                        closest = q; 
+                                    } 
                                 }
                             }
                         }
