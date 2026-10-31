@@ -8,7 +8,7 @@ import { Queen } from './Queen.js';
 // 🔌 [EXPANDABILITY] Exported so other mods can tweak control feel
 export const CONTROLS_CONFIG = {
     doubleClickMs: 300,        // Max time between clicks to trigger "Select All of Type"
-    dragBoxThresholdSq: 100,   // Minimum pixels dragged to count as a box vs a single click
+    dragBoxThresholdSq: 144,   // Minimum pixels dragged to count as a box vs a single click
     clickHitboxPadding: 15,    // Extra pixels around a unit to make it easier to click on mobile
     
     buildRangeSq: 4900,        // 70px squared - How close Queen must be to build
@@ -87,7 +87,6 @@ export const AdvancedUnitControlExpansion = {
 
         // 2. Drag Selection Box Logic
         let startX, startY, isDraggingBox = false;
-        let ticking = false; // Used for requestAnimationFrame throttling
         
         // 🛡️ [FIX] Helper to standardize local coordinates matching game.js!
         const getLocalPos = (cx, cy) => {
@@ -143,8 +142,15 @@ export const AdvancedUnitControlExpansion = {
                 game.dragBox = null; return;
             }
 
-            // 🛡️ [FIX] Standardize Coordinate Space Translation
             const pos = getLocalPos(clientX, clientY);
+            
+            // 🚨 FIXED: Immediately block micro-drags and mobile camera panning from registering as move commands!
+            if (!wasDraggingBox && MathUtils.distSq(startX, startY, pos.x, pos.y) > CONTROLS_CONFIG.dragBoxThresholdSq) {
+                game.dragBox = null; 
+                return;
+            }
+
+            // 🛡️ [FIX] Standardize Coordinate Space Translation
             const worldX = pos.x + game.camera.x; 
             const worldY = pos.y + game.camera.y;
             
@@ -165,7 +171,8 @@ export const AdvancedUnitControlExpansion = {
                     let u = entities[i];
                     
                     if (u.team === 'black' && u.hp > 0) {
-                        // 🚨 FIXED: Allow clicking Subjugated Bosses!
+                        // Check Units (Spiders/Queens/Bosses)
+                        // 🚨 FIXED: Allow selecting Tamed Bosses!
                         if (u.role || u instanceof Queen || u.isBoss) {
                             const clickRadius = u.size + CONTROLS_CONFIG.clickHitboxPadding;
                             // Fast AABB check before MathUtils.distSq
@@ -233,7 +240,7 @@ export const AdvancedUnitControlExpansion = {
                     const entLen = entities.length;
                     for (let i = 0; i < entLen; i++) {
                         let u = entities[i];
-                        // 🚨 FIXED: Allow drag-selecting Subjugated Bosses!
+                        // 🚨 FIXED: Allow drag-selecting Tamed Bosses!
                         if (u.team === 'black' && u.hp > 0 && (u.role || u instanceof Queen || u.isBoss)) {
                             if (u.x >= x1 && u.x <= x2 && u.y >= y1 && u.y <= y2) {
                                 game.selectedUnits.push(u);
@@ -246,11 +253,6 @@ export const AdvancedUnitControlExpansion = {
                 } 
                 // Single Click Selection
                 else {
-                    // Prevent micro-drags from clearing selection accidentally
-                    if (MathUtils.distSq(startX, startY, pos.x, pos.y) > 144) {
-                        game.dragBox = null; return;
-                    }
-
                     if (clickedUnit) {
                         // 🛠️ BUG FIX: Use performance.now() to prevent double-click from breaking if OS clock stutters
                         const now = performance.now();
@@ -266,7 +268,7 @@ export const AdvancedUnitControlExpansion = {
                             const entLen = entities.length;
                             for (let i = 0; i < entLen; i++) {
                                 let u = entities[i];
-                                // Check for identical role (or lack thereof if both are Bosses)
+                                // 🚨 FIXED: Support double-click selection matching for Bosses vs Standard units
                                 if (u.team === 'black' && u.hp > 0 && u.role === clickedUnit.role && u.isBoss === clickedUnit.isBoss) {
                                     // Only select units currently visible on screen
                                     if (u.x >= viewL && u.x <= viewR && u.y >= viewT && u.y <= viewB) {
@@ -305,7 +307,7 @@ export const AdvancedUnitControlExpansion = {
                         game.bus.emit('selectionChanged');
                         
                         // 🧃 [JUICE] Visual click indicator on ground
-                        if (!clickedStruct) this.bus.emit('particles', {x: worldX, y: worldY, color: 'rgba(255,255,255,0.5)', count: 5});
+                        game.bus.emit('particles', {x: worldX, y: worldY, color: 'rgba(255,255,255,0.5)', count: 5});
                     }
                 }
             }
@@ -316,7 +318,6 @@ export const AdvancedUnitControlExpansion = {
         
         // ==========================================
         // 🛠️ BUG FIX: Mobile Touch Lockout 
-        // We added the missing `touchend` listener!
         // ==========================================
         window.addEventListener('touchend', e => {
             if(e.changedTouches.length === 1) {
@@ -440,10 +441,15 @@ export const ConstructionExpansion = {
             const entities = game.entities;
             const entLen = entities.length;
             
+            // 🚨 FIXED: Prioritize totally idle Queens for Shift-Click queueing!
             for (let i = 0; i < entLen; i++) {
                 let e = entities[i];
                 if (e.role === 'queen' && e.team === data.team && e.hp > 0) { 
                     let dSq = MathUtils.distSq(e.x, e.y, data.x, data.y);
+                    
+                    // Add a massive artificial distance penalty if the Queen is already busy building something!
+                    if (e.activeConstruction || e.buildTarget) dSq += 9999999;
+                    
                     if (dSq < minQueenDistSq) {
                         minQueenDistSq = dSq;
                         bestQueen = e;
@@ -474,7 +480,7 @@ export const ConstructionExpansion = {
                             isOverlapping = true; break;
                         }
                     }
-                    // 🚨 FIXED: Exclude the currently commanding Queen from the overlap check so players can adjust blueprints!
+                    // 🚨 FIXED: Exclude the currently commanding Queen from the overlap check so players can micro-adjust blueprints!
                     else if (s.role === 'queen' && s !== queen && s.buildTarget) {
                         // Assuming standard size 25 for blueprints
                         if (MathUtils.distSq(s.buildTarget.x, s.buildTarget.y, data.x, data.y) < 2500) {
