@@ -43,11 +43,6 @@ export const SplashScreenExpansion = {
                 display: none; z-index: 60; box-shadow: 0 0 30px #000;
             }
 
-            .skip-hint {
-                position: relative; z-index: 2; margin: 30px; font-size: 1.2rem;
-                color: rgba(255, 255, 255, 0.6); background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 5px;
-            }
-
             #splashText {
                 position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
                 z-index: 2; 
@@ -122,7 +117,6 @@ export const SplashScreenExpansion = {
         ui.id = 'preGameUI';
         ui.innerHTML = `
             <div id="introView">
-                <!-- [FIX] Removed 'loop' so the 'ended' event can properly fire! -->
                 <video id="introVideo" src="assets/intro.mp4" autoplay muted playsinline></video>
                 <div id="introInteractBlocker">[ CLICK TO INITIALIZE ENGINE ]</div>
 
@@ -130,7 +124,7 @@ export const SplashScreenExpansion = {
                     <h1>SpiderWars!</h1>
                     <p>[ CLICK TO COMMAND THE SWARM ]</p>
                 </div>
-                <div class="skip-hint">Click anywhere to skip...</div>
+                <!-- 🚨 REMOVED: <div class="skip-hint">Click anywhere to skip...</div> -->
             </div>
 
             <div id="menuView">
