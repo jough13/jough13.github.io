@@ -179,7 +179,6 @@ export const MinimapExpansion = {
             }
 
             // [PERFORMANCE] Batched Minimap Rendering
-            // We group all dots by color and draw them simultaneously to prevent massive Canvas API overhead
             const dotBatches = {};
 
             const addDot = (ent, color, r, hideIfInvisible, hideIfUndiscovered) => { 
@@ -213,7 +212,7 @@ export const MinimapExpansion = {
                 
                 // [FIX] Minification-safe Boss check, and distinct color for Hazards!
                 else if (ent.isBoss) addDot(ent, UI_CONFIG.colors.boss, 4, true, false);
-                else if (ent.isHazard) addDot(ent, '#8B0000', 2, true, false); // Dark red dots for hazards
+                else if (ent.isHazard) addDot(ent, '#8B0000', 2, true, false); 
                 else if (ent.team === 'nature') addDot(ent, ent.color || 'gold', 2, true, false);
             }
 
@@ -425,18 +424,34 @@ export const ContextUIExpansion = {
                     game.bus.emit('playSound','spell');
                 } 
             }},
-            'cancel':    { reqTech: 0, icon: '🛑', img: 'assets/icon_cancel.png', name: 'Stop', cost: '', type: 'instant', fn: () => { 
+            
+            // 🚨 INJECTION: Updated Stop / Hold Position button!
+            'cancel':    { reqTech: 0, icon: '🛑', img: 'assets/icon_cancel.png', name: 'Hold', cost: '', type: 'instant', fn: () => { 
                 game.activeTool = 'select'; game.bus.emit('toolChanged', 'select');
                 if (game.selectedUnits) {
                     game.selectedUnits.forEach(u => { 
-                        u.commandTarget = null; u.buildTarget = null;   
+                        u.commandTarget = null; 
+                        u.buildTarget = null;
+                        u.guardTarget = null;
+                        u.isManual = false;
+                        u.isHoldingPosition = true; // They hold ground!
                         if (u.activeConstruction) { u.activeConstruction.isPaused = true; u.activeConstruction = null; }
                     });
                 }
                 game.bus.emit('playSound', 'shoot'); 
             }},
+            
+            // 🚨 INJECTION: Updated Automate / Unfollow button!
             'auto':      { reqTech: 0, icon: '⚙️', name: 'Automate', cost: '', type: 'instant', fn: () => { 
-                game.selectedUnits.forEach(u => { u.isManual = false; u.commandTarget = null; u.target = null; }); 
+                if (game.selectedUnits) {
+                    game.selectedUnits.forEach(u => { 
+                        u.isManual = false; 
+                        u.isHoldingPosition = false; // Release hold
+                        u.guardTarget = null;        // Clear guard overrides
+                        u.commandTarget = null; 
+                        u.target = null; 
+                    }); 
+                }
                 game.bus.emit('playSound', 'spell'); 
             }},
         });
