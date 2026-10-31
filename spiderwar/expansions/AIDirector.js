@@ -128,7 +128,7 @@ export const AIDirectorExpansion = {
                 const entLen = entities.length;
                 for (let i = 0; i < entLen; i++) {
                     let e = entities[i];
-                    // 🚨 FIXED: The AI director no longer recruits fragile, temporary chaff units, nor does it unbury perfectly hidden Trapdoors!
+                    // The AI director no longer recruits fragile, temporary chaff units, nor does it unbury perfectly hidden Trapdoors!
                     if (e.team === 'red' && e.hp > 0 && e instanceof Spider && e.role !== 'harvester' && e.role !== 'queen' && !e.isZombie && e.role !== 'broodling' && e.role !== 'parasite' && e.burrowState !== 2) {
                         e.commandTarget = { x: redNest.x + MathUtils.randomRange(-100, 100), y: redNest.y + MathUtils.randomRange(-100, 100) };
                         e.isManual = true; // Force them to move
@@ -140,7 +140,7 @@ export const AIDirectorExpansion = {
             // --- STATE: BUILDING (Rallying troops) ---
             if (dir.state === AI_STATE.BUILDING || dir.state === AI_STATE.DEFENDING) {
                 
-                // 🛡️ [FIX] Release hijacked defense units so they don't get stuck forever
+                // 🚨 FIXED: Cleanly release hijacked defense units, flushing the squad so they can be freshly re-recruited!
                 if (dir.state === AI_STATE.DEFENDING) {
                     const entities = this.entities;
                     const entLen = entities.length;
@@ -149,8 +149,10 @@ export const AIDirectorExpansion = {
                         if (e.team === 'red' && e.hp > 0 && e instanceof Spider) {
                             e.isManual = false;
                             e.commandTarget = null;
+                            e.isSquad = false;
                         }
                     }
+                    dir.squad.clear(); // Flush the stranded units!
                 }
 
                 dir.state = AI_STATE.BUILDING;
@@ -176,7 +178,7 @@ export const AIDirectorExpansion = {
                 const entLen = entities.length;
                 for (let i = 0; i < entLen; i++) {
                     let e = entities[i];
-                    // 🚨 FIXED: The AI director no longer recruits fragile, temporary chaff units, nor does it unbury perfectly hidden Trapdoors!
+                    // The AI director no longer recruits fragile, temporary chaff units, nor does it unbury perfectly hidden Trapdoors!
                     if (e.team === 'red' && e.hp > 0 && e instanceof Spider && e.role !== 'harvester' && e.role !== 'queen' && !e.isZombie && e.role !== 'broodling' && e.role !== 'parasite' && e.burrowState !== 2) {
                         if (!dir.squad.has(e) && !e.target) {
                             dir.squad.add(e);
@@ -242,14 +244,48 @@ export const AIDirectorExpansion = {
             if (dir.state === AI_STATE.ATTACKING) {
                 
                 // 🚀 [PERFORMANCE & LOGIC FIX] Target Re-evaluation
-                // 🚨 FIXED: The AI wave now continues attacking relentlessly until wiped out, rather than aborting after killing a single pylon!
+                // 🚨 FIXED: Re-evaluate target instantly right here without dropping to BUILDING to prevent wave stalling!
                 if (!dir.target || dir.target.hp <= 0) {
-                    dir.target = null;
-                    dir.state = AI_STATE.BUILDING; // Temporarily drop to building to trigger target re-evaluation on next frame
-                    return; 
+                    
+                    let bestTarget = null;
+                    let bestScore = -1;
+                    const entities = this.entities;
+                    const entLen = entities.length;
+
+                    for (let i = 0; i < entLen; i++) {
+                        let e = entities[i];
+                        if (e.team === 'black' && e.hp > 0 && !e.isCloaked) {
+                            const weightKey = e.type || e.role || 'default';
+                            let score = cfg.targetWeights[weightKey] || 0;
+                            if (score > 0) {
+                                score += MathUtils.randomRange(0, 20);
+                                if (score > bestScore) {
+                                    bestScore = score;
+                                    bestTarget = e;
+                                }
+                            }
+                        }
+                    }
+
+                    if (bestTarget) {
+                        dir.target = bestTarget;
+                    } else {
+                        // If NO targets are left on the map, then it's safe to drop to BUILDING and disband!
+                        dir.target = null;
+                        dir.state = AI_STATE.BUILDING; 
+                        dir.nextAttackTick = this.tick + cfg.waveCooldownTicks;
+                        
+                        for (let bug of dir.squad) {
+                            bug.isManual = false;
+                            bug.commandTarget = null;
+                            bug.isSquad = false; 
+                        }
+                        dir.squad.clear();
+                        return; 
+                    }
                 }
 
-                // Keep pushing the squad forward
+                // Keep pushing the squad forward to the target (or the newly evaluated target!)
                 for (let bug of dir.squad) {
                     bug.commandTarget = { 
                         x: dir.target.x + MathUtils.randomRange(-cfg.squadSpread, cfg.squadSpread), 
