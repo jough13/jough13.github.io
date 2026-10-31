@@ -1,5 +1,5 @@
 // expansions/Systems.js
-import { Game, MathUtils, Spider, Structure, ResourceNode } from '../game.js';
+import { Game, MathUtils, Spider, Structure, ResourceNode, Projectile } from '../game.js'; // 🚨 ADDED: Projectile
 import { Queen } from './Queen.js';
 import { CentipedeBoss } from './Boss.js';
 import { Aphid, GoldenBug } from './Critters.js';
@@ -87,21 +87,8 @@ export const AtmosphereExpansion = {
                 original.call(this, ctx, gameObj); 
             }
         });
-
-        game.expansions.patchClass(Queen, 'draw', function(original, ctx, gameObj) {
-            const tick = gameObj ? gameObj.tick : 0;
-            const cycle = Math.sin(tick / 1800);
-            
-            if (cycle > 0) { 
-                ctx.save();
-                ctx.shadowBlur = 40 * cycle; 
-                ctx.shadowColor = this.team === 'black' ? '#ffffff' : '#ff0000'; 
-                original.call(this, ctx, gameObj); 
-                ctx.restore();
-            } else {
-                original.call(this, ctx, gameObj); 
-            }
-        });
+        
+        // 🚨 FIXED: Redundant duplicate Queen.draw override removed from here!
     }
 }
 
@@ -240,6 +227,12 @@ export const FogOfWarExpansion = {
         
         applyFoWToClass(ExplosiveProjectile, true, false);
         applyFoWToClass(MortarShell, true, false);
+        
+        // 🚨 FIXED: Added FoW patches for missing subclasses and projectiles!
+        applyFoWToClass(ZombieSpider, true, false);
+        applyFoWToClass(Broodling, true, false);
+        applyFoWToClass(GoldenCaravan, true, false);
+        applyFoWToClass(Projectile, true, false);
 
         // 🚀 [PERFORMANCE] Let the GPU do the heavy lifting!
         game.bus.on('postDraw', (ctx) => {
@@ -298,6 +291,23 @@ export const SaveLoadExpansion = {
             const state = JSON.parse(data);
             game.eco = state.eco; game.pop = state.pop; game.maxPop = state.maxPop; 
             game.techLevel = state.techLevel; game.camera = state.camera; game.tick = state.tick || 0;
+            
+            // 🚨 FIXED: Clear the AI Director's state entirely so it resets cleanly on load without "ghost" spiders!
+            if (game.aiDirector) {
+                game.aiDirector.squad.clear();
+                game.aiDirector.state = 0; // AI_STATE.BUILDING
+                game.aiDirector.target = null;
+                game.aiDirector.defenseTimer = 0;
+            }
+            if (game.aiConfig) {
+                game.aiConfig.phase2Escalated = false;
+                game.aiConfig.phase3Escalated = false;
+                game.aiConfig.phase4Escalated = false;
+                // Force AI active pools back to phase 1. 
+                // They will be instantly re-escalated on the next frame by AdvancedBase.js without overlapping!
+                game.aiConfig.activeUnitPool = [...game.aiConfig.pools.units.phase1];
+                game.aiConfig.activeBuildPool = [...game.aiConfig.pools.buildings.phase1];
+            }
             
             // 🚨 FIXED: The AI Director needs to know this load event just occurred so it doesn't suppress roars!
             game._justLoadedSave = true;
