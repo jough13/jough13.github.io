@@ -679,10 +679,13 @@ export class Game {
             
             for (let i = 0; i < entLen; i++) {
                 let e = this.entities[i];
-                if (e instanceof Structure && e.type === 'eggsac') {
+                
+                // 🚨 FIXED: Only count fully constructed eggsacs so the population cap doesn't increase instantly!
+                if (e instanceof Structure && e.type === 'eggsac' && !e.isConstructing && e.hp > 0) {
                     if (e.team === 'black') blackEggs++; else if (e.team === 'red') redEggs++;
                 }
-                // 🚨 FIXED: Excludes temporary swarms ('broodling', 'parasite', 'zombie') and 'nature' units from population cap!
+                
+                // Excludes temporary swarms ('broodling', 'parasite', 'zombie') and 'nature' units from population cap!
                 if (e instanceof Spider && !e.hasTrait('queen') && e.role !== 'broodling' && e.role !== 'parasite' && !e.isZombie && e.team !== 'nature') {
                     if (e.team === 'black') blackPop++; else if (e.team === 'red') redPop++;
                 }
