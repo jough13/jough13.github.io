@@ -98,9 +98,16 @@ export const CombatAndHarvesterExpansion = {
                     } else {
                         entity.commandTarget = null;
                         entity.isManual = false; // 🛡️ [FIX] Release manual control upon arrival so passive AI resumes
+                        
+                        // 🚨 INJECTION: Force player-controlled harvesters to hold their ground upon arrival!
+                        if (entity.team === 'black') entity.isHoldingPosition = true;
                     }
                     return true; // Bypass gathering if being manually controlled
                 }
+
+                // 🚨 INJECTION: EXPLICIT HOLD POSITION OVERRIDE
+                // Stop the gatherer from wandering off to find a pumpkin if the player explicitly told them to stay put!
+                if (entity.isHoldingPosition) return true;
 
                 // 3. HARVESTING LOGIC
                 if (entity.target && ((entity.target.hp !== undefined && entity.target.hp <= 0) || (entity.target.resources !== undefined && entity.target.resources <= 0))) {
@@ -287,23 +294,29 @@ export const CombatAndHarvesterExpansion = {
                     return true; 
                 }
 
-                // 2. ESCORT QUEEN BEHAVIOR (If they have the trait)
-                // [FIX] Ignore escort duties if currently drafted into an AI assault squad!
-                if (entity.hasTrait('escort') && !entity.isManual && !entity.isSquad) {
-                    let myQueen = null;
-                    const queens = gameObj.queens;
-                    const queenLen = queens.length;
-                    for (let i = 0; i < queenLen; i++) {
-                        if (queens[i].team === entity.team) { myQueen = queens[i]; break; }
+                // 2. EXPLICIT GUARD OR DEFAULT ESCORT BEHAVIOR
+                if (!entity.isManual && !entity.isSquad && !entity.isHoldingPosition) {
+                    let followTarget = entity.guardTarget; // Explicit user command
+                    
+                    // Fallback to Queen if no explicit target, but only if they have the escort trait!
+                    if (!followTarget && entity.hasTrait('escort')) {
+                        const queens = gameObj.queens;
+                        const queenLen = queens.length;
+                        for (let i = 0; i < queenLen; i++) {
+                            if (queens[i].team === entity.team) { followTarget = queens[i]; break; }
+                        }
                     }
 
-                    if (myQueen) {
-                        const dx = myQueen.x - entity.x; 
-                        const dy = myQueen.y - entity.y;
+                    if (followTarget && followTarget.hp > 0) {
+                        const dx = followTarget.x - entity.x; 
+                        const dy = followTarget.y - entity.y;
                         
-                        // 🚀 [PERFORMANCE] Fast inline distance math
-                        if ((dx * dx + dy * dy) > COMBAT_CONFIG.escortOrbitRadiusSq) { 
-                            // 🧃 [JUICE] Smooth turn to follow queen
+                        // Dynamically orbit further away from large buildings
+                        const orbit = (followTarget.size || 15) * 2;
+                        const orbitSq = orbit * orbit + COMBAT_CONFIG.escortOrbitRadiusSq;
+                        
+                        if ((dx * dx + dy * dy) > orbitSq) { 
+                            // 🧃 [JUICE] Smooth turn to follow target
                             const targetAngle = Math.atan2(dy, dx);
                             entity.angle += MathUtils.angleWrap(targetAngle - entity.angle) * COMBAT_CONFIG.turnSpeed;
                             
@@ -311,6 +324,8 @@ export const CombatAndHarvesterExpansion = {
                             entity.y += Math.sin(entity.angle) * currentSpeed;
                         }
                         return true; 
+                    } else if (followTarget && followTarget.hp <= 0) {
+                        entity.guardTarget = null; // Clean up dead targets
                     }
                 }
 
@@ -329,11 +344,17 @@ export const CombatAndHarvesterExpansion = {
                     } else {
                         entity.commandTarget = null;
                         entity.isManual = false; // 🛡️ [FIX] Release manual control upon arrival
+                        
+                        // 🚨 INJECTION: Force player-controlled units to hold their ground upon arrival!
+                        if (entity.team === 'black') entity.isHoldingPosition = true;
                     }
                     return true;
                 }
 
                 // 4. DEFAULT IDLE WANDERING
+                // 🚨 INJECTION: If they are explicitly holding position, do not wander randomly!
+                if (entity.isHoldingPosition) return true;
+
                 entity.angle += MathUtils.randomRange(-0.2, 0.2); // Smoother wandering
                 entity.x += Math.cos(entity.angle) * (currentSpeed * 0.5); 
                 entity.y += Math.sin(entity.angle) * (currentSpeed * 0.5);
