@@ -203,7 +203,8 @@ export const MinimapExpansion = {
                 if (ent.hp !== undefined && ent.hp <= 0) continue;
                 if (ent.isCloaked && ent.team !== 'black') continue;
 
-                if (ent instanceof Spider) {
+                // 🚨 FIXED: Do not draw the Golden Caravan as a tiny red dot!
+                if (ent instanceof Spider && ent.team !== 'nature') {
                     if (ent.role === 'queen') addDot(ent, ent.team === 'black' ? UI_CONFIG.colors.blackTeam : UI_CONFIG.colors.redTeam, 4, true, false);
                     else addDot(ent, ent.team === 'black' ? UI_CONFIG.colors.blackSwarm : UI_CONFIG.colors.redSwarm, 1.5, true, false);
                 } 
@@ -580,7 +581,10 @@ export const ContextUIExpansion = {
                         addButton('mortar'); addButton('obelisk'); addButton('incubator'); addButton('maw'); 
                         addButton('cancel');
                     } else {
-                        let roleName = unit.role.charAt(0).toUpperCase() + unit.role.slice(1);
+                        // 🚨 FIXED: Fallback to 'Behemoth' to prevent a string TypeError crash when selecting a Subjugated boss!
+                        const rawRole = unit.role || (unit.isBoss ? 'Behemoth' : 'Unit');
+                        let roleName = rawRole.charAt(0).toUpperCase() + rawRole.slice(1);
+                        
                         if (unit.isZombie) roleName = "Zombie " + roleName;
                         nameEl.innerText = roleName;
                         addButton('auto'); addButton('cancel');
