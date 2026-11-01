@@ -446,6 +446,14 @@ function renderPlanetView() {
     // generic "You are on a planet" text over our nice mining report.
 }
 
+
+
+
+
+
+
+
+
  function scoopHydrogen() {
      if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) {
          logMessage("Cannot scoop fuel now.");
@@ -493,9 +501,13 @@ function renderPlanetView() {
          // Radiation check for hot stars!
          if (starData.class === "O" || starData.class === "B") {
             const util = COMPONENTS_DATABASE[playerShip.components.utility || "UTIL_NONE"];
-            if (!util || !util.radImmunity) {
+            const hasHealthPhysicist = typeof playerPerks !== 'undefined' && playerPerks.has('HEALTH_PHYSICIST');
+            
+            if ((!util || !util.radImmunity) && !hasHealthPhysicist) {
                 GameBus.emit('HULL_DAMAGED', { amount: 20, reason: "Melted in stellar corona" });
                 logMessage("<span style='color:var(--danger);'>Radiation shielding breached! Hull integrity compromised while scooping.</span>");
+            } else if (hasHealthPhysicist) {
+                logMessage("<span style='color:var(--success);'>[ HEALTH PHYSICIST ] Shield harmonics calibrated for ionizing stellar radiation. Zero hull damage taken!</span>");
             }
          }
 
@@ -520,6 +532,9 @@ function renderPlanetView() {
 
      // Use a small epsilon for float comparison just in case, though the rounding above solves 99%
      if (actualGained > 0.01) {
+         if (typeof playerPerks !== 'undefined' && playerPerks.has('LONG_RANGE_SENSORS')) {
+             timePassed *= 0.2; // 80% less time consumed
+         }
          advanceGameTime(timePassed);
          logMessage(`${logMsg}\nGained ${actualGained.toFixed(1)} fuel.\nFuel: ${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}`);
          showToast(`FUEL SCOOPED<br>+${actualGained.toFixed(1)} Units`, "success");
@@ -634,6 +649,14 @@ function renderPlanetView() {
          if (gainedRareXP) {
              minedResourcesMessage += ` +${XP_BONUS_RARE_MINERAL} XP (Rare Find)!`;
          }
+
+         // --- PERK HOOK: SCRAP_WELDER ---
+         if (typeof playerPerks !== 'undefined' && playerPerks.has('SCRAP_WELDER') && playerHull < MAX_PLAYER_HULL) {
+             playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 5);
+             minedResourcesMessage += `\n<span style='color:var(--success)'>[ SCRAP WELDER ] Patched +5 Hull Integrity!</span>`;
+             toastHTML += `<span style="color:var(--success)">+5 Hull Repaired</span><br>`;
+         }
+
          checkLevelUp();
          
          // FIRE THE TOAST!
@@ -643,7 +666,11 @@ function renderPlanetView() {
          minedResourcesMessage = "Mining yielded nothing of value this attempt.";
      }
 
-     advanceGameTime(0.1);
+     let mineTime = 0.1;
+     if (typeof playerPerks !== 'undefined' && playerPerks.has('LONG_RANGE_SENSORS')) {
+         mineTime *= 0.2;
+     }
+     advanceGameTime(mineTime);
      
      // Mutate the local object so the UI locks immediately
      asteroid.minedThisVisit = true;
@@ -919,6 +946,13 @@ function attemptExtraction() {
             }
         }
 
+        // --- PERK HOOK: SCRAP_WELDER ---
+        if (typeof playerPerks !== 'undefined' && playerPerks.has('SCRAP_WELDER') && playerHull < MAX_PLAYER_HULL) {
+            playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 5);
+            lootMessage += `<span style="color:var(--success)">[ SCRAP WELDER ] Patched +5 Hull Integrity!</span><br>`;
+            toastHTML += `<span style="color:var(--success)">+5 Hull Repaired</span><br>`;
+        }
+
         // 5. XP & State Updates
         const baseXP = typeof XP_PER_MINING_OP !== 'undefined' ? XP_PER_MINING_OP : 15;
         const totalXP = baseXP + rareXP;
@@ -936,7 +970,11 @@ function attemptExtraction() {
         if (typeof showToast === 'function') showToast(toastHTML, "success");
         
         // 7. Time & World State
-        if (typeof advanceGameTime === 'function') advanceGameTime(0.1);
+        let mineTime = 0.1;
+        if (typeof playerPerks !== 'undefined' && playerPerks.has('LONG_RANGE_SENSORS')) {
+            mineTime *= 0.2;
+        }
+        if (typeof advanceGameTime === 'function') advanceGameTime(mineTime);
         if (typeof updateWorldState === 'function') {
             updateWorldState(playerX, playerY, { minedThisVisit: true, lastInteraction: typeof currentGameDate !== 'undefined' ? currentGameDate : 0 });
         } else if (tile) {
@@ -1615,15 +1653,18 @@ function extractAnomalyData() {
     let items = [];
     let logMsg = `<span style="color:var(--success)">Anomaly Containment Successful! (${resonance.toFixed(1)}% Resonance)</span>`;
     
+    // --- PERK HOOK: SCAVENGER_PROTOCOL ---
+    const lootMult = (typeof playerPerks !== 'undefined' && playerPerks.has('SCAVENGER_PROTOCOL')) ? 2 : 1;
+
     // Higher resonance = exponentially better rewards
     if (resonance >= 98) {
         xp += 150;
-        items.push({id: 'VOID_CRYSTALS', qty: 3});
-        items.push({id: 'PRECURSOR_CIPHER', qty: 1}); // Rare drop!
+        items.push({id: 'VOID_CRYSTALS', qty: 3 * lootMult});
+        items.push({id: 'PRECURSOR_CIPHER', qty: 1 * lootMult}); // Rare drop!
         logMsg += `<br><span style="color:var(--gold-text)">PERFECT ALIGNMENT: Precursor artifacts extracted!</span>`;
     } else if (resonance >= 90) {
         xp += 50;
-        items.push({id: 'VOID_CRYSTALS', qty: 1});
+        items.push({id: 'VOID_CRYSTALS', qty: 1 * lootMult});
     }
     
     logMsg += `<br>Gained ${xp} XP.`;
@@ -1733,7 +1774,13 @@ function handleDerelictAction(action) {
     // --- QUICK ACTION: SALVAGE ---
     if (action === 'SALVAGE') {
         if (Math.random() < 0.7) {
-            const scrap = 2 + Math.floor(Math.random() * 5);
+            let scrap = 2 + Math.floor(Math.random() * 5);
+            
+            // --- PERK HOOK: SCAVENGER_PROTOCOL ---
+            if (typeof playerPerks !== 'undefined' && playerPerks.has('SCAVENGER_PROTOCOL')) {
+                scrap *= 2;
+            }
+
             if (currentCargoLoad + scrap <= PLAYER_CARGO_CAPACITY) {
                 playerCargo.TECH_PARTS = (playerCargo.TECH_PARTS || 0) + scrap;
                 if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
@@ -2064,8 +2111,9 @@ function resolveUSSEncounter() {
     } 
     else if (roll < 0.50) {
         // 25% Salvage
-        logMessage("<span style='color:var(--success); font-weight:bold;'>[ USS CLASSIFIED ] Intact cargo pod drifting in the void!</span>");
-        playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + 5;
+        const salvageAmt = (typeof playerPerks !== 'undefined' && playerPerks.has('SCAVENGER_PROTOCOL')) ? 10 : 5;
+        logMessage(`<span style='color:var(--success); font-weight:bold;'>[ USS CLASSIFIED ] Intact cargo pod drifting in the void! (+${salvageAmt} Tech Parts)</span>`);
+        playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + salvageAmt;
         if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
         if (typeof showToast === 'function') showToast("SALVAGED TECH PARTS", "success");
         if (typeof soundManager !== 'undefined') soundManager.playGain();
