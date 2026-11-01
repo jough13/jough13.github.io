@@ -14,7 +14,13 @@ function bootSequence() {
     }
 
     // 2. Check for returning players (Looking for a save file or a 'has played' flag)
-    let isReturningPlayer = localStorage.getItem('wayfinder_save_data') !== null;
+    let isReturningPlayer = false;
+    for (let i = 0; i < localStorage.length; i++) {
+        if (localStorage.key(i).startsWith('wayfinder_')) {
+            isReturningPlayer = true;
+            break;
+        }
+    }
 
     if (!isReturningPlayer) {
         // --- NEW PLAYER: PLAY THE MP4 INTRO MOVIE ---
@@ -1983,7 +1989,7 @@ if (typeof window._codexPatched === 'undefined') {
                 if (categories[cat].total > 0 && categories[cat].unlocked === categories[cat].total) {
                     if (cat === "Starships") MAX_PLAYER_HULL += 5;
                     else if (cat === "Phenomena") MAX_FUEL += 10;
-                    else if (cat === "Locations") PLAYER_EVASION += 2; 
+                    else if (cat === "Locations") PLAYER_EVASION += 0.02; 
                     else if (cat === "Factions") MAX_SHIELDS += 5;
                     else PLAYER_CARGO_CAPACITY += 2; 
                 }
@@ -2089,11 +2095,19 @@ if (typeof window._codexPatched === 'undefined') {
     discoveredLoreEntries = new Set();
     missionsAvailableAtStation = [];
 
-    setRandomPlayerPortrait();
+        setRandomPlayerPortrait();
 
     playerPerks = new Set();
 
     playerCrew = [];
+    
+    // Clean up all active entities and contextual encounters
+    if (typeof EntityManager !== 'undefined') EntityManager.clear();
+    activeEnemies = [];
+    activePlayerDrones = [];
+    activeDistressCalls = [];
+    window.activeSkirmishes = [];
+    window.activeProbes = [];
     
     // Clear Caches
     systemCache = {}; 
@@ -2799,7 +2813,6 @@ function renderGalacticMap() {
     if (typeof activePlayerDrones !== 'undefined') activePlayerDrones.forEach(e => renderList.push({ ...e, char: e.state === 'MINING' ? '⛏' : 'd', color: '#00FF00', glowColor: '#00FF00', fontSize: 0.7 }));
     if (typeof activeDistressCalls !== 'undefined') activeDistressCalls.forEach(e => renderList.push({ ...e, char: '?', color: '#FFAA00', glowColor: '#FFAA00', pulseSpeed: 150, showTimerBar: true, timerMax: 60, timerCurrent: e.turnsRemaining }));
     if (typeof activeSkirmishes !== 'undefined') activeSkirmishes.forEach(e => renderList.push({ ...e, char: '⚔️', color: 'rgba(255, 100, 0, 0.8)', glowColor: '#FF4400', pulseSpeed: 200, fontSize: 1.2 }));
-    if (typeof activeProbes !== 'undefined') activeProbes.forEach(e => renderList.push({ ...e, char: '📡', color: '#00FF00', glowColor: '#00FF00', pulseSpeed: 1000 }));
 
     // This draws EVERYTHING using the new advanced parameters!
     renderList.forEach(entity => {
@@ -3368,8 +3381,9 @@ GameBus.on('TICK_PROCESSED', (tick) => {
     if (typeof updatePlayerDrones === "function") updatePlayerDrones();
 
     // COMET CHASING (Reduced from 1% to 0.1%)
-    if (isMovement && typeof activeComets !== 'undefined') {
-        if (activeComets.length === 0 && Math.random() < 0.001) {
+    if (isMovement && typeof EntityManager !== 'undefined') {
+        const activeCometCount = EntityManager.entities.filter(e => e.isComet).length;
+        if (activeCometCount === 0 && Math.random() < 0.001) {
             const angle = Math.random() * Math.PI * 2;
             const dist = Math.floor(VIEWPORT_WIDTH_TILES); 
             const cx = Math.floor(playerX + Math.cos(angle) * dist);
@@ -3673,6 +3687,10 @@ function handleInteraction() {
             if (typeof showToast === 'function') showToast(`DOCKED: ${location.name.toUpperCase()}`, "success");
             
             playerShields = MAX_SHIELDS; // Still gives you the safety of recharging shields
+            
+            // Inject the actual world coordinates so the colonies.js upgrade system can target the correct tile
+            location.x = playerX;
+            location.y = playerY;
             
             availableActions.push({ label: `Manage Waystation`, key: 'e', onclick: () => openPlayerOutpost(location) });
             if (typeof renderContextualActions === 'function') renderContextualActions(availableActions);
@@ -5654,11 +5672,11 @@ function performSave(saveType) {
         campaignId: currentCampaignId, 
         saveType: safeSaveType,
         
-        // Save the entire GameState object instantly!
+                // Save the entire GameState object instantly!
         coreState: GameState, 
         
         // Metadata / Collections
-        playerName, playerPfp, playerCrew,
+        playerName, playerPfp, playerLevel, currentSectorName, playerCrew,
         playerFactionStanding,
         playerPerks: Array.from(playerPerks),
         concordEscortJumps: window.concordEscortJumps || 0, 
@@ -5771,7 +5789,7 @@ function respawnPlayer() {
 
     // 4. Clear Enemies & Combat State 
     activeEnemies = []; // Wipe the galaxy map clean of old pursuers
-    activeNPCs = [];    // Wipe neutral traffic from the death site
+    if (typeof EntityManager !== 'undefined') EntityManager.clear(); // Wipe neutral traffic from the death site
     currentCombatContext = null; // Tell the game the fight is over!
 
     // 5. Reset UI and State
@@ -5975,6 +5993,24 @@ function loadGameData(jsonString) {
                     color: "#FFAA00",
                     state: "RESCUE",
                     isFuelRat: true
+                });
+            }
+            logMessage("<span style='color:var(--warning)'>Sensors picking up the Fuel Rat tug. They are almost here.</span>");
+        }
+
+        // --- 8. FUEL RAT RELOAD PROTECTION ---
+        if (isAwaitingRescue && rescueTargetStation) {
+            if (typeof EntityManager !== 'undefined') {
+                EntityManager.add({
+                    x: playerX + 10, 
+                    y: playerY + 10,
+                    name: "Fuel Rats Rescue Tug",
+                    char: "R",
+                    color: "#FFAA00",
+                    state: "RESCUE",
+                    isNPC: true,
+                    isFuelRat: true,
+                    hasSensorCone: true
                 });
             }
             logMessage("<span style='color:var(--warning)'>Sensors picking up the Fuel Rat tug. They are almost here.</span>");
