@@ -1,3 +1,5 @@
+/* --- START OF FILE style.css --- */
+
 /* Ensures the browser canvas is dark by default to prevent white flashes */
 html {
     background-color: #050510; 
@@ -98,6 +100,72 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     font-family: var(--title-font);
     text-transform: uppercase;
     letter-spacing: 2px;
+}
+
+/* --- ANIMATIONS --- */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes pulse-cyan { 
+    0% { opacity: 1; text-shadow: 0 0 8px #40E0D0, 0 0 15px #20C0B0; transform: scale(1); } 
+    50% { opacity: 0.8; text-shadow: 0 0 20px #40E0D0, 0 0 30px #FFFFFF; transform: scale(1.1); } 
+    100% { opacity: 1; text-shadow: 0 0 8px #40E0D0, 0 0 15px #20C0B0; transform: scale(1); } 
+}
+
+@keyframes shake {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    10% { transform: translate(-1px, -2px) rotate(-1deg); }
+    20% { transform: translate(-3px, 0px) rotate(1deg); }
+    30% { transform: translate(3px, 2px) rotate(0deg); }
+    40% { transform: translate(1px, -1px) rotate(1deg); }
+    50% { transform: translate(-1px, 2px) rotate(-1deg); }
+    60% { transform: translate(-3px, 1px) rotate(0deg); }
+    70% { transform: translate(3px, 1px) rotate(-1deg); }
+    80% { transform: translate(-1px, -1px) rotate(1deg); }
+    90% { transform: translate(1px, 2px) rotate(0deg); }
+    100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
+
+@keyframes pulse-warning {
+    0% { opacity: 0.3; }
+    50% { opacity: 0.8; }
+    100% { opacity: 0.3; }
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+@keyframes pulse-danger-subtle {
+    0% { box-shadow: 0 0 30px rgba(255, 0, 0, 0.3), inset 0 0 15px rgba(255, 0, 0, 0.2); }
+    50% { box-shadow: 0 0 50px rgba(255, 0, 0, 0.5), inset 0 0 25px rgba(255, 0, 0, 0.4); }
+    100% { box-shadow: 0 0 30px rgba(255, 0, 0, 0.3), inset 0 0 15px rgba(255, 0, 0, 0.2); }
+}
+
+@keyframes warp-jump {
+    0% { filter: blur(0px) contrast(1); transform: scale(1); opacity: 1; }
+    30% { filter: blur(20px) contrast(2); transform: scale(1.5); opacity: 0.5; }
+    100% { filter: blur(0px) contrast(1); transform: scale(1); opacity: 1; }
+}
+
+@keyframes paper-drift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes ink-pulse {
+    0% { transform: scale(1); text-shadow: none; color: var(--accent-color); }
+    50% { transform: scale(1.02); text-shadow: 2px 4px 0px rgba(0, 119, 119, 0.1); }
+    100% { transform: scale(1); text-shadow: none; }
+}
+
+@keyframes cursor-blink {
+    0%, 100% { border-color: transparent; }
+    50% { border-color: var(--accent-color); }
 }
 
 /* --- LAYOUT GRID --- */
@@ -343,13 +411,6 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 .combat-action-btn:hover { background: #FF5555; color: #000; }
 
-/* --- NEXUS / ANIMATIONS --- */
-@keyframes pulse-cyan { 
-    0% { opacity: 1; text-shadow: 0 0 8px #40E0D0, 0 0 15px #20C0B0; transform: scale(1); } 
-    50% { opacity: 0.8; text-shadow: 0 0 20px #40E0D0, 0 0 30px #FFFFFF; transform: scale(1.1); } 
-    100% { opacity: 1; text-shadow: 0 0 8px #40E0D0, 0 0 15px #20C0B0; transform: scale(1); } 
-}
-
 .nexus-char { 
     color: #40E0D0; 
     font-weight: bold; 
@@ -500,47 +561,26 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     border-radius: 4px;     
 }
 
-/* --- CODEX --- */
-#codexOverlay {
-    position: absolute; top: 20px; bottom: 20px; left: 20px; right: 20px;
-    background: rgba(10, 15, 20, 0.95);
-    border: 1px solid var(--accent-color);
-    display: none; flex-direction: column;
-    z-index: 500;
-}
-.codex-header {
-    background: #002222; color: var(--accent-color);
-    padding: 10px; display: flex; justify-content: space-between; font-weight: bold;
-}
-#codexContent { display: flex; flex: 1; overflow: hidden; }
-#codexCategories { width: 200px; border-right: 1px solid #333; overflow-y: auto; padding: 10px; }
-#codexEntries { width: 250px; border-right: 1px solid #333; overflow-y: auto; padding: 10px; }
-#codexEntryText { 
-    flex: 1; padding: 20px; overflow-y: auto; 
-    line-height: 1.6; font-size: 15px; 
-}
-.codex-list-item { padding: 8px; cursor: pointer; color: #888; }
-.codex-list-item:hover { color: #FFF; background: #222; }
-.codex-list-item.active { color: var(--accent-color); background: #111; border-left: 2px solid var(--accent-color); }
-
-/* --- ULTRA-MINIMAL SCROLLBARS (For inner panels only) --- */
+/* --- ULTRA-MINIMAL SCROLLBARS (Global Base) --- */
 ::-webkit-scrollbar { 
     width: 4px; /* Very thin */
     height: 4px; /* Thin for horizontal too */
 } 
-
 ::-webkit-scrollbar-track { 
     background: transparent; /* Invisible track */
 }
-
 ::-webkit-scrollbar-thumb { 
     background: rgba(0, 224, 224, 0.2); /* Almost invisible normally */
     border-radius: 2px;
 }
-
 ::-webkit-scrollbar-thumb:hover { 
     background: var(--accent-color); /* Lights up when you grab it */
     box-shadow: 0 0 5px var(--accent-color);
+}
+/* Firefox compatibility */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #4A4A6A var(--bg-color);
 }
 
 /* --- TRADE MODAL STYLES (Responsive Fix) --- */
@@ -618,11 +658,9 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 .trade-panel-right::-webkit-scrollbar {
     width: 6px;
 }
-
 .trade-panel-right::-webkit-scrollbar-track {
     background: rgba(0, 0, 0, 0.2);
 }
-
 .trade-panel-right::-webkit-scrollbar-thumb {
     background: var(--accent-color);
     border-radius: 3px;
@@ -688,16 +726,17 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     padding-bottom: 5px;
 }
 
+/* Save slot styling consolidated */
 .save-slot-card {
-    /* Update existing .save-slot-card to this: */
-    background: #111;
-    border: 1px solid #333;
-    padding: 10px; /* Slightly less padding to fit image */
-    margin-bottom: 10px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 10px; 
+    margin-bottom: 15px;
     display: flex;
-    align-items: center; /* Vertically center everything */
-    gap: 15px; /* Space between Image, Text, and Arrow */
-    cursor: default; /* Ensure the card doesn't accidentally trigger load when clicking delete */
+    align-items: center; 
+    gap: 15px; 
+    cursor: default; 
     transition: all 0.2s;
     position: relative;
     justify-content: space-between;
@@ -705,12 +744,15 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 .save-slot-card:hover {
     border-color: var(--accent-color);
-    background: #151520;
+    background: rgba(0, 224, 224, 0.05);
 }
 
 .save-info {
     text-align: left;
     flex-grow: 1; /* This pushes the arrow to the far right */
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .save-name {
@@ -721,22 +763,28 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 .save-meta {
-    color: #888;
+    color: var(--item-desc-color);
     font-size: 12px;
     margin-top: 4px;
+    font-family: var(--main-font);
 }
 
 .save-type-badge {
     font-size: 10px;
-    background: #222;
+    background: #333;
     padding: 2px 6px;
     border-radius: 4px;
     color: #AAA;
     margin-left: 8px;
     text-transform: uppercase;
+    vertical-align: middle;
 }
 
-.auto-badge { color: #FFaa00; border: 1px solid #553300; }
+.auto-badge { 
+    background: rgba(0, 170, 170, 0.2);
+    color: var(--success);
+    border: 1px solid var(--success);
+}
 
 .small-btn {
     padding: 10px;
@@ -813,7 +861,6 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 /* --- SAVE GAME PFP UPDATES --- */
-
 .save-pfp-icon {
     width: 50px;
     height: 50px;
@@ -822,7 +869,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     background: #000;
     object-fit: cover;
     image-rendering: pixelated;
-    flex-shrink: 0; /* Don't shrink if text is long */
+    flex-shrink: 0; 
 }
 
 .save-arrow {
@@ -921,8 +968,8 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 /* The Delete Button */
 .save-delete-btn {
     background: transparent;
-    border: 1px solid #FF4444; /* Danger Red */
-    color: #FF4444;
+    border: 1px solid var(--danger); 
+    color: var(--danger);
     width: 32px;
     height: 32px;
     border-radius: 4px;
@@ -938,28 +985,34 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 .save-delete-btn:hover {
-    background: #FF4444;
+    background: var(--danger);
     color: #000;
-    box-shadow: 0 0 10px #FF4444;
+    box-shadow: 0 0 10px var(--danger);
 }
 
 /* --- CUSTOM CONFIRMATION MODAL --- */
+/* Consolidated duplicate styles */
 #confirmationOverlay {
     position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.9); /* Darker backdrop */
-    z-index: 3000; /* Topmost layer */
-    display: flex;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: none; /* Flex when active */
     justify-content: center;
     align-items: center;
+    z-index: 3000; /* Topmost layer */
+    backdrop-filter: blur(4px);
 }
 
 .confirm-window {
-    width: 400px;
-    background: #0b0b18;
+    width: 90%;
+    max-width: 450px;
+    background: #0a0000;
     border: 2px solid var(--danger); /* Red border for danger */
-    box-shadow: 0 0 30px rgba(255, 68, 68, 0.3);
+    box-shadow: 0 0 30px rgba(255, 68, 68, 0.3), inset 0 0 15px rgba(255, 0, 0, 0.2);
+    border-radius: 4px;
+    text-align: center;
     font-family: var(--main-font);
+    animation: pulse-danger-subtle 2s infinite;
 }
 
 .confirm-header {
@@ -970,24 +1023,31 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     text-align: center;
     font-family: var(--title-font);
     letter-spacing: 2px;
+    font-size: 16px;
 }
 
 .confirm-body {
-    padding: 20px;
-    text-align: center;
-    color: #FFF;
+    padding: 25px;
+    color: var(--text-color);
+    line-height: 1.6;
 }
 
-.confirm-body p {
+#confirmMessage {
     margin-bottom: 25px;
-    font-size: 16px;
-    line-height: 1.5;
+    font-size: 14px;
+    color: #ffaaaa;
 }
 
 .confirm-actions {
     display: flex;
     gap: 15px;
     justify-content: center;
+}
+
+.confirm-actions .action-button {
+    flex: 1;
+    padding: 12px;
+    font-size: 14px;
 }
 
 /* Special Danger Button Style */
@@ -1227,29 +1287,24 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     animation: pulse-warning 1s infinite;
 }
 
-@keyframes pulse-warning {
-    0% { opacity: 0.3; }
-    50% { opacity: 0.8; }
-    100% { opacity: 0.3; }
-}
-
-/* --- LIGHT MODE OVERRIDES (Pure White Paper Theme) --- */
-body.light-mode {
-    /* The Palette - Absolute White */
-    --bg-color: #FFFFFF;      
-    --panel-bg: #FFFFFF;      
-    --border-color: #E0E0E0;  
-    --accent-color: #007777;  
-    --text-color: #111111;    
+/* --- LIGHT MODE GLOBAL VARIABLES & OVERRIDES --- */
+body.light-mode, .light-mode {
+    /* Backgrounds: Shift to clean whites and light greys */
+    --bg-color: #f4f4f9;
+    --panel-bg: #ffffff;
+    --border-color: #cccccc;
     
-    /* Status Colors */
-    --success: #008800;
-    --danger: #CC0000;
-    --warning: #D35400;
+    /* Text: Shift to deep, inky blacks and dark greys */
+    --text-color: #222233;       /* Was light purple/grey -> Now dark slate */
+    --item-name-color: #000000;  /* Was pure white -> Now pure black */
+    --item-desc-color: #555566;  /* Was light grey -> Now medium-dark grey */
     
-    --item-name-color: #111111; /* Pure Black */
-    --item-desc-color: #555555; /* Dark Grey */
-    --gold-text: #B35900;       /* Dark Amber (High Contrast) */
+    /* Accents: Darken the bright neon colors so they read clearly on white */
+    --accent-color: #007777;     /* Was bright cyan -> Now deep teal */
+    --gold-text: #aa7700;        /* Was bright yellow -> Now dark goldenrod */
+    --success: #007700;          /* Was bright green -> Now forest green */
+    --warning: #cc7700;          /* Was bright orange -> Now burnt orange */
+    --danger: #cc0000;           /* Was bright red -> Now crimson */
 }
 
 body.light-mode #app-container,
@@ -1307,93 +1362,27 @@ body.light-mode .action-button:hover:not(:disabled) {
 body.light-mode .save-slot-card {
     background: #FFFFFF;
     border: 1px solid #DDD;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-}
-body.light-mode .save-name { color: #000; }
-body.light-mode .save-meta { color: #555; }
-
-/* 5. Inputs */
-body.light-mode .seed-input {
-    background: #FFF;
-    color: #000;
-    border: 1px solid #CCC;
-}
-
-/* 6. Scrollbars */
-body.light-mode ::-webkit-scrollbar-track {
-    background: #FFFFFF;
-}
-
-/* --- LIGHT MODE: TITLE SCREEN & SAVE MENU FIXES --- */
-
-/* 1. Ensure the overlay background matches the theme */
-body.light-mode #titleOverlay {
-    background: #F4F4F4; /* Clean light grey */
-}
-
-/* 2. The Save Slot Card (The "Black Box" fix) */
-body.light-mode .save-slot-card {
-    background: #FFFFFF;
-    border: 1px solid #CCC;
     box-shadow: 0 4px 6px rgba(0,0,0,0.05); /* Soft paper shadow */
 }
-
 body.light-mode .save-slot-card:hover {
     background: #FAFAFA;
     border-color: var(--accent-color);
     box-shadow: 0 6px 12px rgba(0, 119, 119, 0.15);
 }
+body.light-mode .save-name { color: #111; }
+body.light-mode .save-meta { color: #666; }
 
-/* 3. Save Text Colors */
-body.light-mode .save-name {
-    color: #111;
-}
-
-body.light-mode .save-meta {
-    color: #666;
-}
-
-/* 4. Badges (Auto/Manual) */
+/* Badges (Auto/Manual) */
 body.light-mode .save-type-badge {
     background: #EEE;
     color: #555;
     border: 1px solid #DDD;
 }
-
 body.light-mode .auto-badge {
     background: #FFF8E1; /* Pale Orange Paper */
     color: #D35400;      /* Dark Orange Ink */
     border-color: #FAE5D3;
 }
-
-/* 5. Input Fields (Name/Seed) */
-body.light-mode .seed-input {
-    background: #FFFFFF;
-    color: #222;
-    border: 1px solid #AAA;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
-}
-
-body.light-mode .seed-input::placeholder {
-    color: #999;
-}
-
-/* 6. Checkbox & Labels */
-body.light-mode .checkbox-container {
-    color: #444;
-}
-
-body.light-mode .checkmark {
-    background-color: #FFF;
-    border: 1px solid #999;
-}
-
-body.light-mode .subtitle {
-    color: #555;
-    font-weight: bold;
-}
-
-/* 7. Delete Button on the Save Card */
 body.light-mode .save-delete-btn {
     border-color: #D00000;
     color: #D00000;
@@ -1402,15 +1391,27 @@ body.light-mode .save-delete-btn:hover {
     background: #D00000;
     color: #FFF;
 }
-
-body.light-mode .game-title {
-    text-shadow: 0 4px 0 rgba(0,0,0,0.1); /* Clean drop shadow instead of glow */
-    color: #007777; /* Dark Teal */
-}
-
 body.light-mode .save-list-header {
     color: #444;
     border-bottom-color: #BBB;
+}
+
+/* 5. Inputs */
+body.light-mode .seed-input {
+    background: #FFFFFF;
+    color: #222;
+    border: 1px solid #AAA;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+}
+body.light-mode .seed-input::placeholder { color: #999; }
+
+/* 6. Checkbox & Labels */
+body.light-mode .checkbox-container { color: #444; }
+body.light-mode .checkmark { background-color: #FFF; border: 1px solid #999; }
+body.light-mode .subtitle { color: #555; font-weight: bold; }
+body.light-mode .game-title {
+    text-shadow: 0 4px 0 rgba(0,0,0,0.1); /* Clean drop shadow instead of glow */
+    color: #007777; /* Dark Teal */
 }
 
 /* --- LIGHT MODE: SHARP HEADER TEXT --- */
@@ -1419,74 +1420,28 @@ body.light-mode .sector-title {
     text-shadow: none;          /* Removes the "blurry" glow */
     font-weight: 900;           /* Extra bold for readability */
     letter-spacing: 1px;        /* Tighten it up slightly */
-    
-    /* Optional: A crisp hard shadow for a "printed" look */
     filter: drop-shadow(1px 1px 0px rgba(0,0,0,0.1));
 }
-
-/* Also sharpen the coordinates next to it */
 body.light-mode .coords {
     color: #444;
     font-weight: bold;
     text-shadow: none;
 }
-/* --- ANIMATIONS & LIGHT MODE TITLE POLISH --- */
 
-/* 1. Missing Blink Animation (Fixes "SYSTEM INITIALIZING..." not blinking) */
-@keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-}
-
-/* 2. Light Mode: Dynamic Background ("Paper Drift") */
-/* Adds a very slow, subtle shifting gradient so the white isn't "dead" */
+/* --- LIGHT MODE: DYNAMIC BACKGROUND & ANIMATIONS --- */
 body.light-mode #titleOverlay {
     background: linear-gradient(120deg, #FFFFFF 0%, #F0F0F0 50%, #FFFFFF 100%);
     background-size: 200% 200%;
     animation: paper-drift 15s ease infinite;
 }
-
-@keyframes paper-drift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
-
-/* 3. Light Mode: Logo "Breathing" Effect */
-/* Makes the logo pulse slightly in size and shadow, like ink settling on paper */
 body.light-mode .game-title {
     animation: ink-pulse 4s ease-in-out infinite;
 }
-
-@keyframes ink-pulse {
-    0% { 
-        transform: scale(1); 
-        text-shadow: none; 
-        color: var(--accent-color);
-    }
-    50% { 
-        transform: scale(1.02); 
-        /* Subtle shadow pulse */
-        text-shadow: 2px 4px 0px rgba(0, 119, 119, 0.1); 
-    }
-    100% { 
-        transform: scale(1); 
-        text-shadow: none; 
-    }
-}
-
-/* 4. Light Mode: Loading Text Cursor Effect */
-/* Adds a blinking cursor block next to "SYSTEM INITIALIZING..." */
 body.light-mode #systemBoot {
     border-right: 3px solid var(--accent-color);
     padding-right: 5px;
     display: inline-block;
     animation: cursor-blink 1s step-end infinite;
-}
-
-@keyframes cursor-blink {
-    0%, 100% { border-color: transparent; }
-    50% { border-color: var(--accent-color); }
 }
 
 /* --- LIGHT MODE: TOAST NOTIFICATIONS --- */
@@ -1498,19 +1453,15 @@ body.light-mode .toast {
     box-shadow: 0 4px 12px rgba(0,0,0,0.1); /* Soft, clean shadow */
     font-weight: 600;
 }
-
-/* Success Toasts (Green) */
 body.light-mode .toast.success {
-    border-left-color: var(--success); /* Uses the Dark Green variable */
-    color: var(--success);             /* Text matches border */
-    background: #F4FFF4;               /* Very faint green tint */
+    border-left-color: var(--success); 
+    color: var(--success);             
+    background: #F4FFF4;               
 }
-
-/* Error Toasts (Red) */
 body.light-mode .toast.error {
-    border-left-color: var(--danger);  /* Uses the Dark Red variable */
+    border-left-color: var(--danger);  
     color: var(--danger);
-    background: #FFF4F4;               /* Very faint red tint */
+    background: #FFF4F4;               
 }
 
 /* --- LIGHT MODE: PLANET VIEW OVERRIDES --- */
@@ -1521,57 +1472,40 @@ body.light-mode .planet-view-content {
     box-shadow: 0 10px 30px rgba(0,0,0,0.1);    /* Soft, modern shadow */
     color: #333;                  /* Dark Text */
 }
-
-/* Fix the Planet Title (Was White with Glow) */
 body.light-mode .planet-title {
-    color: var(--accent-color);   /* Dark Teal */
-    text-shadow: none;            /* Remove neon glow */
+    color: var(--accent-color);   
+    text-shadow: none;            
     font-weight: 900;
 }
-
-/* Fix the Description Text (Was Grey/White) */
 body.light-mode .planet-desc {
-    color: #555;                  /* Readable Dark Grey */
+    color: #555;                  
     font-weight: 600;
 }
-
-/* Fix the Planet Image Container */
 body.light-mode .planet-large-img {
-    background: #F0F0F0;          /* Light grey backdrop for the icon */
+    background: #F0F0F0;          
     border-color: #CCC;
 }
-
-/* Fix the Separator Line */
 body.light-mode .planet-header {
     border-bottom-color: #EEE;
 }
 
 /* --- LIGHT MODE: MODAL & COMBAT POLISH --- */
-
-/* 1. TRADE WINDOW FIXES */
-/* The header was dark teal, now light grey */
 body.light-mode .trade-header {
     background: #E0E0E0;
     color: #111;
     border-bottom: 1px solid #BBB;
     text-shadow: none;
 }
-
-/* The "Math Area" was a black box, now off-white */
 body.light-mode .trade-math-area {
     background: #F9F9F9;
     border: 1px solid #DDD;
     color: #333;
 }
-
-/* Input fields (Quantity) were black */
 body.light-mode #tradeQtyInput {
     background: #FFFFFF;
     color: #000;
     border: 1px solid #CCC;
 }
-
-/* Quantity Buttons (+/-) */
 body.light-mode .qty-btn {
     background: #F0F0F0;
     color: #333;
@@ -1581,47 +1515,42 @@ body.light-mode .qty-btn:hover {
     background: var(--accent-color);
     color: #FFF;
 }
-
-/* 2. COMBAT VIEW FIXES */
-/* Combat Buttons were Dark Red background (#330000) -> Now Light Red Tint */
 body.light-mode .combat-action-btn {
     background: #FFF0F0;      /* Very pale red */
     color: #CC0000;           /* Dark Red Text */
     border-color: #CC0000;
     box-shadow: 0 2px 0 #E0C0C0;
 }
-
 body.light-mode .combat-action-btn:hover:not(:disabled) {
     background: #CC0000;
     color: #FFF;
 }
-
 body.light-mode .combat-action-btn:disabled {
     background: #F0F0F0;
     color: #AAA;
     border-color: #DDD;
 }
-
-/* Ship Icons (Prevent black box behind pixel art) */
 body.light-mode .combatant-icon {
     background: #F0F0F0;
     border-color: #CCC;
 }
-
-/* 3. CONFIRMATION MODAL (CRITICAL FIX) */
-/* The body text was hardcoded to White (#FFF), making it invisible on white bg */
 body.light-mode .confirm-window {
-    background: #FFFFFF;
-    border-color: var(--danger);
+    background: #fffafa; /* Slight red tint on white for danger */
+    border-color: #CC0000;
+    box-shadow: 0 0 30px rgba(200, 0, 0, 0.2), inset 0 0 15px rgba(200, 0, 0, 0.1);
     color: #000; /* Force text black */
 }
-
 body.light-mode .confirm-body {
     color: #333; /* Ensure message text is visible */
 }
-
-/* 4. SYSTEM MENU BUTTONS */
-/* These were hardcoded to #222 */
+body.light-mode #confirmMessage {
+    color: #CC0000; /* Deep, bold crimson so it pops on the white background */
+    font-weight: bold;
+}
+body.light-mode .confirm-header {
+    background: #CC0000;
+    color: #FFFFFF;
+}
 body.light-mode .sys-btn {
     background: #F8F8F8;
     color: #333;
@@ -1632,8 +1561,6 @@ body.light-mode .sys-btn:hover {
     border-color: var(--accent-color);
     color: var(--accent-color);
 }
-
-/* 5. CONTEXT ACTION BUTTONS (Bottom Right) */
 body.light-mode .control-button {
     background: #F8F8F8;
     color: var(--accent-color);
@@ -1644,78 +1571,56 @@ body.light-mode .control-button:hover {
     color: #FFF;
 }
 
-/* --- JUICE & FX --- */
-@keyframes shake {
-    0% { transform: translate(1px, 1px) rotate(0deg); }
-    10% { transform: translate(-1px, -2px) rotate(-1deg); }
-    20% { transform: translate(-3px, 0px) rotate(1deg); }
-    30% { transform: translate(3px, 2px) rotate(0deg); }
-    40% { transform: translate(1px, -1px) rotate(1deg); }
-    50% { transform: translate(-1px, 2px) rotate(-1deg); }
-    60% { transform: translate(-3px, 1px) rotate(0deg); }
-    70% { transform: translate(3px, 1px) rotate(-1deg); }
-    80% { transform: translate(-1px, -1px) rotate(1deg); }
-    90% { transform: translate(1px, 2px) rotate(0deg); }
-    100% { transform: translate(1px, -2px) rotate(-1deg); }
-}
-
-.shake-effect {
-    animation: shake 0.5s;
-    animation-iteration-count: 1;
-}
-
-.damage-flash {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(255, 0, 0, 0.3);
-    pointer-events: none;
-    z-index: 9000;
-    opacity: 0;
-    transition: opacity 0.1s;
-}
-
 /* --- LIGHT MODE: CODEX--- */
-
 body.light-mode .codex-header {
     background: #E0E0E0;      /* Light Grey instead of Dark Teal */
     color: #111;              /* Dark Text */
     border-bottom: 1px solid #BBB;
 }
-
 body.light-mode #codexCategories, 
 body.light-mode #codexEntries {
     border-right-color: #CCC; /* Soft Grey instead of Black */
 }
-
 body.light-mode .codex-list-item {
     color: #444; /* Dark Grey text */
 }
-
-/* Hover (No more black bar) */
 body.light-mode .codex-list-item:hover {
     background: #F0F0F0;      /* Very Light Grey */
     color: var(--accent-color);
 }
-
-/* Active/Selected Item (No more black bar) */
 body.light-mode .codex-list-item.active {
     background: #E0F7FA;      /* Pale Cyan/Teal Paper */
     color: #006064;           /* Deep Teal Text */
     border-left-color: #006064;
 }
 
-/* --- LIGHT MODE: TRADE LIST FIXES --- */
+/* --- LIGHT MODE: CODEX CONTRAST FIX --- */
+body.light-mode #codexCategories > div:first-child,
+body.light-mode #codexEntries > div:first-child {
+    background: rgba(0, 0, 0, 0.04) !important; /* A very faint, clean highlight instead */
+}
+body.light-mode #codexCategories > div:first-child > div:first-child,
+body.light-mode #codexEntries > div:first-child > div:first-child {
+    color: #006666 !important; /* Deep, bold teal */
+    font-weight: bold !important;
+}
+body.light-mode #codexCategories > div:first-child > div:nth-child(2) {
+    color: #000000 !important;
+    font-weight: 900 !important;
+}
+body.light-mode #codexCategories > div:first-child > div:last-child {
+    color: #333344 !important; 
+    font-weight: bold !important;
+}
 
+/* --- LIGHT MODE: TRADE LIST FIXES --- */
 body.light-mode .trade-item-row {
     border-bottom-color: #EEE;
     color: #333;
 }
-
-/* Hover was invisible (White on White). Now it's Grey. */
 body.light-mode .trade-item-row:hover {
     background: #F5F5F5; 
 }
-
-/* Selected Item Highlight */
 body.light-mode .trade-item-row.selected {
     background: #E0F7FA;      /* Pale Cyan */
     color: #006064;           /* Deep Teal */
@@ -1723,13 +1628,10 @@ body.light-mode .trade-item-row.selected {
 }
 
 /* --- LEVEL UP MODAL STYLES --- */
-
-/* The Dark Overlay Background */
 #levelUpOverlay {
     display: none; 
     position: fixed; 
     top: 0; left: 0; right: 0; bottom: 0;
-    /* Default Dark Mode Backdrop */
     background: rgba(0, 0, 0, 0.95); 
     z-index: 5000;
     flex-direction: column; 
@@ -1737,7 +1639,6 @@ body.light-mode .trade-item-row.selected {
     justify-content: center;
 }
 
-/* The Perk Card Container */
 .perk-card {
     width: 200px; 
     padding: 20px; 
@@ -1746,34 +1647,27 @@ body.light-mode .trade-item-row.selected {
     transition: all 0.2s; 
     text-align: center;
     font-family: var(--main-font);
-    
-    /* Default Dark Mode Look */
     background: #111; 
     border: 1px solid #444;
     box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
-
 .perk-card:hover {
     border-color: #FFD700; /* Gold Border */
     background: #222;
     transform: translateY(-5px); /* Pop up slightly */
 }
-
 .perk-icon { font-size: 40px; margin-bottom: 10px; }
-
 .perk-title {
     color: var(--accent-color); 
     margin: 0 0 10px 0; 
     font-family: var(--title-font);
     font-size: 18px;
 }
-
 .perk-desc {
     color: #888; 
     font-size: 12px; 
     line-height: 1.4;
 }
-
 .perk-category {
     margin-top: 15px; 
     font-size: 10px; 
@@ -1783,42 +1677,33 @@ body.light-mode .trade-item-row.selected {
 }
 
 /* --- LIGHT MODE: LEVEL UP OVERRIDES --- */
-
 body.light-mode #levelUpOverlay {
     background: rgba(255, 255, 255, 0.95); /* White fog backdrop */
 }
-
 body.light-mode .perk-card {
     background: #FFFFFF;
     border: 1px solid #CCC;
     box-shadow: 0 10px 20px rgba(0,0,0,0.1); /* Soft shadow */
 }
-
 body.light-mode .perk-card:hover {
     background: #F9F9F9;
     border-color: var(--accent-color); /* Teal border on hover */
 }
-
 body.light-mode .perk-title {
     color: var(--accent-color); /* Dark Teal */
     font-weight: 900;
 }
-
 body.light-mode .perk-desc {
     color: #444; /* Dark Grey text */
     font-weight: 600;
 }
-
 body.light-mode .perk-category {
     color: #888;
 }
-
-/* Fix the Header Text in the Modal */
 body.light-mode #levelUpOverlay h1 {
     color: var(--accent-color) !important; /* Force Teal instead of Gold */
     text-shadow: none !important;
 }
-
 body.light-mode #levelUpOverlay p {
     color: #333 !important; /* Force Black text instead of White */
     font-weight: bold;
@@ -2156,31 +2041,6 @@ body.light-mode #spireInput::placeholder {
     opacity: 1;
 }
 
-/* --- CUSTOM SCROLLBARS --- */
-::-webkit-scrollbar {
-    width: 8px; /* Slightly thinner, more elegant scrollbar */
-}
-
-::-webkit-scrollbar-track {
-    background: var(--bg-color); 
-    border-left: 1px solid var(--border-color);
-}
-
-::-webkit-scrollbar-thumb {
-    background: #4A4A6A; /* A muted slate-blue, much darker than the neon cyan */
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #6A6A8A; /* Highlights slightly when you hover over it */
-}
-
-/* Firefox compatibility */
-* {
-    scrollbar-width: thin;
-    scrollbar-color: #4A4A6A var(--bg-color);
-}
-
 /* --- SYSTEM VIEW HEADER --- */
 .system-header-panel {
     width: 100%;
@@ -2314,184 +2174,7 @@ body.light-mode .generic-list-item.active {
     border-left-color: #006064;
 }
 
-/* ==========================================
-   --- SAVE SLOT CARDS & TITLE MENU ---
-   ========================================== */
-.save-slot-card {
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    margin-bottom: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px;
-    transition: border-color 0.2s, background 0.2s;
-    cursor: pointer;
-}
-
-.save-slot-card:hover {
-    border-color: var(--accent-color);
-    background: rgba(0, 224, 224, 0.05);
-}
-
-.save-card-content {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    flex: 1;
-}
-
-.save-pfp-icon {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    border: 2px solid #555;
-    object-fit: cover;
-}
-
-.save-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    text-align: left;
-}
-
-.save-name {
-    font-family: var(--title-font);
-    font-size: 16px;
-    color: var(--text-color);
-    font-weight: bold;
-}
-
-.save-type-badge {
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 4px;
-    margin-left: 8px;
-    background: #333;
-    color: #aaa;
-    vertical-align: middle;
-}
-
-.save-type-badge.auto-badge {
-    background: rgba(0, 170, 170, 0.2);
-    color: var(--success);
-    border: 1px solid var(--success);
-}
-
-.save-meta {
-    font-size: 12px;
-    color: var(--item-desc-color);
-    font-family: var(--main-font);
-}
-
-.save-delete-btn {
-    background: transparent;
-    color: var(--item-desc-color);
-    border: 1px solid transparent;
-    font-size: 24px;
-    cursor: pointer;
-    padding: 5px 15px;
-    border-radius: 4px;
-    transition: color 0.2s, border-color 0.2s, background 0.2s;
-}
-
-.save-delete-btn:hover {
-    color: var(--danger);
-    background: rgba(255, 0, 0, 0.1);
-    border-color: var(--danger);
-}
-
-/* ==========================================
-   --- CONFIRMATION MODAL (DELETE SAVE) ---
-   ========================================== */
-#confirmationOverlay {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    display: none; /* Flex when active */
-    justify-content: center;
-    align-items: center;
-    z-index: 2000; /* Stays above everything */
-    backdrop-filter: blur(4px);
-}
-
-.confirm-window {
-    background: #0a0000;
-    border: 2px solid var(--danger);
-    box-shadow: 0 0 30px rgba(255, 0, 0, 0.3), inset 0 0 15px rgba(255, 0, 0, 0.2);
-    border-radius: 4px;
-    width: 90%;
-    max-width: 450px;
-    text-align: center;
-    font-family: var(--main-font);
-    animation: pulse-danger-subtle 2s infinite;
-}
-
-.confirm-header {
-    background: var(--danger);
-    color: #fff;
-    font-family: var(--title-font);
-    font-weight: 900;
-    letter-spacing: 2px;
-    padding: 10px;
-    font-size: 16px;
-}
-
-.confirm-body {
-    padding: 25px;
-    color: var(--text-color);
-    line-height: 1.6;
-}
-
-#confirmMessage {
-    margin-bottom: 25px;
-    font-size: 14px;
-    color: #ffaaaa;
-}
-
-.confirm-actions {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-}
-
-.confirm-actions .action-button {
-    flex: 1;
-    padding: 12px;
-    font-size: 14px;
-}
-
-@keyframes pulse-danger-subtle {
-    0% { box-shadow: 0 0 30px rgba(255, 0, 0, 0.3), inset 0 0 15px rgba(255, 0, 0, 0.2); }
-    50% { box-shadow: 0 0 50px rgba(255, 0, 0, 0.5), inset 0 0 25px rgba(255, 0, 0, 0.4); }
-    100% { box-shadow: 0 0 30px rgba(255, 0, 0, 0.3), inset 0 0 15px rgba(255, 0, 0, 0.2); }
-}
-
-/* ==========================================
-   --- LIGHT MODE: CONFIRMATION MODAL ---
-   ========================================== */
-   
-.light-mode .confirm-window {
-    background: #fffafa; /* Slight red tint on white for danger */
-    border-color: #CC0000;
-    box-shadow: 0 0 30px rgba(200, 0, 0, 0.2), inset 0 0 15px rgba(200, 0, 0, 0.1);
-}
-
-.light-mode #confirmMessage {
-    color: #CC0000; /* Deep, bold crimson so it pops on the white background */
-    font-weight: bold;
-}
-
-.light-mode .confirm-header {
-    background: #CC0000;
-    color: #FFFFFF;
-}
-
-/* ==========================================
-   --- GALACTIC CODEX UI V2 ---
-   ========================================== */
+/* --- CODEX OVERLAY --- */
 #codexOverlay {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
@@ -2580,39 +2263,7 @@ body.light-mode .generic-list-item.active {
     background: rgba(255, 215, 0, 0.05);
 }
 
-/* Custom Scrollbar for the Codex to look high-tech */
-.codex-body::-webkit-scrollbar,
-#codexCategories::-webkit-scrollbar,
-#codexEntries::-webkit-scrollbar,
-#codexEntryText::-webkit-scrollbar {
-    width: 6px;
-}
-
-.codex-body::-webkit-scrollbar-track,
-#codexCategories::-webkit-scrollbar-track,
-#codexEntries::-webkit-scrollbar-track,
-#codexEntryText::-webkit-scrollbar-track {
-    background: rgba(0,0,0,0.3);
-}
-
-.codex-body::-webkit-scrollbar-thumb,
-#codexCategories::-webkit-scrollbar-thumb,
-#codexEntries::-webkit-scrollbar-thumb,
-#codexEntryText::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 3px;
-}
-
-.codex-body::-webkit-scrollbar-thumb:hover,
-#codexCategories::-webkit-scrollbar-thumb:hover,
-#codexEntries::-webkit-scrollbar-thumb:hover,
-#codexEntryText::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-color);
-}
-
-/* ==========================================
-   --- GALACTIC CODEX READING PANE ---
-   ========================================== */
+/* --- GALACTIC CODEX READING PANE --- */
 .codex-reading-pane {
     padding: 30px; 
     font-family: var(--main-font);
@@ -2679,71 +2330,8 @@ body.light-mode .generic-list-item.active {
     background: var(--panel-bg);
 }
 
-/* ==========================================
-   --- GLOBAL LIGHT MODE COLOR SWAP ---
-   ========================================== */
-
-body.light-mode, .light-mode {
-    /* Backgrounds: Shift to clean whites and light greys */
-    --bg-color: #f4f4f9;
-    --panel-bg: #ffffff;
-    --border-color: #cccccc;
-    
-    /* Text: Shift to deep, inky blacks and dark greys */
-    --text-color: #222233;       /* Was light purple/grey -> Now dark slate */
-    --item-name-color: #000000;  /* Was pure white -> Now pure black */
-    --item-desc-color: #555566;  /* Was light grey -> Now medium-dark grey */
-    
-    /* Accents: Darken the bright neon colors so they read clearly on white */
-    --accent-color: #007777;     /* Was bright cyan -> Now deep teal */
-    --gold-text: #aa7700;        /* Was bright yellow -> Now dark goldenrod */
-    --success: #007700;          /* Was bright green -> Now forest green */
-    --warning: #cc7700;          /* Was bright orange -> Now burnt orange */
-    --danger: #cc0000;           /* Was bright red -> Now crimson */
-}
-
-/* ==========================================
-   --- LIGHT MODE: CODEX CONTRAST FIX ---
-   ========================================== */
-
-/* 1. Strip away the muddy inline grey backgrounds from the top banners */
-.light-mode #codexCategories > div:first-child,
-.light-mode #codexEntries > div:first-child {
-    background: rgba(0, 0, 0, 0.04) !important; /* A very faint, clean highlight instead */
-}
-
-/* 2. Force the 'DECRYPTED FILES' and 'ARCHIVE RECOVERY' labels to be dark teal */
-.light-mode #codexCategories > div:first-child > div:first-child,
-.light-mode #codexEntries > div:first-child > div:first-child {
-    color: #006666 !important; /* Deep, bold teal */
-    font-weight: bold !important;
-}
-
-/* 3. Ensure the big completion percentage stays pure black */
-.light-mode #codexCategories > div:first-child > div:nth-child(2) {
-    color: #000000 !important;
-    font-weight: 900 !important;
-}
-
-/* 4. Keep the 'X of Y Entries' subtext dark grey so it reads clearly */
-.light-mode #codexCategories > div:first-child > div:last-child {
-    color: #333344 !important; 
-    font-weight: bold !important;
-}
-
-/* --- WARP JUMP EFFECT --- */
-@keyframes warp-jump {
-    0% { filter: blur(0px) contrast(1); transform: scale(1); opacity: 1; }
-    30% { filter: blur(20px) contrast(2); transform: scale(1.5); opacity: 0.5; }
-    100% { filter: blur(0px) contrast(1); transform: scale(1); opacity: 1; }
-}
-
-.warp-effect {
-    animation: warp-jump 0.6s ease-in-out;
-}
-
-/* --- CUSTOM START BUTTON --- */
-#startButton {
+/* --- START BUTTONS --- */
+#startButton, #bootButton {
     /* 1. Stop it from stretching and center it */
     display: block; 
     width: fit-content; 
@@ -2768,9 +2356,11 @@ body.light-mode, .light-mode {
 }
 
 /* Hover state where the terminal colors invert! */
-#startButton:hover {
+#startButton:hover, #bootButton:hover {
     background: var(--accent-color);
     color: #000; /* Inverts the text to black */
     box-shadow: 0 0 25px var(--accent-color);
     transform: scale(1.05); /* Slight zoom when the mouse hits it */
 }
+
+/* --- END OF FILE style.css --- */
