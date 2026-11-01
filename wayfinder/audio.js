@@ -1,3 +1,5 @@
+--- START OF FILE audio.js ---
+
 class SoundManager {
     constructor() {
         this.ctx = null;
@@ -83,6 +85,11 @@ class SoundManager {
     playTone(freq, type, duration, vol = 1, slideTo = null) {
         if (!this.enabled || !this.ctx) return;
         
+        // Safeguard: If passed seconds instead of milliseconds (e.g., 0.1, 0.5), auto-convert
+        if (duration < 10) {
+            duration *= 1000;
+        }
+        
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         
@@ -105,6 +112,8 @@ class SoundManager {
 
     playNoise(duration, vol = 1) {
         if (!this.enabled || !this.ctx) return;
+        
+        // Note: playNoise natively uses seconds, not ms
         const bufferSize = this.ctx.sampleRate * duration;
         const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
         const data = buffer.getChannelData(0);
@@ -147,20 +156,21 @@ class SoundManager {
     playLaser() { this.playTone(800, 'sawtooth', 200, 0.2, 200); }
     playExplosion() {
         this.playNoise(0.5, 0.5);
-        this.playTone(100, 'square', 0.4, 0.4, 10); 
+        this.playTone(100, 'square', 400, 0.4, 10); 
     }
-    playShieldHit() { this.playTone(1500, 'sawtooth', 0.1, 0.3, 500); }
-    playHullHit() { this.playNoise(0.2, 0.4); this.playTone(200, 'square', 0.2, 0.4, 50); }
-    playScan() { this.playTone(2000, 'sine', 0.5, 0.2, 1800); }
-    playMining() { this.playTone(1200 + Math.random()*400, 'sine', 0.3, 0.2); }
-    playWarp() { this.playTone(200, 'square', 1.5, 0.2, 2000); }
+    playShieldHit() { this.playTone(1500, 'sawtooth', 100, 0.3, 500); }
+    playHullHit() { this.playNoise(0.2, 0.4); this.playTone(200, 'square', 200, 0.4, 50); }
+    playScan() { this.playTone(2000, 'sine', 500, 0.2, 1800); }
+    playMining() { this.playTone(1200 + Math.random()*400, 'sine', 300, 0.2); }
+    playWarp() { this.playTone(200, 'square', 1500, 0.2, 2000); }
     playAbilityActivate() { this.playTone(600, 'sine', 400, 0.2, 1200); }
     
     playWarning() { 
-        this.playTone(400, 'sawtooth', 0.4, 0.3);
-        setTimeout(() => this.playTone(400, 'sawtooth', 0.4, 0.3), 500);
+        this.playTone(400, 'sawtooth', 400, 0.3);
+        setTimeout(() => this.playTone(400, 'sawtooth', 400, 0.3), 500);
     }
 }
 
 // Ensure global instantiation stays intact
 const soundManager = new SoundManager();
+--- END OF FILE audio.js ---
