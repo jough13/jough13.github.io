@@ -4,6 +4,7 @@
 
 const PLANET_BIOMES = {
      BARREN_ROCK: {
+         id: "BARREN_ROCK",
          name: "Barren Rock",
          landable: true,
          weight: 100, // Very Common
@@ -12,6 +13,7 @@ const PLANET_BIOMES = {
          image: 'assets/barren_rock.png'
      },
      GAS_GIANT: {
+         id: "GAS_GIANT",
          name: "Gas Giant",
          landable: false,
          weight: 60, // Common
@@ -20,6 +22,7 @@ const PLANET_BIOMES = {
          image: 'assets/gas_giant.png'
      },
      ICE_GIANT: {
+         id: "ICE_GIANT",
          name: "Ice Giant",
          landable: false,
          weight: 50, // Common
@@ -28,6 +31,7 @@ const PLANET_BIOMES = {
          image: 'assets/ice_giant.png'
      },
      VOLCANIC: {
+         id: "VOLCANIC",
          name: "Volcanic World",
          landable: true,
          weight: 20, // Uncommon
@@ -36,6 +40,7 @@ const PLANET_BIOMES = {
          image: 'assets/volcanic_world.png'
      },
      TOXIC: {
+         id: "TOXIC",
          name: "Toxic Jungle",
          landable: true,
          weight: 15, // Uncommon
@@ -44,6 +49,7 @@ const PLANET_BIOMES = {
          image: 'assets/toxic_jungle.png'
      },
      OCEANIC: {
+        id: "OCEANIC",
         name: "Ocean World",
         landable: false,
         weight: 10, // Rare
@@ -52,6 +58,7 @@ const PLANET_BIOMES = {
         image: 'assets/ocean_world.png'
     },
     TERRAN: {
+         id: "TERRAN",
          name: "Terran World",
          landable: true,
          weight: 5, // Very Rare (Earth-like)
@@ -60,6 +67,7 @@ const PLANET_BIOMES = {
          image: 'assets/terran_world.png'
      },
      IRRADIATED: {
+         id: "IRRADIATED",
          name: "Irradiated Wasteland",
          landable: true,
          weight: 4, // Very Rare
@@ -68,6 +76,7 @@ const PLANET_BIOMES = {
          image: 'assets/wasteland.png' 
      },
      CRYSTAL: {
+         id: "CRYSTAL",
          name: "Crystalline Anomaly",
          landable: true,
          weight: 2, // Ultra Rare
@@ -76,6 +85,7 @@ const PLANET_BIOMES = {
          image: 'assets/crystal_anomaly.png'
      },
      MACHINE_WORLD: {
+         id: "MACHINE_WORLD",
          name: "Machine World",
          landable: true,
          weight: 1, // Legendary (1 in ~260 chance)
