@@ -1,5 +1,7 @@
+// --- START OF FILE ui.js ---
+
 // --- GENERIC MODAL HANDLER ---
-function openGenericModal(title) {
+function openGenericModal(title, bannerSrc = null) {
     const modal = document.getElementById('genericModalOverlay');
     document.getElementById('genericModalTitle').textContent = title;
     
@@ -9,14 +11,30 @@ function openGenericModal(title) {
     // Wipes out flex-direction: column or specific heights left behind by other menus
     container.style.cssText = ''; 
     
+    // --- OPTIONAL: CINEMATIC BANNER ---
+    // If a banner image is provided (like in Skirmishes), inject it cleanly above the layout!
+    let headerHtml = '';
+    if (bannerSrc) {
+        headerHtml = `
+            <div style="width: 100%; height: 180px; border-radius: 4px; border: 1px solid var(--border-color); margin-bottom: 15px; flex-shrink: 0; overflow: hidden; background: rgba(0,0,0,0.5);">
+                <img src="${bannerSrc}" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.9;">
+            </div>
+        `;
+        // Since we are adding a banner, we need to enforce a flex-column layout so the content fits below it
+        container.style.cssText = "display: flex; flex-direction: column; height: 100%; overflow: hidden;";
+    }
+    
     // --- SELF-REPAIRING LAYOUT ---
     // We reconstruct the base layout every time so it never crashes, 
     // even if the Trade system previously overwrote it!
     container.innerHTML = `
-        <div id="genericModalList" class="trade-list-container"></div>
-        <div id="genericModalDetails" class="trade-panel-right">
-            <div id="genericDetailContent"><p style="color:#666; padding:10px;">Establishing connection...</p></div>
-            <div class="trade-btn-group" id="genericModalActions"></div>
+        ${headerHtml}
+        <div style="display: flex; gap: 20px; flex: 1; min-height: 0; overflow: hidden; width: 100%;">
+            <div id="genericModalList" class="trade-list-container" style="flex: 1.2; overflow-y: auto;"></div>
+            <div id="genericModalDetails" class="trade-panel-right" style="flex: 1; overflow-y: auto; padding: 20px;">
+                <div id="genericDetailContent"><p style="color:#666; padding:10px;">Establishing connection...</p></div>
+                <div class="trade-btn-group" id="genericModalActions" style="margin-top: auto; padding-top: 15px;"></div>
+            </div>
         </div>
     `;
     
@@ -605,45 +623,6 @@ function displayCommanderProfile(tab = 'OVERVIEW') {
 
 // --- VISUAL CARGO SYSTEM ---
 
-function closeCargoModal() {
-    document.getElementById('cargoOverlay').style.display = 'none';
-    currentOutfitContext = null;
-    handleInteraction();
-
-    // UPDATE BORDERS
-    updateSideBorderVisibility();
-}
-
-function renderCargoList() {
-    const listEl = document.getElementById('cargoList');
-    listEl.innerHTML = '';
-    
-    // Convert cargo object to array of keys for easier indexing
-    const cargoKeys = Object.keys(playerCargo).filter(key => playerCargo[key] > 0);
-    
-    if (cargoKeys.length === 0) {
-        listEl.innerHTML = '<div style="padding:20px; color:#666;">Cargo Hold Empty</div>';
-        return;
-    }
-
-    cargoKeys.forEach((key, index) => {
-        const item = COMMODITIES[key];
-        const qty = playerCargo[key];
-        
-        // SAFETY CHECK: If the item doesn't exist in the database, skip rendering it!
-        if (!item) return; 
-        
-        const row = document.createElement('div');
-        row.className = 'trade-item-row';
-        if (index === selectedCargoIndex) row.classList.add('selected');
-        
-        row.innerHTML = `<span>${item.name}</span> <span style="color:#888;">x${qty}</span>`;
-        
-        row.onclick = () => selectCargoItem(index, key);
-        listEl.appendChild(row);
-    });
-}
-
 function updateCurrentCargoLoad() {
 
      // Instead of doing the math here, we just tell the engine it changed!
@@ -915,3 +894,4 @@ function jettisonItem(key, amount) {
         renderCargoList(); 
     }
 }
+// --- END OF FILE ui.js ---
