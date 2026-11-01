@@ -47,8 +47,15 @@ function startCombat(specificEnemyEntity = null) {
          difficultyMultiplier = Math.max(0.2, difficultyMultiplier - (specificEnemyEntity.combatBonusAdvantage * 0.05));
      }
 
-     // --- Deep clone the ship so we can mutate it safely ---
+          // --- Deep clone the ship so we can mutate it safely ---
      let enemyShipClone = JSON.parse(JSON.stringify(pirateShip));
+
+     // INJECT specific entity data (like Bounty IDs) back into the clone so victory handlers can read them!
+     if (specificEnemyEntity) {
+         if (specificEnemyEntity.id) enemyShipClone.id = specificEnemyEntity.id;
+         if (specificEnemyEntity.isBountyTarget) enemyShipClone.isBountyTarget = specificEnemyEntity.isBountyTarget;
+         if (specificEnemyEntity.isLegendary) enemyShipClone.isLegendary = specificEnemyEntity.isLegendary;
+     }
 
      // 20% chance to spawn an Elite/Mutated variant (unless it's already a legendary boss)
      let isElite = specificEnemyEntity ? specificEnemyEntity.isLegendary : false;
