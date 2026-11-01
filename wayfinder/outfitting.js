@@ -1,3 +1,5 @@
+// --- START OF FILE outfitting.js ---
+
 // ==========================================
 // --- SHIPYARD UI & PURCHASING LOGIC ---
 // ==========================================
@@ -54,7 +56,6 @@ function displayShipyard() {
                 </div>
             `;
             row.onclick = () => {
-                // 🚨 THE FIX: No more hardcoded "Concord", uses the dynamic header!
                 detailEl.innerHTML = `
                     <div style="text-align:center; padding: 0 20px 20px 20px;">
                         ${headerHtml}
@@ -82,12 +83,11 @@ function displayShipyard() {
     }
 
     // 2. Default Landing Screen (Right Pane)
-    // 🚨 THE FIX: Injects the beautiful banner immediately upon opening the menu!
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 0 20px 20px 20px;">
             ${headerHtml}
             <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
-                Browse available chassis frames. Purchasing a new vessel will automatically transfer your current subsystems, cargo, and crew.
+                Browse available chassis frames. Purchasing a new vessel will trade in your current hull and subsystems for a 50% credit refund, and equip the new vessel with standard Mk1 systems. Cargo and crew are safely transferred.
             </p>
             <div style="margin-top: 20px; font-size: 14px; color: var(--gold-text); border: 1px solid var(--border-color); padding: 10px; background: rgba(0,0,0,0.3); border-radius: 4px;">
                 Available Funds: <b>${formatNumber(playerCredits)}c</b>
@@ -265,7 +265,7 @@ function confirmBuyShip(shipId, netCost, componentsRefund = 0) {
 // --- ENGINEERING BAY (OUTFITTING UI) ---
 // ==========================================
 
-function displayOutfittingScreen() {
+function openOutfittingUI() {
     openGenericModal("ENGINEERING BAY");
     const listEl = document.getElementById('genericModalList');
     const detailEl = document.getElementById('genericDetailContent');
@@ -446,7 +446,7 @@ function renderComponentComparison(compId, slot, isEquipped = false) {
 
     // --- RENDER ACTIONS ---
     if (isEquipped) {
-        actionsEl.innerHTML = `<button class="action-button" onclick="displayOutfittingScreen()">BACK TO SLOTS</button>`;
+        actionsEl.innerHTML = `<button class="action-button" onclick="openOutfittingUI()">BACK TO SLOTS</button>`;
     } else {
         const canAfford = playerCredits >= netCost;
         actionsEl.innerHTML = `
@@ -454,7 +454,7 @@ function renderComponentComparison(compId, slot, isEquipped = false) {
                 ${!canAfford ? 'disabled' : ''} onclick="confirmBuyComponent('${compId}')">
                 ${canAfford ? 'AUTHORIZE INSTALL' : 'INSUFFICIENT FUNDS'}
             </button>
-            <button class="action-button" onclick="displayOutfittingScreen()">CANCEL</button>
+            <button class="action-button" onclick="openOutfittingUI()">CANCEL</button>
         `;
     }
 }
@@ -497,72 +497,11 @@ function confirmBuyComponent(compId) {
     if (typeof showToast === 'function') showToast(msg, "success");
     
     // Return to the main engineering screen so they can pick another slot!
-    displayOutfittingScreen(); 
+    openOutfittingUI(); 
     if (typeof renderUIStats === 'function') renderUIStats();
 }
 
- function displayComponentsForSlot(slotType) {
-     currentOutfitContext.step = 'selectComponent';
-     currentOutfitContext.selectedSlot = slotType;
-     let componentMsg = `--- Upgrading ${slotType.toUpperCase()} ---\nAvailable components (Cr: ${playerCredits}):\n`;
-     let componentIndex = 1;
-     currentOutfitContext.availableComponents = [];
-     for (const compId in COMPONENTS_DATABASE) {
-         const comp = COMPONENTS_DATABASE[compId];
-         if (comp.slot === slotType && playerShip.components[slotType] !== compId) {
-             componentMsg += `${componentIndex}. ${comp.name} (${comp.cost}c) - ${comp.description}\n`;
-             componentMsg += `   Stats: `;
-             let statsStr = [];
-             for (const stat in comp.stats) {
-                 statsStr.push(`${stat}: ${comp.stats[stat]}`);
-             }
-             componentMsg += statsStr.join(', ') + "\n";
-             currentOutfitContext.availableComponents.push({
-                 id: compId,
-                 ...comp
-             }); // Store ID with component
-             componentIndex++;
-         }
-     }
-     if (currentOutfitContext.availableComponents.length === 0) {
-         componentMsg += "No other upgrades currently available for this slot.\n";
-     }
-     componentMsg += "Enter # to purchase, or 'L' to go back.";
-     logMessage(componentMsg);
- }
-
- function buyComponent(selectedComponentId) {
-     const component = COMPONENTS_DATABASE[selectedComponentId];
-     if (!component) {
-         logMessage("Invalid component selection.");
-         displayComponentsForSlot(currentOutfitContext.selectedSlot);
-         return;
-     }
-     if (playerCredits < component.cost) {
-         logMessage("Not enough credits to purchase " + component.name + ".", true);
-         displayComponentsForSlot(currentOutfitContext.selectedSlot);
-         return;
-     }
-     const oldComponent = COMPONENTS_DATABASE[playerShip.components[component.slot]];
-     playerCredits -= component.cost;
-     playerShip.components[component.slot] = selectedComponentId;
-
-     // --- Initialize Ammo for the new weapon ---
-     if (component.stats && component.stats.maxAmmo) {
-         playerShip.ammo[selectedComponentId] = component.stats.maxAmmo;
-     }
-
-     applyPlayerShipStats();
-
-     unlockLoreEntry(component.loreKey);
-     logMessage(`Installed ${component.name}. Old ${oldComponent.name} unequipped.\nCredits: ${playerCredits}`);
-     currentOutfitContext = null;
-     handleInteraction();
- }
-
-  /**
-  * Handles the logic for repairing the player's ship hull at a station.
-  */
+// --- REPAIR & REFUEL ---
 
 function repairShip() {
     let repaired = false;
@@ -609,10 +548,6 @@ function repairShip() {
         showToast("SYSTEMS NOMINAL", "info");
     }
 }
-
-// ==========================================
-// --- SMART REFUELING LOGIC ---
-// ==========================================
 
 function refuelShip() {
     if (playerFuel >= MAX_FUEL) {
@@ -757,175 +692,4 @@ function applyPlayerShipStats() {
 
     // --- TELL THE BUS WE CHANGED MAX STATS ---
     if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
-}
-
-// ==========================================
-// --- SUBSYSTEM OUTFITTING MENU ---
-// ==========================================
-
-function openOutfittingUI() {
-    openGenericModal("OUTFITTING & UPGRADES");
-    
-    const detailEl = document.getElementById('genericDetailContent');
-    const actionsEl = document.getElementById('genericModalActions');
-    const listEl = document.getElementById('genericModalList');
-
-    detailEl.innerHTML = `
-        <div style="width: 100%; height: 180px; background: url('assets/outfitting_banner.png') center/cover; border-radius: 4px; border: 1px solid var(--accent-color); margin-bottom: 20px; box-shadow: 0 0 25px rgba(0, 224, 224, 0.15);">
-        </div>
-
-        <div style="text-align:center; padding: 0 20px 20px 20px;">
-            <h3 style="color:var(--accent-color); margin-bottom:10px; letter-spacing: 2px;">SUBSYSTEM OUTFITTING</h3>
-            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
-                Upgrade your vessel's core subsystems. Better drives increase evasion, heavier shields absorb more damage, and advanced scanners reveal the unknown.
-            </p>
-            <div style="margin-top: 20px; font-size: 14px; color: var(--gold-text); border: 1px solid var(--border-color); padding: 10px; background: rgba(0,0,0,0.3); border-radius: 4px;">
-                Available Funds: <b>${formatNumber(playerCredits)}c</b>
-            </div>
-        </div>
-    `;
-
-    actionsEl.innerHTML = `
-        <button class="action-button" style="border-color:var(--danger); color:var(--danger);" onclick="renderOutfittingList('weapon')">WEAPON SYSTEMS</button>
-        <button class="action-button" style="border-color:var(--success); color:var(--success);" onclick="renderOutfittingList('shield')">SHIELD GENERATORS</button>
-        <button class="action-button" style="border-color:var(--warning); color:var(--warning);" onclick="renderOutfittingList('engine')">PROPULSION DRIVES</button>
-        <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color);" onclick="renderOutfittingList('scanner')">SENSOR ARRAYS</button>
-        <button class="action-button full-width-btn" onclick="openStationView()" style="margin-top: 15px;">RETURN TO CONCOURSE</button>
-    `;
-
-    listEl.innerHTML = `
-        <div style="padding: 15px; color: var(--item-desc-color); text-align: center; font-style: italic; margin-top: 20px;">
-            Select a subsystem category below to view available upgrades for your chassis.
-        </div>
-    `;
-}
-
-function renderOutfittingList(categoryType) {
-    const listEl = document.getElementById('genericModalList');
-    listEl.innerHTML = ''; 
-
-    const typeNames = {
-        'weapon': 'WEAPONS',
-        'shield': 'SHIELDS',
-        'engine': 'ENGINES',
-        'scanner': 'SCANNERS'
-    };
-
-    listEl.innerHTML = `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom: 5px;">AVAILABLE ${typeNames[categoryType]}</div>`;
-
-    let foundAny = false;
-
-    // Iterate through the global database to find matching parts
-    for (const [id, comp] of Object.entries(COMPONENTS_DATABASE)) {
-        if (comp.type === categoryType) {
-            foundAny = true;
-            const isEquipped = playerShip.components[categoryType] === id;
-            const canAfford = playerCredits >= comp.cost;
-            
-            const row = document.createElement('div');
-            row.className = 'trade-item-row';
-            row.style.cssText = "padding: 12px 10px; border-bottom: 1px solid var(--border-color); cursor: pointer;";
-            
-            if (isEquipped) {
-                row.style.background = 'rgba(0, 224, 224, 0.1)';
-                row.style.borderLeft = '3px solid var(--accent-color)';
-            }
-
-            row.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div style="font-weight:bold; font-size: 14px; color: ${isEquipped ? 'var(--accent-color)' : 'var(--item-name-color)'};">${comp.name}</div>
-                        <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">${comp.desc || 'Standard issue component.'}</div>
-                    </div>
-                    <div style="text-align:right;">
-                        ${isEquipped 
-                            ? `<span style="color:var(--success); font-weight:bold; font-size:11px; letter-spacing: 1px;">EQUIPPED</span>` 
-                            : `<span style="color:${canAfford ? 'var(--gold-text)' : 'var(--danger)'}; font-size:13px; font-weight: bold;">${formatNumber(comp.cost)}c</span>`
-                        }
-                    </div>
-                </div>
-            `;
-            
-            row.onclick = () => showComponentDetails(id, comp, categoryType, isEquipped, canAfford);
-            listEl.appendChild(row);
-        }
-    }
-
-    if (!foundAny) {
-        listEl.innerHTML += `<div style="padding:15px; color:#888;">No components of this type available at this station.</div>`;
-    }
-}
-
-function showComponentDetails(id, comp, categoryType, isEquipped, canAfford) {
-    const detailEl = document.getElementById('genericDetailContent');
-    const actionsEl = document.getElementById('genericModalActions');
-
-    // Dynamically generate the stats block
-    let statsHtml = '';
-    if (comp.stats) {
-        for (const [stat, val] of Object.entries(comp.stats)) {
-            statsHtml += `
-                <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px;">
-                    <span style="color:var(--item-desc-color);">${stat.replace(/([A-Z])/g, ' $1').toUpperCase()}:</span>
-                    <span style="color:var(--success); font-weight:bold;">${val}</span>
-                </div>`;
-        }
-    }
-
-    detailEl.innerHTML = `
-        <div style="text-align:center; padding: 15px; animation: fadeIn 0.2s;">
-            <div style="font-size:50px; margin-bottom:10px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">${comp.icon || '⚙️'}</div>
-            <h3 style="color:var(--text-color); margin:0;">${comp.name.toUpperCase()}</h3>
-            <p style="font-size:13px; color:var(--item-desc-color); margin:15px 0; line-height: 1.5; font-style: italic;">"${comp.desc || 'Standard issue component.'}"</p>
-            
-            <div style="background:rgba(0,0,0,0.3); border:1px solid #333; padding:15px; border-radius:4px; text-align:left;">
-                <div style="color:var(--accent-color); font-size:11px; margin-bottom:12px; font-weight:bold; letter-spacing:1px; border-bottom:1px solid #333; padding-bottom:5px;">TECHNICAL SPECIFICATIONS:</div>
-                ${statsHtml}
-            </div>
-        </div>
-    `;
-
-    if (isEquipped) {
-        actionsEl.innerHTML = `
-            <button class="action-button full-width-btn" style="border-color:var(--success); color:var(--success);" disabled>CURRENTLY EQUIPPED</button>
-            <button class="action-button full-width-btn" onclick="openOutfittingUI()" style="margin-top: 10px;">BACK TO CATEGORIES</button>
-        `;
-    } else {
-        actionsEl.innerHTML = `
-            <button class="action-button" ${canAfford ? '' : 'disabled'} 
-                    style="border-color:${canAfford ? 'var(--gold-text)' : 'var(--danger)'}; color:${canAfford ? 'var(--gold-text)' : 'var(--danger)'}; box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);" 
-                    onclick="purchaseAndEquipComponent('${id}', '${categoryType}', ${comp.cost})">
-                ${canAfford ? `AUTHORIZE REFIT (${formatNumber(comp.cost)}c)` : `INSUFFICIENT FUNDS (${formatNumber(comp.cost)}c)`}
-            </button>
-            <button class="action-button full-width-btn" onclick="openOutfittingUI()" style="margin-top: 10px;">BACK TO CATEGORIES</button>
-        `;
-    }
-}
-
-function purchaseAndEquipComponent(compId, categoryType, cost) {
-    if (playerCredits < cost) {
-        if (typeof showToast === 'function') showToast("Insufficient Funds", "error");
-        return;
-    }
-
-    // 1. Deduct funds and swap the part
-    playerCredits -= cost;
-    playerShip.components[categoryType] = compId;
-    
-    // 2. IMPORTANT: Call your existing stat engine to recalculate everything!
-    if (typeof applyPlayerShipStats === 'function') applyPlayerShipStats();
-    
-    // 3. Heal the player's new shield buffer automatically
-    playerShields = MAX_SHIELDS; 
-    
-    if (typeof soundManager !== 'undefined') soundManager.playBuy();
-    if (typeof showToast === 'function') showToast("SUBSYSTEM UPGRADED", "success");
-    logMessage(`<span style="color:var(--accent-color);">[ SHIPYARD ] Old ${categoryType} stripped. New ${COMPONENTS_DATABASE[compId].name} installed.</span>`);
-    
-    if (typeof renderUIStats === 'function') renderUIStats();
-    if (typeof autoSaveGame === 'function') autoSaveGame();
-    
-    // 4. Visually refresh the menu so it shows as "Equipped" immediately
-    renderOutfittingList(categoryType);
-    showComponentDetails(compId, COMPONENTS_DATABASE[compId], categoryType, true, true);
 }
