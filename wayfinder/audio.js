@@ -1,5 +1,3 @@
---- START OF FILE audio.js ---
-
 class SoundManager {
     constructor() {
         this.ctx = null;
@@ -173,4 +171,3 @@ class SoundManager {
 
 // Ensure global instantiation stays intact
 const soundManager = new SoundManager();
---- END OF FILE audio.js ---
