@@ -1509,7 +1509,9 @@ function finalizeRaid(choice) {
     if (!ctx) return;
 
     if (choice === 'RAZE') {
-        const credits = (800 + Math.floor(Math.random() * 1000)) * (typeof hasCrewPerk === 'function' && hasCrewPerk('SCAVENGER_PROTOCOL') ? 2 : 1);
+        const hasScavenger = (typeof playerPerks !== 'undefined' && playerPerks.has('SCAVENGER_PROTOCOL')) ||
+                             (typeof hasCrewPerk === 'function' && hasCrewPerk('SCAVENGER_PROTOCOL'));
+        const credits = (800 + Math.floor(Math.random() * 1000)) * (hasScavenger ? 2 : 1);
         const xp = 250;
         
         playerCredits += credits;
