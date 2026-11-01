@@ -376,7 +376,8 @@ function triggerRandomEncounter() {
         btn.style.marginBottom = '10px';
         btn.innerHTML = choice.label;
         
-        if (choice.label.includes("Rep+") || choice.label.includes("DESTROY")) {
+        // FIXED: Check destructive/hostile keywords first so "Rep+" reaches the green branch!
+        if (choice.label.includes("DESTROY") || choice.label.includes("DEATH") || choice.label.includes("Rep-")) {
             btn.style.borderColor = "var(--danger)";
             btn.style.color = "var(--danger)";
         } else if (choice.label.includes("Rep+")) {
@@ -414,10 +415,11 @@ function resolveUniversalEncounter(encounterId, choiceIndex) {
             if (Math.random() > 0.6) {
                 logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] EVASION SUCCESSFUL! You dump a sensor decoy and jump to warp before they can lock weapons!</span>");
             } else {
-                playerHull -= 30;
                 updatePlayerNotoriety(10);
                 logMessage("<span style='color:var(--danger)'>[ ENCOUNTER ] EVASION FAILED! The Interceptors rake your hull for 30 damage before you escape!</span>");
+                // Let HULL_DAMAGED handle the hull deduction so it isn't subtracted twice
                 if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 30, reason: "Concord Patrol" });
+                else playerHull -= 30;
             }
             closeGenericModal();
             currentEncounterContext = null;
@@ -499,12 +501,23 @@ if (typeof GameBus !== 'undefined') {
         const loc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
         const tileChar = loc ? getTileChar(loc) : null;
 
-        // --- B. CREW PAYDAY (Timer based) ---
-        if (typeof playerCrew !== 'undefined' && playerCrew.length > 0) {
-            if (lastPayday === 0) lastPayday = currentGameDate;
+        // --- B. CREW PAYDAY (Timer based, synced to GameState) ---
+        if (typeof GameState !== 'undefined' && GameState.player) {
+            // Reset if uninitialized, or if a new game / earlier save reset currentGameDate below lastPayday
+            if (!GameState.player.lastPayday || currentGameDate < GameState.player.lastPayday) {
+                GameState.player.lastPayday = currentGameDate;
+            }
+            lastPayday = GameState.player.lastPayday;
+        } else if (lastPayday === 0 || currentGameDate < lastPayday) {
+            lastPayday = currentGameDate;
+        }
 
+        if (typeof playerCrew !== 'undefined' && playerCrew.length > 0) {
             if (currentGameDate - lastPayday >= PAYDAY_INTERVAL) {
                 lastPayday = currentGameDate;
+                if (typeof GameState !== 'undefined' && GameState.player) {
+                    GameState.player.lastPayday = currentGameDate;
+                }
                 const totalCost = playerCrew.length * COST_PER_CREW;
                 
                 if (playerCredits >= totalCost) {
@@ -564,26 +577,26 @@ if (typeof GameBus !== 'undefined') {
         }
 
         // --- NATIVE ECS ENGINE UPDATE ---
-    EntityManager.tick(isMovement);
+        EntityManager.tick(isMovement);
 
-    // Spawn Unidentified Signal Sources (USS)
-    if (isMovement && Math.random() < 0.02) { // 2% chance per jump
-        const dist = 8 + Math.floor(Math.random() * 12); // 8-20 tiles away
-        const angle = Math.random() * Math.PI * 2;
-        
-        EntityManager.add({
-            x: Math.floor(playerX + Math.cos(angle) * dist),
-            y: Math.floor(playerY + Math.sin(angle) * dist),
-            char: '✧', color: '#FFFFFF', glowColor: '#FFFFFF', pulseSpeed: 600,
-            isUSS: true, lifespan: 50 // Lasts 50 moves before fading
-        });
-        
-        // Only notify the player if they have good sensors!
-        if ((typeof hasCrewPerk === 'function' && hasCrewPerk('ASTROMETRICS')) || 
-            (typeof playerPerks !== 'undefined' && playerPerks.has('LONG_RANGE_SENSORS'))) {
-            logMessage("<span style='color:var(--accent-color)'>[ SENSORS ] Unidentified Signal Source (USS) detected in local space.</span>");
+        // Spawn Unidentified Signal Sources (USS)
+        if (isMovement && Math.random() < 0.02) { // 2% chance per jump
+            const dist = 8 + Math.floor(Math.random() * 12); // 8-20 tiles away
+            const angle = Math.random() * Math.PI * 2;
+            
+            EntityManager.add({
+                x: Math.floor(playerX + Math.cos(angle) * dist),
+                y: Math.floor(playerY + Math.sin(angle) * dist),
+                char: '✧', color: '#FFFFFF', glowColor: '#FFFFFF', pulseSpeed: 600,
+                isUSS: true, lifespan: 50 // Lasts 50 moves before fading
+            });
+            
+            // Only notify the player if they have good sensors!
+            if ((typeof hasCrewPerk === 'function' && hasCrewPerk('ASTROMETRICS')) || 
+                (typeof playerPerks !== 'undefined' && playerPerks.has('LONG_RANGE_SENSORS'))) {
+                logMessage("<span style='color:var(--accent-color)'>[ SENSORS ] Unidentified Signal Source (USS) detected in local space.</span>");
+            }
         }
-    }
 
     });
 }
