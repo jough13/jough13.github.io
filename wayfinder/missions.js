@@ -279,9 +279,9 @@ function confirmAcceptMission(stationName, index) {
     
     playerActiveMission.objectives.forEach((obj, idx) => {
          const key = `${obj.type.toLowerCase()}_${idx}`;
-         if (obj.type === "ELIMINATE") playerActiveMission.progress[key] = { current:0, required:obj.count, complete:false };
-         if (obj.type === "DELIVERY") playerActiveMission.progress[key] = { delivered:0, required:obj.count, complete:false, destinationName: obj.destinationName };
-         if (obj.type === "SURVEY") playerActiveMission.progress[key] = { scanned:false, complete:false };
+         if (obj.type === "ELIMINATE" || obj.type === "BOUNTY") playerActiveMission.progress[key] = { current:0, required:obj.count, complete:false };
+         if (obj.type === "DELIVERY" || obj.type === "DELIVER") playerActiveMission.progress[key] = { delivered:0, required:obj.count, complete:false, destinationName: obj.destinationName };
+         if (obj.type === "SURVEY" || obj.type === "SCAN_OBJECT") playerActiveMission.progress[key] = { scanned:false, complete:false };
          if (obj.type === "ACQUIRE") playerActiveMission.progress[key] = { acquired:0, required:obj.count, complete:false };
     });
 
@@ -290,7 +290,7 @@ function confirmAcceptMission(stationName, index) {
     renderMissionTracker();
 }
 
- function displayMissionDetails(selectedIndex) {
+function displayMissionDetails(selectedIndex) {
     if (!currentMissionContext || currentMissionContext.step !== 'selectMission' || !currentMissionContext.availableMissions) {
         displayMissionBoard();
         return;
@@ -312,13 +312,12 @@ function confirmAcceptMission(stationName, index) {
         if (obj.type === "ELIMINATE") {
             let locationText = (obj.targetSectorKey === "CURRENT") ? "in this system" : "in any system";
             detailMsg += ` - Eliminate ${obj.count} ${obj.targetName}(s) ${locationText}.\n`;
-        } else if (obj.type === "DELIVERY") {
+        } else if (obj.type === "DELIVERY" || obj.type === "DELIVER") {
             const itemName = COMMODITIES[obj.itemID] ? COMMODITIES[obj.itemID].name : "Goods";
             detailMsg += ` - Deliver ${obj.count} ${itemName} to ${obj.destinationName}.\n`;
         } else if (obj.type === "SCAN_OBJECT") {
             detailMsg += ` - Scan a ${obj.subtype} ${obj.targetType} in any system.\n`;
         } else if (obj.type === "ACQUIRE") {
-            // THE FIX: Added missing Acquire text generation
             const itemName = COMMODITIES[obj.itemID] ? COMMODITIES[obj.itemID].name : "Resources";
             detailMsg += ` - Acquire ${obj.count} units of ${itemName} and return to ${mission.giver}.\n`;
         }
@@ -358,7 +357,7 @@ function acceptMission() {
 
          const progressKeyBase = obj.type.toLowerCase();
 
-         if (obj.type === "ELIMINATE") {
+         if (obj.type === "ELIMINATE" || obj.type === "BOUNTY") {
              playerActiveMission.progress[`${progressKeyBase}_${index}`] = {
                  current: 0,
                  required: obj.count,
@@ -366,7 +365,7 @@ function acceptMission() {
                  targetSectorKey: obj.targetSectorKey,
                  complete: false
              };
-         } else if (obj.type === "SURVEY") {
+         } else if (obj.type === "SURVEY" || obj.type === "SCAN_OBJECT") {
              playerActiveMission.progress[`${progressKeyBase}_${index}`] = {
                  scanned: false,
                  targetType: obj.targetType,
@@ -374,7 +373,7 @@ function acceptMission() {
                  sectorKey: obj.sectorKey,
                  complete: false
              };
-         } else if (obj.type === "DELIVERY") {
+         } else if (obj.type === "DELIVERY" || obj.type === "DELIVER") {
              playerActiveMission.progress[`${progressKeyBase}_${index}`] = {
                  delivered: 0,
                  required: obj.count,
@@ -440,8 +439,8 @@ function acceptMission() {
      }
      let deliveryMade = false;
      playerActiveMission.objectives.forEach((obj, index) => {
-         if (obj.type === "DELIVERY") {
-             const progressKey = `delivery_${index}`;
+         if (obj.type === "DELIVERY" || obj.type === "DELIVER") {
+             const progressKey = `${obj.type.toLowerCase()}_${index}`;
              const objectiveProgress = playerActiveMission.progress[progressKey];
              if (objectiveProgress && !objectiveProgress.complete &&
                  currentLocation.name === obj.destinationName) {
@@ -527,7 +526,7 @@ function grantMissionRewards() {
      }
      rewardMsg += standingMsg;
 
-    playerActiveMission = null;
+     playerActiveMission = null;
      currentMissionContext = null;
      logMessage(rewardMsg);
      
@@ -557,11 +556,11 @@ function renderMissionTracker() {
 
     if (playerActiveMission.isComplete) {
         objectiveText = `Return to ${playerActiveMission.giver}`;
-    } else if (objective.type === 'BOUNTY') {
-        objectiveText = `Hunt Pirates (${progress.current}/${progress.required})`;
-    } else if (objective.type === 'DELIVERY') {
+    } else if (objective.type === 'BOUNTY' || objective.type === 'ELIMINATE') {
+        objectiveText = `Hunt Pirates (${progress ? progress.current : 0}/${objective.count})`;
+    } else if (objective.type === 'DELIVERY' || objective.type === 'DELIVER') {
         objectiveText = `Deliver to ${objective.destinationName}`;
-    } else if (objective.type === 'SURVEY') {
+    } else if (objective.type === 'SURVEY' || objective.type === 'SCAN_OBJECT') {
         objectiveText = `Survey Anomaly`;
     } else if (objective.type === 'ACQUIRE') {
         const currentAmt = playerCargo[objective.itemID] || 0;
@@ -575,8 +574,6 @@ function renderMissionTracker() {
 }
 
 // --- STATE MANAGEMENT ---
-// This object will persist throughout the play session, storing which image is assigned to which station.
-// It uses window scope to survive if missions.js is reloaded.
 if (typeof window._stationBountyBannerAssignments === 'undefined') {
     window._stationBountyBannerAssignments = {};
 }
@@ -594,14 +591,9 @@ function openBountyBoard() {
     container.style.cssText = "display: flex; flex-direction: column; height: 100%; overflow: hidden;";
     
     // --- 🚨 PERSISTENT RANDOMIZATION LOGIC 🚨 ---
-    
-    // 1. Define the possible assets (Note: extensions differ as requested)
     const availableBanners = ['assets/bounty_banner.png', 'assets/bounty_banner2.png'];
-    
-    // 2. Check if this station already has an assigned banner
     let assignedBanner = window._stationBountyBannerAssignments[stationName];
     
-    // 3. If no assignment exists, pick a random one and save it!
     if (!assignedBanner) {
         assignedBanner = availableBanners[Math.floor(Math.random() * availableBanners.length)];
         window._stationBountyBannerAssignments[stationName] = assignedBanner;
@@ -679,6 +671,7 @@ function showBountyDetails(bounty, isActive) {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
 
+    // FIXED: Inverted bounty.y to -bounty.y to match HUD & Nav-Computer coordinates
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 15px;">
             <div style="font-size:50px; margin-bottom:10px; filter: drop-shadow(0 0 15px var(--danger));">🎯</div>
@@ -688,7 +681,7 @@ function showBountyDetails(bounty, isActive) {
             <div style="background:rgba(0,0,0,0.3); border:1px solid #333; padding:10px; border-radius:4px; text-align:left;">
                 <div style="margin-bottom:8px; display:flex; justify-content:space-between;"><span style="color:#888;">Threat Level:</span> <span style="color:var(--warning); font-weight:bold;">Class ${bounty.difficulty}</span></div>
                 <div style="margin-bottom:8px; display:flex; justify-content:space-between;"><span style="color:#888;">Vessel Type:</span> <span style="color:var(--text-color);">${bounty.shipClass}</span></div>
-                <div style="margin-bottom:8px; display:flex; justify-content:space-between;"><span style="color:#888;">Last Seen:</span> <span style="color:var(--accent-color);">Sector [${bounty.x}, ${bounty.y}]</span></div>
+                <div style="margin-bottom:8px; display:flex; justify-content:space-between;"><span style="color:#888;">Last Seen:</span> <span style="color:var(--accent-color);">Sector [${bounty.x}, ${-bounty.y}]</span></div>
                 <div style="margin-top:12px; border-top:1px dashed #444; padding-top:10px; display:flex; justify-content:space-between;"><span style="color:#888;">Bounty Payout:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(bounty.reward)}c</span></div>
             </div>
         </div>
@@ -717,13 +710,13 @@ function acceptBounty(bountyId) {
         playerActiveBounty = selected;
         
         // --- 1. SPAWN THE SHIP ON THE MAP ---
-        // We create a custom enemy object scaled to the bounty's difficulty
         const bountyShip = {
             id: selected.id,
             x: selected.x,
             y: selected.y,
             name: selected.targetName,
             shipClass: selected.shipClass,
+            shipClassKey: selected.shipClass,
             faction: selected.faction,
             isBountyTarget: true, // Special flag for the combat engine
             level: selected.difficulty,
@@ -740,8 +733,9 @@ function acceptBounty(bountyId) {
             activeEnemies.push(bountyShip);
         }
         
+        // FIXED: Inverted selected.y to -selected.y to match HUD & Nav-Computer coordinates
         if (typeof showToast === 'function') showToast("BOUNTY ACCEPTED", "warning");
-        logMessage(`Tracking target: ${selected.targetName}. Sensors indicate they are hiding at Sector [${selected.x}, ${selected.y}].`);
+        logMessage(`Tracking target: ${selected.targetName}. Sensors indicate they are hiding at Sector [${selected.x}, ${-selected.y}].`);
         
         openBountyBoard(); // Refresh UI to show the "Active" screen
         if (typeof render === 'function') render(); // Force map to update
@@ -751,7 +745,6 @@ function acceptBounty(bountyId) {
 function abandonBounty() {
     if (playerActiveBounty) {
         // --- 2. CLEAN UP THE GHOST SHIP ---
-        // If the player bails on the contract, we have to erase the ship from the map
         if (typeof activeEnemies !== 'undefined') {
             activeEnemies = activeEnemies.filter(e => e.id !== playerActiveBounty.id);
         }
@@ -779,7 +772,7 @@ function processBountyVictory(defeatedEnemy) {
         }
         
         // 2. Grant some bonus Combat XP based on the target's difficulty
-        const xpGain = defeatedEnemy.level * 25;
+        const xpGain = (defeatedEnemy.level || playerActiveBounty.difficulty || 1) * 25;
         if (typeof playerXP !== 'undefined') {
             playerXP += xpGain;
             if (typeof checkLevelUp === 'function') checkLevelUp();
@@ -804,13 +797,9 @@ function processBountyVictory(defeatedEnemy) {
   * @param {string} currentStationName - The name of the station generating the mission.
   * @returns {object|null} A location object {name, key, coords} or null if no valid destination is found.
   */
-
- function selectRandomDestination(currentStationName) {
+function selectRandomDestination(currentStationName) {
      const allLocationKeys = Object.keys(LOCATIONS_DATA);
      
-     // FILTER:
-     // 1. Must not be the current station (can't deliver to yourself).
-     // 2. Must have a 'buys' array with at least one item (otherwise we can't generate a cargo type).
      const possibleDestinations = allLocationKeys.filter(key => {
          const loc = LOCATIONS_DATA[key];
          const hasTradeDemand = loc.buys && loc.buys.length > 0;
@@ -827,14 +816,13 @@ function processBountyVictory(defeatedEnemy) {
          key: "0,0",
          coords: destinationData.coords
      };
- }
+}
 
- /**
+/**
   * Selects a random commodity that a specific location buys.
   * @param {string} locationName - The name of the location.
   * @returns {string|null} The ID of a commodity or null.
   */
- 
 function selectRandomCommodity(locationName) {
      const location = LOCATIONS_DATA[locationName];
      if (!location || !location.buys || location.buys.length === 0) return null;
@@ -842,4 +830,4 @@ function selectRandomCommodity(locationName) {
      const commodity = location.buys[Math.floor(Math.random() * location.buys.length)];
      // Handles both {id: "..."} objects and plain "..." strings!
      return commodity.id || commodity; 
- }
+}
