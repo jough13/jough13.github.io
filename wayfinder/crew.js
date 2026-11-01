@@ -166,28 +166,29 @@ function generateStationRecruits() {
     const count = Math.floor(Math.random() * 3) + 1; 
 
     const legendaryRecruits = [
-        { id: "LEGEND_ELARA", name: "Elara 'Ghost' Vance", role: "Master Infiltrator", perk: "STEALTH_DRIVE", desc: "Reduces pirate ambush chance by 90%.", baseCost: 5000, image: "assets/legend_elara.png", isLegendary: true },
-        { id: "LEGEND_KAELEN", name: "Kaelen the Butcher", role: "K'tharr Warlord", perk: "PIRATE_TERROR", desc: "Increases combat damage by a massive 35%.", baseCost: 7500, image: "assets/legend_kaelen.png", isLegendary: true },
-        { id: "LEGEND_CORTEX", name: "Unit-04 'Cortex'", role: "AI Navigator", perk: "QUANTUM_PATHING", desc: "Reveals the entire sector map upon entering a new system.", baseCost: 10000, image: "assets/legend_cortex.png", isLegendary: true },
+        { id: "LEGEND_ELARA", name: "Elara 'Ghost' Vance", role: "Master Infiltrator", perk: "TRADE_BONUS", desc: "Smooth talker with underworld ties. Negotiates 10% better prices at all markets.", baseCost: 5000, image: "assets/legend_elara.png", isLegendary: true },
+        { id: "LEGEND_KAELEN", name: "Kaelen the Butcher", role: "K'tharr Warlord", perk: "COMBAT_DAMAGE", desc: "Ruthless combat veteran. Adds +15% to all ship weapon damage.", baseCost: 7500, image: "assets/legend_kaelen.png", isLegendary: true },
+        { id: "LEGEND_CORTEX", name: "Unit-04 'Cortex'", role: "AI Navigator", perk: "ASTROMETRICS", desc: "Improves deep space scanning arrays and reveals hidden anomalies.", baseCost: 10000, image: "assets/legend_cortex.png", isLegendary: true },
         { id: "JAX_VANE", name: "Jax Vane", role: "Gunner", perk: "COMBAT_DAMAGE", desc: "Ex-pirate with a steady hand. Adds +15% to all ship weapon damage.", baseCost: 1500, image: "assets/gunner.png", isLegendary: true },
         { id: "KORG_MAH", name: "Korg'Mah", role: "Mechanic", perk: "PASSIVE_REPAIR", desc: "A rugged K'tharr engineer. Passively repairs hull damage while you travel.", baseCost: 1800, image: "assets/engineer.png", isLegendary: true },
         // NEW LEGENDARY RECRUITS
-        { id: "LEGEND_ELIM", name: "Elim 'The Tailor' Darok", role: "Simple Tailor", perk: "SHADOW_NETWORK", desc: "Claims to be a humble clothier, yet somehow possesses high-level clearance codes for every major faction.", baseCost: 8500, image: "assets/legend_elim.png", isLegendary: true },
+        { id: "LEGEND_ELIM", name: "Elim 'The Tailor' Darok", role: "Simple Tailor", perk: "TRADE_BONUS", desc: "Claims to be a humble clothier, yet possesses extreme bargaining leverage.", baseCost: 8500, image: "assets/legend_elim.png", isLegendary: true },
         { id: "LEGEND_MILES", name: "Chief Miles O'Tarek", role: "Miracle Worker", perk: "PASSIVE_REPAIR", desc: "A disgruntled but brilliant engineer. Can fix a warp core breach with a spanner and a piece of tape.", baseCost: 6000, image: "assets/legend_miles.png", isLegendary: true }
     ];
 
     // EXPANDED STANDARD ROLES POOL!
+    // FIXED: Remapped all generated perks to the 8 legally implemented engine hooks!
     const standardRoles = [
         { role: "Quartermaster", perk: "TRADE_BONUS", desc: "Negotiates 10% better prices at all stations.", baseCost: 1200, image: "assets/default_npc.png" },
         { role: "Astrogator", perk: "FUEL_EFFICIENCY", desc: "Reduces fuel consumption during hyper-jumps.", baseCost: 1000, image: "assets/default_npc.png" },
         { role: "Scientist", perk: "ASTROMETRICS", desc: "Improves deep space scanning. Grants bonus XP.", baseCost: 1400, image: "assets/scientist.png" },
-        { role: "Eclipse Smuggler", perk: "SHADOW_NETWORK", desc: "Increases payouts for illegal cargo delivery by 20%.", baseCost: 1700, image: "assets/eclipse_smuggler.png" },
-        { role: "Marine Veteran", perk: "BOARDING_ACTION", desc: "Increases success rate and survivability during derelict airlock breaches.", baseCost: 1600, image: "assets/default_npc.png" },
-        { role: "Salvage Scrapper", perk: "SCRAP_HOUND", desc: "Yields 20% more salvage and scrap when stripping derelict wrecks.", baseCost: 1300, image: "assets/engineer.png" },
-        { role: "Shield Technician", perk: "SHIELD_REGEN", desc: "Passively recharges 1% of the ship's shields every standard movement cycle.", baseCost: 1500, image: "assets/scientist.png" },
-        { role: "Chief Medical Officer", perk: "TRAUMA_CARE", desc: "Dramatically reduces the chance of crew fatalities during hazards and combat.", baseCost: 1800, image: "assets/default_npc.png" },
-        { role: "Gunnery Sergeant", perk: "CRITICAL_STRIKE", desc: "Optimizes weapon convergence, granting a 10% chance to deal double damage.", baseCost: 1750, image: "assets/gunner.png" },
-        { role: "Cyber-Slicer", perk: "DATA_EXTRACTION", desc: "Bypasses encrypted networks, doubling the credit yield from derelict databanks.", baseCost: 1900, image: "assets/scientist.png" }
+        { role: "Eclipse Smuggler", perk: "TRADE_BONUS", desc: "Uses shadow network connections to secure 10% better prices.", baseCost: 1700, image: "assets/eclipse_smuggler.png" },
+        { role: "Marine Veteran", perk: "COMBAT_DAMAGE", desc: "Optimizes weapon convergence, granting a flat +15% to all ship weapon damage.", baseCost: 1600, image: "assets/default_npc.png" },
+        { role: "Salvage Scrapper", perk: "SCAVENGER_PROTOCOL", desc: "Yields double credits and loot when stripping derelict wrecks and anomalies.", baseCost: 1300, image: "assets/engineer.png" },
+        { role: "Shield Technician", perk: "SHIELD_BOOST", desc: "Overclocks emitters to permanently grant +25% Max Shields.", baseCost: 1500, image: "assets/scientist.png" },
+        { role: "Chief Medical Officer", perk: "PASSIVE_REPAIR", desc: "Implements bio-restorative routines. Passively repairs hull damage while you travel.", baseCost: 1800, image: "assets/default_npc.png" },
+        { role: "Gunnery Sergeant", perk: "COMBAT_DAMAGE", desc: "Maintains ordnance, adding +15% to all ship weapon damage.", baseCost: 1750, image: "assets/gunner.png" },
+        { role: "Cyber-Slicer", perk: "ASTROMETRICS", desc: "Bypasses encrypted networks to reveal deep space anomalies. Grants bonus XP.", baseCost: 1900, image: "assets/scientist.png" }
     ];
 
     const firstNames = ["Odin", "Nyx", "Garrus", "Sasha", "Vane", "Silas", "Kira", "Rook", "Juno", "Cassian"];
@@ -428,15 +429,27 @@ function hireMercenary(mercId) {
     if (typeof ECLIPSE_MERCENARIES === 'undefined') return;
     
     const merc = ECLIPSE_MERCENARIES.find(m => m.id === mercId);
-    if (!merc || playerCredits < merc.cost) return;
+    if (!merc) return;
+    
+    if (playerCredits < merc.cost) {
+        if (typeof showToast === 'function') showToast("INSUFFICIENT FUNDS", "error");
+        return;
+    }
+    
+    if (playerCrew.length >= (typeof MAX_CREW !== 'undefined' ? MAX_CREW : 3)) {
+        if (typeof showToast === 'function') showToast("CREW QUARTERS FULL", "error");
+        return;
+    }
     
     playerCredits -= merc.cost;
+    window.hasEclipseMerc = true;
     
     playerCrew.push({
         id: merc.id,
         name: merc.name,
         role: merc.role,
         desc: merc.desc,
+        cost: merc.cost,
         isMercenary: true,
         stats: merc.stats,
         drawback: merc.drawback,
