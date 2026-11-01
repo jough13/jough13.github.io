@@ -1,3 +1,5 @@
+// --- START OF FILE config.js ---
+
 // ==========================================
 // --- EVENT BUS SYSTEM (Decoupling) ---
 // ==========================================
@@ -179,12 +181,16 @@ const FACTIONS = {
     }
 };
 
-// Start the player with neutral standing
-let playerFactionStanding = {
-    CONCORD: 0,
-    ECLIPSE: -10, // They don't trust outsiders
-    KTHARR: -50   // They hate humans
-};
+// BUG FIX: Wrapped starting rep in a function so script.js can reset to these values properly!
+function getStartingFactionStanding() {
+    return {
+        CONCORD: 0,
+        ECLIPSE: -10, // They don't trust outsiders
+        KTHARR: -50   // They hate humans
+    };
+}
+// Set initial global variable using the new function
+let playerFactionStanding = getStartingFactionStanding();
 
 // ==========================================
 // --- CUSTOM TILE INTERACTIONS ---
@@ -219,3 +225,4 @@ const TILE_INTERACTIONS = {
     }
     // We can easily add '$' for a Casino, 'C' for a Comet, etc.
 };
+// --- END OF FILE config.js ---
