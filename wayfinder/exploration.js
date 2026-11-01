@@ -1644,6 +1644,17 @@ function extractAnomalyData() {
     
     updateWorldState(playerX, playerY, { studied: true }); // Mark as completed
     
+    // --- MISSION TRACKING HOOK ---
+    if (playerActiveMission && playerActiveMission.type === "SURVEY" && !playerActiveMission.isComplete) {
+        const progress = playerActiveMission.progress.survey_0;
+        if (progress && !progress.complete) {
+            progress.scanned = true;
+            progress.complete = true;
+            if (typeof checkMissionObjectiveCompletion === 'function') checkMissionObjectiveCompletion();
+            if (typeof renderMissionTracker === 'function') renderMissionTracker();
+        }
+    }
+
     logMessage(logMsg);
     if (typeof showToast === 'function') showToast("ANOMALY HARVESTED", "success");
     if (typeof soundManager !== 'undefined') soundManager.playGain();
@@ -1920,7 +1931,7 @@ function interceptTradeConvoy() {
         faction: "INDEPENDENT",
         type: "location", // Tricks the trade engine into working
         sells: [
-            { id: "REFINED_ALLOYS", priceMod: 0.8, stock: 15 + Math.floor(Math.random() * 20) }, // Cheaper alloys!
+            { id: "REFINED_ALLOY", priceMod: 0.8, stock: 15 + Math.floor(Math.random() * 20) }, // Cheaper alloys!
             { id: "TECH_PARTS", priceMod: 1.1, stock: 10 + Math.floor(Math.random() * 10) },
             { id: "RARE_METALS", priceMod: 0.9, stock: 2 + Math.floor(Math.random() * 5) }
         ],
@@ -1991,11 +2002,9 @@ function resolveStrangeSignal(choice) {
             if (typeof soundManager !== 'undefined') soundManager.playGain();
         } else {
             const dmg = 25;
-            playerHull -= dmg;
+            // FIX: Let GameBus handle the hull subtraction and effects!
             resultHtml = `<span style="color:var(--danger); font-weight:bold;">SECURITY TRIGGERED.</span><br>The probe's anti-tamper protocol engages! It detonates, showering your hull in shrapnel. Took <span style="color:var(--danger)">${dmg} damage</span>.`;
             if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Probe Self-Destruct" });
-            if (typeof soundManager !== 'undefined') soundManager.playExplosion();
-            if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
         }
     }
     
@@ -2089,7 +2098,8 @@ function openDerelictView() {
     
     const container = document.getElementById('genericModalContent');
     const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
-    const isLooted = tile && (tile.looted || tile.studied);
+    // BUG FIX: Scanning sets 'studied', but should not lock out physical salvage/breach actions
+    const isLooted = tile && tile.looted;
 
     // --- THE IRONCLAD FLEXBOX LAYOUT ---
     container.style.cssText = "display: flex; flex-direction: column; height: 100%; overflow: hidden;";
