@@ -23,10 +23,7 @@ const LOCATIONS_DATA = {
             { id: "DROID_SERVOS", priceMod: 1.0, stock: 40 },
             
             // --- COLONY BUILDER SUPPLIES ---
-            { id: "COLONY_CHARTER", priceMod: 1.0, stock: 1 }, 
-            { id: "HAB_MODULE", priceMod: 1.0, stock: 5 },
-            { id: "ATMOS_PROCESSOR", priceMod: 1.0, stock: 2 },
-            { id: "SETTLER_MANIFEST", priceMod: 1.0, stock: 10 }
+            { id: "COLONY_CHARTER", priceMod: 1.0, stock: 1 }
         ],
         buys: [
             { id: "PLANETARY_DATA", priceMod: 1.2, stock: 5 },
@@ -97,24 +94,7 @@ const LOCATIONS_DATA = {
             { id: "VOID_CRYSTALS", priceMod: 1.5, stock: 15 },
             { id: "HYDROGEN_3", priceMod: 1.2, stock: 30 }
         ],
-        scanFlavor: "Aegis Dyson Sphere: The glittering crown jewel of the Concord.",
-        
-        // --- DATA-DRIVEN INTERACTION ---
-        onInteract: function() {
-            // Because it's a Major Hub, we just tell it to do the standard hub things!
-            if (typeof performCustomsScan === 'function') {
-                if (!performCustomsScan()) return; // Stop if they fail customs!
-            }
-            
-            logMessage("<span style='color:var(--accent-color)'>Approaching the massive entry gates of the Dyson Sphere...</span>");
-            
-            const availableActions = [
-                { label: `Dock (Aegis Sphere)`, key: 'e', onclick: openStationView }
-            ];
-            
-            if (typeof renderContextualActions === 'function') renderContextualActions(availableActions);
-            openStationView();
-        }
+        scanFlavor: "Aegis Dyson Sphere: The glittering crown jewel of the Concord."
     },
 
     "Alien Obelisk": {
@@ -122,10 +102,22 @@ const LOCATIONS_DATA = {
         coords: { x: -20, y: 35 },
         type: 'location',
         char: 'I',
-        onInteract: function() {
-             logMessage("The obelisk hums. You feel strange...");
+        onInteract: function(tileObj) {
+             if (tileObj && tileObj.studied) {
+                 logMessage("The obelisk is dark and silent. Its energy is spent.", "color:var(--item-desc-color)");
+                 return;
+             }
+             
+             logMessage("<span style='color:#9933FF'>The obelisk hums. You feel strange...</span>");
              GameBus.emit('HULL_REPAIRED', 50); // It heals you!
              GameBus.emit('XP_GAINED', 100);    // It makes you smarter!
+             
+             // Mark as used so it can't be exploited
+             if (typeof updateWorldState === 'function') {
+                 updateWorldState(playerX, playerY, { studied: true });
+             } else if (tileObj) {
+                 tileObj.studied = true; // Fallback
+             }
              
              // Build custom buttons just for this object
              renderContextualActions([
