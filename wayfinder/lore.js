@@ -451,7 +451,7 @@ const LORE_DATABASE = {
         text: "A super-cooled, frictionless gel essential for running advanced Precursor-derived computations and military-grade cryo-stasis pods. Extremely volatile if exposed to standard atmospheric temperatures.",
         unlocked: false
     },
-    ENCRYPTED_ENGRAM: {
+    COMMODITY_ENCRYPTED_ENGRAM: {
         title: "Encrypted Engrams",
         category: "Commodities",
         text: "Mysterious, polyhedral data-matrices glowing with a faint inner light. These solid-state memory cores belong to civilizations that predate the Concord. Their encryption algorithms are so complex that standard ship computers would take millennia to crack them. They are highly sought after by Cryptarchs, who use single-use quantum 'Ciphers' to collapse the engram's security state and extract the ancient technology blueprints hidden inside.",
@@ -531,6 +531,72 @@ const SPIRE_PUZZLES = [
 // ==========================================
 
 const ENCOUNTER_DATABASE = {
+    PIRATE_EXTORTION: {
+        id: "PIRATE_EXTORTION",
+        title: "PIRATE AMBUSH",
+        icon: "☠️",
+        color: "#FF4444",
+        text: "A heavily armed pirate vessel drops its active camouflage! They've locked weapons on your engine block and are demanding a 'toll' to let you pass unmolested.",
+        choices: [
+            {
+                label: "PAY THE TOLL (-500c)",
+                reqCredits: 500,
+                costs: { credits: 500 },
+                sound: "buy",
+                log: "<span style='color:var(--warning)'>[ ENCOUNTER ] You transferred 500c. The pirates power down weapons and jump away.</span>"
+            },
+            {
+                label: "REFUSE AND EVADE (Hull Risk)",
+                actionType: "FLEE_CONCORD", 
+                log: "You slam the throttle, attempting to break their target lock!"
+            }
+        ]
+    },
+    SPATIAL_ANOMALY: {
+        id: "SPATIAL_ANOMALY",
+        title: "UNSTABLE SPATIAL ANOMALY",
+        icon: "🌀",
+        color: "#9933FF",
+        text: "Your ship is caught in the gravity well of a violently unstable spatial anomaly. The navigation computer is screaming as spacetime warps around the hull.",
+        choices: [
+            {
+                label: "RIDE THE WAVE (Fuel-, XP+)",
+                reqFuel: 15,
+                costs: { fuel: 15 },
+                rewards: { xp: 150 },
+                sound: "warp",
+                log: "<span style='color:#9933FF'>[ ENCOUNTER ] You burn fuel to stabilize the ship, gathering incredible telemetry as you surf the anomaly! (+150 XP)</span>"
+            },
+            {
+                label: "BRACE FOR IMPACT (Hull-)",
+                costs: { hull: 25 },
+                sound: "error",
+                log: "<span style='color:var(--danger)'>[ ENCOUNTER ] The anomaly buffets your ship violently, tearing armor plates away! Took 25 Hull damage!</span>"
+            }
+        ]
+    },
+    BINARY_STAR_MERGER: {
+        id: "BINARY_STAR_MERGER",
+        title: "BINARY STAR MERGER",
+        icon: "✨",
+        color: "#FF6600",
+        text: "Two stellar bodies are spiraling into each other, creating a massive wave of gravimetric shear. The sheer heat is overwhelming your thermal shielding.",
+        choices: [
+            {
+                label: "DUMP COOLANT AND RUN (-30 Fuel)",
+                reqFuel: 30,
+                costs: { fuel: 30 },
+                sound: "warp",
+                log: "<span style='color:var(--warning)'>[ ENCOUNTER ] You vent all emergency coolant into the thrusters, escaping the heat wave at the cost of massive fuel consumption.</span>"
+            },
+            {
+                label: "ABSORB THE RADIATION (Hull Risk, Shield+)",
+                costs: { hull: 35 },
+                rewards: { xp: 200 },
+                log: "<span style='color:var(--danger)'>[ ENCOUNTER ] Your shields buckle and your hull scorches, but your sensors capture priceless data of the merger! (+200 XP, -35 Hull)</span>"
+            }
+        ]
+    },
     KTHARR_WARRIOR: {
         id: "KTHARR_WARRIOR",
         title: "DISABLED K'THARR BLOOD-BARGE",
