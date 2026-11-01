@@ -1,3 +1,5 @@
+// --- START OF FILE combat.js ---
+
 let playerTargeting = 'HULL'; // Can be 'HULL', 'WEAPONS', or 'ENGINES'
 
 function startCombat(specificEnemyEntity = null) {
@@ -91,7 +93,8 @@ function startCombat(specificEnemyEntity = null) {
          isLegendary: specificEnemyEntity ? specificEnemyEntity.isLegendary : false,
          exclusiveDrop: specificEnemyEntity ? specificEnemyEntity.exclusiveDrop : null,
          bountyReward: specificEnemyEntity ? specificEnemyEntity.reward : 0,
-         bossId: specificEnemyEntity ? specificEnemyEntity.bossId : null,
+         // FIX: Fallback to deriving bossId from the unique spawned ID string if missions.js forgets it
+         bossId: specificEnemyEntity ? (specificEnemyEntity.bossId || (specificEnemyEntity.isLegendary ? specificEnemyEntity.id.replace(/_\d+$/, '') : null)) : null,
          
          // --- SKIRMISH DATA ---
          isSkirmishTarget: specificEnemyEntity ? specificEnemyEntity.isSkirmishTarget : false,
@@ -1045,6 +1048,8 @@ function updateEnemies() {
     for (let i = activeEnemies.length - 1; i >= 0; i--) {
         const enemy = activeEnemies[i];
 
+        if (enemy.isProbe) continue;
+
         const dx = playerX - enemy.x;
         const dy = playerY - enemy.y;
 
@@ -1514,7 +1519,8 @@ function finalizeRaid(choice) {
             
             const rareLoot = typeof generateProceduralModule === 'function' ? generateProceduralModule("MILITARY_SHIELD_MOD") : null;
             if (rareLoot) {
-                playerCargo[rareLoot.id] = rareLoot;
+                if (typeof COMPONENTS_DATABASE !== 'undefined') COMPONENTS_DATABASE[rareLoot.id] = rareLoot;
+                playerCargo[rareLoot.id] = (playerCargo[rareLoot.id] || 0) + 1;
                 logMessage(`<span style="color:#FF33FF; font-weight:bold;">[ VAULT BREACHED ]</span> You recovered a prototype module: <span style="color:var(--gold-text)">${rareLoot.name}</span>!`);
             }
             if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
@@ -1852,7 +1858,7 @@ function openSkirmishUI(skirmish, index) {
     // Right Body (Images and Text)
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 20px;">
-            <div style="font-size:50px; margin-bottom:15px; ${sk.phase === 'INITIAL' ? 'animation: shake-effect 0.5s infinite;' : ''}">💥</div>
+            <div style="font-size:50px; margin-bottom:15px; ${sk.phase === 'INITIAL' ? 'animation: shake 0.5s infinite;' : ''}">💥</div>
             <h3 style="color:var(--warning); margin-bottom:20px;">${mainTitle}</h3>
             
             ${bodyImage}
@@ -1916,6 +1922,7 @@ function handleSkirmishAction(index, action) {
         sk.chaosLevel++; // expedited chaos
         logMsg = `<span style="color:var(--accent-color); font-weight:bold;">[ WARZONE ]</span> Crucial flank intercepted! Concord Command wired ${formatNumber(reward)}c. (+5 Rep)`;
         if (typeof soundManager !== 'undefined') soundManager.playBuy();
+        if (logMsg) logMessage(logMsg);
         openSkirmishUI(sk, index);
     }
     else if (action === 'CONCORD_HACK_TARGETING') {
@@ -1936,6 +1943,7 @@ function handleSkirmishAction(index, action) {
                 return;
             }
         }
+        if (logMsg) logMessage(logMsg);
         openSkirmishUI(sk, index);
     }
     else if (action === 'CONCORD_TRIGGER_BATTLE') {
@@ -1954,6 +1962,7 @@ function handleSkirmishAction(index, action) {
         sk.salvagePoints += 10; // hacking builds salvage loot potential!
         logMsg = `<span style="color:#9933FF; font-weight:bold;">[ WARZONE ]</span> Commsmatrix breached! High Operative sent you ${formatNumber(reward)}c for the isolation assist! (+10 Notoriety)`;
         if (typeof soundManager !== 'undefined') soundManager.playBuy();
+        if (logMsg) logMessage(logMsg);
         openSkirmishUI(sk, index);
     }
     else if (action === 'KTHARR_RAMMING_VECTOR') {
@@ -1968,6 +1977,7 @@ function handleSkirmishAction(index, action) {
             if (typeof triggerGameOver === 'function') triggerGameOver("Killed coordinating a K'tharr Ramming Vector");
             return;
         }
+        if (logMsg) logMessage(logMsg);
         openSkirmishUI(sk, index);
     }
     else if (action === 'ENEMY_FULL_ASSAULT') {
@@ -2000,6 +2010,7 @@ function handleSkirmishAction(index, action) {
                 return;
             }
         }
+        if (logMsg) logMessage(logMsg);
         openSkirmishUI(sk, index);
     }
     else if (action === 'SCAVENGE_VOID_CACH') {
@@ -2016,6 +2027,7 @@ function handleSkirmishAction(index, action) {
         sk.investedRisk += 2; // building risk
         logMsg = `<span style="color:var(--gold-text); font-weight:bold;">[ SCAVENGE ]</span> Tractored ${Math.floor(scrap)}x Tech Parts. (+5 Salvage, +2 Risk)`;
         if (typeof soundManager !== 'undefined') soundManager.playGain();
+        if (logMsg) logMessage(logMsg);
         openSkirmishUI(sk, index);
     }
     else if (action === 'SCAVENGE_SCAN_DATA') {
@@ -2026,6 +2038,7 @@ function handleSkirmishAction(index, action) {
         sk.investedRisk += 4; // building risk
         logMsg = `<span style="color:var(--success); font-weight:bold;">[ SCAVENGE ]</span> Download successful! Salvaged ${Math.floor(data)}x Encrypted Data Caches. (+8 Salvage, +4 Risk, +5 Notoriety)`;
         if (typeof soundManager !== 'undefined') soundManager.playGain();
+        if (logMsg) logMessage(logMsg);
         openSkirmishUI(sk, index);
     }
 
@@ -2101,3 +2114,4 @@ function closeAndCleanSkirmish(index, logMsg) {
     if (typeof render === 'function') render();
     if (typeof autoSaveGame === 'function') autoSaveGame();
 }
+// --- END OF FILE combat.js ---
