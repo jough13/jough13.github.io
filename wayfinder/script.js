@@ -7453,9 +7453,13 @@ function resolvePhenomenon(type) {
     if (type === 'PULSAR') {
         if (Math.random() < 0.6) {
             playerShields -= 25;
-            if (playerShields < 0) { playerHull += playerShields; playerShields = 0; }
+            // FIX: Let GameBus handle hull spillover damage!
+            if (playerShields < 0) { 
+                const spill = Math.abs(playerShields);
+                playerShields = 0; 
+                if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: spill, reason: "Radiation Burst" });
+            }
             resultHtml += `<span style="color:var(--danger)">RADIATION SURGE!</span> Stripped <span style="color:var(--danger)">25 Shields</span>.<br><br>`;
-            if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 0, reason: "Radiation Burst" });
         }
         playerCargo['DATA_PULSAR'] = (playerCargo['DATA_PULSAR'] || 0) + 1;
         playerXP += 100;
@@ -7463,7 +7467,7 @@ function resolvePhenomenon(type) {
     } 
     else if (type === 'MAGNETAR') {
         const dmg = 15 + Math.floor(Math.random() * 20);
-        playerHull -= dmg;
+        // FIX: Removed playerHull -= dmg;
         resultHtml += `<span style="color:var(--danger)">STARQUAKE!</span> Hull takes <span style="color:var(--danger)">${dmg} damage</span>.<br><br>`;
         if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Magnetic Shear" });
         playerCargo['DATA_MAGNETAR'] = (playerCargo['DATA_MAGNETAR'] || 0) + 1;
@@ -7472,7 +7476,7 @@ function resolvePhenomenon(type) {
     }
     else if (type === 'SINGULARITY') {
         if (playerFuel < 50) {
-            playerHull -= 50;
+            // FIX: Removed playerHull -= 50;
             resultHtml += `<span style="color:var(--danger)">INSUFFICIENT THRUST!</span> Took <span style="color:var(--danger)">50 damage</span>.<br><br>`;
             if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 50, reason: "Gravitational Shear" });
         } else {
@@ -7485,7 +7489,7 @@ function resolvePhenomenon(type) {
     // NEW 3 (Quasar, Supernova, White Dwarf)
     else if (type === 'QUASAR') {
         if (Math.random() < 0.5) {
-            playerHull -= 40;
+            // FIX: Removed playerHull -= 40;
             resultHtml += `<span style="color:var(--danger)">MISALIGNMENT!</span> The jet scorches your hull for <span style="color:var(--danger)">40 damage</span>.<br><br>`;
             if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 40, reason: "Relativistic Jet" });
         } else {
@@ -7495,7 +7499,7 @@ function resolvePhenomenon(type) {
         }
     }
     else if (type === 'SUPERNOVA') {
-        playerHull -= 20;
+        // FIX: Removed playerHull -= 20;
         playerCargo['DATA_SUPERNOVA'] = (playerCargo['DATA_SUPERNOVA'] || 0) + 1;
         playerCargo['RARE_METALS'] = (playerCargo['RARE_METALS'] || 0) + 3;
         playerXP += 200;
@@ -7508,6 +7512,17 @@ function resolvePhenomenon(type) {
     }
 
     if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+    
+    // --- MISSION TRACKING HOOK ---
+    if (playerActiveMission && playerActiveMission.type === "SURVEY" && !playerActiveMission.isComplete) {
+        const progress = playerActiveMission.progress.survey_0;
+        if (progress && !progress.complete) {
+            progress.scanned = true;
+            progress.complete = true;
+            if (typeof checkMissionObjectiveCompletion === 'function') checkMissionObjectiveCompletion();
+            if (typeof renderMissionTracker === 'function') renderMissionTracker();
+        }
+    }
 
     if (playerHull <= 0) {
         closeGenericModal();
