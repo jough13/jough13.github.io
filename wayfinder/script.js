@@ -4075,26 +4075,25 @@ function handleDerelictEncounter(derelictObject) {
   */
 
  function regenerateShields(timePassed) {
-     // No regen in combat or when already full
-     if (currentGameState === GAME_STATES.COMBAT || playerShields >= MAX_SHIELDS) {
-         return;
-     }
+    // No regen in combat or when already full
+    if (currentGameState === GAME_STATES.COMBAT || playerShields >= MAX_SHIELDS) {
+        return;
+    }
 
-     // Get the equipped shield's stats
-     const shield = COMPONENTS_DATABASE[playerShip.components.shield];
-     const rechargeRate = shield.stats.rechargeRate || 1; // e.g., "1" point per 0.1 stardate
+    // Get the equipped shield's stats
+    const shield = COMPONENTS_DATABASE[playerShip.components.shield];
+    const rechargeRate = shield.stats.rechargeRate || 1; // e.g., "1" point per 0.1 stardate
 
-     // Calculate regen. A rate of 1 means 1 point per 0.1 stardate.
-     // (rechargeRate / 0.1) gives us rate-per-stardate.
-     const regenAmount = ((rechargeRate / 0.1) * timePassed) * 6;
+    // Calculate regen. A rate of 1 means 1 point per 0.1 stardate.
+    let regenAmount = ((rechargeRate / 0.1) * timePassed) * 6;
 
-     playerShields += regenAmount;
+    // --- PERK HOOK: SHIELD_HARMONICS (+50% faster shield regen) ---
+    if (typeof playerPerks !== 'undefined' && playerPerks.has('SHIELD_HARMONICS')) {
+        regenAmount *= 1.5;
+    }
 
-     // Don't let it overshoot
-     if (playerShields > MAX_SHIELDS) {
-         playerShields = MAX_SHIELDS;
-     }
- }
+    playerShields = Math.min(MAX_SHIELDS, playerShields + regenAmount);
+}
 
  /**
   * Advances the game clock and triggers time-based events like shield regen.
