@@ -1,3 +1,5 @@
+// --- START OF FILE colonies.js ---
+
 // ==========================================
 // --- WAYFINDER COLONY SIMULATION ENGINE ---
 // ==========================================
@@ -485,7 +487,7 @@ function establishColony(locationIndex) {
         storage: { "FOOD_SUPPLIES": 25, "WATER": 20, "REFINED_ALLOY": 30 },
         buildings: { "HAB_BLOCK": 1 }, 
         activeConstruction: null, 
-        biome: planet.biome.name,
+        biome: planet.biome.id, // BUG 1 FIXED: Store the ID, not the Name
         lastTick: currentGameDate
     };
 
@@ -836,7 +838,18 @@ function cancelConstruction(colonyId) {
     
     const bData = COLONY_BUILDINGS[colony.activeConstruction.id];
     
-    // Refund the exact cost
+    // BUG 3 FIXED: Check storage cap before refunding!
+    const maxStorage = 1000 + ((colony.buildings['STORAGE_SILOS'] || 0) * 2500);
+    let currentStorage = Object.values(colony.storage).reduce((a,b) => a + b, 0);
+    let refundVolume = Object.values(bData.cost).reduce((a,b) => a + b, 0);
+    
+    if (currentStorage + refundVolume > maxStorage) {
+        if (typeof showToast === 'function') showToast("STORAGE TOO FULL FOR REFUND", "error");
+        logMessage("<span style='color:var(--danger)'>Cannot cancel construction: Colony storage lacks capacity for refunded materials.</span>");
+        return;
+    }
+    
+    // Refund the exact cost safely
     for (const [cId, qty] of Object.entries(bData.cost)) {
         colony.storage[cId] = (colony.storage[cId] || 0) + qty; 
     }
@@ -855,10 +868,21 @@ function demolishBuilding(colonyId, buildingId) {
 
     const bData = COLONY_BUILDINGS[buildingId];
     
+    // BUG 3 FIXED: Check storage cap before refunding!
+    const maxStorage = 1000 + ((colony.buildings['STORAGE_SILOS'] || 0) * 2500);
+    let currentStorage = Object.values(colony.storage).reduce((a,b) => a + b, 0);
+    let refundVolume = Object.values(bData.cost).reduce((a,b) => a + b, 0);
+    
+    if (currentStorage + refundVolume > maxStorage) {
+        if (typeof showToast === 'function') showToast("STORAGE TOO FULL FOR SCRAP", "error");
+        logMessage("<span style='color:var(--danger)'>Cannot demolish: Colony storage lacks capacity for salvaged materials.</span>");
+        return;
+    }
+    
     colony.buildings[buildingId] -= 1;
     if (colony.buildings[buildingId] <= 0) delete colony.buildings[buildingId];
 
-    // Painless Revision: Refund 100% of the raw materials!
+    // Painless Revision: Refund 100% of the raw materials safely!
     for (const [cId, qty] of Object.entries(bData.cost)) {
         colony.storage[cId] = (colony.storage[cId] || 0) + qty;
     }
@@ -876,6 +900,14 @@ function transferItem(colonyId, itemId, direction) {
 
     if (direction === 'TO_COLONY') {
         if ((playerCargo[itemId] || 0) > 0) {
+            // BUG 3 FIXED: Enforce Colony Max Storage limit!
+            const maxStorage = 1000 + ((colony.buildings['STORAGE_SILOS'] || 0) * 2500);
+            let currentStorage = Object.values(colony.storage).reduce((a,b) => a + b, 0);
+            if (currentStorage + 1 > maxStorage) {
+                if (typeof showToast === 'function') showToast("COLONY STORAGE FULL", "error");
+                return;
+            }
+            
             playerCargo[itemId]--;
             if (playerCargo[itemId] <= 0) delete playerCargo[itemId];
             colony.storage[itemId] = (colony.storage[itemId] || 0) + 1;
@@ -948,7 +980,6 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                     // Check Dynamic Storage Cap
                     const maxStorage = 1000 + ((colony.buildings['STORAGE_SILOS'] || 0) * 2500);
                     let currentStorage = Object.values(colony.storage).reduce((a,b) => a + b, 0);
-                    const isStorageFull = currentStorage >= maxStorage;
 
                     const numAtmos = colony.buildings['ATMOS_PROCESSOR'] || 0;
                     const numFarms = colony.buildings['HYDRO_FARM'] || 0;
@@ -961,6 +992,7 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                     const numGeneClinics = colony.buildings['GENE_CLINIC'] || 0;
                     const numClimate = colony.buildings['CLIMATE_CONTROLLER'] || 0;
                     
+                    const numRainCatchers = colony.buildings['RAIN_CATCHERS'] || 0;
                     const numWindTraps = colony.buildings['WIND_TRAPS'] || 0;
                     const numSolarStills = colony.buildings['SOLAR_STILLS'] || 0;
                     
@@ -1072,12 +1104,22 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                     }
 
                     // 3. SUPPLY CHAINS & WEAPONS MANUFACTURING
-                    // Water Extraction
-                    if (colony.buildings['WATER_EXTRACTOR']) colony.storage['WATER'] = (colony.storage['WATER'] || 0) + (10 * colony.buildings['WATER_EXTRACTOR'] * prodMultiplier);
-                    if (numWindTraps > 0) colony.storage['WATER'] = (colony.storage['WATER'] || 0) + (5 * numWindTraps * prodMultiplier);
-                    if (numSolarStills > 0) colony.storage['WATER'] = (colony.storage['WATER'] || 0) + (3 * numSolarStills * prodMultiplier);
-                    if (numClimate > 0) colony.storage['WATER'] = (colony.storage['WATER'] || 0) + (30 * numClimate * prodMultiplier);
                     
+                    // BUG 3 FIXED: Apply storage capping to organic processes
+                    
+                    // Water Extraction
+                    let waterGenerated = 0;
+                    if (colony.buildings['WATER_EXTRACTOR']) waterGenerated += (10 * colony.buildings['WATER_EXTRACTOR'] * prodMultiplier);
+                    if (numWindTraps > 0) waterGenerated += (5 * numWindTraps * prodMultiplier);
+                    if (numSolarStills > 0) waterGenerated += (3 * numSolarStills * prodMultiplier);
+                    if (numClimate > 0) waterGenerated += (30 * numClimate * prodMultiplier);
+                    if (numRainCatchers > 0) waterGenerated += (2 * numRainCatchers * prodMultiplier); // BUG 2 FIXED
+                    
+                    if (currentStorage + waterGenerated > maxStorage) waterGenerated = Math.max(0, maxStorage - currentStorage);
+                    colony.storage['WATER'] = (colony.storage['WATER'] || 0) + waterGenerated;
+                    currentStorage += waterGenerated;
+                    
+                    // Food Generation
                     let foodGenerated = 0;
                     foodGenerated += (numAlgae * 3 * prodMultiplier); 
                     foodGenerated += (numMycelium * 2 * prodMultiplier); 
@@ -1118,7 +1160,14 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                             colony.storage['WATER'] = 0;
                         }
                     }
+                    
+                    // Clamp food generated against max storage
+                    if (currentStorage + foodGenerated > maxStorage) foodGenerated = Math.max(0, maxStorage - currentStorage);
                     colony.storage['FOOD_SUPPLIES'] = (colony.storage['FOOD_SUPPLIES'] || 0) + foodGenerated;
+                    currentStorage += foodGenerated;
+
+                    // Re-calculate isStorageFull for the Industrial Block
+                    const isStorageFull = currentStorage >= maxStorage;
 
                     // INDUSTRIAL PRODUCTION (Halts if Storage is Full!)
                     if (!isStorageFull) {
@@ -1236,7 +1285,13 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                         if (numGeneClinics > 0) colony.storage['MEDICAL_SUPPLIES'] = (colony.storage['MEDICAL_SUPPLIES'] || 0) + (10 * numGeneClinics);
 
                         // 6. RAW MINING
-                        const biomeDef = typeof PLANET_BIOMES !== 'undefined' ? PLANET_BIOMES[colony.biome] : null;
+                        // BUG 1 FIXED: Resolve the string ID back to the biome object (with fallback for legacy saves)
+                        let biomeDef = typeof PLANET_BIOMES !== 'undefined' ? PLANET_BIOMES[colony.biome] : null;
+                        if (!biomeDef && typeof PLANET_BIOMES !== 'undefined') {
+                            const legacyKey = Object.keys(PLANET_BIOMES).find(k => PLANET_BIOMES[k].name === colony.biome);
+                            if (legacyKey) biomeDef = PLANET_BIOMES[legacyKey];
+                        }
+
                         if (biomeDef && biomeDef.resources && biomeDef.resources.length > 0) {
                             const res = biomeDef.resources[Math.floor(Math.random() * biomeDef.resources.length)];
                             
@@ -1284,10 +1339,16 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                                 colony.population += newCitizens;
                                 if (colony.population > maxPop) colony.population = maxPop;
                                 
-                                // Demographic drift math correction
-                                if (policy === 'INDUSTRY' && colony.demographics["Synthetic"] < 40) { colony.demographics["Synthetic"]++; colony.demographics["Human"]--; }
-                                if (policy === 'WEALTH' && colony.demographics["K'tharr"] < 30) { colony.demographics["K'tharr"]++; colony.demographics["Human"]--; }
-                                if (numAIs > 0 && colony.demographics["Synthetic"] < 90) { colony.demographics["Synthetic"] += 2; colony.demographics["Human"] -= 2; }
+                                // BUG 4 FIXED: Prevent demographic percentages from falling below zero
+                                if (policy === 'INDUSTRY' && colony.demographics["Synthetic"] < 40 && colony.demographics["Human"] > 0) { 
+                                    colony.demographics["Synthetic"]++; colony.demographics["Human"]--; 
+                                }
+                                if (policy === 'WEALTH' && colony.demographics["K'tharr"] < 30 && colony.demographics["Human"] > 0) { 
+                                    colony.demographics["K'tharr"]++; colony.demographics["Human"]--; 
+                                }
+                                if (numAIs > 0 && colony.demographics["Synthetic"] < 90 && colony.demographics["Human"] >= 2) { 
+                                    colony.demographics["Synthetic"] += 2; colony.demographics["Human"] -= 2; 
+                                }
                             }
                         }
                     } else {
@@ -1387,3 +1448,4 @@ GameBus.on('TICK_PROCESSED', (tick) => {
         });
     }
 });
+// --- END OF FILE colonies.js ---
