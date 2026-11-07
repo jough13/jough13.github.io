@@ -376,11 +376,10 @@ function triggerRandomEncounter() {
         btn.style.marginBottom = '10px';
         btn.innerHTML = choice.label;
         
-        // FIXED: Check destructive/hostile keywords first so "Rep+" reaches the green branch!
-        if (choice.label.includes("DESTROY") || choice.label.includes("DEATH") || choice.label.includes("Rep-")) {
+        if (choice.label.includes("DESTROY") || choice.label.includes("Risk")) {
             btn.style.borderColor = "var(--danger)";
             btn.style.color = "var(--danger)";
-        } else if (choice.label.includes("Rep+")) {
+        } else if (choice.label.includes("Rep+") || choice.label.includes("XP+") || choice.label.includes("Safe")) {
             btn.style.borderColor = "var(--success)";
             btn.style.color = "var(--success)";
         }
