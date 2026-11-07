@@ -1815,7 +1815,7 @@ function handleDerelictAction(action) {
     }
 }
 
-function traverseWormhole() {
+function traverseRandomWormhole() {
      // 1. Check if player has enough fuel
      if (playerFuel < WORMHOLE_TRAVEL_FUEL_COST) {
          logMessage(`Cannot traverse: Requires ${WORMHOLE_TRAVEL_FUEL_COST} fuel, you have ${playerFuel.toFixed(1)}.`);
@@ -2108,7 +2108,7 @@ function resolveUSSEncounter() {
         // 25% Ambush
         logMessage("<span style='color:var(--danger); font-weight:bold;'>[ USS CLASSIFIED ] Cartel Ambush! Weapons hot!</span>");
         if (typeof startCombat === 'function') startCombat();
-    } 
+    } // Radiation check for hot stars!
     else if (roll < 0.50) {
         // 25% Salvage
         const salvageAmt = (typeof playerPerks !== 'undefined' && playerPerks.has('SCAVENGER_PROTOCOL')) ? 10 : 5;
