@@ -189,9 +189,10 @@ function renderPlanetView() {
     const mineButtonState = canMine ? '' : 'disabled';
     const mineLabel = canMine ? 'Mine Minerals' : 'No Minerals Detected';
 
-    const canScan = planet.biome.landable && bioResources.length > 0;
+    // [FIX]: Added check for scannedThisVisit to disable the button
+    const canScan = planet.biome.landable && bioResources.length > 0 && !planet.scannedThisVisit;
     const scanButtonState = canScan ? '' : 'disabled';
-    const scanLabel = canScan ? 'Scan Lifeforms' : 'No Bio-Signs';
+    const scanLabel = planet.scannedThisVisit ? 'Bio-Scan Complete' : (canScan ? 'Scan Lifeforms' : 'No Bio-Signs');
 
     const hasDrone = (playerCargo.MINING_DRONE || 0) > 0;
     const surveyButtonState = hasDrone ? '' : 'disabled';
@@ -317,6 +318,13 @@ function renderPlanetView() {
 
 // 5. Deplete the planet & grant XP
     location.miningDepleted = true;
+    
+    // [FIX]: Actually save the depleted state to the world chunk memory!
+    updateWorldState(playerX, playerY, { 
+        miningDepleted: true, 
+        lastInteraction: typeof currentGameDate !== 'undefined' ? currentGameDate : 0 
+    });
+    
     playerXP += 35;
     const leveledUp = typeof checkLevelUp === 'function' ? checkLevelUp() : false;
 
@@ -682,9 +690,15 @@ function renderPlanetView() {
   * Handles the logic for scanning a planet for biological lifeforms and samples.
   */
 
- function scanPlanetForLife() {
+function scanPlanetForLife() {
      if (currentGameState !== GAME_STATES.PLANET_VIEW) return;
      const planet = currentSystemData.planets[selectedPlanetIndex];
+
+     if (planet.scannedThisVisit) {
+         logMessage("This zone has already been thoroughly scanned.");
+         if (typeof showToast === 'function') showToast("ALREADY SCANNED", "info");
+         return;
+     }
 
      // NEW: Filter for *only* biological resources
      const bioResources = planet.biome.resources.filter(r => BIOLOGICAL_RESOURCES.has(r));
