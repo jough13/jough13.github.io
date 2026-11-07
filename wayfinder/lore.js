@@ -1,3 +1,5 @@
+// --- START OF FILE lore.js ---
+
 // --- Lore Database ---
 const LORE_DATABASE = {
 
@@ -226,19 +228,19 @@ const LORE_DATABASE = {
     LOCATION_STARBASE_ALPHA: {
         title: "Starbase Alpha",
         category: "Locations",
-        text: window.LOCATIONS_DATA?.["Starbase Alpha"]?.scanFlavor || "Major Concord trade hub. Bustling with merchant traffic and heavily patrolled by Concord security drones.",
+        text: (typeof LOCATIONS_DATA !== 'undefined' ? LOCATIONS_DATA["Starbase Alpha"]?.scanFlavor : null) || "Major Concord trade hub. Bustling with merchant traffic and heavily patrolled by Concord security drones.",
         unlocked: false
     },
     LOCATION_AEGIS_DYSON_SPHERE: {
         title: "Aegis Dyson Sphere",
         category: "Locations",
-        text: window.LOCATIONS_DATA?.["Aegis Dyson Sphere"]?.scanFlavor || "The glittering crown jewel of the Concord. A breathtaking megastructure encasing a captured G-type star.",
+        text: (typeof LOCATIONS_DATA !== 'undefined' ? LOCATIONS_DATA["Aegis Dyson Sphere"]?.scanFlavor : null) || "The glittering crown jewel of the Concord. A breathtaking megastructure encasing a captured G-type star.",
         unlocked: false
     },
     LOCATION_PLANET_XERXES: {
         title: "Planet Xerxes",
         category: "Locations",
-        text: window.LOCATIONS_DATA?.["Planet Xerxes"]?.scanFlavor || "Extreme environment, corrosive atmosphere, and crushing gravity. Rumored pirate haven.",
+        text: (typeof LOCATIONS_DATA !== 'undefined' ? LOCATIONS_DATA["Planet Xerxes"]?.scanFlavor : null) || "Extreme environment, corrosive atmosphere, and crushing gravity. Rumored pirate haven.",
         unlocked: false
     },
     LOCATION_OUTPOST: {
@@ -297,7 +299,7 @@ const LORE_DATABASE = {
     PHENOMENON_VOID_CRYSTALS: {
         title: "Void Crystals",
         category: "Technology & Phenomena",
-        text: (window.COMMODITIES?.VOID_CRYSTALS?.description || "Crystals that seem to absorb light.") + " These strange formations are often found near intense gravitational anomalies or within the hearts of particularly dense dark nebulae. They defy easy analysis, absorbing most sensor scans. Some theorize they are a form of exotic matter, or even biological in origin, perhaps the dormant state of some void-dwelling lifeform. Their value lies in their rarity and the esoteric research being conducted by fringe science groups and cults like the Children of the Void.",
+        text: ((typeof COMMODITIES !== 'undefined' ? COMMODITIES.VOID_CRYSTALS?.description : null) || "Crystals that seem to absorb light.") + " These strange formations are often found near intense gravitational anomalies or within the hearts of particularly dense dark nebulae. They defy easy analysis, absorbing most sensor scans. Some theorize they are a form of exotic matter, or even biological in origin, perhaps the dormant state of some void-dwelling lifeform. Their value lies in their rarity and the esoteric research being conducted by fringe science groups and cults like the Children of the Void.",
         unlocked: false
     },
     PHENOMENON_IRRADIATED: {
@@ -355,7 +357,7 @@ const LORE_DATABASE = {
     TECH_PHASE_SHIFT_ALLOY: {
         title: "Phase-Shifted Alloy",
         category: "Technology & Phenomena",
-        text: (window.COMMODITIES?.PHASE_SHIFTED_ALLOY?.description || "A bizarre material from the Ancients.") + " Its atomic structure seems to exist in multiple quantum states simultaneously, allowing it to briefly 'ignore' normal matter under specific energy conditions, effectively passing through it. Precursor applications included advanced cloaking, interdimensional gateways, and potentially even weapons capable of bypassing conventional defenses.",
+        text: ((typeof COMMODITIES !== 'undefined' ? COMMODITIES.PHASE_SHIFTED_ALLOY?.description : null) || "A bizarre material from the Ancients.") + " Its atomic structure seems to exist in multiple quantum states simultaneously, allowing it to briefly 'ignore' normal matter under specific energy conditions, effectively passing through it. Precursor applications included advanced cloaking, interdimensional gateways, and potentially even weapons capable of bypassing conventional defenses.",
         unlocked: false
     },
     TECH_UNSHACKLED_AI: {
@@ -390,7 +392,7 @@ const LORE_DATABASE = {
     LEGEND_SENTIENT_MYCELIUM_NETWORK: {
         title: "Sentient Mycelium Network",
         category: "Myths & Legends",
-        text: (window.COMMODITIES?.SENTIENT_MYCELIUM?.description || "A rare, psychoactive fungus.") + " Some fringe theories suggest the network is not just a collection of fungi, but a single, galaxy-spanning superorganism, a 'Great Spore Mind' that dreams the universe. Contact is said to be transformative, offering glimpses of other realities or profound cosmic truths, but often at the cost of sanity.",
+        text: ((typeof COMMODITIES !== 'undefined' ? COMMODITIES.SENTIENT_MYCELIUM?.description : null) || "A rare, psychoactive fungus.") + " Some fringe theories suggest the network is not just a collection of fungi, but a single, galaxy-spanning superorganism, a 'Great Spore Mind' that dreams the universe. Contact is said to be transformative, offering glimpses of other realities or profound cosmic truths, but often at the cost of sanity.",
         unlocked: false
     },
 
@@ -424,19 +426,19 @@ const LORE_DATABASE = {
     COMMODITY_WAYFINDER_CORE: {
         title: "Wayfinder Core",
         category: "Commodities",
-        text: window.COMMODITIES?.WAYFINDER_CORE?.description || "An ancient Precursor compass that hums with energy.",
+        text: (typeof COMMODITIES !== 'undefined' ? COMMODITIES.WAYFINDER_CORE?.description : null) || "An ancient Precursor compass that hums with energy.",
         unlocked: false
     },
     COMMODITY_KTHARR_ANCESTRAL_BLADE: {
         title: "K'tharr Ancestral Blade",
         category: "Commodities",
-        text: window.COMMODITIES?.KTHARR_ANCESTRAL_BLADE?.description || "A ceremonial K'tharr weapon forged from fallen stars.",
+        text: (typeof COMMODITIES !== 'undefined' ? COMMODITIES.KTHARR_ANCESTRAL_BLADE?.description : null) || "A ceremonial K'tharr weapon forged from fallen stars.",
         unlocked: false
     },
     COMMODITY_PRECURSOR_STAR_MAP_FRAGMENT: {
         title: "Precursor Star Map Fragment",
         category: "Commodities",
-        text: window.COMMODITIES?.PRECURSOR_STAR_MAP_FRAGMENT?.description || "A shattered shard of holographic glass depicting long-dead hyperlanes.",
+        text: (typeof COMMODITIES !== 'undefined' ? COMMODITIES.PRECURSOR_STAR_MAP_FRAGMENT?.description : null) || "A shattered shard of holographic glass depicting long-dead hyperlanes.",
         unlocked: false
     },
     COMMODITY_STARDUST_EXOTICA: {
@@ -664,3 +666,5 @@ const ENCOUNTER_DATABASE = {
         ]
     }
 };
+
+// --- END OF FILE lore.js ---
