@@ -220,9 +220,9 @@ function logMessage(newMessage, isImportant = false) {
 
  // --- VISIBILITY MANAGER ---
 function updateSideBorderVisibility() {
-    // 1. Find the elements
-    const leftBorder = document.getElementById('leftSideBorder');
-    const rightBorder = document.getElementById('rightSideBorder');
+    // [FIX]: Use querySelector to target the classes defined in index.html
+    const leftBorder = document.querySelector('.side-border.left');
+    const rightBorder = document.querySelector('.side-border.right');
 
     // Determine if they should be visible (usually only on the Galactic Map)
     const isVisible = (currentGameState === GAME_STATES.GALACTIC_MAP);
