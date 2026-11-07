@@ -1555,16 +1555,11 @@ let statusOverlayElement;
   * @param {number} index - The index of the planet to land on.
   */
 
- function landOnPlanet(index) {
+function landOnPlanet(index) {
      if (currentGameState !== GAME_STATES.SYSTEM_MAP) return;
 
      selectedPlanetIndex = index;
      const planet = currentSystemData.planets[selectedPlanetIndex];
-
-     if (planet.scannedThisVisit) {
-        logMessage("Biological density too low for further sampling.");
-        return;
-    }
 
      if (!planet.biome.landable) {
          logMessage(`Cannot land on ${planet.biome.name}. Environment too hostile.`);
@@ -2090,7 +2085,9 @@ if (typeof window._codexPatched === 'undefined') {
     // --- THE FIX: INITIALIZE CARGO PROXY AFTER SHIP ---
     // Now that GameState.ship is fresh, we can safely bind the proxy to it
     playerCargo = {};
-    Object.keys(COMMODITIES).forEach(id => playerCargo[id] = 0);
+    
+    // [FIX]: The inventory system automatically creates keys when items are acquired. 
+    // Pre-populating it with 0s just bloats the save file and spams the proxy!
 
     // Initialize Ammo if applicable
     const startingWeapon = COMPONENTS_DATABASE[playerShip.components.weapon];
