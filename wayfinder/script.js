@@ -826,8 +826,8 @@ function spawnParticles(x, y, type, dir = { x: 0, y: 0 }) {
 }
 
 function animateParticles() {
-    // Stop the loop if there are no particles and no active pulse
-    if (activeParticles.length === 0 && !sensorPulseActive) {
+    // Stop the loop if there are no particles, no pulse, AND no floating text
+    if (activeParticles.length === 0 && !sensorPulseActive && floatingTexts.length === 0) {
         particleAnimationId = null;
         if (currentGameState === GAME_STATES.GALACTIC_MAP) render(); 
         return;
@@ -4950,7 +4950,7 @@ function handleCombatInput(key) {
             let whType = '';
             if (typeof getTileType === 'function') whType = getTileType(tileForWormhole);
             
-            if (whType === 'wormhole' && typeof traverseWormhole === 'function') traverseWormhole();
+            if (whType === 'wormhole' && typeof traverseRandomWormhole === 'function') traverseRandomWormhole();
             else logMessage("No wormhole here.");
             return true;
         }
@@ -5895,22 +5895,6 @@ function loadGameData(jsonString) {
                     color: 'var(--danger)' 
                 });
             }
-        }
-
-        // --- 8. FUEL RAT RELOAD PROTECTION ---
-        if (isAwaitingRescue && rescueTargetStation) {
-            if (typeof activeNPCs !== 'undefined') {
-                activeNPCs.push({
-                    x: playerX + 10, 
-                    y: playerY + 10,
-                    name: "Fuel Rats Rescue Tug",
-                    char: "R",
-                    color: "#FFAA00",
-                    state: "RESCUE",
-                    isFuelRat: true
-                });
-            }
-            logMessage("<span style='color:var(--warning)'>Sensors picking up the Fuel Rat tug. They are almost here.</span>");
         }
 
         // --- 8. FUEL RAT RELOAD PROTECTION ---
