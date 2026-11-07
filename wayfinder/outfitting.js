@@ -644,15 +644,50 @@ function applyPlayerShipStats() {
             // Apply Eclipse Mercenary raw stats
             if (crew.stats) {
                 if (crew.stats.hullBonus) calculatedMaxHull += crew.stats.hullBonus;
-                if (crew.stats.damageBonus) PLAYER_ATTACK_DAMAGE += crew.stats.damageBonus;
+                if (crew.stats.damageBonus) window.PLAYER_ATTACK_DAMAGE += crew.stats.damageBonus;
                 if (crew.stats.evasionBonus) calculatedEvasion += crew.stats.evasionBonus;
             }
             
             // Apply Standard Crew COMBAT perk
             if (crew.perk === "COMBAT_DAMAGE") {
-                PLAYER_ATTACK_DAMAGE = Math.floor(PLAYER_ATTACK_DAMAGE * 1.15);
+                window.PLAYER_ATTACK_DAMAGE = Math.floor(window.PLAYER_ATTACK_DAMAGE * 1.15);
+            }
+            // Apply Standard Crew SHIELD perk
+            if (crew.perk === "SHIELD_BOOST") {
+                MAX_SHIELDS = Math.floor(MAX_SHIELDS * 1.25);
             }
         });
+    }
+
+    // --- 4.5 APPLY CRAFTING & CODEX BONUSES ---
+    
+    // A. Crafting Synthesis Bonuses
+    if (typeof worldStateDeltas !== 'undefined' && worldStateDeltas['CRAFTING_BONUSES']) {
+        const bonuses = worldStateDeltas['CRAFTING_BONUSES'];
+        calculatedMaxHull += bonuses.hull || 0;
+        MAX_SHIELDS += bonuses.shields || 0;
+        MAX_FUEL += bonuses.fuel || 0;
+        window.PLAYER_ATTACK_DAMAGE += bonuses.damage || 0;
+    }
+
+    // B. Codex Mastery Bonuses
+    if (typeof LORE_DATABASE !== 'undefined') {
+        const categories = {};
+        for (const key in LORE_DATABASE) {
+            const cat = LORE_DATABASE[key].category;
+            if (!categories[cat]) categories[cat] = { total: 0, unlocked: 0 };
+            categories[cat].total++;
+            if (LORE_DATABASE[key].unlocked) categories[cat].unlocked++;
+        }
+        for (const cat in categories) {
+            if (categories[cat].total > 0 && categories[cat].unlocked === categories[cat].total) {
+                if (cat === "Starships") calculatedMaxHull += 5;
+                else if (cat === "Phenomena") MAX_FUEL += 10;
+                else if (cat === "Locations") calculatedEvasion += 0.02; 
+                else if (cat === "Factions") MAX_SHIELDS += 5;
+                else calculatedMaxCargo += 2; 
+            }
+        }
     }
 
     // 5. Apply Final Calculations to Globals
@@ -678,7 +713,7 @@ function applyPlayerShipStats() {
 
         for (const mfg in mfgCounts) {
             if (mfgCounts[mfg] >= 3 && SYNERGIES_DATABASE[mfg]) {
-                activeSynergy = SYNERGIES_DATABASE[mfg];
+                activeSynergy = SYNERGIES_DATABASE[mfg];// --- 4. APPLY CREW & MERCENARY BONUSES ---
                 activeSynergy.effect(); // Apply the raw stat boosts
                 break; 
             }
