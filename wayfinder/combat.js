@@ -1,6 +1,6 @@
 // --- START OF FILE combat.js ---
 
-let playerTargeting = 'HULL'; // Can be 'HULL', 'WEAPONS', or 'ENGINES'
+window.playerTargeting = 'HULL';
 
 function startCombat(specificEnemyEntity = null) {
     let pirateShip;
@@ -356,9 +356,9 @@ function handleCombatAction(action) {
         }
         
         // 🎯 SUBSYSTEM PENALTY
-        if (playerTargeting !== 'HULL') {
+        if (window.playerTargeting !== 'HULL') {
             hitChance -= 0.15; // Harder to hit a specific part
-            combatLog += `[Aiming at ${playerTargeting}] `;
+            combatLog += `[Aiming at ${window.playerTargeting}] `;
         }
 
         if (Math.random() < hitChance) {
@@ -372,14 +372,14 @@ function handleCombatAction(action) {
             }
             
             // 🎯 SUBSYSTEM DAMAGE ROUTING
-            if (playerTargeting === 'WEAPONS' && currentCombatContext.pirateShields <= 0) {
+            if (window.playerTargeting === 'WEAPONS' && currentCombatContext.pirateShields <= 0) {
                 currentCombatContext.subsystems.weapons.hp -= damageDealt;
                 combatLog += `Enemy Weapons took ${Math.floor(damageDealt)} damage!`;
                 if (currentCombatContext.subsystems.weapons.hp <= 0 && currentCombatContext.subsystems.weapons.status === 'ONLINE') {
                     currentCombatContext.subsystems.weapons.status = 'OFFLINE';
                     combatLog += " <span style='color:var(--success); font-weight:bold;'>ENEMY WEAPONS OFFLINE! Damage halved.</span>";
                 }
-            } else if (playerTargeting === 'ENGINES' && currentCombatContext.pirateShields <= 0) {
+            } else if (window.playerTargeting === 'ENGINES' && currentCombatContext.pirateShields <= 0) {
                 currentCombatContext.subsystems.engines.hp -= damageDealt;
                 combatLog += `Enemy Engines took ${Math.floor(damageDealt)} damage!`;
                 if (currentCombatContext.subsystems.engines.hp <= 0 && currentCombatContext.subsystems.engines.status === 'ONLINE') {
@@ -389,7 +389,7 @@ function handleCombatAction(action) {
             } else {
                 // Shield vs Hull Logic (Standard)
                 if (currentCombatContext.pirateShields > 0) {
-                    if (playerTargeting !== 'HULL') combatLog += "(Shields absorbed subsystem impact!) ";
+                    if (window.playerTargeting !== 'HULL') combatLog += "(Shields absorbed subsystem impact!) ";
                     let shieldDmg = damageDealt + (weaponStats.vsShieldBonus || 0);
                     currentCombatContext.pirateShields -= shieldDmg;
                     combatLog += `Shields hit for ${Math.floor(shieldDmg)}!`;
@@ -1288,7 +1288,11 @@ let raidContext = null;
 function startOutpostRaid(location) {
     if (typeof closeGenericModal === 'function') closeGenericModal(); 
     
-    // Route logic through the new forces object
+    // [FIX]: Ensure the forces object exists for legacy saves before reading it!
+    if (!playerShip.forces) {
+        playerShip.forces = { marines: 0, heavyMechs: 0, dropDropships: 0, maxTroops: 10 };
+    }
+
     const totalMarines = playerShip.forces.marines;
     const deployedMechs = playerShip.forces.heavyMechs;
     
