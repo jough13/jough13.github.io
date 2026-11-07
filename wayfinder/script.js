@@ -1677,39 +1677,6 @@ function checkCodexCompletion(categoryToCheck, isSilent = false) {
     }
 }
 
-// --- NON-DESTRUCTIVE OUTFITTING PATCH ---
-// We dynamically wrap your existing outfitting math so we don't have to rewrite outfitting.js!
-if (typeof window._codexPatched === 'undefined') {
-    const originalApply = window.applyPlayerShipStats;
-    if (originalApply) {
-        window.applyPlayerShipStats = function() {
-            // 1. Run the original math first (which resets max stats based on ship chassis and components)
-            originalApply();
-            
-            // 2. Tally up which codex categories are 100% complete
-            const categories = {};
-            for (const key in LORE_DATABASE) {
-                const cat = LORE_DATABASE[key].category;
-                if (!categories[cat]) categories[cat] = { total: 0, unlocked: 0 };
-                categories[cat].total++;
-                if (LORE_DATABASE[key].unlocked) categories[cat].unlocked++;
-            }
-            
-            // 3. Layer the small permanent buffs on top!
-            for (const cat in categories) {
-                if (categories[cat].total > 0 && categories[cat].unlocked === categories[cat].total) {
-                    if (cat === "Starships") MAX_PLAYER_HULL += 5;
-                    else if (cat === "Phenomena") MAX_FUEL += 10;
-                    else if (cat === "Locations") PLAYER_EVASION += 0.02; 
-                    else if (cat === "Factions") MAX_SHIELDS += 5;
-                    else PLAYER_CARGO_CAPACITY += 2; 
-                }
-            }
-        };
-    }
-    window._codexPatched = true;
-}
-
  let systemCache = {};
  let currentSystemData;
 
@@ -4337,36 +4304,6 @@ function handleCodexInput(key) {
     return true;
 }
 
- function handleMissionInput(key) {
-     if (currentMissionContext.step === 'selectMission') {
-         const selection = parseInt(key);
-         if (!isNaN(selection) && selection > 0 && selection <= currentMissionContext.availableMissions.length) {
-             displayMissionDetails(selection - 1);
-         } else if (key === 'l' || key === 'escape') {
-            currentMissionContext = null;
-            handleInteraction();
-        }
-     } else if (currentMissionContext.step === 'confirmMission') {
-         if (key === 'y') {
-             if (!playerActiveMission) {
-                 acceptMission();
-             } else {
-                 logMessage("Cannot accept: Another mission is already active.");
-                 displayMissionBoard();
-             }
-         } else if (key === 'n' || key === 'l') {
-             displayMissionBoard();
-         }
-     } else if (currentMissionContext.step === 'viewOnlyDetails' || currentMissionContext.step === 'noMissions') {
-         if (key === 'l') {
-             currentMissionContext = null;
-             handleInteraction();
-         }
-     }
-     // We always "handle" input when the mission board is open
-     return true;
- }
-
  function handleOutfitInput(key) {
      if (currentOutfitContext.step === 'selectSlot') {
          if (key === '1') displayComponentsForSlot('weapon');
@@ -4933,8 +4870,6 @@ document.addEventListener('keydown', function(event) {
     } else if (typeof currentOutfitContext !== 'undefined' && currentOutfitContext && currentOutfitContext.step === 'viewingCargo') {
         if (key === 'escape' || key === 'i') closeCargoModal();
         inputHandled = true;
-    } else if (typeof currentMissionContext !== 'undefined' && currentMissionContext) {
-        inputHandled = handleMissionInput(key);
     } else if (typeof currentOutfitContext !== 'undefined' && currentOutfitContext) {
         inputHandled = handleOutfitInput(key);
     } else if (typeof currentTradeContext !== 'undefined' && currentTradeContext) {
@@ -6699,157 +6634,6 @@ function processConcordEscort() {
 }
 
 // ==========================================
-// --- CREW PERK ENGINE HOOKS ---
-// ==========================================
-
-// Safely intercept the stat calculation function to apply our Crew Shield Boost!
-if (typeof window.applyPlayerShipStats === 'function' && !window._originalApplyStats) {
-    window._originalApplyStats = window.applyPlayerShipStats;
-    
-    window.applyPlayerShipStats = function() {
-        // 1. Run your original math first
-        window._originalApplyStats();
-        
-        // 2. Apply the Chief Engineer Shield Boost (25% Extra Shields)
-        if (typeof hasCrewPerk === 'function' && hasCrewPerk('SHIELD_BOOST')) {
-            if (typeof MAX_SHIELDS !== 'undefined') {
-                MAX_SHIELDS = Math.floor(MAX_SHIELDS * 1.25);
-                playerShields = Math.min(playerShields, MAX_SHIELDS); // Cap current shields
-            }
-        }
-    };
-}
-
-function displayMissionDetails(index) {
-    const mission = missionsAvailableAtStation[index];
-    if (!mission) return;
-
-    currentMissionContext.step = 'confirmMission';
-    currentMissionContext.selectedMissionIndex = index;
-
-    const detailEl = document.getElementById('genericDetailContent');
-    const actionsEl = document.getElementById('genericModalActions');
-
-    const title = mission.title || "Contract";
-    const desc = mission.description || "Mission details unavailable.";
-    const reward = mission.rewards ? mission.rewards.credits : 0;
-    const xp = mission.rewards ? mission.rewards.xp : 0;
-    
-    let typeLabel = "LOGISTICS CONTRACT";
-    let typeColor = "var(--accent-color)";
-    let visualHTML = "";
-    let objectiveDataHTML = "";
-
-    // --- DYNAMIC CONTENT GENERATION ---
-    if (mission.type === 'BOUNTY') {
-        typeLabel = "ASSASSINATION DIRECTIVE";
-        typeColor = "var(--danger)";
-        
-        // Procedurally grab a random player portrait and use CSS to turn it into a red wanted poster!
-        const mugshotIndex = Math.floor(Math.random() * (typeof PLAYER_PORTRAITS !== 'undefined' ? PLAYER_PORTRAITS.length : 6));
-        const mugshotSrc = typeof PLAYER_PORTRAITS !== 'undefined' ? PLAYER_PORTRAITS[mugshotIndex] : `assets/pfp_01.png`;
-        const targetName = mission.targetName || "Classified Hostile";
-
-        visualHTML = `
-            <div style="position:relative; display:inline-block; margin-bottom:15px;">
-                <img src="${mugshotSrc}" style="width:100px; height:100px; border-radius:4px; border:2px solid var(--danger); filter: grayscale(100%) contrast(1.5) sepia(1.2) hue-rotate(300deg); box-shadow: 0 0 15px rgba(255,0,0,0.3);">
-                <div style="position:absolute; bottom:5px; left:0; width:100%; background:rgba(255,0,0,0.8); color:#fff; font-size:10px; font-weight:bold; letter-spacing:1px; text-align:center;">WANTED</div>
-            </div>
-        `;
-        
-        const hazardBonus = Math.floor(reward * 0.3); // Fake math to make the lore look deep
-        objectiveDataHTML = `
-            <div class="trade-stat-row"><span>Target Alias:</span> <span style="color:var(--text-color);">${targetName}</span></div>
-            <div class="trade-stat-row"><span>Last Known Sector:</span> <span style="color:var(--warning);">[ REDACTED UNTIL ACCEPTED ]</span></div>
-            <div class="trade-stat-row"><span>Hazard Pay Included:</span> <span style="color:var(--gold-text);">+${hazardBonus}c</span></div>
-        `;
-    } else if (mission.type === 'DELIVERY') {
-        typeLabel = "PRIORITY FREIGHT";
-        typeColor = "var(--accent-color)";
-        visualHTML = `<div style="font-size:60px; filter: drop-shadow(0 0 15px var(--accent-color)); margin-bottom:15px;">📦</div>`;
-        
-        const dest = mission.objectives && mission.objectives[0] ? mission.objectives[0].destinationName : "Unknown Hub";
-        objectiveDataHTML = `
-            <div class="trade-stat-row"><span>Destination:</span> <span style="color:var(--accent-color);">${dest}</span></div>
-            <div class="trade-stat-row"><span>Cargo Type:</span> <span style="color:var(--text-color);">Fragile / Time-Sensitive</span></div>
-            <div class="trade-stat-row"><span>Transit Risk:</span> <span style="color:var(--warning);">Moderate (Pirate Activity)</span></div>
-        `;
-    } else if (mission.type === 'SURVEY') {
-        typeLabel = "DEEP SPACE ASTROMETRICS";
-        typeColor = "#9933FF";
-        visualHTML = `<div style="font-size:60px; filter: drop-shadow(0 0 15px #9933FF); margin-bottom:15px;">🛰️</div>`;
-        objectiveDataHTML = `
-            <div class="trade-stat-row"><span>Target Class:</span> <span style="color:#9933FF;">Spatial Anomaly</span></div>
-            <div class="trade-stat-row"><span>Sensor Requirement:</span> <span style="color:var(--text-color);">Standard Array or Higher</span></div>
-        `;
-    } else if (mission.type === 'ACQUIRE') {
-        typeLabel = "PROCUREMENT CONTRACT";
-        typeColor = "var(--gold-text)";
-        visualHTML = `<div style="font-size:60px; filter: drop-shadow(0 0 15px var(--gold-text)); margin-bottom:15px;">💎</div>`;
-        objectiveDataHTML = `
-            <div class="trade-stat-row"><span>Client:</span> <span style="color:var(--text-color);">Anonymous Corporate Buyer</span></div>
-            <div class="trade-stat-row"><span>Acquisition Method:</span> <span style="color:var(--warning);">Discretionary (Legal or Illegal)</span></div>
-        `;
-    }
-
-    detailEl.innerHTML = `
-        <div style="text-align:center; padding: 15px;">
-            <div style="font-size:10px; color:${typeColor}; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px; display:inline-block;">${typeLabel}</div>
-            
-            <br>${visualHTML}
-            
-            <h3 style="color:var(--item-name-color); margin:0 0 15px 0; font-size:16px;">${title.toUpperCase()}</h3>
-            
-            <p style="font-size:12px; color:var(--text-color); margin-bottom: 20px; line-height: 1.6; text-align:left; background:rgba(0,0,0,0.4); padding:12px; border-left:2px solid ${typeColor};">
-                "${desc}"
-            </p>
-            
-            <div class="trade-math-area" style="text-align:left; margin-bottom:15px; background:var(--bg-color);">
-                <div style="font-size:10px; color:#666; margin-bottom:5px; letter-spacing:1px;">MISSION PARAMETERS</div>
-                ${objectiveDataHTML}
-            </div>
-
-            <div class="trade-math-area" style="text-align:left;">
-                <div class="trade-stat-row"><span>Total Payout:</span> <span style="color:var(--gold-text); font-weight:bold; font-size:14px;">${formatNumber(reward)}c</span></div>
-                <div class="trade-stat-row"><span>Experience Yield:</span> <span style="color:var(--success); font-weight:bold;">+${xp} XP</span></div>
-            </div>
-        </div>
-    `;
-
-    if (playerActiveMission) {
-        actionsEl.innerHTML = `
-            <button class="action-button" disabled style="opacity:0.5;">LIMIT: ONE ACTIVE CONTRACT</button>
-            <button class="action-button" onclick="displayMissionBoard()">BACK TO LIST</button>
-        `;
-    } else {
-        actionsEl.innerHTML = `
-            <button class="action-button" style="border-color:${typeColor}; color:${typeColor}; box-shadow: 0 0 15px ${typeColor}44;" onclick="acceptMissionUI(${index})">
-                SIGN CONTRACT
-            </button>
-            <button class="action-button" onclick="displayMissionBoard()">CANCEL</button>
-        `;
-    }
-}
-
-function acceptMissionUI(index) {
-    // Re-use your flawless existing acceptMission logic!
-    currentMissionContext.selectedMissionIndex = index;
-    
-    if (typeof acceptMission === 'function') {
-        acceptMission(); 
-        
-        // Polish the UI output
-        if (typeof soundManager !== 'undefined') soundManager.playBuy();
-        if (typeof showToast === 'function') showToast("CONTRACT SIGNED", "success");
-        
-        displayMissionBoard(); // Refresh the board
-        if (typeof renderUIStats === 'function') renderUIStats();
-    } else {
-        logMessage("Mission system offline.", "color:red");
-    }
-}
-
-// ==========================================
 // --- LEGENDARY BOUNTIES & EXOTIC LOOT ---
 // ==========================================
 
@@ -7335,19 +7119,6 @@ function getCraftingBonuses() {
         worldStateDeltas['CRAFTING_BONUSES'] = { hull: 0, shields: 0, fuel: 0, damage: 0 };
     }
     return worldStateDeltas['CRAFTING_BONUSES'];
-}
-
-// Intercept applyPlayerShipStats to apply our permanent bonuses automatically
-if (typeof window.applyPlayerShipStats === 'function' && !window._craftingApplyStatsHook) {
-    window._craftingApplyStatsHook = window.applyPlayerShipStats;
-    window.applyPlayerShipStats = function() {
-        window._craftingApplyStatsHook();
-        const bonuses = getCraftingBonuses();
-        if (typeof MAX_PLAYER_HULL !== 'undefined') MAX_PLAYER_HULL += bonuses.hull;
-        if (typeof MAX_SHIELDS !== 'undefined') MAX_SHIELDS += bonuses.shields;
-        if (typeof MAX_FUEL !== 'undefined') MAX_FUEL += bonuses.fuel;
-        if (typeof PLAYER_ATTACK_DAMAGE !== 'undefined') PLAYER_ATTACK_DAMAGE += bonuses.damage;
-    };
 }
 
 const CRAFTING_RECIPES = {
