@@ -1,102 +1,4 @@
 // ==========================================
-// --- CINEMATIC BOOT SEQUENCE ---
-// ==========================================
-
-function bootSequence() {
-    const titleScreen = document.getElementById('titleScreenOverlay');
-    
-    // 1. Read Audio Preferences
-    let audioPref = localStorage.getItem('wayfinder_audio_pref');
-    let shouldEnableAudio = (audioPref === null) ? false : (audioPref === 'true');
-    
-    if (typeof soundManager !== 'undefined') {
-        soundManager.setMuteState(shouldEnableAudio); 
-    }
-
-    // 2. Check for returning players (Looking for a save file or a 'has played' flag)
-    let isReturningPlayer = false;
-    for (let i = 0; i < localStorage.length; i++) {
-        if (localStorage.key(i).startsWith('wayfinder_')) {
-            isReturningPlayer = true;
-            break;
-        }
-    }
-
-    if (!isReturningPlayer) {
-        // --- NEW PLAYER: PLAY THE MP4 INTRO MOVIE ---
-        
-        // 1. Check if the body has your custom CSS class
-        const isBodyLight = document.body.classList.contains('light-mode'); 
-        
-        // 2. Check the user's actual Operating System settings!
-        const isOSLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
-        
-        // 3. If either is true, play the white video. Otherwise, play the black one.
-        const isLightMode = isBodyLight || isOSLight;
-        const videoSrc = isLightMode ? 'assets/intro_white.mp4' : 'assets/intro_black.mp4';
-        
-        // Inject the video player over the terminal text
-        titleScreen.innerHTML = `
-            <video id="introVideo" style="width: 100vw; height: 100vh; object-fit: cover;" autoplay>
-                <source src="${videoSrc}" type="video/mp4">
-            </video>
-        `;
-        
-        const video = document.getElementById('introVideo');
-        video.muted = !shouldEnableAudio; // Mute the video if the player has audio off!
-        
-        // Pause the ambient background music while the cinematic plays!
-        if (shouldEnableAudio && typeof soundManager !== 'undefined' && soundManager.bgMusic) {
-            soundManager.bgMusic.pause();
-        }
-        
-        // When the video finishes naturally, transition into the game
-        video.onended = () => {
-            completeBootTransition(titleScreen, shouldEnableAudio);
-        };
-        
-        // Safety fallback: if they click the video, skip it
-        video.onclick = () => {
-            video.pause();
-            completeBootTransition(titleScreen, shouldEnableAudio);
-        };
-
-    } else {
-        // --- RETURNING PLAYER: QUICK TERMINAL BOOT ---
-        completeBootTransition(titleScreen, shouldEnableAudio);
-    }
-}
-
-function completeBootTransition(titleScreen, shouldEnableAudio) {
-    // Fade out whatever is on the title screen (video or terminal)
-    titleScreen.style.transition = "opacity 1.5s ease-out";
-    titleScreen.style.opacity = "0";
-    
-    setTimeout(() => {
-        titleScreen.style.display = "none";
-    }, 1500); 
-
-    // Play the Warp Spool-up SFX
-    if (shouldEnableAudio && typeof soundManager !== 'undefined') {
-        setTimeout(() => soundManager.playWarp(), 300); 
-        
-        // Resume the ambient track now that the intro has concluded!
-        if (soundManager.bgMusic) {
-            soundManager.bgMusic.play().catch(err => {
-                console.warn("Browser blocked autoplay until user interaction.", err);
-            });
-        }
-    }
-
-    // Inject flavor text
-    logMessage("<span style='color:var(--accent-color); font-weight:bold;'>> SHIP SYSTEMS INITIALIZED.</span>");
-    if (typeof soundManager !== 'undefined' && !soundManager.enabled) {
-        logMessage("> <span style='color:var(--warning)'>WARNING: Audio Telemetry remains offline. Use dashboard toggle to enable.</span>");
-    }
-    logMessage("> Life support green. Engines hot. Awaiting captain's orders.");
-}
-
-// ==========================================
 // --- SHARED MODULE UI & GAME STATES ---
 // ==========================================
 
@@ -1135,10 +1037,14 @@ function animateParticles() {
                     // Check if we have saved changes for this specific coordinate
                     const deltaKey = `${worldX},${worldY}`;
                     if (worldStateDeltas[deltaKey]) {
-                        // Merge the saved flags (e.g., minedThisVisit) into the generated tile
+                        // [FIX]: Convert primitive string to an object before merging
+                        if (typeof tile === 'string') {
+                            tile = { char: tile };
+                        }
+                        // Merge the saved flags into the generated tile
                         Object.assign(tile, worldStateDeltas[deltaKey]);
                     }
-                     chunkData[y][x] = tile;
+                    chunkData[y][x] = tile;
                  }
              }
          }
@@ -1438,17 +1344,27 @@ function performGarbageCollection() {
 
 function updateWorldState(x, y, changes, exactKey = null) {
     // 1. Update the in-memory tile so the UI reacts immediately
-    const tile = chunkManager.getTile(x, y);
-    // Only assign to the main tile if we aren't targeting a sub-entity like a planet
-    if (tile && !exactKey) {
-        Object.assign(tile, changes);
+    const chunkX = Math.floor(x / chunkManager.CHUNK_SIZE);
+    const chunkY = Math.floor(y / chunkManager.CHUNK_SIZE);
+    const chunkKey = `${chunkX},${chunkY}`;
+
+    if (chunkManager.loadedChunks[chunkKey]) {
+        const localX = (x % chunkManager.CHUNK_SIZE + chunkManager.CHUNK_SIZE) % chunkManager.CHUNK_SIZE;
+        const localY = (y % chunkManager.CHUNK_SIZE + chunkManager.CHUNK_SIZE) % chunkManager.CHUNK_SIZE;
+        let tile = chunkManager.loadedChunks[chunkKey][localY][localX];
+
+        // [FIX]: Convert primitive string to object before assigning properties!
+        if (typeof tile === 'string') {
+            tile = { char: tile };
+            chunkManager.loadedChunks[chunkKey][localY][localX] = tile;
+        }
+
+        if (!exactKey) Object.assign(tile, changes);
     }
 
     // 2. Save to the persistent delta object
     const key = exactKey ? exactKey : `${x},${y}`;
-    if (!worldStateDeltas[key]) {
-        worldStateDeltas[key] = {};
-    }
+    if (!worldStateDeltas[key]) worldStateDeltas[key] = {};
     Object.assign(worldStateDeltas[key], changes);
 }
 
@@ -1501,8 +1417,8 @@ function updateWorldState(x, y, changes, exactKey = null) {
          title_template: "Pirate Cull in {sectorName}",
          briefing_template: "Concord Security is offering a bounty for pirate vessels in the {sectorName} sector.",
          description_template: "Increased pirate activity in the {sectorName} ({sectorCoords}) sector is disrupting trade. Eliminate {count} pirate threats to secure the area and claim your reward.",
-         objective_templates: [{
-             type: "ELIMINATE",
+        objective_templates: [{
+             type: "BOUNTY",
              targetName: "Pirate",
              count: [2, 4],
              targetSectorKey: "CURRENT"
@@ -1524,7 +1440,7 @@ function updateWorldState(x, y, changes, exactKey = null) {
          briefing_template: "{destinationName} requires an immediate shipment of {itemName}.",
          description_template: "A priority one request from {destinationName}. They need {count} units of {itemName} for critical operations. Deliver the goods and return here for payment.",
          objective_templates: [{
-             type: "DELIVER",
+             type: "DELIVERY",
              itemID: "ANY_LEGAL",
              count: [5, 15],
              destinationType: ["PLANET", "OUTPOST"]
@@ -1546,7 +1462,7 @@ function updateWorldState(x, y, changes, exactKey = null) {
          briefing_template: "Concord Science Division requires scan data on a nearby anomaly.",
          description_template: "We've detected a faint {subtype} signature. We need a ship on-site to perform a detailed scan. The anomaly could be anywhere, so keep your sensors active. Return here with the data.",
          objective_templates: [{
-             type: "SCAN_OBJECT",
+             type: "SURVEY",
              targetType: "anomaly",
              subtype: "ANY_ANOMALY",
              sectorKey: "ANY"
