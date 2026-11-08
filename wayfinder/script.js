@@ -2,6 +2,14 @@
 // --- SHARED MODULE UI & GAME STATES ---
 // ==========================================
 
+// [FIX]: Legacy HTML support for old boot buttons
+function bootSequence() {
+    console.warn("bootSequence() is deprecated. Routing to checkSaveStateAndRenderTitle().");
+    if (typeof checkSaveStateAndRenderTitle === 'function') {
+        checkSaveStateAndRenderTitle();
+    }
+}
+
 let visitedSectors;
 
 let playerActiveBounty = null;
