@@ -1,3 +1,5 @@
+// --- START OF FILE trade.js ---
+
 // --- CONSOLIDATED TRADE SYSTEM ---
 function openTradeModal(mode) {
     // Patch the close function once to ensure Ship-to-Ship state is wiped when closed
@@ -191,11 +193,10 @@ function openTradeModal(mode) {
     listEl.appendChild(fragment);
 
     // --- 🚨 INJECT SIZED-DOWN RETURN BUTTON 🚨 ---
-    // Removed 'full-width-btn' to avoid messy CSS margins. 
-    // Reduced padding and font-size to make it perfectly compact!
     const actionsEl = document.getElementById('genericModalActions');
     if (actionsEl) {
         if (window.activeTradeNPC && window.activeTradeNPC.id) {
+            // [FIX]: Ship-to-ship return button crash fix
             actionsEl.innerHTML = `
              <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: var(--accent-color); color: var(--accent-color);" onclick="const npc = EntityManager.entities.find(e => e.id === '${window.activeTradeNPC.id}'); if(npc) interactWithNPC(npc);">
                  RETURN TO COMM LINK
@@ -227,10 +228,7 @@ function renderTradeRow(itemId, qty, isBuy, location, listEl) {
 
     const row = document.createElement('div');
     row.className = 'trade-item-row';
-    
-    // FIX: Added padding-right: 15px so the buttons don't hug the scroll edge!
     row.style.cssText = "padding: 14px 10px; padding-right: 15px; border-bottom: 1px solid var(--border-color); display: flex; gap: 15px;";
-    
     if (isLocked) row.style.opacity = "0.5";
 
     const price = calculateItemPrice(item, isBuy, location);
@@ -391,7 +389,7 @@ function clearMarketAnalysis() {
 }
 
 function executeTrade(itemId, isBuy, specificQty = 1) {
-    let leveledUp = false; // [FIX]: Declare this here so it's globally scoped to the function!
+    let leveledUp = false; // [FIX]: Globally scoped to the function
     
     const location = window.activeTradeNPC || chunkManager.getTile(playerX, playerY);
     const item = COMMODITIES[itemId];
