@@ -905,10 +905,9 @@ function transferItem(colonyId, itemId, direction) {
     const colony = playerColonies[colonyId];
     if (!colony) return;
 
-    // [FIX]: Determine actual player side inventory (Troops vs Cargo)
     let playerHas = playerCargo[itemId] || 0;
-    if (itemId === 'MERCENARY_PLATOON') playerHas = Math.floor(playerShip.forces.marines / 10);
-    else if (itemId === 'ASSAULT_MECH') playerHas = playerShip.forces.heavyMechs;
+    if (itemId === 'MERCENARY_PLATOON') playerHas = Math.floor((playerShip.forces.marines || 0) / 10);
+    else if (itemId === 'ASSAULT_MECH') playerHas = playerShip.forces.heavyMechs || 0;
 
     if (direction === 'TO_COLONY') {
         if (playerHas > 0) {
