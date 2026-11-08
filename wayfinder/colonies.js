@@ -657,8 +657,15 @@ function openColonyManagement(colonyId) {
         let storageHtml = `<table style="width:100%; text-align:left; font-size:12px; border-collapse: collapse;">`;
         const allItems = new Set([...Object.keys(playerCargo), ...Object.keys(colony.storage)]);
         
+        // [FIX]: Make sure troops show up in the logistics list!
+        if (playerShip.forces.marines >= 10 || colony.storage['MERCENARY_PLATOON']) allItems.add('MERCENARY_PLATOON');
+        if (playerShip.forces.heavyMechs >= 1 || colony.storage['ASSAULT_MECH']) allItems.add('ASSAULT_MECH');
+
         allItems.forEach(item => {
-            const shipQty = playerCargo[item] || 0;
+            let shipQty = playerCargo[item] || 0;
+            // [FIX]: Read actual troop counts for the UI!
+            if (item === 'MERCENARY_PLATOON') shipQty = Math.floor((playerShip.forces.marines || 0) / 10);
+            if (item === 'ASSAULT_MECH') shipQty = playerShip.forces.heavyMechs || 0;
             const colQty = colony.storage[item] || 0;
             if (shipQty === 0 && colQty === 0) return; 
             
@@ -898,9 +905,13 @@ function transferItem(colonyId, itemId, direction) {
     const colony = playerColonies[colonyId];
     if (!colony) return;
 
+    // [FIX]: Determine actual player side inventory (Troops vs Cargo)
+    let playerHas = playerCargo[itemId] || 0;
+    if (itemId === 'MERCENARY_PLATOON') playerHas = Math.floor(playerShip.forces.marines / 10);
+    else if (itemId === 'ASSAULT_MECH') playerHas = playerShip.forces.heavyMechs;
+
     if (direction === 'TO_COLONY') {
-        if ((playerCargo[itemId] || 0) > 0) {
-            // BUG 3 FIXED: Enforce Colony Max Storage limit!
+        if (playerHas > 0) {
             const maxStorage = 1000 + ((colony.buildings['STORAGE_SILOS'] || 0) * 2500);
             let currentStorage = Object.values(colony.storage).reduce((a,b) => a + b, 0);
             if (currentStorage + 1 > maxStorage) {
@@ -908,26 +919,42 @@ function transferItem(colonyId, itemId, direction) {
                 return;
             }
             
-            playerCargo[itemId]--;
-            if (playerCargo[itemId] <= 0) delete playerCargo[itemId];
+            if (itemId === 'MERCENARY_PLATOON') playerShip.forces.marines -= 10;
+            else if (itemId === 'ASSAULT_MECH') playerShip.forces.heavyMechs -= 1;
+            else {
+                playerCargo[itemId]--;
+                if (playerCargo[itemId] <= 0) delete playerCargo[itemId];
+            }
+            
             colony.storage[itemId] = (colony.storage[itemId] || 0) + 1;
             if (typeof soundManager !== 'undefined') soundManager.playUIClick();
         }
     } else if (direction === 'TO_SHIP') {
         if ((colony.storage[itemId] || 0) > 0) {
-            const itemData = typeof COMMODITIES !== 'undefined' ? COMMODITIES[itemId] : null;
-            const weight = itemData && itemData.weight !== undefined ? itemData.weight : 1;
             
-            if (typeof currentCargoLoad !== 'undefined' && typeof PLAYER_CARGO_CAPACITY !== 'undefined') {
-                if (currentCargoLoad + weight > PLAYER_CARGO_CAPACITY) {
-                    if (typeof showToast === 'function') showToast("CARGO HOLD FULL", "error");
-                    return;
+            if (itemId === 'MERCENARY_PLATOON') {
+                if ((playerShip.forces.marines || 0) + 10 > (playerShip.forces.maxTroops || 20)) {
+                    if (typeof showToast === 'function') showToast("BARRACKS FULL", "error"); return;
                 }
+                playerShip.forces.marines += 10;
+            } else if (itemId === 'ASSAULT_MECH') {
+                if ((playerShip.forces.heavyMechs || 0) + 1 > (playerShip.forces.maxTroops || 20)) {
+                    if (typeof showToast === 'function') showToast("VEHICLE BAY FULL", "error"); return;
+                }
+                playerShip.forces.heavyMechs += 1;
+            } else {
+                const itemData = typeof COMMODITIES !== 'undefined' ? COMMODITIES[itemId] : null;
+                const weight = itemData && itemData.weight !== undefined ? itemData.weight : 1;
+                if (typeof currentCargoLoad !== 'undefined' && typeof PLAYER_CARGO_CAPACITY !== 'undefined') {
+                    if (currentCargoLoad + weight > PLAYER_CARGO_CAPACITY) {
+                        if (typeof showToast === 'function') showToast("CARGO HOLD FULL", "error"); return;
+                    }
+                }
+                playerCargo[itemId] = (playerCargo[itemId] || 0) + 1;
             }
 
             colony.storage[itemId]--;
             if (colony.storage[itemId] <= 0) delete colony.storage[itemId];
-            playerCargo[itemId] = (playerCargo[itemId] || 0) + 1;
             if (typeof soundManager !== 'undefined') soundManager.playGain();
         }
     }
