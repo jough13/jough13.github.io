@@ -252,8 +252,8 @@ function handleVictory() {
 
     // --- 6. BOUNTY MISSION TRACKING ---
     if (playerActiveMission && playerActiveMission.type === "BOUNTY" && !playerActiveMission.isComplete) {
-        // Look up the specific progress tracker for this objective (eliminate_0)
-        const progress = playerActiveMission.progress.eliminate_0;
+        // [FIX]: Check for the new 'bounty_0' key, while falling back to 'eliminate_0' for old saves!
+        const progress = playerActiveMission.progress.bounty_0 || playerActiveMission.progress.eliminate_0;
 
         if (progress && !progress.complete) {
             progress.current++;
