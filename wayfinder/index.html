@@ -1,14 +1,14 @@
---- START OF FILE index.html ---
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- BUG FIX: Added maximum-scale and user-scalable to prevent annoying double-tap zooming on mobile! -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Wayfinder: Echoes of the Void</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 
-<script>
+    <script>
         // --- FLIGHT RECORDER v4.2 (The Diagnostician - Telemetry Only) ---
         const consoleHistory = [];
         const MAX_LOGS = 50;
@@ -43,7 +43,7 @@
             };
         });
 
-        // 2. The Master Render Function (UNCHANGED)
+        // 2. The Master Render Function
         function showCriticalErrorScreen(errorType, exactMessage, location, stack, diagnosticHTML = "") {
             if (document.getElementById('criticalSystemFailureScreen')) return;
 
@@ -97,7 +97,7 @@
             document.body.appendChild(div);
         }
 
-        // 3. The Catchers (UNCHANGED)
+        // 3. The Catchers
         window.onerror = function(msg, url, lineNo, columnNo, error) {
             const fileName = url ? url.split('/').pop() : 'Unknown File';
             const loc = `${fileName} — Line: ${lineNo}, Column: ${columnNo}`;
@@ -210,12 +210,10 @@
         </div>
     </noscript>
 
-        <!-- FALLBACK 2: If the engine crashes during boot, force the screen to appear so the Red Crash Screen is visible -->
+    <!-- FALLBACK 2: If the engine crashes during boot, force the screen to appear so the Red Crash Screen is visible -->
     <script>
         setTimeout(function() { document.body.classList.add('loaded'); }, 3000);
     </script>
-
-    <!-- BUG 1 FIXED: Removed duplicate side-borders that were leaking from the <body> tag -->
     
     <script>
     // 1. Immediate Theme Check (Run before visual render)
@@ -235,38 +233,50 @@
             document.documentElement.style.backgroundColor = '#050510';
         }
     })();
-</script>
+    </script>
 
-<style>
-    /* Force body to be invisible immediately */
-/* 
-body {
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.5s ease-in;
-} 
-*/
-    
-    /* When JS adds this class, the content fades in */
-    body.loaded {
-        opacity: 1;
-        visibility: visible;
-    }
-</style>
+    <style>
+        /* When JS adds this class, the content fades in */
+        body.loaded {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
 
     <div id="titleOverlay">
         <div id="titleContainer">
             <h1 class="game-title">Wayfinder</h1>
             <p class="subtitle">Echoes of the Void</p>
             
-            <div id="systemBoot" style="margin-top:20px; color:var(--accent-color); font-family:var(--main-font); animation: blink 1s infinite;">
-                SYSTEM INITIALIZING...
+            <div id="systemBoot" style="margin-top:20px; color:var(--accent-color); font-family:var(--main-font); min-height: 20px;">
+                <span id="bootText" style="animation: blink 1s infinite;">SYSTEM INITIALIZING...</span>
             </div>
+            
+            <script>
+                // IMMERSION: Animated Boot Sequence
+                const bootPhrases = [
+                    "WAKING NAV-COMP...", 
+                    "MOUNTING DRIVES...", 
+                    "ESTABLISHING CONCORD LINK...", 
+                    "DECRYPTING ARCHIVES...", 
+                    "SYSTEM READY."
+                ];
+                let bootIdx = 0;
+                const bootEl = document.getElementById('bootText');
+                const bootTimer = setInterval(() => {
+                    bootIdx++;
+                    if(bootIdx < bootPhrases.length && bootEl) {
+                        bootEl.innerText = bootPhrases[bootIdx];
+                    } else {
+                        clearInterval(bootTimer);
+                        if(bootEl) bootEl.style.animation = 'none'; // Stop blinking when ready
+                    }
+                }, 400);
+            </script>
             
             <div id="saveSelectContainer" style="display:none;">
                 <div class="save-list-header">SELECT COMMANDER</div>
-                <div id="saveList" class="save-list">
-                    </div>
+                <div id="saveList" class="save-list"></div>
                 
                 <div class="title-controls">
                     <button id="showNewGameBtn" class="title-button small-btn">New Campaign</button>
@@ -280,14 +290,14 @@ body {
 
             <div id="introVideoContainer" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:#050510; z-index: 50; flex-direction:column; justify-content:center; align-items:center;">
             
-            <video id="introVideo" autoplay muted playsinline style="max-width:100%; max-height:100%; box-shadow: 0 0 30px rgba(0,224,224,0.2);">
-                Your browser does not support the video tag.
-            </video>
+                <video id="introVideo" autoplay muted playsinline style="max-width:100%; max-height:100%; box-shadow: 0 0 30px rgba(0,224,224,0.2);">
+                    Your browser does not support the video tag.
+                </video>
 
-            <button onclick="skipIntroVideo()" style="position:absolute; bottom:30px; right:30px; background:rgba(0,0,0,0.7); border:1px solid var(--accent-color); color:var(--accent-color); padding:10px 20px; font-family:var(--title-font); cursor:pointer; font-weight:bold; letter-spacing: 2px;">
-                SKIP TRANSMISSION >>
-            </button>
-        </div>
+                <button onclick="skipIntroVideo()" style="position:absolute; bottom:30px; right:30px; background:rgba(0,0,0,0.7); border:1px solid var(--accent-color); color:var(--accent-color); padding:10px 20px; font-family:var(--title-font); cursor:pointer; font-weight:bold; letter-spacing: 2px;">
+                    SKIP TRANSMISSION >>
+                </button>
+            </div>
 
             <div id="newGameContainer" style="display:none; text-align: center;">
                 <div class="player-customization">
@@ -298,7 +308,6 @@ body {
                     </div>
                     <input type="text" id="playerNameInput" class="seed-input" placeholder="Captain Name" style="width: 100%; max-width: 340px; box-sizing: border-box; margin: 0 auto; display: block;">
                 </div>
-
                 
                 <p class="seed-prompt-text" style="margin-top: 20px; margin-bottom: 5px;">Enter World Seed (Optional)</p>
                 <p style="color: var(--text-color); font-size: 13px; max-width: 340px; margin: 0 auto 12px; line-height: 1.4; font-family: var(--main-font); opacity: 0.8;">
@@ -375,13 +384,20 @@ body {
                 <button id="crewButton" class="sys-btn" onclick="displayCrewRoster()">Crew Roster</button>
                 <button id="saveButton" class="sys-btn">Manual Save</button>
                 <button id="loadButton" class="sys-btn">Load Manual Save</button>
-                <button id="mainMenuButton" class="sys-btn">Main Menu</button>
+                
+                <div class="sys-header" style="margin-top: 10px;">SYSTEM SETTINGS</div>
+                <button class="sys-btn" onclick="openHelpMenu()">Command Reference</button>
                 <button id="navToggleButton" class="sys-btn">Disable Nav-Assist</button>
                 <button id="themeButton" class="sys-btn">Toggle Theme</button>
                 <button id="soundButton" class="sys-btn">Mute Audio</button>
-            <div id="versionInfo">v0.9.6 (Crew Update)</div>
-         </div> </header> <main id="main-view">
-        <div id="statusOverlay" class="status-overlay"></div>
+                <button id="mainMenuButton" class="sys-btn" style="border-top: 1px solid var(--border-color); margin-top: 5px;">Save & Quit to Menu</button>
+                
+                <div id="versionInfo">v0.9.6 (Crew Update)</div>
+            </div> 
+         </header> 
+         
+         <main id="main-view">
+            <div id="statusOverlay" class="status-overlay"></div>
 
             <div class="side-border left"></div>
             <div class="side-border right"></div>
@@ -389,40 +405,47 @@ body {
             <canvas id="gameCanvas"></canvas>
 
             <div id="mobileControls">
+                <!-- Expanded Mobile D-Pad with utility buttons -->
                 <div class="dpad-row">
+                    <button id="btnScan" class="dpad-btn" style="font-size:12px; font-weight:bold; color: var(--success);" onclick="if(typeof fireSensorPing === 'function') fireSensorPing();">PING</button>
                     <button id="btnUp" class="dpad-btn">▲</button>
+                    <!-- Triggers 'V' (Deep Scan) by mimicking the keydown event handled in script.js -->
+                    <button id="btnDeepScan" class="dpad-btn" style="font-size:12px; font-weight:bold; color: var(--gold-text);" onclick="document.dispatchEvent(new KeyboardEvent('keydown', {'key': 'v'}))">SCAN</button>
                 </div>
                 <div class="dpad-row">
                     <button id="btnLeft" class="dpad-btn">◀</button>
-                    <button id="btnWait" class="dpad-btn" style="font-size:10px;">WAIT</button>
+                    <button id="btnWait" class="dpad-btn" style="font-size:10px; color: var(--text-color);">WAIT</button>
                     <button id="btnRight" class="dpad-btn">▶</button>
                 </div>
                 <div class="dpad-row">
+                    <!-- Triggers 'N' (Nav Ping) -->
+                    <button id="btnMap" class="dpad-btn" style="font-size:12px; font-weight:bold; color: #9933FF;" onclick="document.dispatchEvent(new KeyboardEvent('keydown', {'key': 'n'}))">NAV</button>
                     <button id="btnDown" class="dpad-btn">▼</button>
+                    <button id="btnInteract" class="dpad-btn" style="font-size:12px; font-weight:bold; color: var(--danger);" onclick="if(typeof reEnterCurrentTile === 'function') reEnterCurrentTile();">ACT</button>
                 </div>
             </div>
 
             <div id="gameOverOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(20,0,0,0.9); z-index:4000; align-items:center; justify-content:center;">
-    <div class="confirm-window" style="border-color: var(--danger); box-shadow: 0 0 50px rgba(255, 0, 0, 0.2);">
-        <div class="confirm-header" style="background: var(--danger); color: #000; animation: blink 0.5s infinite;">SIGNAL LOST</div>
-        <div class="confirm-body">
-            <h1 style="color: var(--danger); font-family: var(--title-font); font-size: 32px; margin: 10px 0;">CRITICAL FAILURE</h1>
-            <p id="deathReason" style="font-size: 16px; color: #fff; margin-bottom: 20px;">Cause: Unknown</p>
-            
-            <div class="trade-math-area" style="border-color: #552222;">
-                <div class="trade-stat-row"><span>Final Level:</span> <span id="deathLevel" class="value-text" style="color:#fff"></span></div>
-                <div class="trade-stat-row"><span>Credits Lost:</span> <span id="deathCreditPenalty" class="value-text" style="color:var(--danger)"></span></div>
-            </div>
+                <div class="confirm-window" style="border-color: var(--danger); box-shadow: 0 0 50px rgba(255, 0, 0, 0.2);">
+                    <div class="confirm-header" style="background: var(--danger); color: #000; animation: blink 0.5s infinite;">SIGNAL LOST</div>
+                    <div class="confirm-body">
+                        <h1 style="color: var(--danger); font-family: var(--title-font); font-size: 32px; margin: 10px 0;">CRITICAL FAILURE</h1>
+                        <p id="deathReason" style="font-size: 16px; color: #fff; margin-bottom: 20px;">Cause: Unknown</p>
+                        
+                        <div class="trade-math-area" style="border-color: #552222;">
+                            <div class="trade-stat-row"><span>Final Level:</span> <span id="deathLevel" class="value-text" style="color:#fff"></span></div>
+                            <div class="trade-stat-row"><span>Credits Lost:</span> <span id="deathCreditPenalty" class="value-text" style="color:var(--danger)"></span></div>
+                        </div>
 
-            <p style="font-size: 12px; color: #888; margin-top: 15px;">Emergency Clone Protocol Available.</p>
-            
-            <div class="confirm-actions" style="flex-direction: column; gap: 10px;">
-                <button id="respawnBtn" class="action-button" onclick="respawnPlayer()">INITIATE CLONE (RESPAWN)</button>
-                <button class="action-button danger-btn" onclick="quitToTitle()">TERMINATE SIGNAL (QUIT)</button>
+                        <p style="font-size: 12px; color: #888; margin-top: 15px;">Emergency Clone Protocol Available.</p>
+                        
+                        <div class="confirm-actions" style="flex-direction: column; gap: 10px;">
+                            <button id="respawnBtn" class="action-button" onclick="respawnPlayer()">INITIATE CLONE (RESPAWN)</button>
+                            <button class="action-button danger-btn" onclick="quitToTitle()">TERMINATE SIGNAL (QUIT)</button>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
-</div>
 
             <div id="stationOverlay" style="display:none;">
                 <div class="trade-window" style="max-width: 800px;">
@@ -437,8 +460,7 @@ body {
                             <p id="stationDescText" class="station-desc">Station description goes here...</p>
                         </div>
                         
-                       <div id="dynamicStationMenu" class="station-menu-grid">
-                            </div>
+                       <div id="dynamicStationMenu" class="station-menu-grid"></div>
                     </div>
                 </div>
             </div>
@@ -461,8 +483,7 @@ body {
                             </p>
                         </div>
                         
-                        <div id="xerxesMenu" class="station-menu-grid">
-                            </div>
+                        <div id="xerxesMenu" class="station-menu-grid"></div>
                     </div>
                     
                     <div id="xerxesLog" style="padding: 10px; background: rgba(20, 0, 40, 0.6); color: #DDA0DD; font-family: monospace; font-size: 12px; height: 80px; overflow-y: auto; border-top: 1px solid #551188;">
@@ -472,19 +493,15 @@ body {
             </div>
 
             <div id="genericModalOverlay" style="display:none;">
-        <div class="trade-window">
-            <div class="trade-header">
-                <span id="genericModalTitle">TITLE</span>
-                <button onclick="closeGenericModal()" class="icon-btn">X</button>
+                <div class="trade-window">
+                    <div class="trade-header">
+                        <span id="genericModalTitle">TITLE</span>
+                        <button onclick="closeGenericModal()" class="icon-btn">X</button>
+                    </div>
+                    <div id="genericInfoBar" class="modal-info-bar"></div>
+                    <div id="genericModalContent" class="trade-body"></div>
+                </div>
             </div>
-            <div id="genericInfoBar" class="modal-info-bar"></div>
-            
-            <div id="genericModalContent" class="trade-body">
-            </div>
-        </div>
-    </div>
-    
-    <!-- BUG 2 FIXED: Removed the redundant and obsolete #cargoOverlay block -->
 
             <div id="systemView" class="view-panel"></div>
             <div id="planetView" class="view-panel"></div>
@@ -529,7 +546,7 @@ body {
             <div class="confirm-body">
                 <p id="confirmMessage">Are you sure?</p>
                 <div class="confirm-actions">
-                    <button id="confirmYesBtn" class="action-button danger-btn">CONFIRM DELETION</button>
+                    <button id="confirmYesBtn" class="action-button danger-btn">CONFIRM</button>
                     <button id="confirmNoBtn" class="action-button">CANCEL</button>
                 </div>
             </div>
@@ -537,6 +554,53 @@ body {
     </div>
 
     <div id="toastContainer"></div>
+
+    <!-- UI HELPER SCRIPT: Command Reference Injection -->
+    <script>
+        function openHelpMenu() {
+            // Close the SYS menu
+            const sysMenu = document.getElementById('systemMenu');
+            if (sysMenu) sysMenu.classList.add('hidden');
+            
+            // Open a generic modal containing the hotkeys
+            openGenericModal("COMMAND REFERENCE");
+            const listEl = document.getElementById('genericModalList');
+            const detailEl = document.getElementById('genericDetailContent');
+            const actionsEl = document.getElementById('genericModalActions');
+
+            listEl.innerHTML = `
+                <div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom: 5px;">FLIGHT CONTROLS</div>
+                <div style="padding: 10px; font-size: 13px; color: var(--text-color); line-height: 2.0;">
+                    <span style="color:var(--accent-color); font-weight:bold;">W, A, S, D</span> : Move Ship / Navigate<br>
+                    <span style="color:var(--accent-color); font-weight:bold;">SPACEBAR</span> : Hold Position (Wait)<br>
+                    <span style="color:var(--accent-color); font-weight:bold;">Q</span> : Toggle Silent Running (Stealth)<br>
+                    <span style="color:var(--accent-color); font-weight:bold;">V</span> : Deep Sensor Scan (Star Systems)<br>
+                    <span style="color:var(--accent-color); font-weight:bold;">P</span> : Active Telemetry Ping (Find Derelicts)<br>
+                    <span style="color:var(--accent-color); font-weight:bold;">N</span> : Nav-Computer Target Ping
+                </div>
+                
+                <div class="trade-list-header" style="color:var(--success); font-size:10px; letter-spacing:2px; margin-top: 15px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom: 5px;">MENU SHORTCUTS</div>
+                <div style="padding: 10px; font-size: 13px; color: var(--text-color); line-height: 2.0;">
+                    <span style="color:var(--success); font-weight:bold;">E / ENTER</span> : Interact / Dock / Land<br>
+                    <span style="color:var(--success); font-weight:bold;">I</span> : Open Cargo Manifest<br>
+                    <span style="color:var(--success); font-weight:bold;">J</span> : Open Galactic Codex<br>
+                    <span style="color:var(--success); font-weight:bold;">U</span> : Open Crafting / Workbench<br>
+                </div>
+            `;
+            
+            detailEl.innerHTML = `
+                <div style="text-align:center; padding: 20px;">
+                    <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 15px var(--accent-color)); opacity:0.8;">⌨️</div>
+                    <h3 style="color:var(--accent-color); margin-bottom:10px; letter-spacing: 2px;">SYS-OPS MANUAL</h3>
+                    <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5; font-style:italic; background: rgba(0,0,0,0.3); padding: 10px; border-left: 2px solid var(--accent-color); text-align: left;">
+                        "Welcome aboard, Commander. Use the hotkeys on the left to quickly navigate your vessel's sub-systems without taking your hands off the helm."
+                    </p>
+                </div>
+            `;
+
+            actionsEl.innerHTML = `<button class="action-button full-width-btn" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="closeGenericModal()">CLOSE MANUAL</button>`;
+        }
+    </script>
 
     <script src="config.js"></script>
     <script src="items.js"></script>
@@ -569,4 +633,3 @@ body {
     
 </body>
 </html>
---- END OF FILE index.html ---
