@@ -1,3 +1,5 @@
+// --- START OF FILE items.js ---
+
 // ==========================================
 // --- LOOT TABLES ---
 // ==========================================
@@ -129,10 +131,27 @@ const COMMODITIES = {
         basePrice: 180,
         description: "Super-cooled conductive gel used in advanced computing and life-support cryo-pods."
     },
-    WATER: { name: "Purified Water", basePrice: 15, description: "Essential for hydro-farms and organic life." },
-    WEAPONS: { name: "Munitions", basePrice: 200, description: "Standard-issue armaments and munitions." },
-    ILLEGAL_ORGANS: { name: "Black Market Organs", basePrice: 800, illegal: true, description: "Highly illegal biological harvest." },
-    AI_CORE: { name: "A.I. Core", basePrice: 1500, description: "A heavy processing unit required for advanced automation." },
+    WATER: { 
+        name: "Purified Water", 
+        basePrice: 15, 
+        description: "Essential for hydro-farms and organic life." 
+    },
+    WEAPONS: { 
+        name: "Munitions", 
+        basePrice: 200, 
+        description: "Standard-issue armaments and munitions." 
+    },
+    ILLEGAL_ORGANS: { 
+        name: "Black Market Organs", 
+        basePrice: 800, 
+        illegal: true, 
+        description: "Highly illegal biological harvest." 
+    },
+    AI_CORE: { 
+        name: "A.I. Core", 
+        basePrice: 1500, 
+        description: "A heavy processing unit required for advanced automation." 
+    },
 
     // ==========================================
     // --- INDUSTRIAL & TECH EQUIPMENT ---
@@ -257,7 +276,7 @@ const COMMODITIES = {
         description: "A massive, self-unpacking habitation citadel. Contains a fusion reactor, atmo-scrubbers, and housing for 500 colonists."
     },
 
-// --- COLONY BUILDER ITEMS ---
+    // --- COLONY BUILDER ITEMS ---
     
     COLONY_CHARTER: {
         name: "Official Settlement Charter",
@@ -433,20 +452,37 @@ const COMMODITIES = {
         name: "Encrypted Engram",
         basePrice: 550,
         description: "A mysterious, polyhedral data-matrix glowing with a faint purple light. Cryptarchs pay handsomely to decrypt the tech inside.",
-        // [FIX]: Allow field decryption directly from the cargo modal!
-        onUse: () => { if (typeof visitCryptarch === 'function') { visitCryptarch(); return false; } return false; }
+        onUse: () => {
+            if (typeof visitCryptarch === 'function') {
+                visitCryptarch();
+                return false;
+            }
+            return false;
+        }
     },
     ENCRYPTED_DATA: {
         name: "Encrypted Data Cache",
         basePrice: 500,
         description: "A locked memory core from the Old Empire. Requires a Cryptarch or a Cipher to decipher.",
-        onUse: () => { if (typeof visitCryptarch === 'function') { visitCryptarch(); return false; } return false; }
+        onUse: () => {
+            if (typeof visitCryptarch === 'function') {
+                visitCryptarch();
+                return false;
+            }
+            return false;
+        }
     },
     ANCIENT_ARCHIVE: {
         name: "Ancient Archive",
         basePrice: 2000,
         description: "A high-density holographic array. Contains forbidden history, advanced schematics, and lost truths.",
-        onUse: () => { if (typeof visitCryptarch === 'function') { visitCryptarch(); return false; } return false; }
+        onUse: () => {
+            if (typeof visitCryptarch === 'function') {
+                visitCryptarch();
+                return false;
+            }
+            return false;
+        }
     },
     
     // 🔮 FUTURE EXPANSION: GROUND FORCES (v1.1)
@@ -468,3 +504,5 @@ const COMMODITIES = {
         description: "A massive, bipedal walking tank. Provides heavy covering fire and drastically reduces marine casualties during ground raids."
     }
 };
+
+// --- END OF FILE items.js ---
