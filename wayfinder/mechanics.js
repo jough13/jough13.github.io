@@ -42,7 +42,7 @@ const EntityManager = {
                 }
             }
             
-            // SYSTEM 2: Comets (Migrated!)
+            // SYSTEM 2: Comets
             if (entity.isComet && isMovement) {
                 // Move the comet
                 entity.x += entity.vx; 
@@ -53,15 +53,39 @@ const EntityManager = {
                 if (entity.x === playerX && entity.y === playerY) {
                     const ice = 5 + Math.floor(Math.random() * 10);
                     const rare = Math.floor(Math.random() * 3); 
-                    playerCargo['HYDROGEN_3'] = (playerCargo['HYDROGEN_3'] || 0) + ice;
-                    if (rare > 0) playerCargo['VOID_CRYSTALS'] = (playerCargo['VOID_CRYSTALS'] || 0) + rare;
-                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
                     
-                    let lootMsg = `<span style='color:var(--accent-color); font-weight:bold;'>[ COMET INTERCEPTED ]</span> Harvested ${ice}x Hydrogen-3`;
-                    if (rare > 0) lootMsg += ` and ${rare}x Void Crystals!`;
-                    logMessage(lootMsg);
-                    if (typeof showToast === 'function') showToast("COMET HARVESTED", "success");
-                    if (typeof soundManager !== 'undefined') soundManager.playGain();
+                    // SAFE CARGO ADDITION (Respects Capacity)
+                    const spaceLeft = (typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50) - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
+                    
+                    if (spaceLeft > 0) {
+                        let totalAdded = 0;
+                        let addedRare = 0;
+                        
+                        // Prioritize the rare crystals
+                        if (rare > 0 && spaceLeft >= rare) {
+                            playerCargo['VOID_CRYSTALS'] = (playerCargo['VOID_CRYSTALS'] || 0) + rare;
+                            addedRare = rare;
+                        }
+                        
+                        const iceToAdd = Math.min(ice, spaceLeft - addedRare);
+                        if (iceToAdd > 0) {
+                            playerCargo['HYDROGEN_3'] = (playerCargo['HYDROGEN_3'] || 0) + iceToAdd;
+                            totalAdded += iceToAdd;
+                        }
+
+                        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                        
+                        let lootMsg = `<span style='color:var(--accent-color); font-weight:bold;'>[ COMET INTERCEPTED ]</span> Harvested ${iceToAdd}x Hydrogen-3`;
+                        if (addedRare > 0) lootMsg += ` and ${addedRare}x Void Crystals!`;
+                        if (totalAdded + addedRare < ice + rare) lootMsg += " (Cargo Full, remainder lost)";
+                        
+                        logMessage(lootMsg);
+                        if (typeof showToast === 'function') showToast("COMET HARVESTED", "success");
+                        if (typeof soundManager !== 'undefined') soundManager.playGain();
+                    } else {
+                        logMessage("<span style='color:var(--danger); font-weight:bold;'>[ COMET INTERCEPTED ]</span> Impact absorbed, but cargo hold is full! No materials extracted.");
+                        if (typeof showToast === 'function') showToast("CARGO FULL", "error");
+                    }
                     
                     this.entities.splice(i, 1); // Destroy the comet
                 } else {
@@ -81,6 +105,8 @@ const EntityManager = {
                     entity.stepsRemaining = 0;
                 }
 
+                let movedThisTurn = false;
+
                 // A. DOCKED STATE
                 if (entity.state === 'DOCKED') {
                     entity.dockTimer--;
@@ -97,6 +123,7 @@ const EntityManager = {
                 else if (entity.state === 'DOCKING') {
                     if (entity.x < entity.targetX) entity.x++; else if (entity.x > entity.targetX) entity.x--;
                     if (entity.y < entity.targetY) entity.y++; else if (entity.y > entity.targetY) entity.y--;
+                    movedThisTurn = true;
 
                     if (entity.x === entity.targetX && entity.y === entity.targetY) {
                         entity.state = 'DOCKED';
@@ -108,6 +135,7 @@ const EntityManager = {
                     for (let step = 0; step < 2; step++) {
                         if (entity.x < playerX) entity.x++; else if (entity.x > playerX) entity.x--;
                         if (entity.y < playerY) entity.y++; else if (entity.y > playerY) entity.y--;
+                        movedThisTurn = true;
                         if (entity.x === playerX && entity.y === playerY) break;
                     }
                 }
@@ -115,11 +143,17 @@ const EntityManager = {
                 else if (entity.state === 'TRADE_ROUTE') {
                     if (entity.x < entity.targetX) entity.x++; else if (entity.x > entity.targetX) entity.x--;
                     if (entity.y < entity.targetY) entity.y++; else if (entity.y > entity.targetY) entity.y--;
+                    movedThisTurn = true;
 
                     if (entity.x === entity.targetX && entity.y === entity.targetY) {
                         const payout = 5000 + Math.floor(Math.random() * 5000);
                         playerCredits += payout;
-                        logMessage(`<span style='color:var(--gold-text); font-weight:bold;'>[ TRADE ROUTE ] ${entity.name} safely arrived! Earned ${formatNumber(payout)}c.</span>`);
+                        
+                        // Flavor text for immersion
+                        const goods = ["Luxury Goods", "Refined Alloy", "Medical Supplies"];
+                        const deliveredGood = goods[Math.floor(Math.random() * goods.length)];
+                        
+                        logMessage(`<span style='color:var(--gold-text); font-weight:bold;'>[ TRADE ROUTE ] ${entity.name} safely delivered a shipment of ${deliveredGood}! Earned ${formatNumber(payout)}c cut.</span>`);
                         if (typeof soundManager !== 'undefined') soundManager.playBuy();
                         if (typeof renderUIStats === 'function') renderUIStats();
                         this.entities.splice(i, 1); continue;
@@ -134,7 +168,7 @@ const EntityManager = {
                 }
                 // C. CRUISING STATE
                 else if (entity.state === 'CRUISING') {
-                    if (Math.random() >= 0.30) {
+                    if (Math.random() >= 0.30) { // 70% chance to move
                         if (Math.random() < 0.10) {
                             let foundStation = false;
                             for (let dy = -3; dy <= 3; dy++) {
@@ -160,6 +194,7 @@ const EntityManager = {
                                     } while (entity.vx === 0 && entity.vy === 0);
                                 }
                                 entity.x += entity.vx; entity.y += entity.vy; entity.stepsRemaining--;
+                                movedThisTurn = true;
                             }
                         } else {
                             if (entity.stepsRemaining <= 0) {
@@ -170,8 +205,19 @@ const EntityManager = {
                                 } while (entity.vx === 0 && entity.vy === 0);
                             }
                             entity.x += entity.vx; entity.y += entity.vy; entity.stepsRemaining--;
+                            movedThisTurn = true;
                         }
                     }
+                }
+                
+                // VISUAL POLISH: Draw engine trails for moving ships
+                if (movedThisTurn && typeof spawnParticles === 'function') {
+                    // Calculate rough direction vector for the particle emitter
+                    let tdx = entity.state === 'DOCKING' || entity.state === 'TRADE_ROUTE' ? Math.sign(entity.targetX - entity.x) : entity.vx;
+                    let tdy = entity.state === 'DOCKING' || entity.state === 'TRADE_ROUTE' ? Math.sign(entity.targetY - entity.y) : entity.vy;
+                    if (entity.state === 'RESCUE') { tdx = Math.sign(playerX - entity.x); tdy = Math.sign(playerY - entity.y); }
+                    
+                    spawnParticles(entity.x, entity.y, 'thruster', { x: tdx, y: tdy });
                 }
 
                 // DESPAWN, HAILING, & COLLISIONS
@@ -211,7 +257,17 @@ function triggerNebulaEvent() {
         { type: "ION_STORM", msg: "<span style='color:var(--warning)'>[ ION STORM ]</span> Lightning arcs across the nebula! Shields drained.", fx: () => { playerShields = 0; if(typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED'); } },
         { type: "NURSERY", msg: "<span style='color:var(--success)'>[ STELLAR NURSERY ]</span> Your sensors capture a protostar igniting. (+100 XP)", fx: () => { playerXP += 100; if (typeof checkLevelUp === 'function') checkLevelUp(); } },
         { type: "PLASMA_EDDY", msg: "<span style='color:var(--accent-color)'>[ PLASMA EDDY ]</span> You fly through a pocket of volatile gas. Fuel tanks overcharged!", fx: () => { playerFuel = Math.floor(MAX_FUEL * 1.5); } },
-        { type: "SENSOR_GHOSTS", msg: "<span style='color:#9933FF'>[ SENSOR GHOSTS ]</span> The nebula gas creates false radar signatures. Your targeting computer is confused.", fx: () => {} }
+        { type: "SENSOR_GHOSTS", msg: "<span style='color:#9933FF'>[ SENSOR GHOSTS ]</span> The nebula gas creates false radar signatures. Your targeting computer is confused.", fx: () => {} },
+        { type: "SPORE_CLOUD", msg: "<span style='color:#FF33FF'>[ BIO-SIGNATURE ]</span> You fly through a cloud of bio-luminescent dust. Fungal spores cling to your hull.", fx: () => {
+            const spaceLeft = (typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50) - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
+            if (spaceLeft > 0) {
+                playerCargo['SENTIENT_MYCELIUM'] = (playerCargo['SENTIENT_MYCELIUM'] || 0) + 1;
+                logMessage("<span style='color:var(--success)'>Gathered 1x Sentient Mycelium.</span>");
+                if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+            } else {
+                logMessage("<span style='color:var(--danger)'>Cargo hold full. Spores drifted away.</span>");
+            }
+        }}
     ];
     
     const ev = events[Math.floor(Math.random() * events.length)];
@@ -435,7 +491,8 @@ function resolveUniversalEncounter(encounterId, choiceIndex) {
         }
         if (choice.costs.items) {
             choice.costs.items.forEach(item => {
-                playerCargo[item.id] -= item.qty;
+                // SAFE MATH FIX: Prevent undefined - 5 causing NaN corruption!
+                playerCargo[item.id] = Math.max(0, (playerCargo[item.id] || 0) - item.qty);
                 if (playerCargo[item.id] <= 0) delete playerCargo[item.id];
             });
             if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
