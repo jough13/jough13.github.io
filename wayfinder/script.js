@@ -5435,6 +5435,8 @@ function respawnPlayer() {
     if (typeof EntityManager !== 'undefined') EntityManager.clear(); // Wipe neutral traffic from the death site
     currentCombatContext = null; // Tell the game the fight is over!
 
+    playerActiveBounty = null; 
+
     // 5. Reset UI and State
     document.getElementById('gameOverOverlay').style.display = 'none';
     
@@ -5502,6 +5504,8 @@ function loadGameData(jsonString) {
             Object.assign(GameState.ship, savedState.coreState.ship);
             Object.assign(GameState.world, savedState.coreState.world);
             Object.assign(GameState.ui, savedState.coreState.ui);
+
+            playerCargo = GameState.ship.cargo;
         } else {
             // If this is an OLD legacy save, manually map the loose variables to the new state
             if (savedState.playerShip) playerShip = savedState.playerShip;
