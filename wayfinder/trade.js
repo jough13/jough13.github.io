@@ -197,10 +197,10 @@ function openTradeModal(mode) {
     if (actionsEl) {
         if (window.activeTradeNPC && window.activeTradeNPC.id) {
             actionsEl.innerHTML = `
-                <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: var(--accent-color); color: var(--accent-color);" onclick="interactWithNPC(null, '${window.activeTradeNPC.id}')">
-                    RETURN TO COMM LINK
-                </button>
-            `;
+             <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: var(--accent-color); color: var(--accent-color);" onclick="const npc = EntityManager.entities.find(e => e.id === '${window.activeTradeNPC.id}'); if(npc) interactWithNPC(npc);">
+                 RETURN TO COMM LINK
+             </button>
+         `;
         } else {
             actionsEl.innerHTML = `
                 <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="closeGenericModal()">
@@ -477,6 +477,8 @@ function clearMarketAnalysis() {
 }
 
 function executeTrade(itemId, isBuy, specificQty = 1) {
+    let leveledUp = false; // [FIX]: Declare this here so it's globally scoped to the function!
+    
     const location = window.activeTradeNPC || chunkManager.getTile(playerX, playerY);
     const item = COMMODITIES[itemId];
     const price = calculateItemPrice(item, isBuy, location);
@@ -590,7 +592,9 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
 
         const profitXP = Math.max(1, Math.floor((price * qtyToTrade) * (XP_PER_PROFIT_UNIT * 0.8)));
         playerXP += profitXP;
-        const leveledUp = checkLevelUp(); // <--- CAPTURE BOOLEAN
+        
+        // [FIX]: Remove 'const' here!
+        leveledUp = checkLevelUp();
 
         if (typeof soundManager !== 'undefined') soundManager.playUIClick();
         if (typeof showToast === 'function') showToast(`Sold ${qtyToTrade}x ${item.name}`, "success");
