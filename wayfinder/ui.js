@@ -75,7 +75,9 @@ function updateModalInfoBar(elementId) {
     if (!el) return;
 
     // --- THE FIX: USE CUSTOM NAME IF AVAILABLE ---
-    const baseShipName = SHIP_CLASSES[playerShip.shipClass].name;
+    // Safely check SHIP_CLASSES to prevent crashes on missing data
+    const shipClassData = (typeof SHIP_CLASSES !== 'undefined' && SHIP_CLASSES[playerShip.shipClass]) ? SHIP_CLASSES[playerShip.shipClass] : { name: "Unknown Chassis" };
+    const baseShipName = shipClassData.name;
     const shipName = playerShip.name ? playerShip.name : baseShipName;
     
     // Calculate Reputation Text
@@ -318,7 +320,6 @@ function renderCodexCategories() {
     });
 
     // 2. Count total entries in game to show a completion percentage
-    // (This is the line that went missing!)
     let totalUnlocked = discoveredLoreEntries.size; 
     
     // OPTIMIZATION: Only calculate this once and cache it on the window object
@@ -416,7 +417,9 @@ function renderCodexText(entry) {
 // ==========================================
 
 function renameShip() {
-    const currentName = playerShip.name || SHIP_CLASSES[playerShip.shipClass].name;
+    // Safely look up the ship class default name
+    const shipClassData = (typeof SHIP_CLASSES !== 'undefined' && SHIP_CLASSES[playerShip.shipClass]) ? SHIP_CLASSES[playerShip.shipClass] : { name: "Unknown Ship" };
+    const currentName = playerShip.name || shipClassData.name;
     const newName = prompt("Enter new vessel registry name:", currentName);
     
     // Check if the user entered a valid string and didn't hit cancel
@@ -501,7 +504,7 @@ function displayCommanderProfile(tab = 'OVERVIEW') {
     }
 
     else if (tab === 'SHIP') {
-        const ship = SHIP_CLASSES[playerShip.shipClass];
+        const ship = (typeof SHIP_CLASSES !== 'undefined' && SHIP_CLASSES[playerShip.shipClass]) ? SHIP_CLASSES[playerShip.shipClass] : { name: "Unknown Ship", image: "", ability: { name: "None" } };
         const customName = playerShip.name || ship.name; // Pull custom name
         
         html += `
@@ -533,7 +536,7 @@ function displayCommanderProfile(tab = 'OVERVIEW') {
         
         slots.forEach(slot => {
             const compId = playerShip.components[slot];
-            const comp = COMPONENTS_DATABASE[compId];
+            const comp = (typeof COMPONENTS_DATABASE !== 'undefined') ? COMPONENTS_DATABASE[compId] : null;
             const mfgBadge = (comp && comp.manufacturer) ? `<span style="background:rgba(255,255,255,0.1); color:#CCC; padding:2px 4px; border-radius:2px; font-size:9px; margin-left:6px; vertical-align:middle;">${comp.manufacturer}</span>` : '';
             
             html += `
@@ -689,7 +692,7 @@ function renderCargoList() {
                 key: itemKey,
                 qty: playerCargo[itemKey],
                 def: itemDef,
-                name: itemDef ? itemDef.name : itemKey,
+                name: itemDef ? itemDef.name : itemKey.replace(/_/g, ' '),
                 value: itemDef ? itemDef.basePrice : 0,
                 illegal: itemDef && itemDef.illegal ? 1 : 0
             });
@@ -783,7 +786,8 @@ function selectCargoItem(key) {
     if (listEl) {
         Array.from(listEl.children).forEach(child => {
             if (child.classList.contains('trade-item-row')) {
-                if (child.textContent.includes(typeof COMMODITIES !== 'undefined' && COMMODITIES[key] ? COMMODITIES[key].name : key)) {
+                const itemName = (typeof COMMODITIES !== 'undefined' && COMMODITIES[key]) ? COMMODITIES[key].name : key.replace(/_/g, ' ');
+                if (child.textContent.includes(itemName)) {
                     child.style.background = 'rgba(0, 224, 224, 0.1)';
                 } else {
                     child.style.background = 'transparent';
@@ -794,16 +798,28 @@ function selectCargoItem(key) {
 
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
-    const itemDef = typeof COMMODITIES !== 'undefined' ? COMMODITIES[key] : null;
     
-    if (!itemDef || !playerCargo[key]) {
+    // [FIX]: Safely generate a dummy item if it's missing from the database to prevent infinite loops!
+    let itemDef = typeof COMMODITIES !== 'undefined' ? COMMODITIES[key] : null;
+    if (!itemDef) {
+        itemDef = { 
+            name: key.replace(/_/g, ' '), 
+            description: "An unclassified or custom asset.", 
+            basePrice: 100, 
+            icon: '❓',
+            weight: 1
+        };
+    }
+    
+    // Only return/loop if they somehow don't actually own the item
+    if (!playerCargo[key]) {
         renderCargoList();
         return;
     }
 
     const qty = playerCargo[key];
     const isIllegal = itemDef.illegal ? '<span style="color:var(--danger); font-size:10px; border:1px solid var(--danger); padding:2px 4px; border-radius:2px; margin-left:10px;">CONTRABAND</span>' : '';
-    const weight = itemDef.weight || 1;
+    const weight = itemDef.weight !== undefined ? itemDef.weight : 1;
 
     detailEl.innerHTML = `
         <div style="padding: 20px; text-align:center; animation: fadeIn 0.3s ease-out;">
@@ -844,7 +860,7 @@ function selectCargoItem(key) {
 }
 
 function useCargoItem(key) {
-    const itemDef = COMMODITIES[key];
+    const itemDef = typeof COMMODITIES !== 'undefined' ? COMMODITIES[key] : null;
     if (itemDef && itemDef.onUse) {
         // Execute the item's unique code. If it returns true, it was successfully consumed!
         const consumed = itemDef.onUse();
@@ -874,7 +890,7 @@ function jettisonItem(key, amount) {
     playerCargo[key] -= amountToDrop;
     
     const itemDef = typeof COMMODITIES !== 'undefined' ? COMMODITIES[key] : null;
-    const itemName = itemDef ? itemDef.name : key;
+    const itemName = itemDef ? itemDef.name : key.replace(/_/g, ' ');
 
     // Clean up the object if it hits zero
     if (playerCargo[key] <= 0) {
