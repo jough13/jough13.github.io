@@ -1,3 +1,5 @@
+// --- START OF FILE locations.js ---
+
 // ==========================================
 // --- LOCATIONS DATABASE ---
 // ==========================================
@@ -14,14 +16,13 @@ const LOCATIONS_DATA = {
         faction: "CONCORD",
         sells: [
             { id: "FUEL_CELLS", priceMod: 0.9, stock: 100 }, 
-             { id: "NANO_REPAIR_KIT", priceMod: 1.0, stock: 15 },
+            { id: "NANO_REPAIR_KIT", priceMod: 1.0, stock: 15 },
             { id: "MINING_DRONE", priceMod: 1.0, stock: 10 }, 
             { id: "TECH_PARTS", priceMod: 1.1, stock: 30 }, 
             { id: "MEDICAL_SUPPLIES", priceMod: 1.0, stock: 25 }, 
             { id: "NAVIGATION_CHARTS", priceMod: 1.0, stock: 50 },
             { id: "CYBERNETIC_IMPLANTS", priceMod: 1.2, stock: 15 }, 
             { id: "DROID_SERVOS", priceMod: 1.0, stock: 40 },
-            
             // --- COLONY BUILDER SUPPLIES ---
             { id: "COLONY_CHARTER", priceMod: 1.0, stock: 1 }
         ],
@@ -64,7 +65,7 @@ const LOCATIONS_DATA = {
         type: STARBASE_CHAR_VAL,
         displayChar: "§",
         customColor: "#9C27B0", // --- Shadow Network purple ---
-        isMajorHub: true, // --- Flips the switch to force the main UI modal! ---
+        isMajorHub: true, 
         faction: "INDEPENDENT",
         isBlackMarket: true, 
         sells: [
@@ -193,3 +194,5 @@ const LOCATIONS_DATA = {
         scanFlavor: "Station Umbra: A heavily cloaked Eclipse Cartel listening post on the galactic rim. You are receiving encrypted hails offering high payouts for stolen goods and access to shadow brokers. Keep your shields up."
     }
 };
+
+// --- END OF FILE locations.js ---
