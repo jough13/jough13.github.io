@@ -681,6 +681,8 @@ function renderCargoList() {
     const sortHeader = document.getElementById('cargoSortHeader');
     
     if (!listEl) return;
+    
+    // Clear everything
     listEl.innerHTML = '';
     
     // --- 1. Map Cargo into a Sortable Array ---
@@ -699,17 +701,26 @@ function renderCargoList() {
         }
     }
 
+    // --- EMPTY STATE HANDLING (UX FIX) ---
     if (cargoArray.length === 0) {
-        listEl.innerHTML = '<div style="padding:15px; color:#666;">Cargo hold is currently empty.</div>';
+        // If empty, hide the left list entirely so the message centers nicely!
+        listEl.parentElement.style.display = 'none';
+        
+        detailEl.parentElement.style.width = '100%';
+        detailEl.parentElement.style.paddingLeft = '15px'; // Balance padding
+
         detailEl.innerHTML = `
             <div style="text-align:center; padding: 40px 20px;">
-                <div style="font-size:50px; opacity:0.5; margin-bottom:15px;">🕸️</div>
+                <div style="font-size:50px; opacity:0.3; margin-bottom:15px; filter: grayscale(1);">📦</div>
                 <h3 style="color:#666;">HOLD EMPTY</h3>
-                <p style="color:var(--item-desc-color); font-size:12px;">No physical goods detected in the cargo bay.</p>
+                <p style="color:var(--item-desc-color); font-size:13px; margin-top:10px;">No physical goods detected in the cargo bay.</p>
             </div>`;
         actionsEl.innerHTML = `<button class="action-button full-width-btn" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="closeGenericModal()">CLOSE MANIFEST</button>`;
-        if(sortHeader) sortHeader.innerHTML = `<span style="color:var(--item-desc-color); font-size:10px; letter-spacing:2px;">INVENTORY</span>`;
         return;
+    } else {
+        // Restore the layout if it was previously hidden
+        listEl.parentElement.style.display = 'flex';
+        detailEl.parentElement.style.width = '340px';
     }
 
     // --- 2. Build the Sorting Header ---
@@ -895,6 +906,7 @@ function jettisonItem(key, amount) {
     // Clean up the object if it hits zero
     if (playerCargo[key] <= 0) {
         delete playerCargo[key];
+        window.activeCargoItem = null; // 🚨 FIX: Unselect the item so the UI doesn't crash trying to render it!
     }
 
     // Ping the rest of the game to update UI bars
@@ -910,4 +922,3 @@ function jettisonItem(key, amount) {
         renderCargoList(); 
     }
 }
-// --- END OF FILE ui.js ---
