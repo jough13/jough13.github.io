@@ -11,9 +11,12 @@ function generateMissionsForStation(stationName) {
     const numMissionsToGenerate = 2 + Math.floor(Math.random() * 2);
 
     // Safety counter to prevent infinite loops if valid missions cannot be generated
-    // (e.g., if selectRandomDestination keeps returning null)
     let attempts = 0;
     const MAX_ATTEMPTS = 20;
+
+    // Capture the faction of the station generating these missions
+    const locationTile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+    const giverFaction = locationTile ? (locationTile.faction || 'INDEPENDENT') : 'INDEPENDENT';
 
     while (generatedMissions.length < numMissionsToGenerate && availableTemplates.length > 0 && attempts < MAX_ATTEMPTS) {
         attempts++;
@@ -28,6 +31,9 @@ function generateMissionsForStation(stationName) {
             // Generate a truly unique ID using Math.random entropy
             newMission.id = `${newMission.id_prefix}${attempts}_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
             newMission.giver = stationName;
+            
+            // 🚨 FIX: Snapshot the faction so rewards are always applied correctly!
+            newMission.faction = giverFaction; 
 
             // Get the first objective template
             const objective = newMission.objective_templates[0];
@@ -111,7 +117,6 @@ function generateMissionsForStation(stationName) {
             // Set the final objectives on the new mission object
             newMission.objectives = [objective];
 
-            // THE FIX: Create the rewards object if it doesn't exist yet!
             if (!newMission.rewards) {
                 newMission.rewards = {};
             }
@@ -198,6 +203,8 @@ function displayMissionBoard() {
         if(playerCompletedMissions.has(mission.id)) return;
         foundActive = true;
         
+        const isCurrentMission = playerActiveMission && playerActiveMission.id === mission.id;
+        
         const row = document.createElement('div');
         row.className = 'trade-item-row';
         row.style.cssText = "padding: 12px 10px; border-bottom: 1px solid var(--border-color); cursor: pointer; display:flex; justify-content:space-between; align-items:center;";
@@ -207,10 +214,16 @@ function displayMissionBoard() {
         if(mission.type === 'DELIVERY') typeColor = "var(--warning)";
         if(mission.type === 'SURVEY') typeColor = "#4488FF";
 
+        // Highlight the currently active mission in the list
+        if (isCurrentMission) {
+            row.style.background = 'rgba(0, 224, 224, 0.1)';
+            row.style.borderLeft = `3px solid ${typeColor}`;
+        }
+
         row.innerHTML = `
             <div>
                 <div style="color:var(--text-color); font-weight:bold; font-size: 13px;">${mission.title}</div>
-                <div style="color:${typeColor}; font-size: 10px; letter-spacing: 1px; margin-top: 4px;">[ ${mission.type} ]</div>
+                <div style="color:${typeColor}; font-size: 10px; letter-spacing: 1px; margin-top: 4px;">${isCurrentMission ? '[ ACTIVE CONTRACT ]' : `[ ${mission.type} ]`}</div>
             </div>
             <div style="text-align:right;">
                 <span style="color:var(--gold-text, #FFD700); font-weight:bold;">${formatNumber(mission.rewards.credits)}c</span>
@@ -227,7 +240,8 @@ function displayMissionBoard() {
 
 function showMissionDetails(stationName, index, brandColor) {
     const mission = MISSIONS_DATABASE[stationName][index];
-    const isActive = playerActiveMission !== null;
+    const isThisMission = playerActiveMission && playerActiveMission.id === mission.id;
+    const hasOtherMission = playerActiveMission && playerActiveMission.id !== mission.id;
     
     let typeColor = "var(--success)";
     if(mission.type === 'BOUNTY') typeColor = "var(--danger)";
@@ -255,17 +269,18 @@ function showMissionDetails(stationName, index, brandColor) {
     
     document.getElementById('genericDetailContent').innerHTML = html;
     
-    // --- SLEEK BUTTON SIZING ---
-    const btnHtml = `
-        <button class="action-button" ${isActive ? 'disabled' : ''} 
-            style="${isActive ? '' : `border-color:${brandColor}; color:${brandColor};`} width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;"
-            onclick="confirmAcceptMission('${stationName}', ${index})">
-            ${isActive ? 'FINISH CURRENT JOB FIRST' : 'AUTHORIZE CONTRACT'}
-        </button>
-        <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openStationView()">
-            ◀ BACK TO CONCOURSE
-        </button>
-    `;
+    // --- SLEEK BUTTON SIZING & DYNAMIC ACTIONS ---
+    let btnHtml = "";
+    
+    if (isThisMission) {
+        btnHtml = `<button class="action-button danger-btn" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" onclick="abandonMission()">ABANDON CONTRACT</button>`;
+    } else if (hasOtherMission) {
+        btnHtml = `<button class="action-button" disabled style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;">FINISH CURRENT JOB FIRST</button>`;
+    } else {
+        btnHtml = `<button class="action-button" style="border-color:${brandColor}; color:${brandColor}; width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" onclick="confirmAcceptMission('${stationName}', ${index})">AUTHORIZE CONTRACT</button>`;
+    }
+    
+    btnHtml += `<button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openStationView()">◀ BACK TO CONCOURSE</button>`;
     
     document.getElementById('genericModalActions').innerHTML = btnHtml;
 }
@@ -288,6 +303,18 @@ function confirmAcceptMission(stationName, index) {
     showToast("CONTRACT ACCEPTED", "success");
     closeGenericModal();
     renderMissionTracker();
+}
+
+function abandonMission() {
+    if (playerActiveMission) {
+        logMessage(`You dropped the contract: ${playerActiveMission.title}.`);
+        if (typeof showToast === 'function') showToast("CONTRACT ABANDONED", "info");
+        playerActiveMission = null;
+        renderMissionTracker();
+        
+        // Return to the board overview
+        displayMissionBoard();
+    }
 }
 
  /**
@@ -403,10 +430,12 @@ function grantMissionRewards() {
      updatePlayerNotoriety(mission.rewards.notoriety);
      
      let standingMsg = "";
-     if (currentLocation.faction) {
+     
+     // 🚨 FIX: Award rep to the faction that GAVE the mission, not the faction currently holding the station!
+     if (mission.faction && mission.faction !== 'INDEPENDENT') {
          const repGain = Math.max(5, Math.abs(mission.rewards.notoriety || 5));
-         playerFactionStanding[currentLocation.faction] = (playerFactionStanding[currentLocation.faction] || 0) + repGain;
-         standingMsg = `\n  ${currentLocation.faction} Standing: +${repGain}`;
+         playerFactionStanding[mission.faction] = (playerFactionStanding[mission.faction] || 0) + repGain;
+         standingMsg = `\n  ${mission.faction} Standing: +${repGain}`;
      }
 
      playerCompletedMissions.add(mission.id);
@@ -448,9 +477,14 @@ function renderMissionTracker() {
     const progress = playerActiveMission.progress[`${objective.type.toLowerCase()}_0`];
 
     if (playerActiveMission.isComplete) {
-        objectiveText = `Return to ${playerActiveMission.giver}`;
-    } else if (objective.type === 'BOUNTY' || objective.type === 'ELIMINATE') {
-        objectiveText = `Hunt Pirates (${progress ? progress.current : 0}/${objective.count})`;
+        objectiveText = `[READY] Return to ${playerActiveMission.giver}`;
+        textEl.style.color = "var(--success)"; // 🚨 UX FIX: Turn it bright green so they know they are done!
+        textEl.textContent = `${playerActiveMission.title}: ${objectiveText}`;
+        return; 
+    } 
+    
+    if (objective.type === 'BOUNTY' || objective.type === 'ELIMINATE') {
+        objectiveText = `Hunt Targets (${progress ? progress.current : 0}/${objective.count})`;
     } else if (objective.type === 'DELIVERY' || objective.type === 'DELIVER') {
         objectiveText = `Deliver to ${objective.destinationName}`;
     } else if (objective.type === 'SURVEY' || objective.type === 'SCAN_OBJECT') {
@@ -463,7 +497,7 @@ function renderMissionTracker() {
     }
 
     textEl.textContent = `${playerActiveMission.title}: ${objectiveText}`;
-    textEl.style.color = "#FFD700";
+    textEl.style.color = "#FFD700"; // Gold for "In Progress"
 }
 
 // --- STATE MANAGEMENT ---
@@ -543,9 +577,15 @@ function openBountyBoard() {
             const row = document.createElement('div');
             row.className = 'trade-item-row';
             row.style.cssText = "padding: 12px 10px; border-bottom: 1px solid var(--border-color); cursor: pointer; display:flex; justify-content:space-between; align-items:center;";
+            
+            // Faction color coding for the list
+            let facColor = "var(--danger)";
+            if (bounty.faction === "KTHARR") facColor = "var(--success)";
+            if (bounty.faction === "INDEPENDENT") facColor = "var(--warning)";
+
             row.innerHTML = `
                 <div>
-                    <div style="color:var(--danger); font-weight:bold; font-size: 13px;">${bounty.targetName}</div>
+                    <div style="color:${facColor}; font-weight:bold; font-size: 13px;">${bounty.targetName}</div>
                     <div style="color:var(--item-desc-color); font-size: 10px; margin-top: 4px;">Threat: Class ${bounty.difficulty}</div>
                 </div>
                 <div style="text-align:right;">
@@ -564,17 +604,23 @@ function showBountyDetails(bounty, isActive) {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
 
-    // FIXED: Inverted bounty.y to -bounty.y to match HUD & Nav-Computer coordinates
+    // Faction color coding for the details pane
+    let facColor = "var(--danger)";
+    if (bounty.faction === "KTHARR") facColor = "var(--success)";
+    if (bounty.faction === "INDEPENDENT") facColor = "var(--warning)";
+
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 15px;">
-            <div style="font-size:50px; margin-bottom:10px; filter: drop-shadow(0 0 15px var(--danger));">🎯</div>
-            <h3 style="color:var(--danger); margin:0;">${bounty.targetName.toUpperCase()}</h3>
+            <div style="font-size:50px; margin-bottom:10px; filter: drop-shadow(0 0 15px ${facColor});">🎯</div>
+            <h3 style="color:${facColor}; margin:0;">${bounty.targetName.toUpperCase()}</h3>
             <div style="color:var(--item-desc-color); font-size:12px; margin-bottom:15px; border-bottom: 1px solid #333; padding-bottom: 10px;">WANTED FOR: ${bounty.crime.toUpperCase()}</div>
             
             <div style="background:rgba(0,0,0,0.3); border:1px solid #333; padding:10px; border-radius:4px; text-align:left;">
                 <div style="margin-bottom:8px; display:flex; justify-content:space-between;"><span style="color:#888;">Threat Level:</span> <span style="color:var(--warning); font-weight:bold;">Class ${bounty.difficulty}</span></div>
                 <div style="margin-bottom:8px; display:flex; justify-content:space-between;"><span style="color:#888;">Vessel Type:</span> <span style="color:var(--text-color);">${bounty.shipClass}</span></div>
+                <div style="margin-bottom:8px; display:flex; justify-content:space-between;"><span style="color:#888;">Alliance:</span> <span style="color:${facColor};">${bounty.faction}</span></div>
                 <div style="margin-bottom:8px; display:flex; justify-content:space-between;"><span style="color:#888;">Last Seen:</span> <span style="color:var(--accent-color);">Sector [${bounty.x}, ${-bounty.y}]</span></div>
+                
                 <div style="margin-top:12px; border-top:1px dashed #444; padding-top:10px; display:flex; justify-content:space-between;"><span style="color:#888;">Bounty Payout:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(bounty.reward)}c</span></div>
             </div>
         </div>
@@ -611,14 +657,14 @@ function acceptBounty(bountyId) {
             shipClass: selected.shipClass,
             shipClassKey: selected.shipClass,
             faction: selected.faction,
-            isBountyTarget: true, // Special flag for the combat engine
+            isBountyTarget: true, 
             level: selected.difficulty,
             hp: selected.difficulty * 50,
             maxHp: selected.difficulty * 50,
             shields: selected.difficulty * 25,
             maxShields: selected.difficulty * 25,
-            char: 'V', // The standard enemy vessel icon
-            color: 'var(--danger)' // Bright red
+            char: 'V', 
+            color: 'var(--danger)' 
         };
         
         // Inject them into the engine's active memory
@@ -626,7 +672,6 @@ function acceptBounty(bountyId) {
             activeEnemies.push(bountyShip);
         }
         
-        // FIXED: Inverted selected.y to -selected.y to match HUD & Nav-Computer coordinates
         if (typeof showToast === 'function') showToast("BOUNTY ACCEPTED", "warning");
         logMessage(`Tracking target: ${selected.targetName}. Sensors indicate they are hiding at Sector [${selected.x}, ${-selected.y}].`);
         
@@ -681,6 +726,58 @@ function processBountyVictory(defeatedEnemy) {
         
         // 5. Clear the active contract so the player can take another one!
         playerActiveBounty = null;
+    }
+}
+
+function generateBountyTargets() {
+    currentStationBounties = [];
+    const numBounties = Math.floor(Math.random() * 3) + 2; // 2 to 4 bounties per station
+    
+    const firstNames = ["'Mad Dog'", "Viper", "'Iron'", "Jax", "Silas", "Kaelen", "'Ghost'", "Rook", "Vane", "Kira"];
+    const lastNames = ["Vance", "Karn", "Trex", "the Butcher", "Valerius", "Thorne", "Graves", "Black", "Kryik"];
+    const crimeList = ["Smuggling", "Piracy", "Assassination", "Data Theft", "Illegal Cybernetics", "Shipjacking"];
+    
+    for (let i = 0; i < numBounties; i++) {
+        // Pick a random direction and distance to spawn the target
+        const angle = Math.random() * Math.PI * 2;
+        const distance = Math.floor(Math.random() * 15) + 5; // 5 to 20 tiles away
+        
+        const targetX = Math.floor(playerX + Math.cos(angle) * distance);
+        const targetY = Math.floor(playerY + Math.sin(angle) * distance);
+        
+        // Scale difficulty with player level
+        let difficultyLevel = playerLevel;
+        if (Math.random() > 0.7) difficultyLevel += 2; 
+        
+        // 🚨 FIX: Dynamic Faction & Valid Ship Assignments
+        const factionList = ["ECLIPSE", "ECLIPSE", "KTHARR", "INDEPENDENT"];
+        const targetFaction = factionList[Math.floor(Math.random() * factionList.length)];
+        
+        let shipClass = "RAIDER"; // Default
+        
+        if (targetFaction === "ECLIPSE" || targetFaction === "INDEPENDENT") {
+            if (difficultyLevel > 6) shipClass = "BRUISER";
+            else if (difficultyLevel > 3) shipClass = "STRIKER";
+        } else if (targetFaction === "KTHARR") {
+            shipClass = difficultyLevel > 5 ? "KTHARR_DESTROYER" : "KTHARR_SCOUT";
+        }
+        
+        // --- DYNAMIC ECONOMY MATH ---
+        const baseReward = (difficultyLevel * 1500) + Math.floor(Math.random() * 500);
+        const distanceBonus = distance * 50; // +50c per tile of travel distance
+        const totalReward = baseReward + distanceBonus;
+        
+        currentStationBounties.push({
+            id: `BOUNTY_${Date.now()}_${Math.floor(Math.random() * 100000)}_${i}`,
+            targetName: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
+            crime: crimeList[Math.floor(Math.random() * crimeList.length)],
+            x: targetX,
+            y: targetY,
+            difficulty: difficultyLevel,
+            reward: totalReward, 
+            faction: targetFaction, 
+            shipClass: shipClass 
+        });
     }
 }
 
