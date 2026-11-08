@@ -210,7 +210,8 @@ function renderPlanetView() {
 
     // --- DYNAMIC COLONY BUTTON LOGIC ---
     let colonyButtonHtml = '';
-    const colId = `${currentSystemData.x}_${currentSystemData.y}_${planet.name.replace(/\s+/g, '')}`;
+    // [FIX]: Use the correct ID syntax established in colonies.js!
+    const colId = `${currentSystemData.x}_${currentSystemData.y}_p${selectedPlanetIndex}`;
     const colonyHere = playerColonies[colId];
     const isColonyHere = colonyHere && colonyHere.established;
 
