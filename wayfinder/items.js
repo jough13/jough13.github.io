@@ -432,17 +432,21 @@ const COMMODITIES = {
     ENCRYPTED_ENGRAM: {
         name: "Encrypted Engram",
         basePrice: 550,
-        description: "A mysterious, polyhedral data-matrix glowing with a faint purple light. Cryptarchs pay handsomely to decrypt the tech inside."
+        description: "A mysterious, polyhedral data-matrix glowing with a faint purple light. Cryptarchs pay handsomely to decrypt the tech inside.",
+        // [FIX]: Allow field decryption directly from the cargo modal!
+        onUse: () => { if (typeof visitCryptarch === 'function') { visitCryptarch(); return false; } return false; }
     },
     ENCRYPTED_DATA: {
         name: "Encrypted Data Cache",
         basePrice: 500,
-        description: "A locked memory core from the Old Empire. Requires a Cryptarch or a Cipher to decipher."
+        description: "A locked memory core from the Old Empire. Requires a Cryptarch or a Cipher to decipher.",
+        onUse: () => { if (typeof visitCryptarch === 'function') { visitCryptarch(); return false; } return false; }
     },
     ANCIENT_ARCHIVE: {
         name: "Ancient Archive",
         basePrice: 2000,
-        description: "A high-density holographic array. Contains forbidden history, advanced schematics, and lost truths."
+        description: "A high-density holographic array. Contains forbidden history, advanced schematics, and lost truths.",
+        onUse: () => { if (typeof visitCryptarch === 'function') { visitCryptarch(); return false; } return false; }
     },
     
     // 🔮 FUTURE EXPANSION: GROUND FORCES (v1.1)
