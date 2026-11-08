@@ -1797,10 +1797,7 @@ function checkCodexCompletion(categoryToCheck, isSilent = false) {
     
     // Clear Caches
     systemCache = {}; 
-    // [FIX]: Pull starting faction reps cleanly from config!
     playerFactionStanding = typeof getStartingFactionStanding === 'function' ? getStartingFactionStanding() : { CONCORD: 0, ECLIPSE: -10, KTHARR: -50 };
-    
-    // --- THE FIX: MOVED playerCargo INITIALIZATION DOWN ---
 
     // --- Reset World State Deltas & Chunk Cache ---
     worldStateDeltas = {}; 
@@ -3402,8 +3399,6 @@ function handleInteraction() {
 
         // --- 2. STATION & OUTPOST INTERCEPT ---
         if (location.isMajorHub || location.char === OUTPOST_CHAR_VAL) {
-            
-            // [FIX]: Only run Customs Scans at CONCORD Major Hubs!
             if (location.isMajorHub && currentFaction === 'CONCORD') {
                 const cleared = performCustomsScan();
                 if (!cleared) return; 
@@ -4398,7 +4393,6 @@ function handleCombatInput(key) {
                     return true;
                 }
                 break;
-                break; 
             case 'k':
                 if (currentLocation.isMajorHub) {
                     displayMissionBoard();
