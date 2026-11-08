@@ -3,9 +3,8 @@ function openStationView() {
     if (!location) return;
 
     // --- 1. XERXES REDIRECT (UPDATED) ---
-    // If Xerxes is a Black Market, we bypass the old custom view 
-    // and let this updated station view handle it beautifully!
-    if (location.name === 'Planet Xerxes' && !location.isBlackMarket) {
+    // [FIX]: Force Xerxes to always route to the Spire view, preventing puzzle bypass!
+    if (location.name === 'Planet Xerxes' || location.name === 'Xerxes Prime') {
         if (typeof openXerxesView === 'function') {
             openXerxesView();
             return;
@@ -188,7 +187,8 @@ function renderStationMenu(location, faction) {
 
     // --- 5. FACTION SPECIFIC SERVICES ---
     if (faction === 'CONCORD') {
-        html += createBtn('⚖️', 'Security Office', 'Clear Bounties', "clearConcordBounty()", "border-left: 3px solid var(--accent-color);");
+     // [FIX]: Change clearConcordBounty() to openSecurityOffice()
+        html += createBtn('⚖️', 'Security Office', 'Clear Bounties', "openSecurityOffice()", "border-left: 3px solid var(--accent-color);");
         html += createBtn('🛡️', 'Aegis Armory', 'Concord Gear', "openConcordArmory()", "border-left: 3px solid var(--accent-color);");
         html += createBtn('📡', 'Naval Command', 'Hire Escort', "requestConcordEscort()", "border-left: 3px solid var(--accent-color);");
         html += createBtn('🪖', 'Marine Barracks', 'Recruit Ground Forces', "openBarracksUI()", "border-left: 3px solid var(--accent-color);");
@@ -199,10 +199,12 @@ function renderStationMenu(location, faction) {
      html += createBtn('🍖', 'The Blood Pits', 'Bio-Trade', "openBloodPitsTrade()", "border-left: 3px solid var(--danger);");
      html += createBtn('💀', 'Rite of Combat', 'Challenge Warlord', "challengeKtharrWarlord()", "border-left: 3px solid var(--danger);");
     } else if (faction === 'ECLIPSE') {
-        html += createBtn('🎲', 'Shadow Broker', 'Fence Contraband', "fenceEclipseContraband()", "border-left: 3px solid #9933FF;");
-        html += createBtn('🪪', 'The Forger', 'Buy Fake ID', "buyFakeID()", "border-left: 3px solid #9933FF;");
-        html += createBtn('🗡️', 'Mercenary Den', 'Hire Shady Crew', "hireEclipseMercenary()", "border-left: 3px solid #9933FF;");
-    }
+     // [FIX]: Change fenceEclipseContraband() to openShadowBroker()
+     html += createBtn('🎲', 'Shadow Broker', 'Fence Contraband', "openShadowBroker()", "border-left: 3px solid #9933FF;");
+     html += createBtn('🪪', 'The Forger', 'Buy Fake ID', "buyFakeID()", "border-left: 3px solid #9933FF;");
+     // [FIX]: Change hireEclipseMercenary() to openMercenaryDen()
+     html += createBtn('🗡️', 'Mercenary Den', 'Hire Shady Crew', "openMercenaryDen()", "border-left: 3px solid #9933FF;");
+ }
 
     // --- 6. MAINTENANCE & LEAVE ---
     const missingFuel = Math.floor(MAX_FUEL - playerFuel);
@@ -308,10 +310,11 @@ function visitCantina() {
 
     const listEl = document.getElementById('genericModalList');
 
-    // Build the interactive buttons using the stylized flexbox rows
     const actions = [
-        { name: "Buy a Drink", desc: "Restores 15 Hull.", cost: "10c", icon: "🥃", fn: "buyDrink()" },
+        { name: "Buy a Drink", desc: "Restores 10 Hull.", cost: "15c", icon: "🥃", fn: "cantinaAction('DRINK')" },
         { name: "Eavesdrop on Rumors", desc: "Listen to local chatter for clues.", cost: "FREE", icon: "👂", fn: "listenToRumors()" },
+        { name: "Trade Intel", desc: "Buy the latest market trend data.", cost: "50c", icon: "📈", fn: "cantinaAction('RUMOR')" },
+        { name: "Play Pazaak", desc: "Gamble with the locals.", cost: "100c", icon: "🃏", fn: "cantinaAction('GAMBLE')" },
         { name: "Crew Recruitment", desc: "Hire specialized crew members.", cost: "VARIES", icon: "🧑‍🚀", fn: "openRecruitmentBoard()" }
     ];
 
@@ -386,19 +389,12 @@ function listenToRumors() {
     const detailEl = document.getElementById('genericDetailContent');
     if (typeof soundManager !== 'undefined' && soundManager.playUIHover) soundManager.playUIHover();
 
-    // You can expand this array later to hint at actual in-game locations!
-    const rumors = [
-        "I heard the K'tharr are massing ships near the border...",
-        "Don't trust the Cryptarchs on Xerxes. They skim off the top.",
-        "Some say there's a Dyson Sphere hidden in the deep sectors...",
-        "Cartel activity is way up. Keep your shields double-charged.",
-        "Precursor artifacts have been flooding the Black Market lately.",
-        "If you find a pristine Nav-Core, don't sell it cheap. The Concord pays top credit.",
-        "Watch out for O-Class stars. The glare is blinding but the plasma is rich."
-    ];
+    // [FIX]: Properly link to the rumors.js global database!
+    let randomRumor = "The void is quiet today.";
+    if (typeof RUMORS !== 'undefined' && RUMORS.length > 0) {
+        randomRumor = RUMORS[Math.floor(Math.random() * RUMORS.length)];
+    }
     
-    const randomRumor = rumors[Math.floor(Math.random() * rumors.length)];
-
     if (detailEl) {
         detailEl.innerHTML = `
             <div style="text-align:center; padding: 20px;">
@@ -406,8 +402,8 @@ function listenToRumors() {
                 <h3 style="color:var(--accent-color); margin: 0 0 15px 0; font-size:22px;">LOCAL CHATTER</h3>
                 
                 <div style="text-align:left; background: var(--bg-color); border: 1px dashed var(--border-color); padding: 20px; border-radius: 4px;">
-                    <p style="font-size:14px; color:var(--text-color); font-style:italic; margin:0; line-height:1.6;">
-                        You sit quietly in a dark corner booths and tune your cybernetics to filter out the baseline noise.
+                    <p style="font-size:13px; color:var(--text-color); font-style:italic; margin:0; line-height:1.6;">
+                        You sit quietly in a dark corner booth and tune your cybernetics to filter out the baseline noise.
                         <br><br>
                         <span style="color:var(--warning);">"...${randomRumor}"</span>
                     </p>
@@ -980,11 +976,37 @@ function executeWarlordChallenge() {
     }
 }
 
-function hireEclipseMercenary() {
+function openMercenaryDen() {
     openGenericModal("MERCENARY DEN");
+    const listEl = document.getElementById('genericModalList');
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
-    document.getElementById('genericModalList').innerHTML = '';
+
+    listEl.innerHTML = `<div class="trade-list-header" style="color:#9933FF; font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom: 5px;">SHADOW OPERATIVES</div>`;
+
+    // Hook into the database in crew.js!
+    if (typeof ECLIPSE_MERCENARIES !== 'undefined') {
+        ECLIPSE_MERCENARIES.forEach(merc => {
+            const isHired = playerCrew.some(c => c.id === merc.id);
+            const row = document.createElement('div');
+            row.className = 'trade-item-row';
+            row.style.cssText = "padding: 12px 10px; border-bottom: 1px solid var(--border-color); cursor: pointer; display:flex; justify-content:space-between; align-items:center;";
+            if (isHired) row.style.opacity = '0.4';
+            
+            row.innerHTML = `
+                <div>
+                    <div style="color:var(--danger); font-weight:bold; font-size: 13px;">${merc.name}</div>
+                    <div style="color:var(--text-color); font-size: 10px; margin-top: 4px;">${merc.role}</div>
+                </div>
+                <div style="text-align:right;">
+                    <span style="color:var(--gold-text); font-weight:bold;">${isHired ? 'HIRED' : formatNumber(merc.cost) + 'c'}</span>
+                </div>
+            `;
+            
+            if (!isHired) row.onclick = () => showMercenaryDetails(merc);
+            listEl.appendChild(row);
+        });
+    }
 
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 20px;">
@@ -993,42 +1015,55 @@ function hireEclipseMercenary() {
             <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
                 "Need someone who doesn't ask questions? Our operatives increase your ship's combat lethality, but they have... sticky fingers. Expect cargo to go missing occasionally."
             </p>
-            <div style="margin-top: 20px; color: var(--text-color); font-size: 14px;">
-                <strong>Signing Bonus:</strong> <span style="color:var(--gold-text)">3,000c</span>
-            </div>
         </div>
     `;
     
-    const hasMerc = window.hasEclipseMerc; // Simple global boolean flag
-    const canAfford = playerCredits >= 3000;
+    actionsEl.innerHTML = `<button class="action-button" onclick="openStationView()">RETURN TO CONCOURSE</button>`;
+}
 
-    if (hasMerc) {
+function showMercenaryDetails(merc) {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px 0;">
+            <div style="font-size:50px; margin-bottom:10px;">🥷</div>
+            <h3 style="color:var(--danger); margin:0 0 15px 0;">${merc.name.toUpperCase()}</h3>
+            
+            <p style="color:var(--text-color); font-size:12px; line-height:1.5; text-align:left; background:rgba(0,0,0,0.3); padding:10px; border-left:2px solid var(--danger); margin-bottom:20px;">
+                "${merc.desc}"
+            </p>
+
+            <div class="trade-math-area" style="text-align:left;">
+                <div class="trade-stat-row"><span>Contract Fee:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(merc.cost)}c</span></div>
+                ${merc.stats.damageBonus ? `<div class="trade-stat-row"><span>Combat Bonus:</span> <span style="color:var(--success); font-weight:bold;">+${merc.stats.damageBonus} Damage</span></div>` : ''}
+                ${merc.stats.evasionBonus ? `<div class="trade-stat-row"><span>Evasion Bonus:</span> <span style="color:var(--success); font-weight:bold;">+${merc.stats.evasionBonus * 100}%</span></div>` : ''}
+                <div class="trade-stat-row" style="margin-top: 10px; border-top: 1px dashed var(--danger); padding-top: 10px;">
+                    <span style="color:var(--danger);">Known Drawback:</span>
+                    <span style="color:var(--text-color);">${merc.drawback.type.replace('_', ' ')} (${merc.drawback.chance * 100}% Chance)</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    if (playerCredits < merc.cost) {
         actionsEl.innerHTML = `
-            <button class="action-button" disabled>OPERATIVE ALREADY HIRED</button>
-            <button class="action-button" onclick="openStationView()">RETURN TO CONCOURSE</button>
+            <button class="action-button danger-btn" disabled>INSUFFICIENT FUNDS (${formatNumber(merc.cost)}c)</button>
+            <button class="action-button" onclick="openMercenaryDen()">◀ BACK TO ROSTER</button>
+        `;
+    } else if (playerCrew.length >= (typeof MAX_CREW !== 'undefined' ? MAX_CREW : 3)) {
+         actionsEl.innerHTML = `
+            <button class="action-button danger-btn" disabled>CREW QUARTERS FULL</button>
+            <button class="action-button" onclick="openMercenaryDen()">◀ BACK TO ROSTER</button>
         `;
     } else {
         actionsEl.innerHTML = `
-            <button class="action-button" style="border-color:#9933FF; color:#DDA0DD; box-shadow: 0 0 10px rgba(153, 51, 255, 0.2);" 
-                ${!canAfford ? 'disabled' : ''} onclick="executeEclipseMercenary()">
+            <button class="action-button" style="border-color:#9933FF; color:#DDA0DD; box-shadow: 0 0 10px rgba(153, 51, 255, 0.2);" onclick="hireMercenary('${merc.id}')">
                 HIRE OPERATIVE
             </button>
-            <button class="action-button" onclick="openStationView()">LEAVE</button>
+            <button class="action-button" onclick="openMercenaryDen()">◀ CANCEL</button>
         `;
     }
-}
-
-function executeEclipseMercenary() {
-    if (playerCredits < 3000) return;
-    playerCredits -= 3000;
-    window.hasEclipseMerc = true; // Global tracker
-    
-    if (typeof soundManager !== 'undefined') soundManager.playBuy();
-    logMessage("<span style='color:#9933FF; font-weight:bold;'>[ CARTEL ]</span> A shadow operative has boarded your ship. Combat damage increased, but watch your cargo hold.");
-    if (typeof showToast === 'function') showToast("MERCENARY HIRED", "success");
-    
-    if (typeof renderUIStats === 'function') renderUIStats();
-    openStationView();
 }
 
 // ==========================================
