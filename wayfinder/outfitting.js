@@ -119,9 +119,10 @@ function showShipDetails(shipId) {
     const tradeIn = baseTradeIn + componentsRefund;
     const netCost = isCurrent ? 0 : ship.baseCost - tradeIn;
 
-    // 2. The Hologram Effect!
+    // 2. The Hologram Effect! (Updated with safe fallbacks)
     const hologramHtml = ship.image 
-        ? `<img src="${ship.image}" style="width:100%; max-width:220px; filter: sepia(1) hue-rotate(140deg) saturate(3) opacity(0.7) drop-shadow(0 0 15px var(--accent-color)); border-bottom: 2px solid rgba(0,224,224,0.3); padding-bottom: 10px;" onerror="this.src='assets/outpost.png'">` 
+        ? `<img src="${ship.image}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" style="width:100%; max-width:220px; filter: sepia(1) hue-rotate(140deg) saturate(3) opacity(0.7) drop-shadow(0 0 15px var(--accent-color)); border-bottom: 2px solid rgba(0,224,224,0.3); padding-bottom: 10px;">
+           <div style="font-size:80px; filter: drop-shadow(0 0 15px var(--accent-color)); opacity:0.6; filter: hue-rotate(180deg); display:none;">🚀</div>`
         : `<div style="font-size:80px; filter: drop-shadow(0 0 15px var(--accent-color)); opacity:0.6; filter: hue-rotate(180deg);">🚀</div>`;
 
     // 3. Stat Deltas (Green Arrows for upgrades, Red for downgrades)
@@ -185,6 +186,7 @@ function showShipDetails(shipId) {
     if (isCurrent) {
         actionsEl.innerHTML = `<button class="action-button" onclick="displayShipyard()">BACK TO MANIFEST</button>`;
     } else {
+        // Calculate new cargo capacity purely off the chassis (since they lose their utility slot)
         const cargoTooLarge = typeof currentCargoLoad !== 'undefined' && currentCargoLoad > ship.cargoCapacity;
         const canAfford = playerCredits >= netCost;
         
@@ -301,7 +303,8 @@ function openOutfittingUI() {
     
     // We use pure CSS filters here to turn your standard PNG ship image into a glowing cyan hologram!
     const hologramHtml = shipImage 
-        ? `<img src="${shipImage}" style="width:100%; max-width:220px; filter: sepia(1) hue-rotate(140deg) saturate(3) opacity(0.7) drop-shadow(0 0 15px var(--accent-color)); border-bottom: 2px solid rgba(0,224,224,0.3); padding-bottom: 10px;">` 
+        ? `<img src="${shipImage}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" style="width:100%; max-width:220px; filter: sepia(1) hue-rotate(140deg) saturate(3) opacity(0.7) drop-shadow(0 0 15px var(--accent-color)); border-bottom: 2px solid rgba(0,224,224,0.3); padding-bottom: 10px;">
+           <div style="font-size:80px; filter: drop-shadow(0 0 15px var(--accent-color)); opacity:0.6; display:none;">🚀</div>`
         : `<div style="font-size:80px; filter: drop-shadow(0 0 15px var(--accent-color)); opacity:0.6;">🚀</div>`;
 
     detailEl.innerHTML = `
@@ -327,15 +330,34 @@ function openOutfittingUI() {
 
 function showOutfittingOptions(slot) {
     const listEl = document.getElementById('genericModalList');
+    listEl.innerHTML = '';
     
-    listEl.innerHTML = `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">${slot.toUpperCase()} INVENTORY</div>`;
+    let storeHtml = '';
+    let cargoHtml = '';
     
-    let hasUpgrades = false;
-
+    // 1. Check Cargo for Equippable Items (Prototypes, Crafted, Looted)
+    for (const itemId in playerCargo) {
+        if (playerCargo[itemId] > 0 && COMPONENTS_DATABASE[itemId] && COMPONENTS_DATABASE[itemId].slot === slot) {
+            const comp = COMPONENTS_DATABASE[itemId];
+            if (playerShip.components[slot] === itemId) continue; // Skip if already somehow equipped
+            
+            cargoHtml += `
+                <div class="trade-item-row" style="cursor:pointer; background:rgba(0, 224, 224, 0.05); border-left: 3px solid var(--accent-color);" onclick="renderComponentComparison('${itemId}', '${slot}', false, true)">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="color:var(--accent-color); font-weight:bold; font-size:12px;">📦 ${comp.name}</span>
+                        <span style="color:var(--success); font-size:10px; font-weight:bold;">IN CARGO</span>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    // 2. Check Store for Buyable Items
     for (const compId in COMPONENTS_DATABASE) {
         const comp = COMPONENTS_DATABASE[compId];
         
-        if (comp.cost === 0 || comp.cost >= 999999) continue; // [FIX]
+        // Skip unfathomably expensive (boss loot), free/default items, or procedurally generated items
+        if (comp.cost === 0 || comp.cost >= 999999 || compId.match(/_\d+$/)) continue;
         
         // Faction Lock Check
         if (comp.reqFaction) {
@@ -343,33 +365,36 @@ function showOutfittingOptions(slot) {
              if (standing < comp.minRep) continue; 
         }
 
-        
-        // Only show items that fit this slot AND aren't currently equipped
         if (comp.slot === slot && playerShip.components[slot] !== compId) {
-            hasUpgrades = true;
-            const row = document.createElement('div');
-            row.className = 'trade-item-row';
-            row.style.cursor = 'pointer';
-            row.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="color:var(--text-color); font-weight:bold; font-size:12px;">${comp.name}</span>
-                    <span style="color:var(--gold-text); font-size:10px;">${formatNumber(comp.cost)}c</span>
+            storeHtml += `
+                <div class="trade-item-row" style="cursor:pointer;" onclick="renderComponentComparison('${compId}', '${slot}', false, false)">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="color:var(--text-color); font-weight:bold; font-size:12px;">${comp.name}</span>
+                        <span style="color:var(--gold-text); font-size:10px;">${formatNumber(comp.cost)}c</span>
+                    </div>
                 </div>
             `;
-            row.onclick = () => renderComponentComparison(compId, slot);
-            listEl.appendChild(row);
         }
     }
     
-    if (!hasUpgrades) {
-        listEl.innerHTML += `<div style="padding:15px; color:#666; font-size:11px; font-style:italic;">No compatible upgrades detected in local station inventory.</div>`;
+    // Render the Headers and HTML chunks
+    if (cargoHtml) {
+        listEl.innerHTML += `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:5px; border-bottom:1px solid #333;">AVAILABLE IN CARGO</div>${cargoHtml}`;
     }
     
-    // Instantly render the currently equipped item in the right pane for reference!
-    renderComponentComparison(playerShip.components[slot], slot, true);
+    listEl.innerHTML += `<div class="trade-list-header" style="color:var(--gold-text); font-size:10px; letter-spacing:2px; margin-top:10px; margin-bottom:5px; border-bottom:1px solid #333;">STATION MARKETPLACE</div>`;
+    
+    if (!storeHtml) {
+        listEl.innerHTML += `<div style="padding:15px; color:#666; font-size:11px; font-style:italic;">No compatible upgrades detected in local station inventory.</div>`;
+    } else {
+        listEl.innerHTML += storeHtml;
+    }
+    
+    // Instantly render the currently equipped item in the right pane for reference
+    renderComponentComparison(playerShip.components[slot], slot, true, false);
 }
 
-function renderComponentComparison(compId, slot, isEquipped = false) {
+function renderComponentComparison(compId, slot, isEquipped = false, isOwned = false) {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
     
@@ -381,25 +406,38 @@ function renderComponentComparison(compId, slot, isEquipped = false) {
     
     // Trade-in Math
     const tradeInValue = isEquipped ? 0 : Math.floor((currentComp.cost || 0) * 0.5);
-    const netCost = isEquipped ? 0 : (selectedComp.cost || 0) - tradeInValue;
+    const netCost = (isEquipped || isOwned) ? 0 : (selectedComp.cost || 0) - tradeInValue;
 
     // --- DYNAMIC STAT COMPARISON BUILDER ---
     let statsHtml = '';
-    // Collect all unique stat keys from BOTH components so we don't miss any drops
     const allStats = new Set([...Object.keys(selectedComp.stats), ...Object.keys(currentComp.stats)]);
     
+    const percentageStats = ['hitChance', 'critChance', 'evasionBonus', 'accuracyBonus', 'scanBonus', 'signatureMod', 'fuelEfficiency'];
+    
     allStats.forEach(statName => {
-        const newVal = selectedComp.stats[statName] || 0;
-        const oldVal = currentComp.stats[statName] || 0;
+        let newVal = selectedComp.stats[statName] || 0;
+        let oldVal = currentComp.stats[statName] || 0;
         
         if (newVal === 0 && oldVal === 0) return; // Skip irrelevant stats
-
+        
+        // Format Percentages
+        let displayNew = percentageStats.includes(statName) ? `${newVal > 0 ? '+' : ''}${(newVal * 100).toFixed(0)}%` : newVal;
+        
         let color = "var(--text-color)";
         let diffArrow = "";
         
         if (!isEquipped) {
-            if (newVal > oldVal) { color = "var(--success)"; diffArrow = "▲"; }
-            else if (newVal < oldVal) { color = "var(--danger)"; diffArrow = "▼"; }
+            // Lower is better for these specific stats
+            const reverseLogic = statName === 'signatureMod' || statName === 'fuelEfficiency';
+            
+            if (newVal > oldVal) { 
+                color = reverseLogic ? "var(--danger)" : "var(--success)"; 
+                diffArrow = "▲"; 
+            }
+            else if (newVal < oldVal) { 
+                color = reverseLogic ? "var(--success)" : "var(--danger)"; 
+                diffArrow = "▼"; 
+            }
         }
         
         // Format the camelCase stat name into Title Case
@@ -407,7 +445,7 @@ function renderComponentComparison(compId, slot, isEquipped = false) {
         
         statsHtml += `<div class="trade-stat-row">
             <span style="text-transform:capitalize;">${formattedName}:</span> 
-            <span style="color:${color}; font-weight:bold;">${newVal} ${diffArrow}</span>
+            <span style="color:${color}; font-weight:bold;">${displayNew} ${diffArrow}</span>
         </div>`;
     });
     
@@ -417,7 +455,7 @@ function renderComponentComparison(compId, slot, isEquipped = false) {
     detailEl.innerHTML = `
         <div style="padding: 20px;">
             <div style="font-size:10px; color:var(--accent-color); letter-spacing:2px; margin-bottom:5px;">
-                ${isEquipped ? 'CURRENTLY EQUIPPED' : 'UPGRADE SELECTED'}
+                ${isEquipped ? 'CURRENTLY EQUIPPED' : (isOwned ? 'SELECT FROM CARGO' : 'UPGRADE SELECTED')}
             </div>
             
             <h3 style="color:var(--item-name-color); margin:0 0 5px 0;">${selectedComp.name.toUpperCase()}</h3>
@@ -435,7 +473,7 @@ function renderComponentComparison(compId, slot, isEquipped = false) {
                 ${statsHtml}
             </div>
             
-            ${!isEquipped ? `
+            ${(!isEquipped && !isOwned) ? `
                 <div class="trade-math-area" style="margin-top:15px; background:rgba(0,0,0,0.5);">
                     <div class="trade-stat-row"><span>Base Cost:</span> <span>${formatNumber(selectedComp.cost || 0)}c</span></div>
                     <div class="trade-stat-row" style="color:#888;"><span>Trade-in (${currentComp.name}):</span> <span>-${formatNumber(tradeInValue)}c</span></div>
@@ -450,11 +488,19 @@ function renderComponentComparison(compId, slot, isEquipped = false) {
     // --- RENDER ACTIONS ---
     if (isEquipped) {
         actionsEl.innerHTML = `<button class="action-button" onclick="openOutfittingUI()">BACK TO SLOTS</button>`;
+    } else if (isOwned) {
+        actionsEl.innerHTML = `
+            <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color); box-shadow: 0 0 10px rgba(0,224,224,0.2);" 
+                onclick="confirmBuyComponent('${compId}', true)">
+                INSTALL FROM CARGO
+            </button>
+            <button class="action-button" onclick="openOutfittingUI()">CANCEL</button>
+        `;
     } else {
         const canAfford = playerCredits >= netCost;
         actionsEl.innerHTML = `
             <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color); box-shadow: 0 0 10px rgba(0,224,224,0.2);" 
-                ${!canAfford ? 'disabled' : ''} onclick="confirmBuyComponent('${compId}')">
+                ${!canAfford ? 'disabled' : ''} onclick="confirmBuyComponent('${compId}', false)">
                 ${canAfford ? 'AUTHORIZE INSTALL' : 'INSUFFICIENT FUNDS'}
             </button>
             <button class="action-button" onclick="openOutfittingUI()">CANCEL</button>
@@ -462,20 +508,32 @@ function renderComponentComparison(compId, slot, isEquipped = false) {
     }
 }
 
-function confirmBuyComponent(compId) {
+function confirmBuyComponent(compId, isOwned = false) {
     const newComp = COMPONENTS_DATABASE[compId];
     const currentCompId = playerShip.components[newComp.slot];
     const currentComp = COMPONENTS_DATABASE[currentCompId];
     
     const tradeInValue = currentComp ? Math.floor(currentComp.cost * 0.5) : 0;
-    const netCost = newComp.cost - tradeInValue;
+    const netCost = isOwned ? 0 : newComp.cost - tradeInValue;
 
-    if(playerCredits < netCost) {
+    if(!isOwned && playerCredits < netCost) {
         if (typeof showToast === 'function') showToast(`Insufficient Funds!`, "error");
         return;
     }
     
-    playerCredits -= netCost;
+    if (!isOwned) {
+        playerCredits -= netCost;
+    } else {
+        // Remove the new component from cargo
+        playerCargo[compId]--;
+        if (playerCargo[compId] <= 0) delete playerCargo[compId];
+        
+        // Pack the old component into cargo (if it's not a free Mk1)
+        if (currentComp && currentComp.cost > 0) {
+            playerCargo[currentCompId] = (playerCargo[currentCompId] || 0) + 1;
+        }
+    }
+    
     playerShip.components[newComp.slot] = compId;
     
     // Swap ammo tracking safely
@@ -489,17 +547,23 @@ function confirmBuyComponent(compId) {
     applyPlayerShipStats();
     
     let msg = `Installed ${newComp.name}.`;
-    if (netCost < 0) {
-        const refund = Math.abs(netCost);
-        msg += `<br><span style="font-size:11px; color:var(--success);">(Salvage Refund: +${formatNumber(refund)}c)</span>`;
-    } else if (tradeInValue > 0) {
-        msg += `<br><span style="font-size:11px; color:var(--item-desc-color);">(Traded in ${currentComp.name} for ${formatNumber(tradeInValue)}c)</span>`;
+    if (isOwned) {
+        if (currentComp && currentComp.cost > 0) {
+            msg += `<br><span style="font-size:11px; color:var(--success);">(Stowed ${currentComp.name} in Cargo Hold)</span>`;
+        }
+    } else {
+        if (netCost < 0) {
+            const refund = Math.abs(netCost);
+            msg += `<br><span style="font-size:11px; color:var(--success);">(Salvage Refund: +${formatNumber(refund)}c)</span>`;
+        } else if (tradeInValue > 0) {
+            msg += `<br><span style="font-size:11px; color:var(--item-desc-color);">(Traded in ${currentComp.name} for ${formatNumber(tradeInValue)}c)</span>`;
+        }
     }
     
+    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
     if (typeof soundManager !== 'undefined') soundManager.playBuy();
     if (typeof showToast === 'function') showToast(msg, "success");
     
-    // Return to the main engineering screen so they can pick another slot!
     openOutfittingUI(); 
     if (typeof renderUIStats === 'function') renderUIStats();
 }
@@ -604,76 +668,88 @@ function refuelShip() {
     if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
 }
 
+// --- CENTRALIZED STAT CALCULATION ENGINE ---
 function applyPlayerShipStats() {
     const shipClassData = SHIP_CLASSES[playerShip.shipClass];
     
-    // 1. Get Base Stats
-    let calculatedMaxHull = shipClassData.baseHull || 100;
-    let calculatedMaxCargo = shipClassData.cargoCapacity || 50;
-    let calculatedEvasion = shipClassData.baseEvasion || 0; 
-    let calculatedSignature = shipClassData.baseSignature || 1.0; // 🚨 NEW: Base Radar Signature
+    // 1. Base Chassis Stats
+    let calcHull = shipClassData.baseHull || 100;
+    let calcCargo = shipClassData.cargoCapacity || 50;
+    let calcEvasion = shipClassData.baseEvasion || 0; 
+    let calcSignature = shipClassData.baseSignature || 1.0; 
 
-    // 2. Apply Base Component Stats First
-    const weapon = COMPONENTS_DATABASE[playerShip.components.weapon];
-    const shield = COMPONENTS_DATABASE[playerShip.components.shield];
-    const engine = COMPONENTS_DATABASE[playerShip.components.engine];
-
-    PLAYER_ATTACK_DAMAGE = weapon.stats.damage || 0;
-    PLAYER_HIT_CHANCE = weapon.stats.hitChance || 0;
+    let calcShields = 0;
+    let calcFuel = 0;
+    let calcDmg = 0;
+    let calcHit = 0;
     
+    let totalDmgBonus = 0;
+    let totalEvasionBonus = 0;
+    let totalHitBonus = 0;
+    let fuelEfficiencyMult = 1.0;
+
+    // 2. Aggregate Base & Bonus Stats from Components
+    const slots = ['weapon', 'shield', 'engine', 'scanner', 'utility'];
+    slots.forEach(slot => {
+        const compId = playerShip.components[slot];
+        const comp = COMPONENTS_DATABASE[compId];
+        if (comp && comp.stats) {
+            // Base Definitions
+            if (slot === 'weapon') {
+                calcDmg = comp.stats.damage || 0;
+                calcHit = comp.stats.hitChance || 0;
+            }
+            if (slot === 'shield') calcShields = comp.stats.maxShields || 0;
+            if (slot === 'engine') calcFuel = comp.stats.maxFuel || 0;
+            
+            // Universal Bonuses (can roll on ANY item due to procedural loot)
+            if (comp.stats.hullBonus) calcHull += comp.stats.hullBonus;
+            if (comp.stats.cargoBonus) calcCargo += comp.stats.cargoBonus;
+            if (comp.stats.shieldBonus) calcShields += comp.stats.shieldBonus;
+            if (comp.stats.signatureMod) calcSignature += comp.stats.signatureMod;
+            if (comp.stats.damageBonus) totalDmgBonus += comp.stats.damageBonus;
+            if (comp.stats.evasionBonus) totalEvasionBonus += comp.stats.evasionBonus;
+            if (comp.stats.accuracyBonus) totalHitBonus += comp.stats.accuracyBonus;
+            if (comp.stats.fuelEfficiency) fuelEfficiencyMult *= comp.stats.fuelEfficiency;
+        }
+    });
+
+    PLAYER_ATTACK_DAMAGE = calcDmg + totalDmgBonus;
+    PLAYER_HIT_CHANCE = calcHit + totalHitBonus;
+    calcEvasion += totalEvasionBonus;
+
+    // 3. Apply Perks (Player)
     if (typeof playerPerks !== 'undefined' && playerPerks.has('WEAPON_OVERCLOCK')) {
         PLAYER_ATTACK_DAMAGE = Math.floor(PLAYER_ATTACK_DAMAGE * 1.15);
     }
     
-    MAX_SHIELDS = shield.stats.maxShields || 0;
-    MAX_FUEL = engine.stats.maxFuel || 0;
-
-    // 3. Check Utility Slot
-    const utilityId = playerShip.components.utility || "UTIL_NONE";
-    const utility = COMPONENTS_DATABASE[utilityId];
-
-    if (utility && utility.stats) {
-        if (utility.stats.hullBonus) calculatedMaxHull += utility.stats.hullBonus;
-        if (utility.stats.cargoBonus) calculatedMaxCargo += utility.stats.cargoBonus;
-        if (utility.stats.shieldBonus) MAX_SHIELDS += utility.stats.shieldBonus;
-        
-        // 🚨 NEW: Check if the utility module reduces signature (e.g. Smuggler's Hold)
-        if (utility.stats.signatureMod) calculatedSignature += utility.stats.signatureMod; 
-    }
-
-    // --- 4. APPLY CREW & MERCENARY BONUSES ---
+    // 4. Apply Crew & Mercenary Bonuses
     if (typeof playerCrew !== 'undefined' && playerCrew.length > 0) {
         playerCrew.forEach(crew => {
-            // Apply Eclipse Mercenary raw stats
             if (crew.stats) {
-                if (crew.stats.hullBonus) calculatedMaxHull += crew.stats.hullBonus;
-                if (crew.stats.damageBonus) window.PLAYER_ATTACK_DAMAGE += crew.stats.damageBonus;
-                if (crew.stats.evasionBonus) calculatedEvasion += crew.stats.evasionBonus;
+                if (crew.stats.hullBonus) calcHull += crew.stats.hullBonus;
+                if (crew.stats.damageBonus) PLAYER_ATTACK_DAMAGE += crew.stats.damageBonus;
+                if (crew.stats.evasionBonus) calcEvasion += crew.stats.evasionBonus;
             }
-            
-            // Apply Standard Crew COMBAT perk
             if (crew.perk === "COMBAT_DAMAGE") {
-                window.PLAYER_ATTACK_DAMAGE = Math.floor(window.PLAYER_ATTACK_DAMAGE * 1.15);
+                PLAYER_ATTACK_DAMAGE = Math.floor(PLAYER_ATTACK_DAMAGE * 1.15);
             }
-            // Apply Standard Crew SHIELD perk
             if (crew.perk === "SHIELD_BOOST") {
-                MAX_SHIELDS = Math.floor(MAX_SHIELDS * 1.25);
+                calcShields = Math.floor(calcShields * 1.25);
             }
         });
     }
 
-    // --- 4.5 APPLY CRAFTING & CODEX BONUSES ---
-    
-    // A. Crafting Synthesis Bonuses
+    // 5. Apply Crafting Synthesis Bonuses
     if (typeof worldStateDeltas !== 'undefined' && worldStateDeltas['CRAFTING_BONUSES']) {
         const bonuses = worldStateDeltas['CRAFTING_BONUSES'];
-        calculatedMaxHull += bonuses.hull || 0;
-        MAX_SHIELDS += bonuses.shields || 0;
-        MAX_FUEL += bonuses.fuel || 0;
-        window.PLAYER_ATTACK_DAMAGE += bonuses.damage || 0;
+        calcHull += bonuses.hull || 0;
+        calcShields += bonuses.shields || 0;
+        calcFuel += bonuses.fuel || 0;
+        PLAYER_ATTACK_DAMAGE += bonuses.damage || 0;
     }
 
-    // B. Codex Mastery Bonuses
+    // 6. Apply Codex Mastery Bonuses
     if (typeof LORE_DATABASE !== 'undefined') {
         const categories = {};
         for (const key in LORE_DATABASE) {
@@ -684,28 +760,30 @@ function applyPlayerShipStats() {
         }
         for (const cat in categories) {
             if (categories[cat].total > 0 && categories[cat].unlocked === categories[cat].total) {
-                if (cat === "Starships") calculatedMaxHull += 5;
-                else if (cat === "Phenomena") MAX_FUEL += 10;
-                else if (cat === "Locations") calculatedEvasion += 0.02; 
-                else if (cat === "Factions") MAX_SHIELDS += 5;
-                else calculatedMaxCargo += 2; 
+                if (cat === "Starships") calcHull += 5;
+                else if (cat === "Phenomena") calcFuel += 10;
+                else if (cat === "Locations") calcEvasion += 0.02; 
+                else if (cat === "Factions") calcShields += 5;
+                else calcCargo += 2; 
             }
         }
     }
 
-    // 5. Apply Final Calculations to Globals
-    MAX_PLAYER_HULL = calculatedMaxHull;
-    PLAYER_CARGO_CAPACITY = calculatedMaxCargo;
-    PLAYER_EVASION = calculatedEvasion; 
+    // 7. Final Output to Globals
+    MAX_PLAYER_HULL = calcHull;
+    PLAYER_CARGO_CAPACITY = calcCargo;
+    MAX_SHIELDS = calcShields;
     
-    // 🚨 NEW: Export the final signature globally (capping it so it can never drop below 10%)
-    window.PLAYER_SIGNATURE = Math.max(0.1, calculatedSignature); 
+    // Apply efficiency multiplier to base engine fuel, then set global
+    MAX_FUEL = Math.floor(calcFuel * fuelEfficiencyMult);
+    
+    PLAYER_EVASION = calcEvasion; 
+    window.PLAYER_SIGNATURE = Math.max(0.1, calcSignature); 
 
-    // --- 6. APPLY SYNERGIES (SET BONUSES) ---
+    // 8. Apply Synergies (SET BONUSES)
     if (typeof SYNERGIES_DATABASE !== 'undefined') {
         activeSynergy = null;
         const mfgCounts = {};
-        const slots = ['weapon', 'shield', 'engine', 'scanner', 'utility'];
         
         slots.forEach(slot => {
             const comp = COMPONENTS_DATABASE[playerShip.components[slot]];
@@ -716,18 +794,20 @@ function applyPlayerShipStats() {
 
         for (const mfg in mfgCounts) {
             if (mfgCounts[mfg] >= 3 && SYNERGIES_DATABASE[mfg]) {
-                activeSynergy = SYNERGIES_DATABASE[mfg];// --- 4. APPLY CREW & MERCENARY BONUSES ---
-                activeSynergy.effect(); // Apply the raw stat boosts
+                activeSynergy = SYNERGIES_DATABASE[mfg];
+                activeSynergy.effect(); 
                 break; 
             }
         }
     }
 
-    // 7. Cap Vitals
-    if (playerHull > MAX_PLAYER_HULL) playerHull = MAX_PLAYER_HULL;
-    if (playerShields > MAX_SHIELDS) playerShields = MAX_SHIELDS;
-    if (playerFuel > MAX_FUEL) playerFuel = MAX_FUEL;
+    // 9. Cap Current Vitals
+    if (typeof playerHull !== 'undefined') playerHull = Math.min(playerHull, MAX_PLAYER_HULL);
+    if (typeof playerShields !== 'undefined') playerShields = Math.min(playerShields, MAX_SHIELDS);
+    if (typeof playerFuel !== 'undefined') playerFuel = Math.min(playerFuel, MAX_FUEL);
 
-    // --- TELL THE BUS WE CHANGED MAX STATS ---
+    // Tell the Bus
     if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
 }
+
+// --- END OF FILE outfitting.js ---
