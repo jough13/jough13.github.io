@@ -3403,8 +3403,8 @@ function handleInteraction() {
         // --- 2. STATION & OUTPOST INTERCEPT ---
         if (location.isMajorHub || location.char === OUTPOST_CHAR_VAL) {
             
-            // Customs scan for major hubs (Must pass to dock!)
-            if (location.isMajorHub) {
+            // [FIX]: Only run Customs Scans at CONCORD Major Hubs!
+            if (location.isMajorHub && currentFaction === 'CONCORD') {
                 const cleared = performCustomsScan();
                 if (!cleared) return; 
             }
@@ -4394,9 +4394,10 @@ function handleCombatInput(key) {
                 return true;
             case 'o':
                 if (currentLocation.isMajorHub) {
-                    displayOutfittingScreen();
+                    openOutfittingUI();
                     return true;
                 }
+                break;
                 break; 
             case 'k':
                 if (currentLocation.isMajorHub) {
@@ -4667,14 +4668,6 @@ function handleCombatInput(key) {
             return true;
         case 'i':
             if (typeof openCargoModal === 'function') openCargoModal();
-            return true;
-            
-        // --- OBSERVATORY HOTKEY (O) ---
-        case 'o':
-        case 'O':
-            if (document.getElementById('genericModalOverlay').style.display !== 'flex') {
-                if (typeof openObservatory === 'function') openObservatory();
-            }
             return true;
             
         case 'p':
