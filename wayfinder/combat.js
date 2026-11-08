@@ -252,20 +252,15 @@ function handleVictory() {
 
     // --- 6. BOUNTY MISSION TRACKING ---
     if (playerActiveMission && playerActiveMission.type === "BOUNTY" && !playerActiveMission.isComplete) {
-        // [FIX]: Check for the new 'bounty_0' key, while falling back to 'eliminate_0' for old saves!
         const progress = playerActiveMission.progress.bounty_0 || playerActiveMission.progress.eliminate_0;
 
         if (progress && !progress.complete) {
             progress.current++;
             msg += `\n<span style='color:var(--success); font-weight:bold;'>Bounty Progress: ${progress.current}/${progress.required}</span>`;
-
-            // Check if this kill finished the contract
             if (progress.current >= progress.required) {
                 progress.complete = true;
-                checkMissionObjectiveCompletion(); // This handles the "Return to station" logic
+                checkMissionObjectiveCompletion(); 
             }
-
-            // Refresh the HUD Mission Tracker box immediately
             renderMissionTracker();
         }
     }
