@@ -156,7 +156,7 @@ const LOCATIONS_DATA = {
         },
         type: PLANET_CHAR_VAL,
         faction: "KTHARR",
-        isMajorHub: false,
+        isMajorHub: true,
         sells: [
             { id: "KTHARR_ANCESTRAL_BLADE", priceMod: 0.8, stock: 5 }, 
             { id: "MINERALS", priceMod: 0.9, stock: 150 },
@@ -178,7 +178,7 @@ const LOCATIONS_DATA = {
         },
         type: STARBASE_CHAR_VAL,
         faction: "ECLIPSE",
-        isMajorHub: false,
+        isMajorHub: true,
         isBlackMarket: true, 
         sells: [
             { id: "FORBIDDEN_TEXTS", priceMod: 1.2, stock: 5 },
