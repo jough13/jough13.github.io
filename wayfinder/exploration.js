@@ -210,8 +210,7 @@ function renderPlanetView() {
 
     // --- DYNAMIC COLONY BUTTON LOGIC ---
     let colonyButtonHtml = '';
-    // [FIX]: Use the correct ID syntax established in colonies.js!
-    const colId = `${currentSystemData.x}_${currentSystemData.y}_p${selectedPlanetIndex}`;
+    const colId = `${currentSystemData.x}_${currentSystemData.y}_p${selectedPlanetIndex}`; // [FIX]
     const colonyHere = playerColonies[colId];
     const isColonyHere = colonyHere && colonyHere.established;
 
@@ -512,8 +511,7 @@ function renderPlanetView() {
             const util = COMPONENTS_DATABASE[playerShip.components.utility || "UTIL_NONE"];
             const hasHealthPhysicist = typeof playerPerks !== 'undefined' && playerPerks.has('HEALTH_PHYSICIST');
             
-            // [FIX]: Check util.stats.radImmunity!
-            if ((!util || !util.stats || !util.stats.radImmunity) && !hasHealthPhysicist) {
+            if ((!util || !util.stats || !util.stats.radImmunity) && !hasHealthPhysicist) { // [FIX]
                 GameBus.emit('HULL_DAMAGED', { amount: 20, reason: "Melted in stellar corona" });
                 logMessage("<span style='color:var(--danger);'>Radiation shielding breached! Hull integrity compromised while scooping.</span>");
             } else if (hasHealthPhysicist) {
@@ -702,7 +700,6 @@ function scanPlanetForLife() {
          return;
      }
 
-     // NEW: Filter for *only* biological resources
      const bioResources = planet.biome.resources.filter(r => BIOLOGICAL_RESOURCES.has(r));
 
      if (bioResources.length === 0) {
@@ -1351,9 +1348,9 @@ function generateStellarReport(starData, starId) {
     let hasCrystals = false;
     
     planets.forEach(p => {
-        if (['TERRAN', 'OCEANIC', 'TOXIC'].includes(p.biome.name.toUpperCase().replace(' WORLD', '').replace(' JUNGLE', ''))) hasHabitable = true;
-        if (['GAS GIANT', 'ICE GIANT'].includes(p.biome.name.toUpperCase())) hasGasGiant = true;
-        if (p.biome.name.toUpperCase().includes('CRYSTAL')) hasCrystals = true;
+        if (['TERRAN', 'OCEANIC', 'TOXIC'].includes(p.biome.id)) hasHabitable = true; // [FIX]
+        if (['GAS_GIANT', 'ICE_GIANT'].includes(p.biome.id)) hasGasGiant = true; // [FIX]
+        if (p.biome.id === 'CRYSTAL') hasCrystals = true; // [FIX]
     });
 
     // 3. Generate Astrochemistry (Based on Star Class)
