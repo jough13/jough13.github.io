@@ -44,7 +44,7 @@ const PLANET_BIOMES = {
         hazard: "SILICA STORMS",
         description: "Endless seas of wind-carved quartz dunes hiding ancient dry seabeds and spice-rich fissures.",
         resources: ['MINERALS', 'GOLD', 'KTHARR_SPICES'],
-        image: 'assets/barren_rock.png',
+        image: 'assets/desert_world.png',
         expeditionFlavor: "Fighting through a howling electrostatic sandstorm, your team locates a sheltered canyon vein."
     },
     GLACIAL: {
@@ -55,7 +55,7 @@ const PLANET_BIOMES = {
         hazard: "EXTREME COLD",
         description: "A frozen world locked in a permanent ice age. Sub-glacial pockets hold ultra-pure water and super-cooled fluids.",
         resources: ['WATER', 'MINERALS', 'QUANTUM_FLUID'],
-        image: 'assets/ice_giant.png',
+        image: 'assets/glacial_world.png',
         expeditionFlavor: "Descending into a glowing blue glacial crevasse, you tap into a pressurized sub-surface thermal vent."
     },
     VOLCANIC: {
@@ -99,7 +99,7 @@ const PLANET_BIOMES = {
         hazard: "GRAVIMETRIC SHEAR",
         description: "A planet partially ripped open by an ancient orbital impact, exposing its dense metallic planetary core.",
         resources: ['PLATINUM_ORE', 'RARE_METALS', 'REFINED_ALLOY'],
-        image: 'assets/volcanic_world.png',
+        image: 'assets/shattered_core.png',
         expeditionFlavor: "Navigating zero-G debris ribbons hovering above the exposed planetary mantle, you cut free slabs of pure core alloy."
     },
     MYCELIAL: {
@@ -110,7 +110,7 @@ const PLANET_BIOMES = {
         hazard: "PSYCHOTROPIC FOG",
         description: "A twilight world carpeted in towering fungal spires linked by a planet-spanning neural root network.",
         resources: ['SENTIENT_MYCELIUM', 'GENETIC_SAMPLES', 'MEDICAL_SUPPLIES'],
-        image: 'assets/toxic_jungle.png',
+        image: 'assets/mycelial_world.png',
         expeditionFlavor: "The fungal canopy pulses in mathematical rhythm with your ship's engine as you harvest psychoactive spore clusters."
     },
     TERRAN: {
@@ -143,7 +143,7 @@ const PLANET_BIOMES = {
         hazard: "AUTOMATED SENTINELS",
         description: "A dead world covered in the weathered obsidian geometry of a vanished Precursor civilization.",
         resources: ['ARTIFACT_SHARDS', 'TECH_PARTS', 'ANCIENT_RELICS'],
-        image: 'assets/wasteland.png',
+        image: 'assets/tomb_world.png',
         expeditionFlavor: "Beneath a collapsed monolith, your scanners pinpoint a sealed Precursor subterranean archive."
     },
     CRYSTAL: {
@@ -414,7 +414,7 @@ window.PLANET_BIOMES = PLANET_BIOMES;
             rewardSummary.push(`<span style="color:var(--success)">+${formatNumber(xpGain)} XP</span>`);
 
             if (typeof logMessage === 'function') {
-                logMessage(`<span style="color:#DDA0DD">[ SURFACE EXPEDITION ]</span> ${flavor} Recovered: ${rewardSummary.join(', ')}.`);
+                logMessage(`<span style="color:#DDA0DD">[ SURFACE EXPEDITION ]</span> ${flavor} Recovered: ${rewardSummary.join(', ')}.${hazardMsg}`);
             }
             if (typeof showToast === 'function') showToast("EXPEDITION COMPLETE", "success");
 
