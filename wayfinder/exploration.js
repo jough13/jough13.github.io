@@ -512,7 +512,8 @@ function renderPlanetView() {
             const util = COMPONENTS_DATABASE[playerShip.components.utility || "UTIL_NONE"];
             const hasHealthPhysicist = typeof playerPerks !== 'undefined' && playerPerks.has('HEALTH_PHYSICIST');
             
-            if ((!util || !util.radImmunity) && !hasHealthPhysicist) {
+            // [FIX]: Check util.stats.radImmunity!
+            if ((!util || !util.stats || !util.stats.radImmunity) && !hasHealthPhysicist) {
                 GameBus.emit('HULL_DAMAGED', { amount: 20, reason: "Melted in stellar corona" });
                 logMessage("<span style='color:var(--danger);'>Radiation shielding breached! Hull integrity compromised while scooping.</span>");
             } else if (hasHealthPhysicist) {
