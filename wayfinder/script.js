@@ -1789,7 +1789,8 @@ function checkCodexCompletion(categoryToCheck, isSilent = false) {
     
     // Clear Caches
     systemCache = {}; 
-    playerFactionStanding = {};
+    // [FIX]: Pull starting faction reps cleanly from config!
+    playerFactionStanding = typeof getStartingFactionStanding === 'function' ? getStartingFactionStanding() : { CONCORD: 0, ECLIPSE: -10, KTHARR: -50 };
     
     // --- THE FIX: MOVED playerCargo INITIALIZATION DOWN ---
 
