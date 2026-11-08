@@ -746,13 +746,11 @@ function handleCombatAction(action) {
                         enemyLog += `Shields took ${Math.floor(pD)}.`;
                         if (playerShields < 0) {
                             const spill = Math.abs(playerShields);
-                            playerHull -= spill;
                             playerShields = 0;
                             enemyLog += ` Breach! Hull took ${Math.floor(spill)}.`;
                             if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: Math.floor(spill), reason: "Combat Fire" });
                         }
                     } else {
-                        playerHull -= pD;
                         enemyLog += `Hull took ${Math.floor(pD)} damage!`;
                         if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: Math.floor(pD), reason: "Combat Fire" });
                     }
