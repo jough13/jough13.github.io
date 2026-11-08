@@ -36,6 +36,12 @@ const COMMODITIES = {
     // ==========================================
     // --- STANDARD GOODS & RAW MATERIALS ---
     // ==========================================
+
+    LUXURY_GOODS: { 
+        name: "Luxury Goods", 
+        basePrice: 350, 
+        description: "High-end textiles, holovids, and artisanal crafts produced by advanced colonies." 
+    },
     
     FUEL_CELLS: {
         name: "Fuel Cells",
