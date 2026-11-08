@@ -335,14 +335,14 @@ function showOutfittingOptions(slot) {
     for (const compId in COMPONENTS_DATABASE) {
         const comp = COMPONENTS_DATABASE[compId];
         
-        // [FIX]: Hide crafting prototypes and boss drops from standard vendors!
-        if (comp.cost === 0 || comp.cost >= 999999) continue;
+        if (comp.cost === 0 || comp.cost >= 999999) continue; // [FIX]
         
         // Faction Lock Check
         if (comp.reqFaction) {
              const standing = playerFactionStanding[comp.reqFaction] || 0;
              if (standing < comp.minRep) continue; 
         }
+
         
         // Only show items that fit this slot AND aren't currently equipped
         if (comp.slot === slot && playerShip.components[slot] !== compId) {
