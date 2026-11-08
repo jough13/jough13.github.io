@@ -3,7 +3,6 @@ function openStationView() {
     if (!location) return;
 
     // --- 1. XERXES REDIRECT (UPDATED) ---
-    // [FIX]: Force Xerxes to always route to the Spire view, preventing puzzle bypass!
     if (location.name === 'Planet Xerxes' || location.name === 'Xerxes Prime') {
         if (typeof openXerxesView === 'function') {
             openXerxesView();
@@ -187,24 +186,20 @@ function renderStationMenu(location, faction) {
 
     // --- 5. FACTION SPECIFIC SERVICES ---
     if (faction === 'CONCORD') {
-     // [FIX]: Change clearConcordBounty() to openSecurityOffice()
         html += createBtn('⚖️', 'Security Office', 'Clear Bounties', "openSecurityOffice()", "border-left: 3px solid var(--accent-color);");
         html += createBtn('🛡️', 'Aegis Armory', 'Concord Gear', "openConcordArmory()", "border-left: 3px solid var(--accent-color);");
         html += createBtn('📡', 'Naval Command', 'Hire Escort', "requestConcordEscort()", "border-left: 3px solid var(--accent-color);");
         html += createBtn('🪖', 'Marine Barracks', 'Recruit Ground Forces', "openBarracksUI()", "border-left: 3px solid var(--accent-color);");
 
     } else if (faction === 'KTHARR') {
-     // [FIX]: Change 'openKtharrProvingGrounds()' to 'openProvingGrounds()'
-     html += createBtn('⚔️', 'Proving Grounds', 'Arena Betting', "openProvingGrounds()", "border-left: 3px solid var(--danger);");
-     html += createBtn('🍖', 'The Blood Pits', 'Bio-Trade', "openBloodPitsTrade()", "border-left: 3px solid var(--danger);");
-     html += createBtn('💀', 'Rite of Combat', 'Challenge Warlord', "challengeKtharrWarlord()", "border-left: 3px solid var(--danger);");
+        html += createBtn('⚔️', 'Proving Grounds', 'Arena Betting', "openProvingGrounds()", "border-left: 3px solid var(--danger);");
+        html += createBtn('🍖', 'The Blood Pits', 'Bio-Trade', "openBloodPitsTrade()", "border-left: 3px solid var(--danger);");
+        html += createBtn('💀', 'Rite of Combat', 'Challenge Warlord', "challengeKtharrWarlord()", "border-left: 3px solid var(--danger);");
     } else if (faction === 'ECLIPSE') {
-     // [FIX]: Change fenceEclipseContraband() to openShadowBroker()
-     html += createBtn('🎲', 'Shadow Broker', 'Fence Contraband', "openShadowBroker()", "border-left: 3px solid #9933FF;");
-     html += createBtn('🪪', 'The Forger', 'Buy Fake ID', "buyFakeID()", "border-left: 3px solid #9933FF;");
-     // [FIX]: Change hireEclipseMercenary() to openMercenaryDen()
-     html += createBtn('🗡️', 'Mercenary Den', 'Hire Shady Crew', "openMercenaryDen()", "border-left: 3px solid #9933FF;");
- }
+        html += createBtn('🎲', 'Shadow Broker', 'Fence Contraband', "openShadowBroker()", "border-left: 3px solid #9933FF;");
+        html += createBtn('🪪', 'The Forger', 'Buy Fake ID', "buyFakeID()", "border-left: 3px solid #9933FF;");
+        html += createBtn('🗡️', 'Mercenary Den', 'Hire Shady Crew', "openMercenaryDen()", "border-left: 3px solid #9933FF;");
+    }
 
     // --- 6. MAINTENANCE & LEAVE ---
     const missingFuel = Math.floor(MAX_FUEL - playerFuel);
@@ -389,7 +384,6 @@ function listenToRumors() {
     const detailEl = document.getElementById('genericDetailContent');
     if (typeof soundManager !== 'undefined' && soundManager.playUIHover) soundManager.playUIHover();
 
-    // [FIX]: Properly link to the rumors.js global database!
     let randomRumor = "The void is quiet today.";
     if (typeof RUMORS !== 'undefined' && RUMORS.length > 0) {
         randomRumor = RUMORS[Math.floor(Math.random() * RUMORS.length)];
