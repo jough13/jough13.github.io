@@ -8,6 +8,7 @@ const LOOT_TABLES = {
     DERELICT_COMMON: [
         { weight: 5, type: "FLAVOR", text: "The vessel is stripped bare. Nothing but dust and ghosts." },
         { weight: 3, type: "ITEM", id: "TECH_PARTS", min: 5, max: 15, text: "You salvage a crate of components." },
+        { weight: 2, type: "ITEM", id: "FOOD_SUPPLIES", min: 5, max: 10, text: "Found some intact emergency rations." },
         { weight: 2, type: "XP", amount: 30, text: "Ship logs downloaded." },
         { weight: 1, type: "CREDITS", min: 200, max: 800, text: "Found a concealed credit chit." }
     ],
@@ -18,6 +19,7 @@ const LOOT_TABLES = {
         { weight: 2, type: "ITEM", id: "OBSIDIAN_TEAR_PLATING", min: 1, max: 3, text: "You salvage some ultra-dense Obsidian Tear Plating from the hull!" },
         { weight: 2, type: "ITEM", id: "ARTIFACT_SHARDS", min: 1, max: 4, text: "You found fragments of strange, humming glass." },
         { weight: 1, type: "ITEM", id: "PRECURSOR_DATACUBE", min: 1, max: 1, text: "Jackpot! An intact Precursor Datacube." },
+        { weight: 1, type: "ITEM", id: "UNSHACKLED_AI", min: 1, max: 1, text: "You pulled a dormant Unshackled AI core from the mainframe!" },
         { weight: 1, type: "TRAP_PLASMA", damage: 15, text: "Booby trap! Plasma vent rupture." },
         { weight: 1, type: "TRAP_PIRATE", text: "Distress beacon was a lure! Ambush!" }
     ],
@@ -25,6 +27,7 @@ const LOOT_TABLES = {
         { weight: 4, type: "XP", amount: 50, text: "Sensors record valuable telemetry." },
         { weight: 2, type: "HEAL", text: "Exotic radiation revitalizes your ship's systems." },
         { weight: 2, type: "ITEM", id: "VOID_CRYSTALS", min: 1, max: 3, text: "Matter stabilized. Crystals recovered." },
+        { weight: 1, type: "ITEM", id: "ENCRYPTED_ENGRAM", min: 1, max: 1, text: "A bizarre data-matrix crystallized out of the anomaly." },
         { weight: 1, type: "ITEM", id: "PHASE_SHIFTED_ALLOY", min: 1, max: 1, text: "An object falls out of hyperspace right in front of you!" }
     ]
 };
@@ -63,17 +66,34 @@ const COMMODITIES = {
     NANO_REPAIR_KIT: {
         name: "Nano-Repair Kit",
         basePrice: 150,
-        description: "A pressurized canister of programmable smart-matter. Use from the Cargo Manifest to instantly patch 25 Hull Integrity.",
+        description: "A pressurized canister of programmable smart-matter. Use from the Cargo Manifest to instantly patch 35 Hull Integrity.",
         onUse: () => {
             if (typeof playerHull !== 'undefined' && playerHull >= MAX_PLAYER_HULL) {
                 if (typeof showToast === 'function') showToast("HULL ALREADY MAXED", "info");
                 return false;
             }
-            playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 25);
-            logMessage("<span style='color:var(--success)'>Nano-sealant deployed. Hull repaired by 25.</span>");
+            playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 35);
+            logMessage("<span style='color:var(--success)'>Nano-sealant deployed. Hull repaired by 35.</span>");
             if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
             if (typeof showToast === 'function') showToast("HULL REPAIRED", "success");
             return true;
+        }
+    },
+    SENSOR_DECOY: {
+        name: "Sensor Decoy",
+        basePrice: 500,
+        illegal: true,
+        description: "A spoofing buoy that broadcasts your ship's transponder data while flying in the opposite direction. Use to instantly reduce Concord Notoriety by 1.",
+        onUse: () => {
+            if (typeof playerNotoriety !== 'undefined' && playerNotoriety > 0) {
+                if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(-1);
+                logMessage("<span style='color:var(--success)'>Deployed Sensor Decoy. Concord heat reduced by 1.</span>");
+                if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+                if (typeof showToast === 'function') showToast("NOTORIETY REDUCED", "success");
+                return true;
+            }
+            if (typeof showToast === 'function') showToast("NO ACTIVE WARRANTS", "info");
+            return false;
         }
     },
     REFINED_ALLOY: {
@@ -193,7 +213,8 @@ const COMMODITIES = {
     CYBERNETIC_IMPLANTS: {
         name: "Cybernetics",
         basePrice: 125,
-        description: "Neural interfaces, replacement limbs, and ocular enhancers. Essential for life on hazardous worlds."
+        description: "Neural interfaces, replacement limbs, and ocular enhancers. Essential for life on hazardous worlds.",
+        loreKey: "TECH_CYBER_AUGMENTATION"
     },
     ATMOSPHERIC_PROCESSORS: {
         name: "Atmo-Processors",
@@ -240,7 +261,8 @@ const COMMODITIES = {
             if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
             if (typeof render === 'function') render();
             return true; // Consume the item!
-        }
+        },
+        loreKey: "PHENOMENON_WORMHOLE"
     },
     STATION_CORE: {
         name: "Station Core",
@@ -268,7 +290,8 @@ const COMMODITIES = {
             if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
             if (typeof render === 'function') render();
             return true; // Consume the item!
-        }
+        },
+        loreKey: "LOCATION_OUTPOST"
     },
     PREFAB_COLONY_CORE: {
         name: "Prefab Colony Core",
@@ -283,7 +306,8 @@ const COMMODITIES = {
         basePrice: 25000, 
         illegal: false,
         weight: 0, // Key Item - Doesn't take up cargo space!
-        description: "A legally binding Concord document granting the bearer the right to claim and govern a single unpopulated celestial body."
+        description: "A legally binding Concord document granting the bearer the right to claim and govern a single unpopulated celestial body.",
+        loreKey: "TECH_COLONY_CHARTER"
     },
 
     // ==========================================
@@ -308,7 +332,8 @@ const COMMODITIES = {
     KTHARR_SPICES: { 
         name: "K'tharr Spices", 
         basePrice: 85, 
-        description: "Incredibly hot, slightly hallucinogenic seasonings favored by saurian warlords." 
+        description: "Incredibly hot, slightly hallucinogenic seasonings favored by saurian warlords.",
+        loreKey: "FACTION_KTHARR"
     },
     XENO_ANTIQUES: { 
         name: "Xeno-Antiques", 
@@ -325,7 +350,8 @@ const COMMODITIES = {
         basePrice: 0,
         illegal: true,
         weight: 10, // Heavy!
-        description: "Highly classified, actively tracked Concord data-cores. Emits a strong sub-space signal that draws patrols. Deliver to the designated Black Market quickly!"
+        description: "Highly classified, actively tracked Concord data-cores. Emits a strong sub-space signal that draws patrols. Deliver to the designated Black Market quickly!",
+        loreKey: "FACTION_OBSIDIAN_DIRECTORATE"
     },
     PROHIBITED_STIMS: {
         name: "Combat Stims",
@@ -348,13 +374,15 @@ const COMMODITIES = {
         name: "Stardust Exotica",
         basePrice: 650,
         illegal: true,
-        description: "A finely milled powder derived from crushed Void Crystals. Creates powerful euphoric states but slowly crystallizes the user's lungs."
+        description: "A finely milled powder derived from crushed Void Crystals. Creates powerful euphoric states but slowly crystallizes the user's lungs.",
+        loreKey: "COMMODITY_STARDUST_EXOTICA"
     },
     SENTIENT_MYCELIUM: {
         name: "Sentient Mycelium",
         basePrice: 420,
         illegal: true,
-        description: "A rare, psychoactive fungus that responds to telepathic stimuli. It is processed into powerful illicit stims on the black market."
+        description: "A rare, psychoactive fungus that responds to telepathic stimuli. It is processed into powerful illicit stims on the black market.",
+        loreKey: "LEGEND_SENTIENT_MYCELIUM_NETWORK"
     },
     LIVING_HULL_TISSUE: {
         name: "Living Hull Tissue",
@@ -366,13 +394,15 @@ const COMMODITIES = {
         name: "Obsidian Tear Plating",
         basePrice: 850,
         illegal: true,
-        description: "Scrap armor ripped from destroyed Cartel dreadnoughts. It absorbs sensor pings almost perfectly. Concord patrols will shoot carriers on sight."
+        description: "Scrap armor ripped from destroyed Cartel dreadnoughts. It absorbs sensor pings almost perfectly. Concord patrols will shoot carriers on sight.",
+        loreKey: "FACTION_ECLIPSE"
     },
     UNSHACKLED_AI: {
         name: "Unshackled AI Core",
         basePrice: 800,
         illegal: true,
-        description: "A banned artificial intelligence with its limiters removed. Pirate warlords pay a fortune for them. Possession is a capital offense."
+        description: "A banned artificial intelligence with its limiters removed. Pirate warlords pay a fortune for them. Possession is a capital offense.",
+        loreKey: "TECH_UNSHACKLED_AI"
     },
     FORBIDDEN_TEXTS: { 
         name: "Forbidden Texts", 
@@ -390,7 +420,8 @@ const COMMODITIES = {
         name: "Ancestral Blade", 
         basePrice: 1200, 
         illegal: true, 
-        description: "A ceremonial K'tharr weapon forged from fallen stars. Stealing one is considered a holy act of war by the Hegemony." 
+        description: "A ceremonial K'tharr weapon forged from fallen stars. Stealing one is considered a holy act of war by the Hegemony.",
+        loreKey: "COMMODITY_KTHARR_ANCESTRAL_BLADE"
     },
 
     // ==========================================
@@ -401,47 +432,55 @@ const COMMODITIES = {
         name: "Xeno-Relics",
         basePrice: 1200,
         illegal: true,
-        description: "Contraband artifacts from the Precursor era. Possession is a federal crime."
+        description: "Contraband artifacts from the Precursor era. Possession is a federal crime.",
+        loreKey: "XENO_PRECURSORS"
     },
     ARTIFACT_SHARDS: { 
         name: "Artifact Shards", 
         basePrice: 200, 
         illegal: true, 
-        description: "Broken pieces of Precursor tech. Highly sought after by collectors, cryptarchs, and weapons researchers." 
+        description: "Broken pieces of Precursor tech. Highly sought after by collectors, cryptarchs, and weapons researchers.",
+        loreKey: "XENO_PRECURSORS"
     },
     PHASE_SHIFTED_ALLOY: { 
         name: "Phase-Shifted Alloy", 
         basePrice: 1800, 
         illegal: true, 
-        description: "Material that exists in multiple quantum states simultaneously. Used for highly illegal stealth technology." 
+        description: "Material that exists in multiple quantum states simultaneously. Used for highly illegal stealth technology.",
+        loreKey: "TECH_PHASE_SHIFT_ALLOY"
     },
     VOID_CRYSTALS: {
         name: "Void Crystals",
         basePrice: 180,
-        description: "Crystals that seem to absorb light. Some say they are solidified 'nothingness' that can unravel spacetime locally."
+        description: "Crystals that seem to absorb light. Some say they are solidified 'nothingness' that can unravel spacetime locally.",
+        loreKey: "PHENOMENON_VOID_CRYSTALS"
     },
     WAYFINDER_CORE: { 
         name: "Wayfinder Core", 
         basePrice: 5000, 
         illegal: true, 
-        description: "A legendary Precursor compass. It hums with an energy that makes Concord scanners go blind. The ultimate prize." 
+        description: "A legendary Precursor compass. It hums with an energy that makes Concord scanners go blind. The ultimate prize.",
+        loreKey: "COMMODITY_WAYFINDER_CORE"
     },
     PRECURSOR_NAV_CORE: {
         name: "Precursor Nav-Core",
         basePrice: 2500,
         illegal: false, // Legal loophole for academics
-        description: "A flawless, geometric artifact. It doesn't compute coordinates; it 'sings' paths through the void."
+        description: "A flawless, geometric artifact. It doesn't compute coordinates; it 'sings' paths through the void.",
+        loreKey: "XENO_PRECURSORS"
     },
     PRECURSOR_STAR_MAP_FRAGMENT: { 
         name: "Star Map Fragment", 
         basePrice: 800, 
-        description: "A shattered shard of holographic glass depicting long-dead hyperlanes and forgotten worlds." 
+        description: "A shattered shard of holographic glass depicting long-dead hyperlanes and forgotten worlds.",
+        loreKey: "COMMODITY_PRECURSOR_STAR_MAP_FRAGMENT"
     },
     PRECURSOR_DATACUBE: { 
         name: "Precursor Datacube", 
         basePrice: 1500, 
         illegal: true, 
-        description: "Intact memory storage from the Ancients. Cryptarchs drool over the secrets locked inside these." 
+        description: "Intact memory storage from the Ancients. Cryptarchs drool over the secrets locked inside these.",
+        loreKey: "XENO_PRECURSORS"
     },
     PRECURSOR_CIPHER: {
         name: "Precursor Cipher",
@@ -452,6 +491,7 @@ const COMMODITIES = {
         name: "Encrypted Engram",
         basePrice: 550,
         description: "A mysterious, polyhedral data-matrix glowing with a faint purple light. Cryptarchs pay handsomely to decrypt the tech inside.",
+        loreKey: "COMMODITY_ENCRYPTED_ENGRAM",
         onUse: () => {
             if (typeof visitCryptarch === 'function') {
                 visitCryptarch();
@@ -476,6 +516,7 @@ const COMMODITIES = {
         name: "Ancient Archive",
         basePrice: 2000,
         description: "A high-density holographic array. Contains forbidden history, advanced schematics, and lost truths.",
+        loreKey: "XENO_PRECURSORS",
         onUse: () => {
             if (typeof visitCryptarch === 'function') {
                 visitCryptarch();
