@@ -117,7 +117,7 @@ function showRecruitDetails(index) {
                 <div class="trade-stat-row"><span>Signing Bonus:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(recruit.cost)}c</span></div>
                 <div class="trade-stat-row"><span>Ongoing Salary:</span> <span style="color:var(--item-desc-color);">${typeof COST_PER_CREW !== 'undefined' ? COST_PER_CREW : 250}c / Mo</span></div>
                 <div class="trade-stat-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-color);">
-                    <span>Granted Perk:</span> <span style="color:var(--success); font-weight:bold;">${recruit.perk.replace('_', ' ')}</span>
+                    <span>Granted Perk:</span> <span style="color:var(--success); font-weight:bold;">${recruit.perk.replace(/_/g, ' ')}</span>
                 </div>
             </div>
         </div>
@@ -308,7 +308,7 @@ function displayCrewRoster() {
                     <div class="trade-math-area" style="text-align:left; border-color: var(--success);">
                         <div class="trade-stat-row">
                             <span style="color:#888;">Active Perk:</span> 
-                            <span style="color:var(--success); font-weight:bold;">${crew.perk.replace('_', ' ')}</span>
+                            <span style="color:var(--success); font-weight:bold;">${crew.perk.replace(/_/g, ' ')}</span>
                         </div>
                     </div>
 
@@ -321,7 +321,6 @@ function displayCrewRoster() {
                 </div>
             `;
             
-            // NEW: Added the Intercom Button!
             actionsEl.innerHTML = `
                 <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px; border-color:var(--success); color:var(--success);" onclick="openCrewComm(${index})">OPEN COMM LINK</button>
                 <button class="action-button danger-btn" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" onclick="fireCrew(${index})">DISMISS FROM SERVICE</button>
@@ -354,13 +353,13 @@ function openCrewComm(index) {
     ];
 
     const role = crew.role.toLowerCase();
-    if (role.includes('engineer') || role.includes('mechanic') || role.includes('worker')) {
+    if (role.includes('engineer') || role.includes('mechanic') || role.includes('worker') || role.includes('scrapper')) {
         quotes = ["I can only patch these conduits so many times before we need a drydock.", "If you push the engines any harder, I'm not responsible for what happens.", "I bypassed the secondary coupling. We should get slightly better flow now."];
     } else if (role.includes('scientist') || role.includes('medical') || role.includes('trauma')) {
         quotes = ["The background radiation in this sector is fascinating.", "Please remember to take your anti-rad meds. I don't want to deal with another outbreak.", "I'm running a diagnostic on the local flora we brought aboard."];
     } else if (role.includes('gunner') || role.includes('marine') || role.includes('warlord')) {
         quotes = ["Weapons are hot and ready. Just give the word.", "When do we get to shoot something?", "I've recalibrated the targeting sensors. We won't miss."];
-    } else if (role.includes('smuggler') || crew.isMercenary || role.includes('tailor')) {
+    } else if (role.includes('smuggler') || crew.isMercenary || role.includes('tailor') || role.includes('slicer')) {
         quotes = ["I didn't see anything. I wasn't even there.", "If Concord scans us, I'm hiding in the maintenance shaft.", "Don't ask where I got this. Just know it works."];
     }
 
@@ -391,7 +390,7 @@ function openCrewComm(index) {
     }
 
     actionsEl.innerHTML = `
-        <button class="action-button full-width-btn" style="width: 100%; padding: 10px; font-size: 12px; border-color:var(--danger); color:var(--danger);" onclick="displayCrewRoster()">CLOSE COMM LINK</button>
+        <button class="action-button full-width-btn" style="width: 100%; padding: 10px; font-size: 12px; border-color:var(--danger); color:var(--danger);" onclick="closeGenericModal(); setTimeout(displayCrewRoster, 10);">CLOSE COMM LINK</button>
     `;
 }
 
@@ -455,7 +454,7 @@ function hireMercenary(mercId) {
         drawback: merc.drawback,
         image: merc.image || 'assets/eclipse_smuggler.png',
         isLegendary: false,
-        perk: merc.role.toUpperCase().replace(' ', '_')
+        perk: merc.role.toUpperCase().replace(/ /g, '_')
     });
     
     if (typeof applyPlayerShipStats === 'function') applyPlayerShipStats(); 
