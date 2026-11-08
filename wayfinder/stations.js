@@ -194,9 +194,10 @@ function renderStationMenu(location, faction) {
         html += createBtn('🪖', 'Marine Barracks', 'Recruit Ground Forces', "openBarracksUI()", "border-left: 3px solid var(--accent-color);");
 
     } else if (faction === 'KTHARR') {
-        html += createBtn('⚔️', 'Proving Grounds', 'Arena Betting', "openKtharrProvingGrounds()", "border-left: 3px solid var(--danger);");
-        html += createBtn('🍖', 'The Blood Pits', 'Bio-Trade', "openBloodPitsTrade()", "border-left: 3px solid var(--danger);");
-        html += createBtn('💀', 'Rite of Combat', 'Challenge Warlord', "challengeKtharrWarlord()", "border-left: 3px solid var(--danger);");
+     // [FIX]: Change 'openKtharrProvingGrounds()' to 'openProvingGrounds()'
+     html += createBtn('⚔️', 'Proving Grounds', 'Arena Betting', "openProvingGrounds()", "border-left: 3px solid var(--danger);");
+     html += createBtn('🍖', 'The Blood Pits', 'Bio-Trade', "openBloodPitsTrade()", "border-left: 3px solid var(--danger);");
+     html += createBtn('💀', 'Rite of Combat', 'Challenge Warlord', "challengeKtharrWarlord()", "border-left: 3px solid var(--danger);");
     } else if (faction === 'ECLIPSE') {
         html += createBtn('🎲', 'Shadow Broker', 'Fence Contraband', "fenceEclipseContraband()", "border-left: 3px solid #9933FF;");
         html += createBtn('🪪', 'The Forger', 'Buy Fake ID', "buyFakeID()", "border-left: 3px solid #9933FF;");
