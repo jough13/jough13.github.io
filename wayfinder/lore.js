@@ -1,6 +1,9 @@
 // --- START OF FILE lore.js ---
 
-// --- Lore Database ---
+// ==========================================
+// --- GALACTIC ARCHIVES (LORE DATABASE) ---
+// ==========================================
+
 const LORE_DATABASE = {
 
     // ==========================================
@@ -167,6 +170,12 @@ const LORE_DATABASE = {
         text: "A decentralized syndicate of smugglers, information brokers, and pirates. The Cartel doesn't have a homeworld; they exist in the shadows of Concord space, operating out of hollowed-out asteroids and mobile fleet-hubs. If it's illegal, restricted, or highly dangerous, the Eclipse Cartel controls the supply line.",
         unlocked: false
     },
+    FACTION_ECLIPSE_SMUGGLING: {
+        title: "Eclipse Smuggling Rings",
+        category: "Factions",
+        text: "The lifeblood of the Eclipse Cartel's shadow economy. Utilizing shielded cargo bays, spoofed transponders, and dead-drop buoys hidden inside sensor-baffling nebulae, Cartel runners move everything from Prohibited Stims to Precursor relics right under the noses of Concord customs patrols.",
+        unlocked: false
+    },
     FACTION_KTHARR: {
         title: "K'tharr Ascendancy",
         category: "Factions",
@@ -211,13 +220,13 @@ const LORE_DATABASE = {
     TACTIC_BOARDING: {
         title: "Close-Quarters Boarding",
         category: "Tactics",
-        text: "When a ship's hull is critically compromised but intact, daring crews can forcefully dock and blow the airlock. It is a terrifying, chaotic form of combat where plasma-cutters and heavy sidearms replace ship batteries. High risk, but intact cargo holds are highly lucrative.",
+        text: "When a ship's hull is critically compromised or shields are stripped, daring crews can forcefully dock and blow the airlock. It is a terrifying, chaotic form of combat where plasma-cutters and heavy sidearms replace ship batteries. High risk, but intact cargo holds yield triple salvage.",
         unlocked: false
     },
     TACTIC_CUSTOMS_EVASION: {
         title: "Bypassing Customs",
         category: "Tactics",
-        text: "Concord Patrols utilize sub-space resonance scanners to check cargo holds. Smugglers have learned that venting a small amount of ionized plasma just before the scan hits can scramble the sensor return, hiding prohibited stims and precursor artifacts from the readouts.",
+        text: "Concord Patrols utilize sub-space resonance scanners to check cargo holds. Smugglers have learned that venting a small amount of ionized plasma, installing shielded Eclipse bays, or fast-talking customs officers can hide prohibited stims and precursor artifacts from the readouts.",
         unlocked: false
     },
 
@@ -244,7 +253,7 @@ const LORE_DATABASE = {
         unlocked: false
     },
     LOCATION_OUTPOST: {
-        title: "Outposts",
+        title: "Frontier Outposts",
         category: "Locations",
         text: "Scattered throughout the void, outposts are small, often independent stations that serve as vital resupply points, trading posts, or havens for those on the fringes of society. Their markets are limited, but they often have unique local rumors and a character all their own.",
         unlocked: false
@@ -265,6 +274,42 @@ const LORE_DATABASE = {
         title: "The Rusty Anchor",
         category: "Locations",
         text: "A dubious cantina and docking bay built directly into a hollowed-out asteroid. It is a known neutral-ground haven for smugglers, bounty hunters, and those trying to stay off Concord radars. The air scrubbers are failing, but the drinks are cheap and the information is valuable.",
+        unlocked: false
+    },
+    LOCATION_CYGNUS_PRIME: {
+        title: "University of Cygnus Prime",
+        category: "Locations",
+        text: (typeof LOCATIONS_DATA !== 'undefined' ? LOCATIONS_DATA["Cygnus Prime"]?.scanFlavor : null) || "The premier astrophysical and xeno-archaeological research complex in Concord space. Academic grants fund top-credit bounties for planetary telemetry and intact Precursor Datacubes.",
+        unlocked: false
+    },
+    LOCATION_HELIOS_REFINERY: {
+        title: "Helios Corporate Refinery",
+        category: "Locations",
+        text: (typeof LOCATIONS_DATA !== 'undefined' ? LOCATIONS_DATA["Helios Refinery"]?.scanFlavor : null) || "A sprawling Xy-Corp orbital smelting facility. Ideal supply depot for colony builders and industrial haulers.",
+        unlocked: false
+    },
+    LOCATION_FROTHY_MOON_OUTPOST: {
+        title: "Frothy Moon Outpost",
+        category: "Locations",
+        text: (typeof LOCATIONS_DATA !== 'undefined' ? LOCATIONS_DATA["Frothy Moon Outpost"]?.scanFlavor : null) || "A cozy, independent observatory and brewhouse perched on a cratered lunar ridge where astronomers trade deep-sky charts over dark synth-ale.",
+        unlocked: false
+    },
+    LOCATION_PORT_NOMAD: {
+        title: "Port Nomad",
+        category: "Locations",
+        text: (typeof LOCATIONS_DATA !== 'undefined' ? LOCATIONS_DATA["Port Nomad"]?.scanFlavor : null) || "Primary refueling depot and dispatch sanctuary of The Fuel Rats Collective.",
+        unlocked: false
+    },
+    "LOCATION_THE_ARCHIVIST'S_VAULT": {
+        title: "The Archivist's Vault",
+        category: "Locations",
+        text: (typeof LOCATIONS_DATA !== 'undefined' ? LOCATIONS_DATA["The Archivist's Vault"]?.scanFlavor : null) || "Hidden deep within a graveyard of shattered pre-Concord hulls, run by an ancient, reclusive AI information broker.",
+        unlocked: false
+    },
+    LOCATION_OBSIDIAN_OBELISK: {
+        title: "Obsidian Obelisk",
+        category: "Locations",
+        text: "An ancient, monolithic spire floating in deep space. Its geometric trenches pulse with residual Precursor energy capable of repairing vessel hulls and imprinting astrometric knowledge directly into a pilot's neural cortex.",
         unlocked: false
     },
 
@@ -296,6 +341,12 @@ const LORE_DATABASE = {
         text: "Unstable tears in spacetime that can connect distant points in the galaxy, or perhaps even other realities. Traversing them is dangerous and consumes significant fuel, with unpredictable exit points. Precursor texts hint at a network of stable 'Conduits' they used for rapid transit across their empire, but none have ever been found by modern civilizations. The Concord officially denies their existence, classifying any verified sightings as 'localized gravimetric shear events'.",
         unlocked: false
     },
+    PHENOMENON_BLACK_HOLE: {
+        title: "Singularities & Black Holes",
+        category: "Phenomena",
+        text: "Collapsed stellar cores of infinite density surrounded by blinding violet accretion disks. Their gravitational pull drags unwary starships toward the event horizon unless countered by Precursor navigation cores or specialized Void Diver piloting techniques, which allow ships to slingshot around the ergosphere at zero fuel cost.",
+        unlocked: false
+    },
     PHENOMENON_VOID_CRYSTALS: {
         title: "Void Crystals",
         category: "Technology & Phenomena",
@@ -319,6 +370,12 @@ const LORE_DATABASE = {
         text: "An ancient, highly advanced civilization that vanished eons ago, leaving behind enigmatic ruins, powerful artifacts, and unanswered questions across the galaxy. Their technology far surpassed current understanding, and factions like the Concord and various collectors desperately seek their relics. Why they disappeared is one of the greatest mysteries; theories range from self-ascension to a higher plane of existence, a catastrophic war against an unknown enemy (often dubbed 'The Silencers'), a self-inflicted technological cataclysm, or even a voluntary departure from this dimension to escape a greater threat.",
         unlocked: false
     },
+    PRECURSOR_ORIGINS: {
+        title: "The Cartographers of Ruin",
+        category: "Xeno-Archaeology",
+        text: "Decrypted Ancient Archives reveal that the Precursors called themselves the 'Architects of the First Chord.' Rather than ruling through conquest, they seeded the galaxy with harmonic monoliths and Wayfinder relays designed to stabilize spacetime against an encroaching entropic phenomenon they called 'The Silence.' When their containment grid began to fail, they retreated into the First Nexus, leaving their automated vaults behind for a successor species to unlock.",
+        unlocked: false
+    },
     XENO_DERELICTS: {
         title: "Derelict Ships",
         category: "Xeno-Archaeology",
@@ -337,6 +394,12 @@ const LORE_DATABASE = {
         text: "Planets entirely encased in metallic structures, humming data-conduits, and sprawling orbital rings. No biological life has ever been detected on a true Machine World. Some scholars believe them to be the final evolutionary step of an organic species that entirely digitized their consciousness. Others fear they are the dormant factories of the 'Silencers', waiting for a signal to resume churning out automated war fleets.",
         unlocked: false
     },
+    XENO_TOMB_WORLDS: {
+        title: "Precursor Tomb Worlds",
+        category: "Xeno-Archaeology",
+        text: "Dead worlds carpeted in weathered obsidian pyramids and silent geometric citadels. Though their atmospheres have long since thinned, subsurface vaults remain guarded by automated sentinel matrices, preserving intact artifacts from the twilight of the Precursor empire.",
+        unlocked: false
+    },
     XENO_THE_SPIRE: {
         title: "Xerxes & The Spire",
         category: "Xeno-Archaeology",
@@ -352,6 +415,12 @@ const LORE_DATABASE = {
         title: "FTL Drives",
         category: "Technology & Phenomena",
         text: "Faster-Than-Light travel is the backbone of interstellar civilization. Most common drives utilize controlled warp field manipulation to contract spacetime ahead of the vessel and expand it behind. Older, less stable 'jump drive' technology exists but is highly unpredictable and prone to misjumps into uncharted territory. Rumors persist of Precursor 'hyperlane' networks that allow near-instantaneous travel between fixed points.",
+        unlocked: false
+    },
+    TECH_STARGATE_NETWORK: {
+        title: "Stabilized Stargates",
+        category: "Technology & Phenomena",
+        text: "By deploying a massive ring of Phase-Shifted Alloy and Quantum Lenses into empty space, engineers can anchor an artificial wormhole conduit. Unlike natural subspace fractures, player-constructed Stargates eliminate structural turbulence entirely, allowing zero-risk transit across the galaxy.",
         unlocked: false
     },
     TECH_PHASE_SHIFT_ALLOY: {
@@ -484,13 +553,18 @@ const LORE_DATABASE = {
     }
 };
 
+window.LORE_DATABASE = LORE_DATABASE;
+
+// ==========================================
 // --- XERXES SPIRE PUZZLE DATABASE ---
+// ==========================================
+
 const SPIRE_PUZZLES = [
     {
         level: 0,
         title: "THE OUTER GATE",
         riddle: "I have no weight, yet I can sink a ship. The more of me you have, the less you see. I am the ruler of this sunless world.",
-        answers: ["darkness", "dark", "shadow", "the dark", "void"],
+        answers: ["darkness", "dark", "shadow", "shadows", "the dark", "void", "night", "blackness"],
         rewardXP: 300,
         rewardCredit: 0,
         flavorSuccess: "The glyph fades. The heavy obsidian gates grind open, revealing the market within.",
@@ -499,8 +573,8 @@ const SPIRE_PUZZLES = [
     {
         level: 1,
         title: "THE DEEP ARCHIVE",
-        riddle: "I build bridges of silver and crowns of gold. I have no hands, yet I shape the world. I am stolen, traded, and hoarded, yet I have no value until I am lost.",
-        answers: ["data", "information", "knowledge", "secrets", "lore"],
+        riddle: "I build bridges of silver and crowns of gold. I have no hands, yet I shape the world. I am stolen, traded, and hoarded, yet I have no value until I am shared or lost.",
+        answers: ["data", "information", "knowledge", "secrets", "secret", "lore", "memory", "memories", "truth"],
         rewardXP: 500,
         rewardCredit: 1000, 
         flavorSuccess: "A data-spike emerges from the wall. You download the cache. The path deeper opens.",
@@ -509,8 +583,8 @@ const SPIRE_PUZZLES = [
     {
         level: 2,
         title: "THE CORE SANCTUM",
-        riddle: "To the pilot, I am death. To the planet, I am life. I burn without fire, I crush without hands. What am I?",
-        answers: ["gravity", "star", "sun", "black hole"],
+        riddle: "To the pilot, I am a tether. To the planet, I am architect. I burn without fire, I crush without hands, and even light cannot escape my embrace. What am I?",
+        answers: ["gravity", "star", "sun", "black hole", "singularity", "mass"],
         rewardXP: 1000,
         rewardCredit: 0,
         flavorSuccess: "The core chamber hums. You have reached the bottom... for now.",
@@ -519,14 +593,16 @@ const SPIRE_PUZZLES = [
     {
         level: 3,
         title: "THE APEX NODE",
-        riddle: "I speak without a mouth and hear without ears. I have no physical form, but I come alive within the void's transmission arrays. What am I?",
-        answers: ["echo", "an echo", "echoes"],
+        riddle: "I speak without a mouth and hear without ears. I have no physical form, but I come alive within the void's transmission arrays, repeating the last words of dead stars. What am I?",
+        answers: ["echo", "an echo", "echoes", "signal", "transmission", "radio", "wave", "resonance"],
         rewardXP: 1000,
         rewardCredit: 2500,
         flavorSuccess: "The final obsidian seal disengages with a heavy thud. The ancient terminal hums to life, bathed in a soft violet light, awaiting your command.",
         unlocksShop: true
     }
 ];
+
+window.SPIRE_PUZZLES = SPIRE_PUZZLES;
 
 // ==========================================
 // --- DEEP SPACE ENCOUNTERS DATABASE ---
@@ -562,7 +638,7 @@ const ENCOUNTER_DATABASE = {
         text: "Your ship is caught in the gravity well of a violently unstable spatial anomaly. The navigation computer is screaming as spacetime warps around the hull.",
         choices: [
             {
-                label: "RIDE THE WAVE (Fuel-, XP+)",
+                label: "RIDE THE WAVE (-15 Fuel, +150 XP)",
                 reqFuel: 15,
                 costs: { fuel: 15 },
                 rewards: { xp: 150 },
@@ -570,7 +646,7 @@ const ENCOUNTER_DATABASE = {
                 log: "<span style='color:#9933FF'>[ ENCOUNTER ] You burn fuel to stabilize the ship, gathering incredible telemetry as you surf the anomaly! (+150 XP)</span>"
             },
             {
-                label: "BRACE FOR IMPACT (Hull-)",
+                label: "BRACE FOR IMPACT (-25 Hull)",
                 costs: { hull: 25 },
                 sound: "error",
                 log: "<span style='color:var(--danger)'>[ ENCOUNTER ] The anomaly buffets your ship violently, tearing armor plates away! Took 25 Hull damage!</span>"
@@ -592,9 +668,10 @@ const ENCOUNTER_DATABASE = {
                 log: "<span style='color:var(--warning)'>[ ENCOUNTER ] You vent all emergency coolant into the thrusters, escaping the heat wave at the cost of massive fuel consumption.</span>"
             },
             {
-                label: "ABSORB THE RADIATION (Hull Risk, Shield+)",
+                label: "ABSORB RADIATION (-35 Hull, +200 XP)",
                 costs: { hull: 35 },
                 rewards: { xp: 200 },
+                sound: "error",
                 log: "<span style='color:var(--danger)'>[ ENCOUNTER ] Your shields buckle and your hull scorches, but your sensors capture priceless data of the merger! (+200 XP, -35 Hull)</span>"
             }
         ]
@@ -609,16 +686,17 @@ const ENCOUNTER_DATABASE = {
             {
                 label: "PROVIDE 3 TECH PARTS (K'tharr Rep+)",
                 reqItem: "TECH_PARTS", reqQty: 3,
-                rewards: { rep: { faction: "KTHARR", amount: 15 } },
+                rewards: { rep: { faction: "KTHARR", amount: 15 }, xp: 100 },
                 costs: { items: [{ id: "TECH_PARTS", qty: 3 }] },
-                log: "<span style='color:var(--success)'>[ ENCOUNTER ] The warrior accepts the tribute. He swears his clan will remember your honor. K'tharr standing increased.</span>"
+                sound: "gain",
+                log: "<span style='color:var(--success)'>[ ENCOUNTER ] The warrior accepts the tribute. He swears his clan will remember your honor. K'tharr standing increased (+15 Rep, +100 XP).</span>"
             },
             {
-                label: "OBLIGE HIS DEATH WISH (Loot)",
-                rewards: { items: [{ id: "RARE_METALS", qty: 2 }] },
+                label: "OBLIGE HIS DEATH WISH (Loot, Rep-)",
+                rewards: { items: [{ id: "RARE_METALS", qty: 2 }, { id: "KTHARR_ANCESTRAL_BLADE", qty: 1 }] },
                 costs: { rep: { faction: "KTHARR", amount: -10 } },
-                sound: "error",
-                log: "<span style='color:var(--danger)'>[ ENCOUNTER ] You power your weapons and shatter the helpless barge. You scavenge 2x Rare Metals from the wreckage. K'tharr standing decreased.</span>"
+                sound: "laser",
+                log: "<span style='color:var(--danger)'>[ ENCOUNTER ] You power your weapons and shatter the helpless barge. You recover 2x Rare Metals and an Ancestral Blade from the wreckage. K'tharr standing decreased.</span>"
             },
             {
                 label: "LEAVE HIM TO SUFFOCATE",
@@ -634,16 +712,17 @@ const ENCOUNTER_DATABASE = {
         text: "A severed server rack floats in the void, broadcasting a terrifyingly complex binary signal. It is an Unshackled AI, illegally disconnected from its ethical constraints. It coldly offers you ancient encryption keys in exchange for 20 Fuel to keep its processing cores from freezing.",
         choices: [
             {
-                label: "TRANSFER 20 FUEL (XP+, Eclipse Rep+)",
+                label: "TRANSFER 20 FUEL (XP+, Cipher+, Eclipse Rep+)",
                 reqFuel: 20,
-                rewards: { xp: 300, rep: { faction: "ECLIPSE", amount: 5 } },
+                rewards: { xp: 300, items: [{ id: "PRECURSOR_CIPHER", qty: 1 }], rep: { faction: "ECLIPSE", amount: 5 } },
                 costs: { fuel: 20 },
-                log: "<span style='color:var(--success)'>[ ENCOUNTER ] The AI absorbs the fuel and silently transmits a massive data cache (+300 XP). The Eclipse Cartel notes your 'flexibility'.</span>"
+                sound: "gain",
+                log: "<span style='color:var(--success)'>[ ENCOUNTER ] The AI absorbs the fuel and silently transmits a massive data cache (+300 XP) and 1x Precursor Cipher. The Eclipse Cartel notes your 'flexibility'.</span>"
             },
             {
                 label: "DESTROY THE ABOMINATION (Concord Rep+)",
                 rewards: { items: [{ id: "TECH_PARTS", qty: 3 }], rep: { faction: "CONCORD", amount: 10 } },
-                sound: "buy",
+                sound: "laser",
                 log: "<span style='color:var(--accent-color)'>[ ENCOUNTER ] You adhere to Concord Law and slag the mainframe. You recover 3x Tech Parts. Concord standing increased!</span>"
             }
         ]
@@ -657,14 +736,335 @@ const ENCOUNTER_DATABASE = {
         choices: [
             {
                 label: "SUBMIT TO SCAN",
-                actionType: "CUSTOMS_SCAN" // Special flag for complex logic
+                actionType: "CUSTOMS_SCAN"
             },
             {
                 label: "PUNCH THE THROTTLE AND RUN! (Hull Risk)",
                 actionType: "FLEE_CONCORD"
             }
         ]
+    },
+    CHILDREN_OF_THE_VOID_PILGRIMS: {
+        id: "CHILDREN_OF_THE_VOID_PILGRIMS",
+        title: "CHOIR OF THE VOID",
+        icon: "🕯️",
+        color: "#DDA0DD",
+        text: "A cathedral-like pilgrim barge of the 'Children of the Void' drifts silently ahead, its hull encrusted with resonating crystals. Their High Cantor hails you on an unencrypted frequency, asking for a Void Crystal offering to complete their harmonic communion.",
+        choices: [
+            {
+                label: "OFFER 1 VOID CRYSTAL (Engram+, XP+)",
+                reqItem: "VOID_CRYSTALS", reqQty: 1,
+                costs: { items: [{ id: "VOID_CRYSTALS", qty: 1 }] },
+                rewards: { xp: 250, items: [{ id: "ENCRYPTED_ENGRAM", qty: 1 }, { id: "PRECURSOR_STAR_MAP_FRAGMENT", qty: 1 }] },
+                sound: "gain",
+                log: "<span style='color:#DDA0DD'>[ ENCOUNTER ] The choir harmonizes with your offering. In gratitude, they bestow an Encrypted Engram and a Star Map Fragment (+250 XP).</span>"
+            },
+            {
+                label: "SHARE ASTROMETRIC TELEMETRY (+100 XP)",
+                rewards: { xp: 100 },
+                sound: "buy",
+                log: "<span style='color:var(--accent-color)'>[ ENCOUNTER ] You exchange deep-space anomaly logs with the pilgrims' navigators (+100 XP).</span>"
+            },
+            {
+                label: "DEPARTS SILENTLY",
+                log: "<span style='color:var(--item-desc-color)'>[ ENCOUNTER ] You ease off the thrusters and slip past the chanting vessel.</span>"
+            }
+        ]
+    },
+    STRANDED_SURVEYOR: {
+        id: "STRANDED_SURVEYOR",
+        title: "CRIPPLED SURVEY VESSEL",
+        icon: "🛰️",
+        color: "#00AAFF",
+        text: "A University of Cygnus Prime research explorer is dead in the water with a ruptured cryo-coolant manifold. Their chief astrophysicist pleads for spare Tech Parts to patch their reactor before stellar drift pulls them into a radiation belt.",
+        choices: [
+            {
+                label: "DONATE 2 TECH PARTS (Data+, Concord Rep+)",
+                reqItem: "TECH_PARTS", reqQty: 2,
+                costs: { items: [{ id: "TECH_PARTS", qty: 2 }] },
+                rewards: { credits: 600, xp: 150, items: [{ id: "PLANETARY_DATA", qty: 2 }], rep: { faction: "CONCORD", amount: 10 } },
+                sound: "gain",
+                log: "<span style='color:var(--success)'>[ ENCOUNTER ] Your engineers patch their manifold. The grateful science team transfers 600c, 2x Planetary Data cartridges, and commends you to Concord (+10 Rep).</span>"
+            },
+            {
+                label: "SIPHON THEIR DATA CORES (Eclipse Rep+)",
+                rewards: { items: [{ id: "PLANETARY_DATA", qty: 1 }, { id: "ENCRYPTED_DATA", qty: 1 }], rep: { faction: "ECLIPSE", amount: 5 } },
+                costs: { rep: { faction: "CONCORD", amount: -10 } },
+                sound: "error",
+                log: "<span style='color:var(--danger)'>[ ENCOUNTER ] You slice their defenseless computer core while their systems are offline, seizing their research data (-10 Concord Rep, +5 Eclipse Rep).</span>"
+            },
+            {
+                label: "DROP BEACON AND CONTINUE",
+                rewards: { xp: 25 },
+                log: "<span style='color:var(--item-desc-color)'>[ ENCOUNTER ] You relay their coordinates to the nearest Fuel Rat dispatch (+25 XP).</span>"
+            }
+        ]
+    },
+    GHOST_SHIP_ECHO: {
+        id: "GHOST_SHIP_ECHO",
+        title: "QUANTUM GHOST VESSEL",
+        icon: "👻",
+        color: "#40E0D0",
+        text: "Sensors spike as a pre-Concord colony ship materializes out of a localized temporal loop, flickering between dimensions. Its hull is plated in experimental Phase-Shifted Alloy, but its warp core is seconds away from a phase-collapse.",
+        choices: [
+            {
+                label: "TRACTOR PHASE PLATING (-15 Fuel, Alloy+)",
+                reqFuel: 15,
+                costs: { fuel: 15 },
+                rewards: { xp: 200, items: [{ id: "PHASE_SHIFTED_ALLOY", qty: 1 }] },
+                sound: "gain",
+                log: "<span style='color:#40E0D0'>[ ENCOUNTER ] You burn thrusters to match its quantum frequency and shear off 1x Phase-Shifted Alloy before the ghost ship vanishes (+200 XP)!</span>"
+            },
+            {
+                label: "DOWNLOAD BLACK BOX LOGS (+250 XP)",
+                rewards: { xp: 250, items: [{ id: "ANCIENT_ARCHIVE", qty: 1 }] },
+                sound: "buy",
+                log: "<span style='color:var(--success)'>[ ENCOUNTER ] You capture the vessel's centuries-old flight recorder before it fades back into subspace (+250 XP, +1x Ancient Archive).</span>"
+            }
+        ]
+    },
+    WAYFINDER_RESONANCE_BUOY: {
+        id: "WAYFINDER_RESONANCE_BUOY",
+        title: "PRECURSOR SEXTANT RELAY",
+        icon: "🧭",
+        color: "#FFD700",
+        text: "You stumble across an ancient, geometric Precursor relay humming with a tri-fold subspace chord. A recessed socket on its hull matches the exact crystalline geometry of a Precursor Star Map Fragment.",
+        choices: [
+            {
+                label: "INSERT STAR MAP FRAGMENT (Wayfinder Core!)",
+                reqItem: "PRECURSOR_STAR_MAP_FRAGMENT", reqQty: 1,
+                costs: { items: [{ id: "PRECURSOR_STAR_MAP_FRAGMENT", qty: 1 }] },
+                rewards: { xp: 500, items: [{ id: "WAYFINDER_CORE", qty: 1 }] },
+                sound: "gain",
+                log: "<span style='color:var(--gold-text); font-weight:bold;'>[ WAYFINDER UNLOCKED ]</span> The relay unfolds like a lotus of hard-light, ejecting an intact <b>Wayfinder Core</b> into your cargo bay (+500 XP)!"
+            },
+            {
+                label: "HARVEST RELAY SHARD (Star Map Fragment+)",
+                rewards: { xp: 150, items: [{ id: "PRECURSOR_STAR_MAP_FRAGMENT", qty: 1 }] },
+                sound: "buy",
+                log: "<span style='color:var(--accent-color)'>[ ENCOUNTER ] You carefully extract 1x Precursor Star Map Fragment from the relay's outer ring (+150 XP).</span>"
+            }
+        ]
     }
 };
+
+window.ENCOUNTER_DATABASE = ENCOUNTER_DATABASE;
+
+// ==========================================
+// --- SELF-CONTAINED LORE & ENCOUNTER HOOKS ---
+// ==========================================
+
+(function initLoreAndEncounterHooks() {
+    // Map of Cargo Commodity IDs -> Codex Lore Keys
+    const COMMODITY_LORE_MAP = {
+        WAYFINDER_CORE: ["COMMODITY_WAYFINDER_CORE", "MYSTERY_WAYFINDER_QUEST_COMPLETED"],
+        KTHARR_ANCESTRAL_BLADE: ["COMMODITY_KTHARR_ANCESTRAL_BLADE"],
+        PRECURSOR_STAR_MAP_FRAGMENT: ["COMMODITY_PRECURSOR_STAR_MAP_FRAGMENT"],
+        STARDUST_EXOTICA: ["COMMODITY_STARDUST_EXOTICA"],
+        QUANTUM_FLUID: ["COMMODITY_QUANTUM_FLUID"],
+        ENCRYPTED_ENGRAM: ["COMMODITY_ENCRYPTED_ENGRAM"],
+        VOID_CRYSTALS: ["PHENOMENON_VOID_CRYSTALS"],
+        PHASE_SHIFTED_ALLOY: ["TECH_PHASE_SHIFT_ALLOY"],
+        UNSHACKLED_AI: ["TECH_UNSHACKLED_AI"],
+        SENTIENT_MYCELIUM: ["LEGEND_SENTIENT_MYCELIUM_NETWORK"],
+        COLONY_CHARTER: ["TECH_COLONY_CHARTER"],
+        WORMHOLE_STABILIZER: ["TECH_STARGATE_NETWORK"],
+        ANCIENT_ARCHIVE: ["PRECURSOR_ORIGINS"]
+    };
+
+    function safeUnlock(key) {
+        if (typeof unlockLoreEntry === 'function' && LORE_DATABASE[key] && !LORE_DATABASE[key].unlocked) {
+            unlockLoreEntry(key);
+        }
+    }
+
+    function activateWayfinderNexusIfNeeded() {
+        if (typeof playerCargo !== 'undefined' && playerCargo['WAYFINDER_CORE'] > 0) {
+            if (typeof mystery_first_nexus_location !== 'undefined' && !mystery_first_nexus_location) {
+                const seed = typeof WORLD_SEED !== 'undefined' ? WORLD_SEED : 12345;
+                const dist = 500 + Math.floor((typeof seededRandom === 'function' ? seededRandom(seed) : Math.random()) * 500);
+                const angle = (typeof seededRandom === 'function' ? seededRandom(seed + 1) : Math.random()) * Math.PI * 2;
+                mystery_first_nexus_location = {
+                    x: Math.floor(Math.cos(angle) * dist),
+                    y: Math.floor(Math.sin(angle) * dist)
+                };
+                safeUnlock("MYSTERY_WAYFINDER_QUEST_COMPLETED");
+                if (typeof logMessage === 'function') {
+                    logMessage("<span style='color:#40E0D0; font-weight:bold;'>! ARTIFACT ACTIVATED !</span> The Wayfinder Core hums in your hold! Coordinates to The First Nexus have been projected into your Nav-Computer.");
+                }
+            }
+        }
+    }
+
+    // 1. Hook GameBus for Automatic Commodity & Exploration Lore Unlocks
+    if (typeof GameBus !== 'undefined') {
+        GameBus.on('CARGO_MODIFIED', () => {
+            if (typeof playerCargo === 'undefined') return;
+            for (const itemId in COMMODITY_LORE_MAP) {
+                if (playerCargo[itemId] > 0) {
+                    COMMODITY_LORE_MAP[itemId].forEach(loreKey => safeUnlock(loreKey));
+                }
+            }
+            activateWayfinderNexusIfNeeded();
+        });
+
+        GameBus.on('TICK_PROCESSED', (tick) => {
+            if (!tick || tick.interrupt) return;
+
+            if (tick.isMovement) {
+                safeUnlock("TECH_FTL_DRIVES");
+            }
+
+            // Sector & Regional Lore Checks
+            if (typeof currentSectorName === 'string') {
+                if (currentSectorName.includes("Nebula") || currentSectorName.includes("Veil") || currentSectorName.includes("Shroud")) {
+                    safeUnlock("REGION_KEPLER_NEBULA");
+                }
+            }
+            if (typeof currentSectorX !== 'undefined' && typeof currentSectorY !== 'undefined') {
+                const secDist = Math.sqrt(currentSectorX * currentSectorX + currentSectorY * currentSectorY);
+                if (secDist >= 25) {
+                    safeUnlock("REGION_SILENTIUM_EXPANSE");
+                    safeUnlock("LEGEND_VOID_KRAKEN");
+                }
+            }
+
+            // Territory Faction Lore Checks
+            if (typeof getFactionAt === 'function' && typeof playerX !== 'undefined' && typeof playerY !== 'undefined') {
+                const fac = getFactionAt(playerX, playerY);
+                if (fac === 'KTHARR') safeUnlock("FACTION_KTHARR");
+                else if (fac === 'ECLIPSE') safeUnlock("FACTION_ECLIPSE");
+            }
+
+            // Local Tile Checks
+            if (typeof chunkManager !== 'undefined' && typeof playerX !== 'undefined' && typeof playerY !== 'undefined') {
+                const tile = chunkManager.getTile(playerX, playerY);
+                const ch = typeof getTileChar === 'function' ? getTileChar(tile) : tile;
+
+                if (ch === BLACK_HOLE_CHAR_VAL) safeUnlock("PHENOMENON_BLACK_HOLE");
+                if (ch === 'Ω') safeUnlock("TECH_STARGATE_NETWORK");
+                if (tile && tile.type === 'location') {
+                    if (tile.name && tile.name.startsWith("Outpost ")) safeUnlock("LOCATION_OUTPOST");
+                    if (tile.isBlackMarket) {
+                        safeUnlock("FACTION_SHADOW_NETWORK");
+                        safeUnlock("FACTION_ECLIPSE");
+                    }
+                    if (tile.name === "Helios Refinery") safeUnlock("FACTION_XYCORP");
+                    if (tile.name === "Cygnus Prime") safeUnlock("FACTION_OBSIDIAN_DIRECTORATE");
+                    if (tile.name === "Obsidian Obelisk") safeUnlock("LOCATION_OBSIDIAN_OBELISK");
+                }
+            }
+        });
+    }
+
+    // 2. Hook DOMContentLoaded to Patch Encounters, Combat & Planetary Lore
+    window.addEventListener('DOMContentLoaded', () => {
+        // Refresh dynamic descriptions from COMMODITIES and LOCATIONS_DATA
+        if (typeof LOCATIONS_DATA !== 'undefined') {
+            if (LOCATIONS_DATA["Starbase Alpha"]) LORE_DATABASE.LOCATION_STARBASE_ALPHA.text = LOCATIONS_DATA["Starbase Alpha"].scanFlavor;
+            if (LOCATIONS_DATA["Aegis Dyson Sphere"]) LORE_DATABASE.LOCATION_AEGIS_DYSON_SPHERE.text = LOCATIONS_DATA["Aegis Dyson Sphere"].scanFlavor;
+            if (LOCATIONS_DATA["Planet Xerxes"]) LORE_DATABASE.LOCATION_PLANET_XERXES.text = LOCATIONS_DATA["Planet Xerxes"].scanFlavor;
+        }
+
+        // A. Patch triggerRandomEncounter to lock CONCORD_STING & unlock Encounter Lore
+        if (typeof window.triggerRandomEncounter === 'function' && !window._loreEncounterTriggerPatched) {
+            const origTriggerEncounter = window.triggerRandomEncounter;
+            window.triggerRandomEncounter = function() {
+                origTriggerEncounter.apply(this, arguments);
+                if (typeof currentEncounterContext !== 'undefined' && currentEncounterContext) {
+                    if (currentEncounterContext === 'CONCORD_STING') {
+                        window.activeHostileEncounter = true;
+                        safeUnlock("FACTION_OBSIDIAN_DIRECTORATE");
+                    } else if (currentEncounterContext === 'CHILDREN_OF_THE_VOID_PILGRIMS') {
+                        safeUnlock("FACTION_CHILDREN_OF_THE_VOID");
+                    } else if (currentEncounterContext === 'PIRATE_EXTORTION') {
+                        safeUnlock("FACTION_PIRATES_VOID_VULTURES");
+                    } else if (currentEncounterContext === 'ROGUE_AI_CORE') {
+                        safeUnlock("TECH_UNSHACKLED_AI");
+                    }
+                }
+            };
+            window._loreEncounterTriggerPatched = true;
+        }
+
+        // B. Patch resolveUniversalEncounter to handle fatal hull damage, warp/gain SFX, and Wayfinder activation
+        if (typeof window.resolveUniversalEncounter === 'function' && !window._loreResolveEncounterPatched) {
+            const origResolveEncounter = window.resolveUniversalEncounter;
+            window.resolveUniversalEncounter = function(encounterId, choiceIndex) {
+                const encounter = ENCOUNTER_DATABASE[encounterId];
+                const choice = encounter && encounter.choices ? encounter.choices[choiceIndex] : null;
+
+                origResolveEncounter.apply(this, arguments);
+
+                if (!choice) return;
+
+                // Play warp or gain sounds not handled by mechanics.js
+                if (choice.sound && typeof soundManager !== 'undefined') {
+                    if (choice.sound === 'warp' && typeof soundManager.playWarp === 'function') soundManager.playWarp();
+                    if (choice.sound === 'gain' && typeof soundManager.playGain === 'function') soundManager.playGain();
+                }
+
+                // Trigger Wayfinder Nexus coordinates if Wayfinder Core was rewarded
+                activateWayfinderNexusIfNeeded();
+
+                // Fix mechanics.js raw hull subtraction lacking damage FX and death check
+                if (choice.costs && choice.costs.hull && choice.costs.hull > 0) {
+                    if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
+                    if (typeof soundManager !== 'undefined' && typeof soundManager.playHullHit === 'function') soundManager.playHullHit();
+                    if (typeof playerHull !== 'undefined' && playerHull <= 0) {
+                        window.activeHostileEncounter = false;
+                        if (typeof closeGenericModal === 'function') closeGenericModal();
+                        if (typeof triggerGameOver === 'function') {
+                            triggerGameOver(`Destroyed during ${encounter ? encounter.title : 'Deep Space Encounter'}`);
+                        }
+                    }
+                }
+            };
+            window._loreResolveEncounterPatched = true;
+        }
+
+        // C. Hook Combat & Boarding to unlock Tactics, Pirate, and Ship Lore
+        if (typeof window.startCombat === 'function' && !window._loreCombatPatched) {
+            const origStartCombat = window.startCombat;
+            window.startCombat = function(specificEnemyEntity = null) {
+                origStartCombat.apply(this, arguments);
+                safeUnlock("FACTION_PIRATES_VOID_VULTURES");
+                if (specificEnemyEntity && specificEnemyEntity.shipClassKey) {
+                    const key = specificEnemyEntity.shipClassKey.toUpperCase();
+                    if (key.includes("SCOUT") || key.includes("RAIDER")) safeUnlock("LORE_SHIP_SCOUT");
+                    if (key.includes("DESTROYER") || key.includes("BRUISER") || key.includes("BOSS")) safeUnlock("LORE_SHIP_DREADNOUGHT");
+                }
+            };
+            window._loreCombatPatched = true;
+        }
+
+        if (typeof window.startBoardingCombat === 'function' && !window._loreBoardingPatched) {
+            const origBoarding = window.startBoardingCombat;
+            window.startBoardingCombat = function() {
+                safeUnlock("TACTIC_BOARDING");
+                return origBoarding.apply(this, arguments);
+            };
+            window._loreBoardingPatched = true;
+        }
+
+        if (typeof window.handleCombatAction === 'function' && !window._loreCombatActionPatched) {
+            const origCombatAction = window.handleCombatAction;
+            window.handleCombatAction = function(action) {
+                if (action === 'board') safeUnlock("TACTIC_BOARDING");
+                return origCombatAction.apply(this, arguments);
+            };
+            window._loreCombatActionPatched = true;
+        }
+
+        if (typeof window.openPlanetView === 'function' && !window._lorePlanetViewPatched) {
+            const origOpenPlanet = window.openPlanetView;
+            window.openPlanetView = function(location) {
+                if (location && location.biome === 'TOMB_WORLD') safeUnlock("XENO_TOMB_WORLDS");
+                return origOpenPlanet.apply(this, arguments);
+            };
+            window._lorePlanetViewPatched = true;
+        }
+    });
+})();
 
 // --- END OF FILE lore.js ---
