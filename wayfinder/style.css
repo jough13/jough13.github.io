@@ -9,10 +9,11 @@ html {
     --bg-color: #050510;
     --panel-bg: #070714; /* Slightly deeper navy-blue tint */
     --border-color: #2a2a45;
-    --accent-color: #00E0E0; /* Your existing bright cyan */
+    --accent-color: #00E0E0; /* Bright cyan */
+    --concord-color: #00AAFF;
     --text-color: #a0a0c0;
     
-    /* CHANGED: Replaced standard green with a deep Sci-Fi Teal/Aqua */
+    /* Deep Sci-Fi Teal/Aqua */
     --success: #00AAAA; 
     
     --danger: #FF4444;
@@ -32,6 +33,10 @@ html {
     --z-header: 1000;
 }
 
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
 /* Explicitly catch the XP and Cargo bars if they use standard classes */
 .bar-fill.xp, 
 .bar-fill.cargo { 
@@ -46,25 +51,31 @@ html, body {
     overflow: hidden; /* FORCE KILL MAIN SCROLLBAR */
     background-color: var(--bg-color);
     font-family: var(--main-font);
+    color: var(--text-color);
 }
 
 /* --- WHISPY SIDE BORDERS (Dynamic Positioning) --- */
 .side-border {
-    position: fixed; /* Changed from absolute to fixed so they ignore container clipping */
+    position: fixed;
     top: 50px;       /* Starts below the Header */
     bottom: 150px;   /* Ends above the Footer */
     width: 2px;
     z-index: 50; 
     pointer-events: none; 
-    transition: left 0.5s ease-out, right 0.5s ease-out;
+    transition: left 0.5s ease-out, right 0.5s ease-out, opacity 0.3s ease;
+}
+
+/* Automatically hide side borders when not on the Galactic Map (fixes #leftSideBorder ID mismatch in ui.js) */
+#main-view:has(#systemView[style*="block"]) .side-border,
+#main-view:has(#planetView[style*="block"]) .side-border,
+#main-view:has(#combatView[style*="flex"]) .side-border {
+    opacity: 0;
+    visibility: hidden;
 }
 
 /* LEFT BORDER */
 .side-border.left {
-    /* Calculate the gap: (Screen Width - Game Width) / 4 */
-    /* This places the border exactly in the middle of the empty space on the left */
     left: calc((100vw - var(--canvas-width, 100vw)) / 4);
-    
     background: linear-gradient(to bottom, 
         transparent 0%, 
         var(--accent-color) 20%, 
@@ -77,9 +88,7 @@ html, body {
 
 /* RIGHT BORDER */
 .side-border.right {
-    /* Same math, but for the right side */
     right: calc((100vw - var(--canvas-width, 100vw)) / 4);
-    
     background: linear-gradient(to bottom, 
         transparent 0%, 
         var(--accent-color) 20%, 
@@ -108,6 +117,21 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     to { opacity: 1; }
 }
 
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.08); opacity: 0.75; }
+}
+
+@keyframes starPulse {
+    0%, 100% { transform: scale(1); opacity: 0.9; }
+    50% { transform: scale(1.06); opacity: 1; }
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
 @keyframes pulse-cyan { 
     0% { opacity: 1; text-shadow: 0 0 8px #40E0D0, 0 0 15px #20C0B0; transform: scale(1); } 
     50% { opacity: 0.8; text-shadow: 0 0 20px #40E0D0, 0 0 30px #FFFFFF; transform: scale(1.1); } 
@@ -126,6 +150,15 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     80% { transform: translate(-1px, -1px) rotate(1deg); }
     90% { transform: translate(1px, 2px) rotate(0deg); }
     100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
+
+@keyframes shake-effect {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    20% { transform: translate(-3px, 0px) rotate(1deg); }
+    40% { transform: translate(2px, -1px) rotate(-1deg); }
+    60% { transform: translate(-2px, 1px) rotate(0deg); }
+    80% { transform: translate(2px, 1px) rotate(1deg); }
+    100% { transform: translate(0px, 0px) rotate(0deg); }
 }
 
 @keyframes pulse-warning {
@@ -168,12 +201,31 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     50% { border-color: var(--accent-color); }
 }
 
+/* --- SCREEN FX CLASSES (Damage Flash, Shake, Warp) --- */
+.shake-effect {
+    animation: shake 0.35s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.warp-effect {
+    animation: warp-jump 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.damage-flash {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(circle, rgba(255, 0, 0, 0.15) 0%, rgba(255, 0, 0, 0.45) 100%);
+    pointer-events: none;
+    z-index: 9500;
+    opacity: 0;
+    transition: opacity 0.15s ease-out;
+}
+
 /* --- LAYOUT GRID --- */
 #app-container {
     display: grid;
     grid-template-rows: 50px 1fr 150px; /* Header | Map | Footer */
-    height: 100%; /* Changed from 100vh */
-    width: 100%;  /* Changed from 100vw to prevent horizontal overflow */
+    height: 100%;
+    width: 100%;
     overflow: hidden;
 }
 
@@ -207,7 +259,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     font-weight: bold;
 }
 
-.gold { color: #FFD700; }
+.gold { color: var(--gold-text); }
 
 .bar-container {
     height: 6px;
@@ -218,7 +270,6 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 .bar-fill { 
     height: 100%; 
-    /* Cubic Bezier for satisfying, weighty bar movement */
     transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
 }
 .bar-fill.hull { background: var(--danger); }
@@ -242,29 +293,26 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     background: transparent; border: 1px solid var(--border-color);
     color: var(--accent-color); padding: 5px 10px; cursor: pointer;
     font-size: 12px;
+    transition: all 0.15s ease;
 }
-.icon-btn:hover { background: var(--accent-color); color: #000; }
+.icon-btn:hover:not(:disabled) { background: var(--accent-color); color: #000; }
+.icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 /* --- SYSTEM MENU --- */
-/* Style the Stats block to obey themes */
 #sys-stats-display {
     font-size: 13px;
-    /* !important overrides the inline HTML style 'color: #88a' */
     color: var(--text-color) !important; 
     margin-bottom: 10px; 
     padding-bottom: 10px; 
-    /* !important overrides the inline HTML style 'border-bottom: ...' */
     border-bottom: 1px solid var(--border-color) !important; 
 }
 
-/* Style the Version Info at the bottom */
 #versionInfo {
     margin-top: 15px;
     padding-top: 10px;
     border-top: 1px solid var(--border-color);
     font-size: 10px;
     text-align: center;
-    /* Use accent color so it pops, or text-color for subtle */
     color: var(--accent-color); 
     opacity: 0.8;
     font-family: var(--title-font);
@@ -275,7 +323,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     padding: 10px; display: flex; flex-direction: column; gap: 5px;
     z-index: 9999;
     width: 200px;
-    box-shadow: -5px 5px 20px rgba(0,0,0,0.5); /* Add shadow to separate from map */
+    box-shadow: -5px 5px 20px rgba(0,0,0,0.5);
 }
 
 #systemMenu.hidden { display: none; }
@@ -287,25 +335,21 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     gap: 20px;
     justify-content: center;
     align-items: stretch;
-    
-    /* CRITICAL FIX: Constrain width to match the Game Canvas */
     width: 100%;
     max-width: var(--canvas-width, 1024px); 
-    
-    /* Center the grid horizontally */
     margin: 0 auto; 
-    
-    /* Add breathing room so it doesn't touch the exact edge of the borders */
     padding: 0 10px; 
     box-sizing: border-box;
 }
 
+.system-planet-grid > div {
+    position: relative; /* Ensures SCANNED badge positions relative to planet card */
+}
+
 .sys-header {
     font-size: 12px; 
-    /* Use variables so it swaps between Light/Dark mode automatically */
     color: var(--accent-color); 
     border-bottom: 1px solid var(--border-color); 
-    
     margin-bottom: 5px; 
     padding-bottom: 5px;
     font-weight: bold;
@@ -316,6 +360,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     background: #222; color: #888; border: none; 
     padding: 12px; cursor: pointer; font-size: 14px; 
     font-family: var(--title-font);
+    transition: all 0.15s ease;
 }
 .sys-btn:hover { background: #333; color: #FFF; }
 
@@ -362,38 +407,49 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     font-size: 15px;
     line-height: 1.6;
     font-family: var(--main-font);
-    
-    /* CHANGED: Replaced #00FF00 green with your Aqua accent color */
     color: var(--accent-color); 
-    text-shadow: 0 0 2px rgba(0, 224, 224, 0.4); /* Subtle terminal screen glow */
-    
+    text-shadow: 0 0 2px rgba(0, 224, 224, 0.4);
     overflow-y: auto;
     height: 100%;
     opacity: 0.95;
 }
 
+.log-datestamp {
+    color: var(--item-desc-color);
+    font-size: 0.85em;
+    margin-right: 6px;
+    opacity: 0.8;
+    user-select: none;
+}
+
 #context-panel {
     display: flex; flex-direction: column; gap: 5px;
+    overflow: hidden;
 }
 
 .mission-box {
     border: 1px solid var(--border-color);
-    padding: 5px;
-    display: flex; justify-content: space-between;
+    padding: 5px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 #mission-tracker .value { font-size: 14px; }
 
 .action-row {
     display: flex; flex-wrap: wrap; gap: 5px;
+    overflow-y: auto;
 }
 
 .control-button {
     flex: 1;
+    min-width: 120px;
     background: #222; border: 1px solid var(--border-color);
     color: var(--accent-color); padding: 12px;
     font-size: 14px; cursor: pointer;
     font-family: var(--title-font);
     font-weight: bold;
+    transition: all 0.15s ease;
 }
 .control-button:hover { background: var(--accent-color); color: #000; }
 
@@ -423,7 +479,6 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 .crt::before {
     content: " "; display: block; position: absolute;
     top: 0; left: 0; bottom: 0; right: 0;
-    /* Opacity reduced to 0.025 (2.5%) for barely-there texture */
     background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.015) 50%), 
                 linear-gradient(90deg, rgba(255, 0, 0, 0.01), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.01));
     z-index: 999; background-size: 100% 2px, 3px 100%; pointer-events: none;
@@ -435,7 +490,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     background: var(--bg-color); z-index: 2000;
     display: flex; justify-content: center; align-items: center;
 }
-#titleContainer { text-align: center; width: 400px; }
+#titleContainer { text-align: center; width: 400px; max-width: 92vw; }
 
 .game-title { 
     font-family: var(--title-font);
@@ -452,7 +507,8 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 .player-customization { margin-bottom: 20px; }
 .pfp-selector { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 10px; }
 #pfpImage { width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--accent-color); }
-.pfp-arrow-btn { background: none; border: none; color: #FFF; font-size: 20px; cursor: pointer; }
+.pfp-arrow-btn { background: none; border: none; color: var(--text-color); font-size: 20px; cursor: pointer; }
+.pfp-arrow-btn:hover { color: var(--accent-color); }
 
 /* --- SCI-FI BUTTONS & PLANET VIEW --- */
 .action-button {
@@ -473,13 +529,50 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 .action-button:hover:not(:disabled) {
     background: var(--accent-color);
-    color: #000;
+    color: #000 !important;
     box-shadow: 0 0 15px var(--accent-color);
 }
 .action-button:disabled {
     border-color: #444;
     color: #666;
     background: rgba(10, 10, 10, 0.8);
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* --- TRADE ROW ACTION BUTTONS (.trade-btn in trade.js) --- */
+.trade-btn {
+    background: rgba(0, 20, 25, 0.85);
+    border: 1px solid var(--accent-color);
+    color: var(--accent-color);
+    font-family: var(--title-font);
+    border-radius: 3px;
+    transition: all 0.15s ease;
+    box-shadow: 0 0 5px rgba(0, 224, 224, 0.15);
+}
+.trade-btn.buy {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+.trade-btn.buy:hover:not(:disabled) {
+    background: var(--accent-color);
+    color: #000;
+    box-shadow: 0 0 10px var(--accent-color);
+}
+.trade-btn.sell {
+    border-color: var(--success);
+    color: var(--success);
+}
+.trade-btn.sell:hover:not(:disabled) {
+    background: var(--success);
+    color: #000;
+    box-shadow: 0 0 10px var(--success);
+}
+.trade-btn.locked,
+.trade-btn:disabled {
+    background: rgba(20, 20, 25, 0.6);
+    border-color: #444;
+    color: #666;
     cursor: not-allowed;
     box-shadow: none;
 }
@@ -509,6 +602,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     image-rendering: pixelated;
     border: 2px solid #333; border-radius: 50%;
     margin-bottom: 15px; background: #000;
+    object-fit: cover;
 }
 
 .planet-title {
@@ -541,14 +635,13 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     border-color: #FFaa00;
     color: #FFaa00;
 }
-.full-width-btn:hover {
+.full-width-btn:hover:not(:disabled) {
     background: #FFaa00;
     color: #000;
     box-shadow: 0 0 15px #FFaa00;
 }
 
 /* --- SYSTEM MAP ICONS --- */
-/* Fixes skewed planet images in the grid */
 .planet-icon-img {
     width: 80px;            
     height: 80px;           
@@ -563,44 +656,53 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 /* --- ULTRA-MINIMAL SCROLLBARS (Global Base) --- */
 ::-webkit-scrollbar { 
-    width: 4px; /* Very thin */
-    height: 4px; /* Thin for horizontal too */
+    width: 4px;
+    height: 4px;
 } 
 ::-webkit-scrollbar-track { 
-    background: transparent; /* Invisible track */
+    background: transparent;
 }
 ::-webkit-scrollbar-thumb { 
-    background: rgba(0, 224, 224, 0.2); /* Almost invisible normally */
+    background: rgba(0, 224, 224, 0.2);
     border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover { 
-    background: var(--accent-color); /* Lights up when you grab it */
+    background: var(--accent-color);
     box-shadow: 0 0 5px var(--accent-color);
 }
-/* Firefox compatibility */
 * {
     scrollbar-width: thin;
     scrollbar-color: #4A4A6A var(--bg-color);
 }
 
-/* --- TRADE MODAL STYLES (Responsive Fix) --- */
+/* --- TRADE & GENERIC MODAL STYLES --- */
 
-#tradeOverlay, #cargoOverlay, #stationOverlay, #genericModalOverlay, #xerxesOverlay {
+#tradeOverlay, #cargoOverlay, #stationOverlay, #genericModalOverlay, #derelictOverlay, #xerxesOverlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0, 0, 0, 0.85); 
     z-index: 2000; 
     display: flex; justify-content: center; align-items: center;
     padding: 10px;
+    backdrop-filter: blur(3px);
 }
 
 .trade-window {
-    width: 95%; max-width: 700px; /* Responsive width */
-    height: auto; max-height: 90vh; /* Never taller than 90% of screen */
+    width: 95%; max-width: 760px;
+    height: auto; max-height: 90vh;
     background: var(--panel-bg);
     border: 1px solid var(--accent-color);
-    box-shadow: 0 0 20px rgba(0, 224, 224, 0.2);
+    box-shadow: 0 0 25px rgba(0, 224, 224, 0.2);
     display: flex; flex-direction: column;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+/* Ensure #genericModalOverlay has a consistent flex height so child 100% layouts scroll cleanly */
+#genericModalOverlay .trade-window {
+    max-width: 820px;
+    height: 82vh;
+    max-height: 740px;
 }
 
 .trade-header {
@@ -609,19 +711,19 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     border-bottom: 1px solid var(--border-color);
     display: flex; justify-content: space-between; align-items: center;
     font-family: var(--title-font); font-size: 16px; color: #FFF;
-    flex-shrink: 0; /* Header never shrinks */
+    flex-shrink: 0;
 }
 
 .trade-body {
     display: flex; 
     flex: 1; 
-    overflow: hidden; /* Contains the scroll areas */
-    min-height: 0; /* Critical for Flexbox scrolling */
+    overflow: hidden;
+    min-height: 0;
 }
 
 /* Left List */
 .trade-list-container {
-    width: 45%; /* Reduce slightly to allow for the gap */
+    width: 45%;
     border-right: 1px solid var(--border-color);
     overflow-y: auto;
 }
@@ -631,7 +733,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     border-bottom: 1px solid #333;
     cursor: pointer;
     display: flex; justify-content: space-between;
-    font-size: 13px; /* Slightly smaller for compact screens */
+    font-size: 13px;
     transition: background 0.2s;
 }
 .trade-item-row:hover { background: rgba(255, 255, 255, 0.05); }
@@ -646,11 +748,10 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     flex-direction: column;
     width: 55%;
     padding: 20px;
-    
-    height: 70vh;         /* Limits height to 70% of the viewport */
-    overflow-y: auto;     /* Enables the scrollbar when content is too long */
-    overflow-x: hidden;   /* Prevents accidental horizontal shifting */
-    
+    height: 100%;
+    max-height: 75vh;
+    overflow-y: auto;
+    overflow-x: hidden;
     border-left: 1px solid var(--border-color);
 }
 
@@ -677,6 +778,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     padding: 10px;
     background: #000;
     border: 1px solid #333;
+    border-radius: 4px;
 }
 
 .trade-stat-row {
@@ -711,7 +813,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 /* Button Group at bottom of modal */
 .trade-btn-group {
     display: flex; flex-direction: column; gap: 10px;
-    margin-top: auto; /* Push to bottom */
+    margin-top: auto;
 }
 
 /* --- SAVE GAME SELECTION STYLES --- */
@@ -726,7 +828,12 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     padding-bottom: 5px;
 }
 
-/* Save slot styling consolidated */
+.save-list {
+    max-height: 45vh;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
 .save-slot-card {
     background: rgba(0, 0, 0, 0.4);
     border: 1px solid var(--border-color);
@@ -749,7 +856,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 .save-info {
     text-align: left;
-    flex-grow: 1; /* This pushes the arrow to the far right */
+    flex-grow: 1;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -885,21 +992,18 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 /* --- COMBAT VIEW UPDATES --- */
-
-/* Fixes the giant image issue */
 .combatant-icon {
-    width: 100px;           /* Constrain width */
-    height: 100px;          /* Constrain height */
-    object-fit: cover;      /* Crop to fit square without squishing */
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
     border: 2px solid var(--accent-color);
-    border-radius: 8px;     /* Rounded corners */
+    border-radius: 8px;
     background: #000;
-    display: block;         /* Force it to own line */
-    margin: 0 auto 10px auto; /* Center it */
-    image-rendering: pixelated; /* Keep pixel art crisp */
+    display: block;
+    margin: 0 auto 10px auto;
+    image-rendering: pixelated;
 }
 
-/* Fix alignment of the Name Text (e.g. "Captain") */
 .combatant-panel h3 {
     display: flex;
     flex-direction: column;
@@ -909,7 +1013,6 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     margin-top: 0;
 }
 
-/* Style the Ship Class text (e.g. "Light Freighter") */
 .ship-class-label {
     color: #666;
     font-size: 12px;
@@ -918,7 +1021,6 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     letter-spacing: 1px;
 }
 
-/* Better spacing for the health bars */
 .stat-bar-label {
     display: flex;
     justify-content: space-between;
@@ -928,7 +1030,6 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     margin-bottom: 2px;
 }
 
-/* Ensure the combat header is scary enough */
 .combat-header {
     text-align: center;
     color: var(--danger);
@@ -941,15 +1042,12 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     padding-bottom: 10px;
 }
 
-/* Add specific colors for Pirate/Enemy bars */
 .pirate-hull-bar-fill {
-    background-color: var(--danger); /* Red for enemies */
+    background-color: var(--danger);
     height: 100%;
 }
 
 /* --- DELETE SAVE BUTTON STYLES --- */
-
-/* The clickable area for loading the game */
 .save-card-content {
     flex-grow: 1;
     display: flex;
@@ -965,7 +1063,6 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     background: rgba(0, 224, 224, 0.1);
 }
 
-/* The Delete Button */
 .save-delete-btn {
     background: transparent;
     border: 1px solid var(--danger); 
@@ -991,15 +1088,14 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 /* --- CUSTOM CONFIRMATION MODAL --- */
-/* Consolidated duplicate styles */
 #confirmationOverlay {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0, 0, 0, 0.85);
-    display: none; /* Flex when active */
+    display: none;
     justify-content: center;
     align-items: center;
-    z-index: 3000; /* Topmost layer */
+    z-index: 3000;
     backdrop-filter: blur(4px);
 }
 
@@ -1007,7 +1103,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     width: 90%;
     max-width: 450px;
     background: #0a0000;
-    border: 2px solid var(--danger); /* Red border for danger */
+    border: 2px solid var(--danger);
     box-shadow: 0 0 30px rgba(255, 68, 68, 0.3), inset 0 0 15px rgba(255, 0, 0, 0.2);
     border-radius: 4px;
     text-align: center;
@@ -1056,22 +1152,22 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     color: var(--danger);
 }
 
-.danger-btn:hover {
+.danger-btn:hover:not(:disabled) {
     background: var(--danger);
-    color: #000;
+    color: #000 !important;
     box-shadow: 0 0 15px var(--danger);
 }
 
 /* --- TOAST NOTIFICATIONS --- */
 #toastContainer {
     position: fixed;
-    top: 80px; /* Below the top HUD */
+    top: 80px;
     right: 20px;
-    z-index: 4000; /* Above everything */
+    z-index: 4000;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    pointer-events: none; /* Let mouse clicks pass through the container */
+    pointer-events: none;
 }
 
 .toast {
@@ -1080,15 +1176,14 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     border-left: 5px solid var(--accent-color);
     color: #fff;
     padding: 15px 20px;
-    min-width: 300px;
+    min-width: 280px;
+    max-width: 90vw;
     box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
     font-family: var(--title-font);
     font-size: 14px;
-    
-    /* Animation Start State */
     opacity: 0;
     transform: translateX(50px);
-    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55); /* Bouncy sci-fi effect */
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
     pointer-events: auto; 
 }
 
@@ -1104,6 +1199,20 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
 }
 
+.toast.warning {
+    border-color: var(--warning);
+    border-left-color: var(--warning);
+    color: var(--warning);
+    box-shadow: 0 0 10px rgba(255, 170, 0, 0.2);
+}
+
+.toast.info {
+    border-color: var(--accent-color);
+    border-left-color: var(--accent-color);
+    color: var(--accent-color);
+    box-shadow: 0 0 10px rgba(0, 224, 224, 0.2);
+}
+
 .toast.error { 
     border-color: var(--danger); 
     border-left-color: var(--danger);
@@ -1113,7 +1222,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 /* --- CANTINA / RUMOR STYLES --- */
 .rumor-text {
-    color: #e0aaff; /* Light purple for gossip */
+    color: #e0aaff;
     font-style: italic;
     border-left: 2px solid #e0aaff;
     padding-left: 10px;
@@ -1123,15 +1232,13 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 .cantina-header {
-    color: #ffaa00; /* Amber for the bar feel */
+    color: #ffaa00;
     font-weight: bold;
 }
 
 /* --- MOBILE CONTROLS & RESPONSIVENESS --- */
-
-/* 1. Virtual D-Pad (Hidden on Desktop) */
 #mobileControls {
-    display: none; /* Hide by default */
+    display: none;
     position: absolute;
     bottom: 20px;
     left: 20px;
@@ -1156,18 +1263,21 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    user-select: none; /* Prevent text highlighting */
-    touch-action: manipulation; /* Improve touch response */
+    user-select: none;
+    touch-action: manipulation;
 }
 
 .dpad-btn:active {
     background: var(--accent-color);
     color: #000;
 }
+
 /* --- UNIFIED MOBILE OPTIMIZATIONS --- */
 @media (max-width: 768px) {
-    /* 1. Dynamic Viewport Fix */
-    /* Uses 'dvh' instead of 'vh' so the browser's URL bar doesn't cover your buttons */
+    .side-border {
+        display: none !important;
+    }
+
     #app-container {
         display: flex;
         flex-direction: column;
@@ -1176,7 +1286,6 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
         overflow: hidden;
     }
 
-    /* 2. Map Area takes remaining space */
     #main-view {
         flex-grow: 1;
         align-items: center; 
@@ -1187,10 +1296,9 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     #gameCanvas {
         width: 98vw;
         height: auto;
-        max-height: 50dvh; /* Prevent the map from crushing the UI below it */
+        max-height: 50dvh;
     }
 
-    /* 3. Footer Layout Fix (Actions ABOVE Log) */
     #bottom-deck {
         display: flex;
         flex-direction: column;
@@ -1200,7 +1308,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     }
 
     #context-panel {
-        order: -1; /* MAGIC TRICK: This forces the Action Buttons to render ABOVE the text log! */
+        order: -1;
     }
 
     .log-panel {
@@ -1209,63 +1317,72 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
         padding: 5px;
     }
 
-/* 4. Tame the D-Pad */
     #mobileControls {
         display: flex !important;
-        bottom: 20px; /* Moved up slightly to avoid bottom bezel */
+        bottom: 20px;
         left: 20px;
         right: auto; 
-        transform: scale(1.0); /* Made slightly larger for thumbs */
+        transform: scale(1.0);
         transform-origin: bottom left;
         opacity: 0.8; 
     }
 
-    /* 5. Header squish fixes */
     #top-hud { padding: 0 5px; font-size: 10px; }
     .hud-group { gap: 5px; }
-    .label { display: none; } /* Hide words like 'HULL' to save horizontal space */
+    .label { display: none; }
     .bar-container { width: 35px; }
     .sector-title { font-size: 12px; }
     .coords { font-size: 10px; margin-left: 5px; }
     
-    /* 6. Modals Full Width */
     .trade-window, .confirm-window { width: 95%; max-height: 90dvh; }
+    #genericModalOverlay .trade-window { height: 88dvh; max-height: 90dvh; }
     .combatants-wrapper { gap: 5px; }
     .combatant-icon { width: 60px; height: 60px; }
 
-    /* 7. Trade & Inventory Windows (Fix the 50/50 Squish) */
     .trade-body {
-        flex-direction: column; /* Stack the list on top of the details */
+        flex-direction: column;
     }
     .trade-list-container {
         width: 100%;
-        height: 50%; /* Top half is the scrolling list */
+        height: 50%;
         border-right: none;
         border-bottom: 2px solid var(--border-color);
     }
     .trade-panel-right {
         width: 100%;
-        height: 50%; /* Bottom half is the buy/sell controls */
+        height: 50%;
+        border-left: none;
         overflow-y: auto;
     }
 
-    /* 8. Planet Action Grid Stack */
-    .planet-actions-grid {
-        grid-template-columns: 1fr; /* Stack buttons full-width on phones */
+    /* Mobile Codex Stacking */
+    .codex-body {
+        flex-direction: column;
     }
-    .full-width-btn {
-        grid-column: span 1; /* Reset span so it doesn't break the 1-column grid */
+    #codexCategories, #codexEntries {
+        flex: 0 0 25%;
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+    #codexEntryText {
+        flex: 1;
     }
 
-    /* 9. Fat-Finger Touch Target Fixes */
+    .planet-actions-grid {
+        grid-template-columns: 1fr;
+    }
+    .full-width-btn {
+        grid-column: span 1;
+    }
+
     .trade-item-row, .codex-list-item {
-        padding: 16px 12px; /* Boosted vertical padding for easier screen-tapping */
+        padding: 16px 12px;
         font-size: 14px; 
     }
 
-    /* 10. System Header Text Wrap */
     .sys-meta-row {
-        flex-wrap: wrap; /* Prevents coordinates/stats from running off the right edge */
+        flex-wrap: wrap;
         gap: 10px;
     }
 }
@@ -1278,33 +1395,29 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 .critical-fuel {
-    box-shadow: inset 0 0 50px rgba(255, 165, 0, 0.6); /* Orange Glow */
+    box-shadow: inset 0 0 50px rgba(255, 165, 0, 0.6);
     animation: pulse-warning 2s infinite;
 }
 
 .critical-hull {
-    box-shadow: inset 0 0 50px rgba(255, 0, 0, 0.6); /* Red Glow */
+    box-shadow: inset 0 0 50px rgba(255, 0, 0, 0.6);
     animation: pulse-warning 1s infinite;
 }
 
 /* --- LIGHT MODE GLOBAL VARIABLES & OVERRIDES --- */
 body.light-mode, .light-mode {
-    /* Backgrounds: Shift to clean whites and light greys */
     --bg-color: #f4f4f9;
     --panel-bg: #ffffff;
     --border-color: #cccccc;
-    
-    /* Text: Shift to deep, inky blacks and dark greys */
-    --text-color: #222233;       /* Was light purple/grey -> Now dark slate */
-    --item-name-color: #000000;  /* Was pure white -> Now pure black */
-    --item-desc-color: #555566;  /* Was light grey -> Now medium-dark grey */
-    
-    /* Accents: Darken the bright neon colors so they read clearly on white */
-    --accent-color: #007777;     /* Was bright cyan -> Now deep teal */
-    --gold-text: #aa7700;        /* Was bright yellow -> Now dark goldenrod */
-    --success: #007700;          /* Was bright green -> Now forest green */
-    --warning: #cc7700;          /* Was bright orange -> Now burnt orange */
-    --danger: #cc0000;           /* Was bright red -> Now crimson */
+    --text-color: #222233;
+    --item-name-color: #000000;
+    --item-desc-color: #555566;
+    --accent-color: #007777;
+    --concord-color: #0055aa;
+    --gold-text: #aa7700;
+    --success: #007700;
+    --warning: #cc7700;
+    --danger: #cc0000;
 }
 
 body.light-mode #app-container,
@@ -1317,20 +1430,21 @@ body.light-mode .panel {
 }
 
 body.light-mode #game-log {
-    background-color: #F9F9F9; /* Very slight off-white for the log */
+    background-color: #F9F9F9;
     color: #111111;
 }
 
 /* 1. Main Backgrounds */
 body.light-mode #main-view {
-    background-color: #FFFFFF !important; /* Force Pure White */
-    border: none; /* Remove any potential border shadows */
+    background-color: #FFFFFF !important;
+    border: none;
 }
 body.light-mode #titleOverlay, 
+body.light-mode #titleScreenOverlay,
 body.light-mode .trade-window,
 body.light-mode .confirm-window,
-body.light-mode #codexOverlay {
-    background-color: #FFFFFF; /* No more grey! */
+body.light-mode #codexOverlay .codex-window {
+    background-color: #FFFFFF;
 }
 
 /* 2. The Log Panel */
@@ -1338,31 +1452,38 @@ body.light-mode .log-panel {
     background: #FFFFFF;
     color: #000000;
     border-color: #EEE;
-    box-shadow: none; /* Flatten the look */
+    box-shadow: none;
+    text-shadow: none;
 }
 
 /* 3. Buttons */
 body.light-mode .action-button, 
 body.light-mode .sys-btn, 
 body.light-mode .control-button,
-body.light-mode .title-button {
+body.light-mode .title-button,
+body.light-mode .trade-btn {
     background: #FFFFFF; 
     color: #333;      
     border: 1px solid #CCC;
     box-shadow: 0 2px 0 #EEE;
 }
 
-body.light-mode .action-button:hover:not(:disabled) {
-    background: #F9F9F9;
+body.light-mode .action-button:hover:not(:disabled),
+body.light-mode .trade-btn:hover:not(:disabled) {
+    background: #F0Fafa;
     border-color: var(--accent-color);
-    color: var(--accent-color);
+    color: var(--accent-color) !important;
+}
+
+body.light-mode .pfp-arrow-btn {
+    color: #222;
 }
 
 /* 4. Save Slots (Clean White Cards) */
 body.light-mode .save-slot-card {
     background: #FFFFFF;
     border: 1px solid #DDD;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05); /* Soft paper shadow */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
 }
 body.light-mode .save-slot-card:hover {
     background: #FAFAFA;
@@ -1379,8 +1500,8 @@ body.light-mode .save-type-badge {
     border: 1px solid #DDD;
 }
 body.light-mode .auto-badge {
-    background: #FFF8E1; /* Pale Orange Paper */
-    color: #D35400;      /* Dark Orange Ink */
+    background: #FFF8E1;
+    color: #D35400;
     border-color: #FAE5D3;
 }
 body.light-mode .save-delete-btn {
@@ -1410,16 +1531,16 @@ body.light-mode .checkbox-container { color: #444; }
 body.light-mode .checkmark { background-color: #FFF; border: 1px solid #999; }
 body.light-mode .subtitle { color: #555; font-weight: bold; }
 body.light-mode .game-title {
-    text-shadow: 0 4px 0 rgba(0,0,0,0.1); /* Clean drop shadow instead of glow */
-    color: #007777; /* Dark Teal */
+    text-shadow: 0 4px 0 rgba(0,0,0,0.1);
+    color: #007777;
 }
 
 /* --- LIGHT MODE: SHARP HEADER TEXT --- */
 body.light-mode .sector-title {
-    color: var(--accent-color); /* Uses the Dark Teal */
-    text-shadow: none;          /* Removes the "blurry" glow */
-    font-weight: 900;           /* Extra bold for readability */
-    letter-spacing: 1px;        /* Tighten it up slightly */
+    color: var(--accent-color);
+    text-shadow: none;
+    font-weight: 900;
+    letter-spacing: 1px;
     filter: drop-shadow(1px 1px 0px rgba(0,0,0,0.1));
 }
 body.light-mode .coords {
@@ -1446,17 +1567,27 @@ body.light-mode #systemBoot {
 
 /* --- LIGHT MODE: TOAST NOTIFICATIONS --- */
 body.light-mode .toast {
-    background: #FFFFFF;          /* Pure White Card */
-    color: #333333;               /* Dark Grey Text */
-    border: 1px solid #E0E0E0;    /* Subtle grey border */
-    border-left: 5px solid var(--accent-color); /* Thick Teal Indicator */
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1); /* Soft, clean shadow */
+    background: #FFFFFF;
+    color: #333333;
+    border: 1px solid #E0E0E0;
+    border-left: 5px solid var(--accent-color);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     font-weight: 600;
 }
 body.light-mode .toast.success {
     border-left-color: var(--success); 
     color: var(--success);             
     background: #F4FFF4;               
+}
+body.light-mode .toast.warning {
+    border-left-color: var(--warning);
+    color: var(--warning);
+    background: #FFFBF0;
+}
+body.light-mode .toast.info {
+    border-left-color: var(--accent-color);
+    color: var(--accent-color);
+    background: #F0FAFA;
 }
 body.light-mode .toast.error {
     border-left-color: var(--danger);  
@@ -1466,11 +1597,11 @@ body.light-mode .toast.error {
 
 /* --- LIGHT MODE: PLANET VIEW OVERRIDES --- */
 body.light-mode .planet-view-content {
-    background: #FFFFFF;          /* Clean White Card */
-    border: 1px solid #CCC;       /* Subtle Border */
-    border-left: 4px solid var(--accent-color); /* Keep the accent strip */
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);    /* Soft, modern shadow */
-    color: #333;                  /* Dark Text */
+    background: #FFFFFF;
+    border: 1px solid #CCC;
+    border-left: 4px solid var(--accent-color);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    color: #333;
 }
 body.light-mode .planet-title {
     color: var(--accent-color);   
@@ -1497,8 +1628,8 @@ body.light-mode .trade-header {
     text-shadow: none;
 }
 body.light-mode .trade-math-area {
-    background: #F9F9F9;
-    border: 1px solid #DDD;
+    background: #F9F9F9 !important;
+    border: 1px solid #DDD !important;
     color: #333;
 }
 body.light-mode #tradeQtyInput {
@@ -1516,8 +1647,8 @@ body.light-mode .qty-btn:hover {
     color: #FFF;
 }
 body.light-mode .combat-action-btn {
-    background: #FFF0F0;      /* Very pale red */
-    color: #CC0000;           /* Dark Red Text */
+    background: #FFF0F0;
+    color: #CC0000;
     border-color: #CC0000;
     box-shadow: 0 2px 0 #E0C0C0;
 }
@@ -1535,16 +1666,16 @@ body.light-mode .combatant-icon {
     border-color: #CCC;
 }
 body.light-mode .confirm-window {
-    background: #fffafa; /* Slight red tint on white for danger */
+    background: #fffafa;
     border-color: #CC0000;
     box-shadow: 0 0 30px rgba(200, 0, 0, 0.2), inset 0 0 15px rgba(200, 0, 0, 0.1);
-    color: #000; /* Force text black */
+    color: #000;
 }
 body.light-mode .confirm-body {
-    color: #333; /* Ensure message text is visible */
+    color: #333;
 }
 body.light-mode #confirmMessage {
-    color: #CC0000; /* Deep, bold crimson so it pops on the white background */
+    color: #CC0000;
     font-weight: bold;
 }
 body.light-mode .confirm-header {
@@ -1571,37 +1702,38 @@ body.light-mode .control-button:hover {
     color: #FFF;
 }
 
-/* --- LIGHT MODE: CODEX--- */
+/* --- LIGHT MODE: CODEX --- */
 body.light-mode .codex-header {
-    background: #E0E0E0;      /* Light Grey instead of Dark Teal */
-    color: #111;              /* Dark Text */
+    background: #E0E0E0;
+    color: #111;
     border-bottom: 1px solid #BBB;
 }
 body.light-mode #codexCategories, 
 body.light-mode #codexEntries {
-    border-right-color: #CCC; /* Soft Grey instead of Black */
+    border-right-color: #CCC;
+    background: #FAFAFA;
 }
 body.light-mode .codex-list-item {
-    color: #444; /* Dark Grey text */
+    color: #444;
 }
 body.light-mode .codex-list-item:hover {
-    background: #F0F0F0;      /* Very Light Grey */
+    background: #F0F0F0;
     color: var(--accent-color);
 }
 body.light-mode .codex-list-item.active {
-    background: #E0F7FA;      /* Pale Cyan/Teal Paper */
-    color: #006064;           /* Deep Teal Text */
+    background: #E0F7FA;
+    color: #006064;
     border-left-color: #006064;
 }
 
 /* --- LIGHT MODE: CODEX CONTRAST FIX --- */
 body.light-mode #codexCategories > div:first-child,
 body.light-mode #codexEntries > div:first-child {
-    background: rgba(0, 0, 0, 0.04) !important; /* A very faint, clean highlight instead */
+    background: rgba(0, 0, 0, 0.04) !important;
 }
 body.light-mode #codexCategories > div:first-child > div:first-child,
 body.light-mode #codexEntries > div:first-child > div:first-child {
-    color: #006666 !important; /* Deep, bold teal */
+    color: #006666 !important;
     font-weight: bold !important;
 }
 body.light-mode #codexCategories > div:first-child > div:nth-child(2) {
@@ -1622,8 +1754,8 @@ body.light-mode .trade-item-row:hover {
     background: #F5F5F5; 
 }
 body.light-mode .trade-item-row.selected {
-    background: #E0F7FA;      /* Pale Cyan */
-    color: #006064;           /* Deep Teal */
+    background: #E0F7FA;
+    color: #006064;
     border-left-color: #006064;
 }
 
@@ -1652,9 +1784,9 @@ body.light-mode .trade-item-row.selected {
     box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 .perk-card:hover {
-    border-color: #FFD700; /* Gold Border */
+    border-color: #FFD700;
     background: #222;
-    transform: translateY(-5px); /* Pop up slightly */
+    transform: translateY(-5px);
 }
 .perk-icon { font-size: 40px; margin-bottom: 10px; }
 .perk-title {
@@ -1678,34 +1810,34 @@ body.light-mode .trade-item-row.selected {
 
 /* --- LIGHT MODE: LEVEL UP OVERRIDES --- */
 body.light-mode #levelUpOverlay {
-    background: rgba(255, 255, 255, 0.95); /* White fog backdrop */
+    background: rgba(255, 255, 255, 0.95);
 }
 body.light-mode .perk-card {
     background: #FFFFFF;
     border: 1px solid #CCC;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1); /* Soft shadow */
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
 }
 body.light-mode .perk-card:hover {
     background: #F9F9F9;
-    border-color: var(--accent-color); /* Teal border on hover */
+    border-color: var(--accent-color);
 }
 body.light-mode .perk-title {
-    color: var(--accent-color); /* Dark Teal */
+    color: var(--accent-color);
     font-weight: 900;
 }
 body.light-mode .perk-desc {
-    color: #444; /* Dark Grey text */
+    color: #444;
     font-weight: 600;
 }
 body.light-mode .perk-category {
     color: #888;
 }
 body.light-mode #levelUpOverlay h1 {
-    color: var(--accent-color) !important; /* Force Teal instead of Gold */
+    color: var(--accent-color) !important;
     text-shadow: none !important;
 }
 body.light-mode #levelUpOverlay p {
-    color: #333 !important; /* Force Black text instead of White */
+    color: #333 !important;
     font-weight: bold;
 }
 
@@ -1725,6 +1857,7 @@ body.light-mode #levelUpOverlay p {
     flex-direction: column;
     align-items: center;
     background: #080815;
+    overflow-y: auto;
 }
 
 #stationCanvas {
@@ -1754,6 +1887,7 @@ body.light-mode #levelUpOverlay p {
     text-align: center;
     line-height: 1.5;
     font-style: italic;
+    white-space: pre-line;
 }
 
 .station-menu-grid {
@@ -1779,7 +1913,7 @@ body.light-mode #levelUpOverlay p {
     text-align: left;
 }
 
-.station-action-btn:hover {
+.station-action-btn:hover:not(:disabled) {
     background: #1a1a25;
     border-color: var(--accent-color);
     transform: translateX(5px);
@@ -1806,41 +1940,37 @@ body.light-mode #levelUpOverlay p {
 /* --- LIGHT MODE STATION OVERRIDES --- */
 body.light-mode .station-body,
 body.light-mode .station-badge {
-    background: #F0F0F0;       /* Light Grey Background */
-    color: var(--accent-color); /* Dark Teal Text */
-    border-color: #CCC;        /* Subtle Border */
-    font-weight: 900;          /* Make text bold and crisp */
+    background: #F0F0F0;
+    color: var(--accent-color);
+    border-color: #CCC;
+    font-weight: 900;
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 body.light-mode .station-visual-panel { background: #FFFFFF; }
 body.light-mode #stationCanvas { border-color: #CCC; background: #F0F0F0; }
 body.light-mode .station-action-btn { background: #FFF; border: 1px solid #CCC; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-body.light-mode .station-action-btn:hover { background: #F9F9F9; border-color: var(--accent-color); }
+body.light-mode .station-action-btn:hover:not(:disabled) { background: #F9F9F9; border-color: var(--accent-color); }
 body.light-mode .btn-label { color: #222; }
 
 /* Responsive Station View */
 @media (max-width: 768px) {
-    .station-body { flex-direction: column; height: auto; }
+    .station-body { flex-direction: column; height: auto; max-height: 80dvh; }
     .station-visual-panel { width: 100%; border-right: none; border-bottom: 1px solid #333; flex-direction: row; gap: 15px; padding: 10px; }
     #stationCanvas { width: 80px; height: 80px; margin-bottom: 0; }
     .station-menu-grid { width: 100%; grid-template-columns: 1fr; }
 }
 
 /* --- LIGHT MODE TEXT VISIBILITY FIXES --- */
-
-/* Make the station flavor text dark and readable */
 body.light-mode .station-desc {
     color: #333; 
     font-weight: 600;
 }
 
-/* Make the button subtitles (e.g. "Buy Commodities") darker */
 body.light-mode .btn-sub {
     color: #555;
     font-weight: 500;
 }
 
-/* Ensure paragraph text in the generic sub-modals is also dark */
 body.light-mode #genericDetailContent p {
     color: #333 !important;
 }
@@ -1869,20 +1999,20 @@ body.light-mode .trade-list-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
     font-family: var(--main-font);
     font-size: 11px;
     color: #888;
-    flex-shrink: 0; /* Prevent it from being crushed */
+    flex-shrink: 0;
 }
 
-/* Light Mode Override */
 body.light-mode .modal-info-bar {
     background: #F0F0F0;
     color: #555;
     border-bottom-color: #CCC;
 }
 
-/* Individual Data Points */
 .info-bar-item {
     display: flex;
     align-items: center;
@@ -1902,33 +2032,26 @@ body.light-mode .modal-info-bar {
     font-size: 12px;
 }
 
-/* Specific Colors for specific stats */
 .info-credits { color: var(--gold-text); }
 .info-ship { color: #FFF; }
 body.light-mode .info-ship { color: #222; }
 
 /* --- DERELICT MODAL OVERRIDES --- */
-
-/* 1. Fix the "Black Box" log area */
 #derelictLog {
-    /* Use a dark, semi-transparent red/black mix instead of pure black */
     background: rgba(30, 10, 10, 0.5) !important; 
     border-top: 1px solid #552222 !important;
     color: #AAA !important;
 }
 
-/* 2. Fix the "Green/Teal" hover on the Close (X) button */
-/* We target the button specifically inside the derelict header */
 #derelictOverlay .icon-btn:hover {
-    background: #FF5555; /* Bright Red */
+    background: #FF5555;
     color: #FFF;
     border-color: #FF5555;
 }
 
-/* 3. Light Mode Support for the Log */
 body.light-mode #derelictLog {
-    background: #FFF0F0 !important; /* Very faint red paper */
-    color: #550000 !important; /* Dark red text */
+    background: #FFF0F0 !important;
+    color: #550000 !important;
     border-top: 1px solid #FFCCCC !important;
 }
 
@@ -1936,9 +2059,9 @@ body.light-mode #derelictLog {
 .xerxes-btn {
     background: #150025;
     border: 1px solid #551188;
-    color: #DDA0DD; /* Plum */
+    color: #DDA0DD;
 }
-.xerxes-btn:hover {
+.xerxes-btn:hover:not(:disabled) {
     background: #2a0045;
     border-color: #9933FF;
     color: #FFF;
@@ -1949,22 +2072,19 @@ body.light-mode #derelictLog {
 }
 
 /* --- LIGHT MODE XERXES THEME (Royal Lavender) --- */
-
-/* 1. Main Window & Border */
 body.light-mode #xerxesOverlay .trade-window {
     background-color: #FFFFFF !important;
-    border-color: #9C27B0 !important; /* Rich Purple */
+    border-color: #9C27B0 !important;
     box-shadow: 0 0 40px rgba(156, 39, 176, 0.25) !important;
 }
 
-/* 2. Header Area */
 body.light-mode #xerxesOverlay .trade-header {
-    background: #F3E5F5 !important; /* Very Light Lavender */
+    background: #F3E5F5 !important;
     border-bottom: 1px solid #E1BEE7 !important;
 }
 
 body.light-mode #xerxesOverlay .trade-header span {
-    color: #4A148C !important; /* Deep Purple Text (High Contrast) */
+    color: #4A148C !important;
     text-shadow: none !important;
 }
 
@@ -1973,22 +2093,19 @@ body.light-mode #xerxesOverlay .icon-btn {
     border-color: #CE93D8 !important;
 }
 
-/* 3. Info Bar Border */
 body.light-mode #xerxesInfoBar {
     border-bottom-color: #F3E5F5 !important;
 }
 
-/* 4. Main Body Backgrounds */
 body.light-mode #xerxesOverlay .station-body {
     background: #FFFFFF !important;
 }
 
 body.light-mode #xerxesOverlay .station-visual-panel {
-    background: #FAFAFA !important; /* Slight off-white to separate visual area */
+    background: #FAFAFA !important;
     border-right: 1px solid #F3E5F5 !important;
 }
 
-/* 5. The "Rogue World" Badge */
 body.light-mode #xerxesOverlay .station-badge {
     background: #F3E5F5 !important;
     color: #7B1FA2 !important;
@@ -1997,47 +2114,42 @@ body.light-mode #xerxesOverlay .station-badge {
 }
 
 body.light-mode #xerxesOverlay .station-desc {
-    color: #555 !important; /* Readable Grey */
+    color: #555 !important;
 }
 
-/* 6. Buttons (The "Xerxes Btn" class) */
 body.light-mode .xerxes-btn {
     background: #FFFFFF !important;
     border: 1px solid #E1BEE7 !important;
-    color: #6A1B9A !important; /* Deep Purple */
+    color: #6A1B9A !important;
     box-shadow: 0 2px 0 #F3E5F5 !important;
 }
 
-body.light-mode .xerxes-btn:hover {
+body.light-mode .xerxes-btn:hover:not(:disabled) {
     background: #F3E5F5 !important;
     border-color: #9C27B0 !important;
     color: #4A148C !important;
     box-shadow: 0 0 10px rgba(156, 39, 176, 0.3) !important;
 }
 
-/* 7. The Special "Spire" Button Accent */
 body.light-mode .xerxes-spire-btn {
     border-left: 4px solid #9C27B0 !important;
 }
 
-/* 8. The Log Box */
 body.light-mode #xerxesLog {
-    background: #F3E5F5 !important; /* Light Lavender Paper */
-    color: #4A148C !important;      /* Deep Purple Ink */
+    background: #F3E5F5 !important;
+    color: #4A148C !important;
     border-top: 1px solid #CE93D8 !important;
 }
 
-/* --- XERXES INPUT BOX IN LIGHT MODE --- */
 body.light-mode #spireInput {
-    background-color: #FFFFFF !important;   /* Force White Background */
-    color: #4A148C !important;              /* Deep Purple Text */
-    border: 2px solid #9C27B0 !important;   /* Purple Border */
+    background-color: #FFFFFF !important;
+    color: #4A148C !important;
+    border: 2px solid #9C27B0 !important;
     box-shadow: inset 0 0 5px rgba(156, 39, 176, 0.2) !important;
 }
 
-/* Optional: Make the placeholder text ("TYPE ANSWER...") look nice too */
 body.light-mode #spireInput::placeholder {
-    color: #CE93D8; /* Light Purple */
+    color: #CE93D8;
     opacity: 1;
 }
 
@@ -2045,14 +2157,12 @@ body.light-mode #spireInput::placeholder {
 .system-header-panel {
     width: 100%;
     max-width: clamp(320px, 100vw, 1024px); 
-    
     margin: 0 auto 20px auto;
-    padding: 0 15px; /* Add padding so text doesn't touch the exact edge */
+    padding: 0 15px 15px 15px;
     z-index: var(--z-header);
     box-sizing: border-box;
     text-align: left;
     border-bottom: 1px solid #333;
-    padding-bottom: 15px;
 }
 
 .sys-title-large {
@@ -2080,63 +2190,54 @@ body.light-mode #spireInput::placeholder {
     color: #888;
     font-style: italic;
     margin-top: 10px;
-    max-width: 80%; /* Keep line length readable */
+    max-width: 80%;
 }
 
 /* ==========================================
    --- SPECIAL LOCATION VIEWS ---
    ========================================== */
 
-/* Loads the black market imageas a unique modal header */
-
 .black-market-header {
     width: 100%;
-    height: 250px; /* Adjust height as needed */
+    height: 250px;
     background-image: url('assets/black_market.png');
     background-size: cover;
-    background-position: center bottom; /* Shows the busy trading counter */
-    
-    /* Applies the new Navy/Aqua sci-fi theme borders */
+    background-position: center bottom;
     border-bottom: 2px solid var(--accent-color); 
     box-shadow: inset 0 -15px 30px rgba(0, 224, 224, 0.2);
-    
     margin-bottom: 15px;
-    border-radius: 4px 4px 0 0; /* Match modal corners */
+    border-radius: 4px 4px 0 0;
 }
-/* Container to force side-by-side layout */
+
 .modal-split-layout {
     display: flex;
-    flex-direction: row; /* Forces children side-by-side */
-    gap: 20px; /* Creates clean space between the two columns */
-    align-items: flex-start; /* Aligns both columns to the top */
+    flex-direction: row;
+    gap: 20px;
+    align-items: flex-start;
     width: 100%;
 }
 
-/* The left column (usually for an image, icon, or vital stats) */
 .modal-left-pane {
-    flex: 0 0 30%; /* Doesn't grow, doesn't shrink, stays exactly 30% width */
+    flex: 0 0 30%;
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
-/* Update this specific class in your style.css */
 .modal-right-pane {
     flex: 1; 
     display: flex;
     flex-direction: column;
-    min-height: 0; /* CRITICAL: Stops flexbox from infinite stretching */
-    max-height: 60vh; /* Sets a firm ceiling for the column */
+    min-height: 0;
+    max-height: 60vh;
 }
 
-/* Ensure your scan-data-box is still set up like this */
 .scan-data-box {
-    overflow-y: auto; /* This triggers the scrollbar */
+    overflow-y: auto;
     flex-grow: 1; 
     padding-right: 15px; 
 }
 
-/* Ensure images in the left pane don't blow out of their container */
 .modal-left-pane img {
     max-width: 100%;
     height: auto;
@@ -2151,18 +2252,15 @@ body.light-mode #spireInput::placeholder {
     transition: background 0.2s;
 }
 
-/* Add a nice hover effect so players know it's a button */
 .generic-list-item:hover {
     background: rgba(255, 255, 255, 0.05);
 }
 
-/* Styling for when a list item is clicked/selected */
 .generic-list-item.active {
     background: rgba(0, 224, 224, 0.15);
     border-left: 3px solid var(--accent-color);
 }
 
-/* Light Mode Overrides */
 body.light-mode .generic-list-item {
     border-bottom-color: #EEE;
 }
@@ -2179,7 +2277,7 @@ body.light-mode .generic-list-item.active {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0, 0, 0, 0.85);
-    display: none; /* Flex when active */
+    display: none;
     justify-content: center;
     align-items: center;
     z-index: var(--z-modal);
@@ -2239,7 +2337,7 @@ body.light-mode .generic-list-item.active {
 
 #codexEntryText {
     flex: 1;
-    background: var(--bg-color);
+    background: var(--panel-bg);
     overflow-y: auto;
 }
 
@@ -2312,7 +2410,6 @@ body.light-mode .generic-list-item.active {
     letter-spacing: 3px;
 }
 
-/* Ensure the left/middle panes use the right text colors */
 .codex-cat-btn div, 
 .codex-entry-btn div {
     color: var(--text-color);
@@ -2325,25 +2422,15 @@ body.light-mode .generic-list-item.active {
 .active-cat div { color: var(--accent-color); }
 .active-entry div { color: var(--gold-text); }
 
-/* Ensure the text pane background is separated slightly from the lists */
-#codexEntryText {
-    background: var(--panel-bg);
-}
-
 /* --- START BUTTONS --- */
 #startButton, #bootButton {
-    /* 1. Stop it from stretching and center it */
     display: block; 
     width: fit-content; 
     margin: 40px auto; 
-    
-    /* 2. Shape it like a chunky retro button */
     padding: 15px 40px;
-    background: rgba(0, 224, 224, 0.05); /* Faint cyan tint behind text */
+    background: rgba(0, 224, 224, 0.05);
     border: 2px solid var(--accent-color); 
     color: var(--accent-color);
-    
-    /* 3. Typography & FX */
     font-family: var(--title-font);
     font-size: 18px;
     font-weight: bold;
@@ -2355,12 +2442,11 @@ body.light-mode .generic-list-item.active {
     transition: all 0.2s ease-in-out;
 }
 
-/* Hover state where the terminal colors invert! */
 #startButton:hover, #bootButton:hover {
     background: var(--accent-color);
-    color: #000; /* Inverts the text to black */
+    color: #000;
     box-shadow: 0 0 25px var(--accent-color);
-    transform: scale(1.05); /* Slight zoom when the mouse hits it */
+    transform: scale(1.05);
 }
 
 /* --- END OF FILE style.css --- */
