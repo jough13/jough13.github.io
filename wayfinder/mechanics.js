@@ -1,3 +1,5 @@
+// --- START OF FILE mechanics.js ---
+
 // ==========================================
 // --- WAYFINDER BACKGROUND SIMULATIONS ---
 // ==========================================
@@ -5,6 +7,27 @@
 let lastPayday = 0;
 const PAYDAY_INTERVAL = 30.0; // Pay crew every 30 Stardates
 const COST_PER_CREW = 250;    // 250c per crew member
+
+// Helper to check if a blocking modal or combat screen is currently open
+function isPlayerBusyInModalOrCombat() {
+    if (typeof currentGameState !== 'undefined' && currentGameState !== 'galactic_map') return true;
+    if (typeof currentCombatContext !== 'undefined' && currentCombatContext) return true;
+    if (typeof currentTradeContext !== 'undefined' && currentTradeContext) return true;
+    if (typeof currentOutfitContext !== 'undefined' && currentOutfitContext) return true;
+    if (typeof currentMissionContext !== 'undefined' && currentMissionContext) return true;
+    if (typeof currentEncounterContext !== 'undefined' && currentEncounterContext) return true;
+
+    const genericModal = document.getElementById('genericModalOverlay');
+    if (genericModal && genericModal.style.display === 'flex') return true;
+
+    const stationModal = document.getElementById('stationOverlay');
+    if (stationModal && stationModal.style.display === 'flex') return true;
+
+    const xerxesModal = document.getElementById('xerxesOverlay');
+    if (xerxesModal && xerxesModal.style.display === 'flex') return true;
+
+    return false;
+}
 
 // ==========================================
 // --- UNIFIED ENTITY MANAGER ---
@@ -14,7 +37,52 @@ const EntityManager = {
     entities: [],
     
     add: function(entity) {
-        if (!entity.id) entity.id = "ENT_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+        if (!entity) return null;
+        if (!entity.id) entity.id = "ENT_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
+
+        // Normalize NPC properties so interactWithNPC() in script.js displays accurate faction & comms
+        if (entity.isNPC && !entity.isFuelRat && !entity.isColonyHauler) {
+            if (!entity.faction) {
+                if (entity.id.includes("CONCORD") || (entity.name && entity.name.includes("Concord"))) {
+                    entity.faction = "CONCORD";
+                } else if (typeof getFactionAt === 'function' && entity.x !== undefined && entity.y !== undefined) {
+                    const localFac = getFactionAt(entity.x, entity.y);
+                    if (localFac === "KTHARR" && Math.random() < 0.65) {
+                        entity.faction = "KTHARR";
+                        entity.name = "K'tharr Blood-Patrol";
+                        entity.shipClass = "K'tharr Vanguard";
+                        entity.combatProfile = "KTHARR_SCOUT";
+                        entity.color = "#4CAF50";
+                        entity.image = "assets/pirate_ship.png";
+                        entity.hails = [
+                            "State your blood-price, outlander, or clear our vector!",
+                            "The Ascendancy watches these stars. Tread lightly.",
+                            "Weak hulls have no place in K'tharr space."
+                        ];
+                    } else if (localFac === "ECLIPSE" && Math.random() < 0.65) {
+                        entity.faction = "ECLIPSE";
+                        entity.name = "Cartel Shadow-Runner";
+                        entity.shipClass = "Eclipse Night-Runner";
+                        entity.combatProfile = "STRIKER";
+                        entity.color = "#9933FF";
+                        entity.image = "assets/pirate_ship.png";
+                        entity.hails = [
+                            "You didn't see us, we didn't see you. Keep flying.",
+                            "Got contraband? Station Umbra is paying triple today.",
+                            "Keep your sensors off our cargo hold if you value your hull."
+                        ];
+                    } else {
+                        entity.faction = "INDEPENDENT";
+                    }
+                } else {
+                    entity.faction = "INDEPENDENT";
+                }
+            }
+            if ((!entity.dialogue || entity.dialogue.length === 0) && entity.hails && entity.hails.length > 0) {
+                entity.dialogue = [entity.hails[Math.floor(Math.random() * entity.hails.length)]];
+            }
+        }
+
         this.entities.push(entity);
         return entity;
     },
@@ -23,45 +91,52 @@ const EntityManager = {
         this.entities = this.entities.filter(e => e.id !== id);
     },
     
-    clear: function() { this.entities = []; },
+    clear: function() {
+        this.entities = [];
+    },
     
     // --- THE NATIVE ECS TICK ENGINE ---
     tick: function(isMovement) {
+        // Waiting (.) passes 0.15 stardates, so dynamic world entities still advance!
+        const shouldAdvanceWorld = Boolean(isMovement) || (typeof currentGameState !== 'undefined' && currentGameState === 'galactic_map');
+
         // Loop backwards to safely remove entities that expire or get destroyed
         for (let i = this.entities.length - 1; i >= 0; i--) {
             const entity = this.entities[i];
+            if (!entity) continue;
             
             // SYSTEM 1: Unidentified Signal Sources (USS)
             if (entity.isUSS) {
                 if (isMovement) entity.lifespan--;
-                if (entity.x === playerX && entity.y === playerY) {
+                if (entity.x === playerX && entity.y === playerY && !isPlayerBusyInModalOrCombat()) {
                     this.entities.splice(i, 1);
                     if (typeof resolveUSSEncounter === 'function') resolveUSSEncounter();
+                    continue;
                 } else if (entity.lifespan <= 0) {
                     this.entities.splice(i, 1);
+                    continue;
                 }
             }
             
             // SYSTEM 2: Comets
-            if (entity.isComet && isMovement) {
-                // Move the comet
+            if (entity.isComet && shouldAdvanceWorld) {
                 entity.x += entity.vx; 
                 entity.y += entity.vy;
-                if (typeof spawnParticles === 'function') spawnParticles(entity.x, entity.y, 'thruster', { x: -entity.vx, y: -entity.vy });
+                if (typeof spawnParticles === 'function') {
+                    spawnParticles(entity.x, entity.y, 'thruster', { x: -entity.vx, y: -entity.vy });
+                }
 
                 // Did it hit the player?
                 if (entity.x === playerX && entity.y === playerY) {
                     const ice = 5 + Math.floor(Math.random() * 10);
                     const rare = Math.floor(Math.random() * 3); 
                     
-                    // SAFE CARGO ADDITION (Respects Capacity)
                     const spaceLeft = (typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50) - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
                     
                     if (spaceLeft > 0) {
                         let totalAdded = 0;
                         let addedRare = 0;
                         
-                        // Prioritize the rare crystals
                         if (rare > 0 && spaceLeft >= rare) {
                             playerCargo['VOID_CRYSTALS'] = (playerCargo['VOID_CRYSTALS'] || 0) + rare;
                             addedRare = rare;
@@ -82,30 +157,41 @@ const EntityManager = {
                         logMessage(lootMsg);
                         if (typeof showToast === 'function') showToast("COMET HARVESTED", "success");
                         if (typeof soundManager !== 'undefined') soundManager.playGain();
+                        if (typeof spawnFloatingText === 'function') {
+                            spawnFloatingText(playerX, playerY, `+${iceToAdd} H-3`, "#00FFFF");
+                        }
                     } else {
                         logMessage("<span style='color:var(--danger); font-weight:bold;'>[ COMET INTERCEPTED ]</span> Impact absorbed, but cargo hold is full! No materials extracted.");
                         if (typeof showToast === 'function') showToast("CARGO FULL", "error");
                     }
                     
-                    this.entities.splice(i, 1); // Destroy the comet
+                    this.entities.splice(i, 1);
+                    continue;
                 } else {
-                    // Despawn if it flew too far off-screen
                     const cDist = Math.abs(entity.x - playerX) + Math.abs(entity.y - playerY);
                     if (typeof VIEWPORT_WIDTH_TILES !== 'undefined' && cDist > VIEWPORT_WIDTH_TILES * 1.5) {
                         this.entities.splice(i, 1);
+                        continue;
                     }
                 }
             }
-            // SYSTEM 3: Ambient NPCs & Traffic
-            if (entity.isNPC && isMovement) {
-                // Initialize State Machine if they don't have one
+
+            // SYSTEM 3: Ambient NPCs, Fuel Rats & Colony Haulers
+            if ((entity.isNPC || entity.isFuelRat || entity.isColonyHauler) && shouldAdvanceWorld) {
                 if (!entity.state) {
                     entity.state = 'CRUISING';
-                    entity.vx = 0; entity.vy = 0;
+                    entity.vx = 0;
+                    entity.vy = 0;
                     entity.stepsRemaining = 0;
                 }
 
+                if (entity.interactCooldown && entity.interactCooldown > 0) {
+                    entity.interactCooldown--;
+                }
+
                 let movedThisTurn = false;
+                const prevX = entity.x;
+                const prevY = entity.y;
 
                 // A. DOCKED STATE
                 if (entity.state === 'DOCKED') {
@@ -130,45 +216,51 @@ const EntityManager = {
                         entity.dockTimer = 20;
                     }
                 }
-                // B.5 RESCUE STATE
+                // B.5 RESCUE STATE (Fuel Rat intercepting stranded player - works on wait turns!)
                 else if (entity.state === 'RESCUE') {
-                    for (let step = 0; step < 2; step++) {
+                    const steps = isMovement ? 2 : 3; // Move even faster when the player is waiting (.)
+                    for (let step = 0; step < steps; step++) {
                         if (entity.x < playerX) entity.x++; else if (entity.x > playerX) entity.x--;
                         if (entity.y < playerY) entity.y++; else if (entity.y > playerY) entity.y--;
                         movedThisTurn = true;
                         if (entity.x === playerX && entity.y === playerY) break;
                     }
                 }
-                // B.75 HAULER STATE
+                // B.75 HAULER STATE (Colony Trade Route)
                 else if (entity.state === 'TRADE_ROUTE') {
                     if (entity.x < entity.targetX) entity.x++; else if (entity.x > entity.targetX) entity.x--;
                     if (entity.y < entity.targetY) entity.y++; else if (entity.y > entity.targetY) entity.y--;
                     movedThisTurn = true;
 
                     if (entity.x === entity.targetX && entity.y === entity.targetY) {
-                        const payout = 5000 + Math.floor(Math.random() * 5000);
+                        const payout = 3500 + Math.floor(Math.random() * 3500);
                         playerCredits += payout;
                         
-                        // Flavor text for immersion
-                        const goods = ["Luxury Goods", "Refined Alloy", "Medical Supplies"];
+                        const goods = ["Luxury Goods", "Refined Alloy", "Medical Supplies", "Atmospheric Processors"];
                         const deliveredGood = goods[Math.floor(Math.random() * goods.length)];
                         
-                        logMessage(`<span style='color:var(--gold-text); font-weight:bold;'>[ TRADE ROUTE ] ${entity.name} safely delivered a shipment of ${deliveredGood}! Earned ${formatNumber(payout)}c cut.</span>`);
+                        logMessage(`<span style='color:var(--gold-text); font-weight:bold;'>[ TRADE ROUTE ]</span> ${entity.name} safely delivered ${deliveredGood} to ${entity.destName || 'port'}! Earned <b>${formatNumber(payout)}c</b> tariff.`);
+                        if (typeof showToast === 'function') showToast(`CONVOY ARRIVED: +${formatNumber(payout)}c`, "success");
                         if (typeof soundManager !== 'undefined') soundManager.playBuy();
                         if (typeof renderUIStats === 'function') renderUIStats();
-                        this.entities.splice(i, 1); continue;
+                        this.entities.splice(i, 1);
+                        continue;
                     }
 
-                    const pirate = activeEnemies.find(e => e.x === entity.x && e.y === entity.y) || this.entities.find(e => e.isHostile && e.x === entity.x && e.y === entity.y);
+                    const pirate = (typeof activeEnemies !== 'undefined' && activeEnemies.find(e => !e.isProbe && Math.abs(e.x - entity.x) <= 1 && Math.abs(e.y - entity.y) <= 1)) ||
+                                   this.entities.find(e => e.isHostile && e.x === entity.x && e.y === entity.y);
                     if (pirate) {
-                        logMessage(`<span style='color:var(--danger); font-weight:bold;'>[ TRADE ROUTE ] ${entity.name} was destroyed by pirates! Cargo lost.</span>`);
+                        if (typeof spawnParticles === 'function') spawnParticles(entity.x, entity.y, 'explosion');
+                        logMessage(`<span style='color:var(--danger); font-weight:bold;'>[ TRADE ROUTE LOST ]</span> ${entity.name} was ambushed and destroyed by hostiles at [${entity.x}, ${-entity.y}]!`);
+                        if (typeof showToast === 'function') showToast("COLONY CONVOY DESTROYED", "error");
                         if (typeof soundManager !== 'undefined') soundManager.playExplosion();
-                        this.entities.splice(i, 1); continue;
+                        this.entities.splice(i, 1);
+                        continue;
                     }
                 }
                 // C. CRUISING STATE
                 else if (entity.state === 'CRUISING') {
-                    if (Math.random() >= 0.30) { // 70% chance to move
+                    if (Math.random() >= 0.30) {
                         if (Math.random() < 0.10) {
                             let foundStation = false;
                             for (let dy = -3; dy <= 3; dy++) {
@@ -180,7 +272,8 @@ const EntityManager = {
                                         entity.state = 'DOCKING';
                                         entity.targetX = entity.x + dx;
                                         entity.targetY = entity.y + dy;
-                                        foundStation = true; break;
+                                        foundStation = true;
+                                        break;
                                     }
                                 }
                                 if (foundStation) break;
@@ -193,7 +286,9 @@ const EntityManager = {
                                         entity.vy = Math.floor(Math.random() * 3) - 1;
                                     } while (entity.vx === 0 && entity.vy === 0);
                                 }
-                                entity.x += entity.vx; entity.y += entity.vy; entity.stepsRemaining--;
+                                entity.x += entity.vx;
+                                entity.y += entity.vy;
+                                entity.stepsRemaining--;
                                 movedThisTurn = true;
                             }
                         } else {
@@ -204,27 +299,27 @@ const EntityManager = {
                                     entity.vy = Math.floor(Math.random() * 3) - 1;
                                 } while (entity.vx === 0 && entity.vy === 0);
                             }
-                            entity.x += entity.vx; entity.y += entity.vy; entity.stepsRemaining--;
+                            entity.x += entity.vx;
+                            entity.y += entity.vy;
+                            entity.stepsRemaining--;
                             movedThisTurn = true;
                         }
                     }
                 }
                 
-                // VISUAL POLISH: Draw engine trails for moving ships
+                // VISUAL POLISH: Draw engine trails at previous tile for moving ships
                 if (movedThisTurn && typeof spawnParticles === 'function') {
-                    // Calculate rough direction vector for the particle emitter
-                    let tdx = entity.state === 'DOCKING' || entity.state === 'TRADE_ROUTE' ? Math.sign(entity.targetX - entity.x) : entity.vx;
-                    let tdy = entity.state === 'DOCKING' || entity.state === 'TRADE_ROUTE' ? Math.sign(entity.targetY - entity.y) : entity.vy;
-                    if (entity.state === 'RESCUE') { tdx = Math.sign(playerX - entity.x); tdy = Math.sign(playerY - entity.y); }
-                    
-                    spawnParticles(entity.x, entity.y, 'thruster', { x: tdx, y: tdy });
+                    const tdx = Math.sign(entity.x - prevX);
+                    const tdy = Math.sign(entity.y - prevY);
+                    spawnParticles(prevX, prevY, 'thruster', { x: tdx, y: tdy });
                 }
 
                 // DESPAWN, HAILING, & COLLISIONS
                 const dist = Math.abs(entity.x - playerX) + Math.abs(entity.y - playerY);
                 
-                if (dist > VIEWPORT_WIDTH_TILES && !entity.isColonyHauler) {
-                    this.entities.splice(i, 1); continue;
+                if (dist > VIEWPORT_WIDTH_TILES && !entity.isColonyHauler && !entity.isFuelRat) {
+                    this.entities.splice(i, 1);
+                    continue;
                 }
 
                 if (dist > 0 && dist <= 3 && Math.random() < 0.15) {
@@ -237,9 +332,10 @@ const EntityManager = {
                 if (entity.x === playerX && entity.y === playerY) {
                     if (entity.isFuelRat) {
                         this.entities.splice(i, 1);
-                        executeRescueSequence();
+                        if (typeof executeRescueSequence === 'function') executeRescueSequence();
                         continue;
-                    } else {
+                    } else if (!entity.isColonyHauler && (!entity.interactCooldown || entity.interactCooldown <= 0) && !isPlayerBusyInModalOrCombat()) {
+                        entity.interactCooldown = 3; // Prevent modal loop if player chooses "Maintain Course"
                         if (typeof interactWithNPC === 'function') interactWithNPC(entity);
                     }
                 }
@@ -248,26 +344,60 @@ const EntityManager = {
     }
 };
 
+window.EntityManager = EntityManager;
+
 // ==========================================
 // --- 1. EVENT FUNCTIONS ---
 // ==========================================
 
 function triggerNebulaEvent() {
     const events = [
-        { type: "ION_STORM", msg: "<span style='color:var(--warning)'>[ ION STORM ]</span> Lightning arcs across the nebula! Shields drained.", fx: () => { playerShields = 0; if(typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED'); } },
-        { type: "NURSERY", msg: "<span style='color:var(--success)'>[ STELLAR NURSERY ]</span> Your sensors capture a protostar igniting. (+100 XP)", fx: () => { playerXP += 100; if (typeof checkLevelUp === 'function') checkLevelUp(); } },
-        { type: "PLASMA_EDDY", msg: "<span style='color:var(--accent-color)'>[ PLASMA EDDY ]</span> You fly through a pocket of volatile gas. Fuel tanks overcharged!", fx: () => { playerFuel = Math.floor(MAX_FUEL * 1.5); } },
-        { type: "SENSOR_GHOSTS", msg: "<span style='color:#9933FF'>[ SENSOR GHOSTS ]</span> The nebula gas creates false radar signatures. Your targeting computer is confused.", fx: () => {} },
-        { type: "SPORE_CLOUD", msg: "<span style='color:#FF33FF'>[ BIO-SIGNATURE ]</span> You fly through a cloud of bio-luminescent dust. Fungal spores cling to your hull.", fx: () => {
-            const spaceLeft = (typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50) - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
-            if (spaceLeft > 0) {
-                playerCargo['SENTIENT_MYCELIUM'] = (playerCargo['SENTIENT_MYCELIUM'] || 0) + 1;
-                logMessage("<span style='color:var(--success)'>Gathered 1x Sentient Mycelium.</span>");
-                if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-            } else {
-                logMessage("<span style='color:var(--danger)'>Cargo hold full. Spores drifted away.</span>");
+        {
+            type: "ION_STORM",
+            msg: "<span style='color:var(--warning)'>[ ION STORM ]</span> Lightning arcs across the nebula! Shields drained.",
+            fx: () => {
+                playerShields = 0;
+                if (typeof spawnFloatingText === 'function') spawnFloatingText(playerX, playerY, "SHIELDS DRAINED", "var(--warning)");
+                if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
             }
-        }}
+        },
+        {
+            type: "NURSERY",
+            msg: "<span style='color:var(--success)'>[ STELLAR NURSERY ]</span> Your sensors capture a protostar igniting. (+100 XP)",
+            fx: () => {
+                playerXP += 100;
+                if (typeof spawnFloatingText === 'function') spawnFloatingText(playerX, playerY, "+100 XP", "var(--success)");
+                if (typeof checkLevelUp === 'function') checkLevelUp();
+            }
+        },
+        {
+            type: "PLASMA_EDDY",
+            msg: "<span style='color:var(--accent-color)'>[ PLASMA EDDY ]</span> You fly through a pocket of volatile gas. Fuel tanks overcharged!",
+            fx: () => {
+                playerFuel = Math.floor(MAX_FUEL * 1.5);
+                if (typeof spawnFloatingText === 'function') spawnFloatingText(playerX, playerY, "FUEL OVERCHARGED!", "var(--accent-color)");
+            }
+        },
+        {
+            type: "SENSOR_GHOSTS",
+            msg: "<span style='color:#9933FF'>[ SENSOR GHOSTS ]</span> The nebula gas creates false radar signatures. Your targeting computer is confused.",
+            fx: () => {}
+        },
+        {
+            type: "SPORE_CLOUD",
+            msg: "<span style='color:#FF33FF'>[ BIO-SIGNATURE ]</span> You fly through a cloud of bioluminescent dust. Fungal spores cling to your hull.",
+            fx: () => {
+                const spaceLeft = (typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50) - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
+                if (spaceLeft > 0) {
+                    playerCargo['SENTIENT_MYCELIUM'] = (playerCargo['SENTIENT_MYCELIUM'] || 0) + 1;
+                    logMessage("<span style='color:var(--success)'>Gathered 1x Sentient Mycelium.</span>");
+                    if (typeof spawnFloatingText === 'function') spawnFloatingText(playerX, playerY, "+1 MYCELIUM", "#FF33FF");
+                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                } else {
+                    logMessage("<span style='color:var(--danger)'>Cargo hold full. Spores drifted away.</span>");
+                }
+            }
+        }
     ];
     
     const ev = events[Math.floor(Math.random() * events.length)];
@@ -276,19 +406,27 @@ function triggerNebulaEvent() {
     if (typeof renderUIStats === 'function') renderUIStats();
 }
 
-function triggerRandomEncounter() {
-    // Grab all available encounters from the database
+function triggerRandomEncounter(forcedEncounterId = null) {
+    if (typeof ENCOUNTER_DATABASE === 'undefined') return;
     const keys = Object.keys(ENCOUNTER_DATABASE);
     if (keys.length === 0) return;
     
-    const randomKey = keys[Math.floor(Math.random() * keys.length)];
-    const encounter = ENCOUNTER_DATABASE[randomKey];
+    const chosenKey = (forcedEncounterId && ENCOUNTER_DATABASE[forcedEncounterId])
+        ? forcedEncounterId
+        : keys[Math.floor(Math.random() * keys.length)];
+    const encounter = ENCOUNTER_DATABASE[chosenKey];
+    if (!encounter) return;
     
-    // Save the active context so it can be reloaded from a save file if needed!
+    // Save the active context so it can be reloaded or tracked
     currentEncounterContext = encounter.id;
 
-    // Lock the modal if this is a pirate or inescapable event!
-    window.activeHostileEncounter = encounter.id.includes('PIRATE') || encounter.id === 'SPATIAL_ANOMALY';
+    // Lock the modal on hostile or inescapable hazard events so the player cannot X out for free
+    window.activeHostileEncounter = Boolean(
+        encounter.id.includes('PIRATE') ||
+        encounter.id === 'SPATIAL_ANOMALY' ||
+        encounter.id === 'BINARY_STAR_MERGER' ||
+        encounter.id === 'CONCORD_STING'
+    );
 
     openGenericModal("DEEP SPACE SENSOR CONTACT");
     const listEl = document.getElementById('genericModalList');
@@ -297,11 +435,9 @@ function triggerRandomEncounter() {
 
     // --- 📡 CUSTOM SENSOR FLAVOR TEXT FOR LEFT PANEL ---
     if (listEl) {
-        // Generate consistent "random" numbers based on location and title
         const pseudoRandom = Math.abs((playerX * 7) ^ (playerY * 13) ^ (encounter.title.length * 5));
         let customListHtml = '';
 
-        // Check if this is the Binary Star Merger
         if (encounter.title && encounter.title.toUpperCase().includes('BINARY STAR MERGER')) {
             const gravShear = (pseudoRandom % 900) + 100;
             const thermalFlux = ((pseudoRandom % 8) + 1) + "e28 W/m²";
@@ -326,7 +462,6 @@ function triggerRandomEncounter() {
                 </div>
             `;
         } else {
-            // Default generic sensor text for all other encounters
             const distance = (pseudoRandom % 40) + 10;
             const radLevel = (pseudoRandom % 300) + 15;
             const sigStrength = (pseudoRandom % 90) + 10;
@@ -352,7 +487,6 @@ function triggerRandomEncounter() {
             `;
         }
         
-        // Animated scanning visual (common to all encounters)
         listEl.innerHTML = customListHtml + `
             <div style="padding:15px; text-align:center;">
                 <div style="width:100%; height:2px; background:var(--border-color); position:relative; overflow:hidden;">
@@ -366,41 +500,36 @@ function triggerRandomEncounter() {
         `;
     }
 
-    // --- 🏳️‍🌈 DYNAMIC VISUALS FOR THE RIGHT PANEL ---
+    // --- DYNAMIC VISUALS FOR THE RIGHT PANEL ---
     let visualHtml = '';
     
-    // 1. Check for Pirates
     if (encounter.id === 'PIRATE_EXTORTION' || (encounter.title && encounter.title.toUpperCase().includes('PIRATE'))) {
-         visualHtml = `
+        visualHtml = `
             <img src="assets/pirate_ship.png" alt="Pirate Interceptor" style="
                 width: 100%; max-width: 420px; height: auto; border: 2px solid var(--danger);
                 box-shadow: 0 0 25px rgba(255, 0, 0, 0.4); margin-bottom: 20px; border-radius: 4px; display: block; margin-left: auto; margin-right: auto;
             ">
-         `;
+        `;
     } 
-    // 2. Check for Anomalies and Signals
     else if (encounter.id === 'SPATIAL_ANOMALY' || (encounter.title && (encounter.title.toUpperCase().includes('SIGNAL') || encounter.title.toUpperCase().includes('ANOMALY')))) {
-         visualHtml = `
+        visualHtml = `
             <img src="assets/anomaly.png" alt="Spatial Anomaly" style="
                 width: 100%; max-width: 420px; height: auto; border: 2px solid ${encounter.color || '#9933FF'};
                 box-shadow: 0 0 25px ${encounter.color ? encounter.color + '66' : 'rgba(153, 51, 255, 0.4)'}; margin-bottom: 20px; border-radius: 4px; display: block; margin-left: auto; margin-right: auto;
             ">
-         `;
+        `;
     }
-    // 3. Check for the Binary Star Merger
     else if (encounter.title && encounter.title.toUpperCase().includes('BINARY STAR MERGER')) {
-         visualHtml = `
+        visualHtml = `
             <img src="assets/binary_merger.png" alt="Binary Star Merger" style="
                 width: 100%; max-width: 420px; height: auto; border: 2px solid #FF6600;
                 box-shadow: 0 0 25px rgba(255, 102, 0, 0.4); margin-bottom: 20px; border-radius: 4px; display: block; margin-left: auto; margin-right: auto;
             ">
-         `;
+        `;
     }
-    // 4. Fallback: Generic image property in DB
     else if (encounter.image) {
         visualHtml = `<img src="${encounter.image}" alt="${encounter.title}" style="width: 100%; max-width: 420px; height: auto; border: 2px solid ${encounter.color}; box-shadow: 0 0 25px ${encounter.color}44; margin-bottom: 20px; border-radius: 4px; display: block; margin-left: auto; margin-right: auto;">`;
     } 
-    // 5. Default: Basic Emoji Icon
     else {
         visualHtml = `<div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 20px ${encounter.color});">${encounter.icon}</div>`;
     }
@@ -432,7 +561,7 @@ function triggerRandomEncounter() {
         btn.style.marginBottom = '10px';
         btn.innerHTML = choice.label;
         
-        if (choice.label.includes("DESTROY") || choice.label.includes("Risk")) {
+        if (choice.label.includes("DESTROY") || choice.label.includes("DEATH") || choice.label.includes("Rep-") || choice.label.includes("Risk") || choice.label.includes("Hull-")) {
             btn.style.borderColor = "var(--danger)";
             btn.style.color = "var(--danger)";
         } else if (choice.label.includes("Rep+") || choice.label.includes("XP+") || choice.label.includes("Safe")) {
@@ -453,50 +582,78 @@ function triggerRandomEncounter() {
 }
 
 function resolveUniversalEncounter(encounterId, choiceIndex) {
-    // Release the modal lock since a choice was made!
     window.activeHostileEncounter = false;
     const encounter = ENCOUNTER_DATABASE[encounterId];
+    if (!encounter || !encounter.choices[choiceIndex]) {
+        currentEncounterContext = null;
+        closeGenericModal();
+        return;
+    }
+
     const choice = encounter.choices[choiceIndex];
     let leveledUp = false;
 
     if (choice.actionType) {
         if (choice.actionType === "CUSTOMS_SCAN") {
-            performCustomsScan(); 
             closeGenericModal();
             currentEncounterContext = null;
+            const passed = typeof performCustomsScan === 'function' ? performCustomsScan() : true;
+            if (passed) {
+                logMessage("<span style='color:var(--success)'>[ CUSTOMS STING ]</span> Concord Interceptors complete their deep-scan of your hold. Finding no exposed contraband, they解锁 weapons and jump away.");
+                if (typeof showToast === 'function') showToast("INSPECTION PASSED", "success");
+            }
             return;
         } 
         else if (choice.actionType === "FLEE_CONCORD") {
-            if (Math.random() > 0.6) {
-                logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] EVASION SUCCESSFUL! You dump a sensor decoy and jump to warp before they can lock weapons!</span>");
-            } else {
-                updatePlayerNotoriety(10);
-                logMessage("<span style='color:var(--danger)'>[ ENCOUNTER ] EVASION FAILED! The Interceptors rake your hull for 30 damage before you escape!</span>");
-                // Let HULL_DAMAGED handle the hull deduction so it isn't subtracted twice
-                if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 30, reason: "Concord Patrol" });
-                else playerHull -= 30;
-            }
             closeGenericModal();
             currentEncounterContext = null;
+            const evadeBonus = typeof PLAYER_EVASION !== 'undefined' ? PLAYER_EVASION : 0;
+            if (Math.random() < (0.4 + evadeBonus)) {
+                logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] EVASION SUCCESSFUL! You dump a sensor decoy and jump to warp before they can lock weapons!</span>");
+                if (typeof soundManager !== 'undefined') soundManager.playWarp();
+            } else {
+                if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(10);
+                logMessage("<span style='color:var(--danger)'>[ ENCOUNTER ] EVASION FAILED! Hostile interceptors rake your hull for 30 damage before you escape!</span>");
+                if (typeof GameBus !== 'undefined') {
+                    GameBus.emit('HULL_DAMAGED', { amount: 30, reason: encounter.title || "Interceptor Fire" });
+                } else {
+                    playerHull -= 30;
+                }
+            }
             return;
         }
     }
 
+    if (choice.log) logMessage(choice.log);
+
     if (choice.costs) {
-        if (choice.costs.fuel) playerFuel -= choice.costs.fuel;
-        if (choice.costs.credits) playerCredits -= choice.costs.credits;
-        if (choice.costs.hull) playerHull -= choice.costs.hull; 
+        if (choice.costs.fuel) playerFuel = Math.max(0, playerFuel - choice.costs.fuel);
+        if (choice.costs.credits) playerCredits = Math.max(0, playerCredits - choice.costs.credits);
         if (choice.costs.rep) {
             playerFactionStanding[choice.costs.rep.faction] = (playerFactionStanding[choice.costs.rep.faction] || 0) + choice.costs.rep.amount;
         }
         if (choice.costs.items) {
             choice.costs.items.forEach(item => {
-                // SAFE MATH FIX: Prevent undefined - 5 causing NaN corruption!
                 playerCargo[item.id] = Math.max(0, (playerCargo[item.id] || 0) - item.qty);
                 if (playerCargo[item.id] <= 0) delete playerCargo[item.id];
             });
             if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
         }
+        if (choice.costs.hull) {
+            // Route through GameBus so damage flash, audio, and Game Over triggers work properly
+            if (typeof GameBus !== 'undefined') {
+                GameBus.emit('HULL_DAMAGED', { amount: choice.costs.hull, reason: encounter.title || "Deep Space Hazard" });
+            } else {
+                playerHull -= choice.costs.hull;
+            }
+        }
+    }
+
+    // If the hull cost killed the player, exit immediately so we don't overwrite the Game Over screen!
+    if (typeof playerHull !== 'undefined' && playerHull <= 0) {
+        currentEncounterContext = null;
+        closeGenericModal();
+        return;
     }
 
     if (choice.rewards) {
@@ -509,28 +666,30 @@ function resolveUniversalEncounter(encounterId, choiceIndex) {
             playerFactionStanding[choice.rewards.rep.faction] = (playerFactionStanding[choice.rewards.rep.faction] || 0) + choice.rewards.rep.amount;
         }
         if (choice.rewards.items) {
-            // Track the incoming weight dynamically within the loop
             let simulatedLoad = currentCargoLoad;
             choice.rewards.items.forEach(item => {
-                const weight = (typeof COMMODITIES !== 'undefined' && COMMODITIES[item.id]) ? (COMMODITIES[item.id].weight || 1) : 1;
+                const weight = (typeof COMMODITIES !== 'undefined' && COMMODITIES[item.id] && COMMODITIES[item.id].weight !== undefined)
+                    ? COMMODITIES[item.id].weight
+                    : 1;
                 
                 if (simulatedLoad + (item.qty * weight) <= PLAYER_CARGO_CAPACITY) {
                     playerCargo[item.id] = (playerCargo[item.id] || 0) + item.qty;
                     simulatedLoad += (item.qty * weight);
                 } else {
-                    logMessage(`Could not recover ${item.qty}x ${COMMODITIES[item.id].name}. Cargo hold full!`);
+                    const itemName = (typeof COMMODITIES !== 'undefined' && COMMODITIES[item.id]) ? COMMODITIES[item.id].name : item.id;
+                    logMessage(`Could not recover ${item.qty}x ${itemName}. Cargo hold full!`);
                 }
             });
             if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
         }
     }
-
-    if (choice.log) logMessage(choice.log);
     
     if (choice.sound && typeof soundManager !== 'undefined') {
-        if (choice.sound === 'buy') soundManager.playBuy();
-        if (choice.sound === 'error') soundManager.playError();
-        if (choice.sound === 'laser') soundManager.playLaser();
+        if (choice.sound === 'buy' && typeof soundManager.playBuy === 'function') soundManager.playBuy();
+        else if (choice.sound === 'error' && typeof soundManager.playError === 'function') soundManager.playError();
+        else if (choice.sound === 'laser' && typeof soundManager.playLaser === 'function') soundManager.playLaser();
+        else if (choice.sound === 'warp' && typeof soundManager.playWarp === 'function') soundManager.playWarp();
+        else if (choice.sound === 'gain' && typeof soundManager.playGain === 'function') soundManager.playGain();
     }
 
     currentEncounterContext = null;
@@ -544,12 +703,66 @@ function resolveUniversalEncounter(encounterId, choiceIndex) {
 }
 
 // ==========================================
+// --- COLONY CONVOY DISPATCH HELPER ---
+// ==========================================
+
+let lastColonyHaulerDispatch = 0;
+const HAULER_DISPATCH_INTERVAL = 25.0; // Dispatch a trade convoy every 25 Stardates
+
+function checkColonyHaulerDispatch() {
+    if (typeof playerColonies === 'undefined' || typeof currentGameDate === 'undefined') return;
+    if (lastColonyHaulerDispatch === 0 || currentGameDate < lastColonyHaulerDispatch) {
+        lastColonyHaulerDispatch = currentGameDate;
+        return;
+    }
+    if (currentGameDate - lastColonyHaulerDispatch < HAULER_DISPATCH_INTERVAL) return;
+
+    // Cap active colony haulers at 1 at a time
+    const existingHauler = EntityManager.entities.some(e => e.isColonyHauler);
+    if (existingHauler) return;
+
+    const eligibleColonies = Object.values(playerColonies).filter(c => c && c.established && c.population >= 250);
+    if (eligibleColonies.length === 0) return;
+
+    lastColonyHaulerDispatch = currentGameDate;
+    const sourceColony = eligibleColonies[Math.floor(Math.random() * eligibleColonies.length)];
+    const destStation = typeof findNearestStation === 'function'
+        ? findNearestStation(sourceColony.x, sourceColony.y)
+        : { name: "Starbase Alpha", x: MAP_WIDTH - 7, y: MAP_HEIGHT - 5 };
+
+    EntityManager.add({
+        x: sourceColony.x,
+        y: sourceColony.y,
+        targetX: destStation.x,
+        targetY: destStation.y,
+        destName: destStation.name,
+        name: `${sourceColony.name} Trade Convoy`,
+        char: "=",
+        color: "#FFD700",
+        glowColor: "#FFD700",
+        state: "TRADE_ROUTE",
+        isNPC: true,
+        isColonyHauler: true,
+        hasSensorCone: true,
+        desc: `An armored colonial freighter hauling surplus goods from ${sourceColony.name} to ${destStation.name}.`,
+        hails: [
+            `Colonial convoy en route to ${destStation.name}. Keep the lane clear of pirates, Governor!`,
+            `Hauling tariff cargo from ${sourceColony.name}. Shields at maximum.`
+        ]
+    });
+
+    logMessage(`<span style='color:var(--gold-text)'>[ COLONY LOGISTICS ]</span> <b>${sourceColony.name}</b> launched a Trade Convoy toward <b>${destStation.name}</b>.`);
+}
+
+// ==========================================
 // --- 2. MASTER TICK LISTENER ---
 // ==========================================
 
 if (typeof GameBus !== 'undefined') {
     
     GameBus.on('TICK_PROCESSED', (data) => {
+        // Respect tick interrupts if combat or death already triggered earlier in the tick!
+        if (!data || data.interrupt) return;
 
         const { isMovement } = data;
         
@@ -559,7 +772,6 @@ if (typeof GameBus !== 'undefined') {
 
         // --- B. CREW PAYDAY (Timer based, synced to GameState) ---
         if (typeof GameState !== 'undefined' && GameState.player) {
-            // Reset if uninitialized, or if a new game / earlier save reset currentGameDate below lastPayday
             if (!GameState.player.lastPayday || currentGameDate < GameState.player.lastPayday) {
                 GameState.player.lastPayday = currentGameDate;
             }
@@ -622,37 +834,68 @@ if (typeof GameBus !== 'undefined') {
             if (typeof render === 'function') render();
         }
 
-        // --- D. NEBULA EVENTS (5% chance if in Nebula) ---
-        if (tileChar === '~' && Math.random() < 0.05) {
+        // --- D. NEBULA EVENTS (5% chance if moving in Nebula) ---
+        if (isMovement && tileChar === '~' && Math.random() < 0.05 && !isPlayerBusyInModalOrCombat()) {
             triggerNebulaEvent();
         }
 
-        // --- E. DEEP SPACE ENCOUNTERS (0.01% chance if in Empty Space) ---
-        if (tileChar === '.' && Math.random() < 0.0001) { 
-            if (typeof triggerRandomEncounter === 'function') triggerRandomEncounter();
-        }
-
-        // --- NATIVE ECS ENGINE UPDATE ---
-        EntityManager.tick(isMovement);
-
-        // Spawn Unidentified Signal Sources (USS)
-        if (isMovement && Math.random() < 0.02) { // 2% chance per jump
-            const dist = 8 + Math.floor(Math.random() * 12); // 8-20 tiles away
-            const angle = Math.random() * Math.PI * 2;
-            
-            EntityManager.add({
-                x: Math.floor(playerX + Math.cos(angle) * dist),
-                y: Math.floor(playerY + Math.sin(angle) * dist),
-                char: '✧', color: '#FFFFFF', glowColor: '#FFFFFF', pulseSpeed: 600,
-                isUSS: true, lifespan: 50 // Lasts 50 moves before fading
-            });
-            
-            // Only notify the player if they have good sensors!
-            if ((typeof hasCrewPerk === 'function' && hasCrewPerk('ASTROMETRICS')) || 
-                (typeof playerPerks !== 'undefined' && playerPerks.has('LONG_RANGE_SENSORS'))) {
-                logMessage("<span style='color:var(--accent-color)'>[ SENSORS ] Unidentified Signal Source (USS) detected in local space.</span>");
+        // --- E. DEEP SPACE ENCOUNTERS (0.15% chance if moving in Empty Space) ---
+        if (isMovement && tileChar === '.' && Math.random() < 0.0015 && !isPlayerBusyInModalOrCombat()) { 
+            if (typeof triggerRandomEncounter === 'function') {
+                triggerRandomEncounter();
+                data.interrupt = true;
+                return;
             }
         }
 
+        // --- F. COLONY TRADE ROUTE DISPATCH ---
+        checkColonyHaulerDispatch();
+
+        // --- G. NATIVE ECS ENGINE UPDATE ---
+        EntityManager.tick(isMovement);
+
+        // --- H. SPAWN UNIDENTIFIED SIGNAL SOURCES (USS) ---
+        const activeUSSCount = EntityManager.entities.filter(e => e.isUSS).length;
+        if (isMovement && activeUSSCount < 3 && Math.random() < 0.02) {
+            const dist = 8 + Math.floor(Math.random() * 12); // 8-20 tiles away
+            const angle = Math.random() * Math.PI * 2;
+            const ux = Math.floor(playerX + Math.cos(angle) * dist);
+            const uy = Math.floor(playerY + Math.sin(angle) * dist);
+
+            const targetTile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(ux, uy) : '.';
+            const targetChar = typeof getTileChar === 'function' ? getTileChar(targetTile) : targetTile;
+
+            // Only spawn USS on empty space so resolveUSSEncounter() never fizzles on a gravity well
+            if (targetChar === '.') {
+                EntityManager.add({
+                    x: ux,
+                    y: uy,
+                    char: '✧', color: '#FFFFFF', glowColor: '#FFFFFF', pulseSpeed: 600,
+                    isUSS: true, lifespan: 50
+                });
+                
+                if ((typeof hasCrewPerk === 'function' && hasCrewPerk('ASTROMETRICS')) || 
+                    (typeof playerPerks !== 'undefined' && playerPerks.has('LONG_RANGE_SENSORS'))) {
+                    logMessage("<span style='color:var(--accent-color)'>[ SENSORS ] Unidentified Signal Source (USS) detected at [" + ux + ", " + (-uy) + "].</span>");
+                }
+            }
+        }
     });
 }
+
+// Ensure the mobile D-Pad WAIT button calls playerWaitTurn() so ECS entities (like Fuel Rats) advance!
+window.addEventListener('DOMContentLoaded', () => {
+    const btnWait = document.getElementById('btnWait');
+    if (btnWait && !window._mechanicsWaitPatched) {
+        const cleanBtn = btnWait.cloneNode(true);
+        btnWait.parentNode.replaceChild(cleanBtn, btnWait);
+        cleanBtn.addEventListener('click', () => {
+            if (typeof currentGameState !== 'undefined' && currentGameState === 'galactic_map') {
+                if (typeof playerWaitTurn === 'function') playerWaitTurn();
+            }
+        });
+        window._mechanicsWaitPatched = true;
+    }
+});
+
+// --- END OF FILE mechanics.js ---
