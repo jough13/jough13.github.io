@@ -1,7 +1,40 @@
 // --- START OF FILE trade.js ---
 
+// Track average purchase price per item ID for live profit/loss telemetry
+window.playerCargoCostBasis = window.playerCargoCostBasis || {};
+
+// Helper to return cleanly to whichever station or NPC menu is active underneath
+function returnFromTradeSubModal() {
+    const xerxesEl = document.getElementById('xerxesOverlay');
+    const stationEl = document.getElementById('stationOverlay');
+
+    if (xerxesEl && xerxesEl.style.display === 'flex') {
+        closeGenericModal();
+    } else if (stationEl && stationEl.style.display === 'flex') {
+        closeGenericModal();
+    } else if (typeof openStationView === 'function') {
+        const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+        if (tile && tile.type === 'location') {
+            if (tile.name && tile.name.includes('Xerxes') && typeof openXerxesView === 'function') {
+                closeGenericModal();
+                openXerxesView();
+                return;
+            } else if (tile.isMajorHub || tile.char === OUTPOST_CHAR_VAL) {
+                openStationView();
+                return;
+            }
+        }
+        closeGenericModal();
+    } else {
+        closeGenericModal();
+    }
+}
+
+// ==========================================
 // --- CONSOLIDATED TRADE SYSTEM ---
-function openTradeModal(mode) {
+// ==========================================
+
+function openTradeModal(mode = 'buy') {
     // Patch the close function once to ensure Ship-to-Ship state is wiped when closed
     if (typeof window.closeGenericModal === 'function' && !window._tradeClosePatched) {
         const originalClose = window.closeGenericModal;
@@ -22,7 +55,7 @@ function openTradeModal(mode) {
 
     // --- ECONOMY RESTOCK LOGIC (Time-Gated) ---
     if (!window.activeTradeNPC && (!location.lastRestockTime || (currentGameDate - location.lastRestockTime) > 1.0)) {
-        if (location.factory) {
+        if (location.factory && location.buys && location.sells) {
             let buyStock = location.buys.find(b => b.id === location.factory.consumes);
             let sellStock = location.sells.find(s => s.id === location.factory.produces);
             if (buyStock && sellStock) {
@@ -31,19 +64,30 @@ function openTradeModal(mode) {
                     sellStock.stock += location.factory.produceQty;
                     sellStock.priceMod = 1.0; 
                 } else {
-                    sellStock.priceMod = 2.5; 
+                    sellStock.priceMod = 2.0; 
                 }
             }
         }
         if (location.sells) {
             location.sells.forEach(item => {
-                if (item.stock < 100) item.stock += Math.floor(Math.random() * 3) + 1;
+                if (typeof item === 'object' && item.stock !== undefined && item.stock < 100) {
+                    item.stock += Math.floor(Math.random() * 4) + 2;
+                }
+            });
+        }
+        if (location.buys) {
+            location.buys.forEach(item => {
+                if (typeof item === 'object' && item.stock !== undefined && item.stock < 50) {
+                    item.stock += Math.floor(Math.random() * 5) + 3;
+                }
             });
         }
         location.lastRestockTime = currentGameDate;
     }
 
-    const isBuy = mode === 'buy';
+    // Normalize mode so both 'buy' and 'BUY' work properly
+    const isBuy = String(mode || 'buy').toLowerCase() === 'buy';
+    window.currentTradeMode = isBuy ? 'buy' : 'sell';
     
     // --- 1. DYNAMIC TITLE FIX ---
     let modalTitle = "MARKETPLACE";
@@ -100,7 +144,6 @@ function openTradeModal(mode) {
 
     // --- 3. THE PADDED FLEXBOX LAYOUT ---
     const container = document.getElementById('genericModalContent');
-    
     container.style.cssText = "display: flex; flex-direction: column; height: 100%; overflow: hidden;";
     
     container.innerHTML = `
@@ -110,8 +153,8 @@ function openTradeModal(mode) {
             <div style="flex: 1.2; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border-color); padding-left: 15px; padding-right: 10px;">
                 
                 <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-shrink: 0;">
-                    <button class="action-button" style="flex: 1; border-color: ${isBuy ? 'var(--accent-color)' : '#555'}; color: ${isBuy ? 'var(--accent-color)' : '#888'};" onclick="openTradeModal('buy')">🛒 BUY</button>
-                    <button class="action-button" style="flex: 1; border-color: ${!isBuy ? 'var(--success)' : '#555'}; color: ${!isBuy ? 'var(--success)' : '#888'};" onclick="openTradeModal('sell')">📦 SELL</button>
+                    <button class="action-button" style="flex: 1; margin-bottom: 0; border-color: ${isBuy ? 'var(--accent-color)' : '#555'}; color: ${isBuy ? 'var(--accent-color)' : '#888'};" onclick="openTradeModal('buy')">🛒 BUY</button>
+                    <button class="action-button" style="flex: 1; margin-bottom: 0; border-color: ${!isBuy ? 'var(--success)' : '#555'}; color: ${!isBuy ? 'var(--success)' : '#888'};" onclick="openTradeModal('sell')">📦 SELL</button>
                 </div>
                 
                 <div id="genericModalList" style="flex: 1; overflow-y: auto; padding-right: 10px;"></div>
@@ -145,7 +188,7 @@ function openTradeModal(mode) {
         } else {
             items.forEach(itemEntry => {
                 const itemId = itemEntry.id || itemEntry;
-                const stock = itemEntry.stock || 99; 
+                const stock = (typeof itemEntry === 'object' && itemEntry.stock !== undefined) ? itemEntry.stock : 99; 
                 renderTradeRow(itemId, stock, true, location, fragment);
             });
         }
@@ -192,16 +235,16 @@ function openTradeModal(mode) {
 
     listEl.appendChild(fragment);
 
-    // --- 🚨 INJECT SIZED-DOWN RETURN BUTTON 🚨 ---
+    // --- RETURN BUTTON ---
     const actionsEl = document.getElementById('genericModalActions');
     if (actionsEl) {
         if (window.activeTradeNPC && window.activeTradeNPC.id) {
-            // [FIX]: Ship-to-ship return button crash fix
+            const npcId = window.activeTradeNPC.id;
             actionsEl.innerHTML = `
-             <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: var(--accent-color); color: var(--accent-color);" onclick="const npc = EntityManager.entities.find(e => e.id === '${window.activeTradeNPC.id}'); if(npc) interactWithNPC(npc);">
-                 RETURN TO COMM LINK
-             </button>
-         `;
+                <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: var(--accent-color); color: var(--accent-color);" onclick="const npc = EntityManager.entities.find(e => e.id === '${npcId}'); window.activeTradeNPC = null; if(npc) interactWithNPC(npc); else closeGenericModal();">
+                    ◀ RETURN TO COMM LINK
+                </button>
+            `;
         } else {
             actionsEl.innerHTML = `
                 <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="closeGenericModal()">
@@ -233,26 +276,51 @@ function renderTradeRow(itemId, qty, isBuy, location, listEl) {
 
     const price = calculateItemPrice(item, isBuy, location);
 
+    // Check if the station has a finite demand limit on the Sell tab
+    let demandNote = "";
+    let demandMet = false;
+    if (!isBuy && location && location.buys) {
+        const buyEntry = location.buys.find(b => (b.id === itemId) || (b === itemId));
+        if (buyEntry && buyEntry.stock !== undefined) {
+            demandNote = ` <span style="color:#888; font-size:11px;">(Demand: ${buyEntry.stock})</span>`;
+            if (buyEntry.stock <= 0) demandMet = true;
+        }
+    }
+
+    // Calculate profit/loss telemetry if player owns this item and has a recorded cost basis
+    let profitBadgeHtml = "";
+    if (!isBuy && qty > 0 && window.playerCargoCostBasis && window.playerCargoCostBasis[itemId] !== undefined) {
+        const avgPaid = Math.round(window.playerCargoCostBasis[itemId]);
+        const diff = price - avgPaid;
+        const diffColor = diff >= 0 ? 'var(--success)' : 'var(--danger)';
+        const sign = diff >= 0 ? '+' : '';
+        profitBadgeHtml = `<div style="font-size:11px; color:${diffColor};">Avg Paid: ${formatNumber(avgPaid)}c (${sign}${formatNumber(diff)}c/u)</div>`;
+    }
+
     let actionButtonHtml = "";
     if (isLocked) {
         actionButtonHtml = `<button class="trade-btn locked" style="width:100%; padding:8px; font-size:13px;" disabled>🔒 LOCKED</button>`;
     } else {
         const actionClass = isBuy ? 'buy' : 'sell';
-        const disabled = (isBuy && playerCredits < price) || (!isBuy && qty <= 0);
+        const disabled = (isBuy && (playerCredits < price || qty <= 0)) || (!isBuy && (qty <= 0 || demandMet));
         
         const flexContainer = `<div style="display:flex; flex-wrap:nowrap; gap:6px; justify-content:flex-end; align-items:center;">`;
         
         if (isBuy) {
             actionButtonHtml = flexContainer + `
-                <button class="trade-btn ${actionClass}" ${disabled ? 'disabled' : ''} onclick="executeTrade('${itemId}', true, 1)" style="padding:8px 12px; font-size:13px; cursor:pointer; min-width:60px;">
+                <button class="trade-btn ${actionClass}" ${disabled ? 'disabled' : ''} onclick="executeTrade('${itemId}', true, 1)" style="padding:8px 10px; font-size:13px; cursor:pointer; min-width:56px;">
                     ${formatNumber(price)}c
                 </button>
-                <button class="trade-btn ${actionClass}" style="padding:8px; font-weight:bold; font-size:12px; min-width: 40px; cursor:pointer;" 
+                <button class="trade-btn ${actionClass}" style="padding:8px 6px; font-weight:bold; font-size:11px; min-width: 36px; cursor:pointer;" 
                     ${disabled ? 'disabled' : ''} onclick="executeTrade('${itemId}', true, 10)" title="Buy 10">
                     +10
                 </button>
-                <button class="trade-btn ${actionClass}" style="padding:8px; font-weight:bold; font-size:12px; min-width: 40px; cursor:pointer;" 
-                    onclick="executeTrade('${itemId}', true, 'custom')" title="Enter Amount">
+                <button class="trade-btn ${actionClass}" style="padding:8px 6px; font-weight:bold; font-size:11px; min-width: 40px; cursor:pointer;" 
+                    ${disabled ? 'disabled' : ''} onclick="executeTrade('${itemId}', true, 'max')" title="Buy Max">
+                    MAX
+                </button>
+                <button class="trade-btn ${actionClass}" style="padding:8px 6px; font-weight:bold; font-size:11px; min-width: 32px; cursor:pointer;" 
+                    ${disabled ? 'disabled' : ''} onclick="executeTrade('${itemId}', true, 'custom')" title="Enter Amount">
                     #
                 </button>
             </div>`;
@@ -265,7 +333,7 @@ function renderTradeRow(itemId, qty, isBuy, location, listEl) {
                     ${disabled ? 'disabled' : ''} onclick="executeTrade('${itemId}', false, 'all')" title="Sell All">
                     ALL
                 </button>
-                <button class="trade-btn ${actionClass}" style="padding:8px; font-weight:bold; font-size:12px; min-width: 40px; cursor:pointer;" 
+                <button class="trade-btn ${actionClass}" style="padding:8px; font-weight:bold; font-size:12px; min-width: 36px; cursor:pointer;" 
                     ${disabled ? 'disabled' : ''} onclick="executeTrade('${itemId}', false, 'custom')" title="Enter Amount">
                     #
                 </button>
@@ -273,19 +341,22 @@ function renderTradeRow(itemId, qty, isBuy, location, listEl) {
         }
     }
 
+    const illegalBadge = item.illegal ? `<span style="color:var(--danger); border:1px solid var(--danger); font-size:9px; padding:1px 4px; border-radius:2px; margin-left:6px;">ILLEGAL</span>` : '';
+
     row.innerHTML = `
         <div class="trade-item-icon" onclick="displayMarketAnalysis('${itemId}')" style="cursor:pointer; font-size: 32px; padding-top: 2px;">${item.icon || '📦'}</div>
         
-        <div class="trade-item-details" style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+        <div class="trade-item-details" style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
             <div class="trade-item-name" onclick="displayMarketAnalysis('${itemId}')" style="cursor:pointer; font-size: 15px; font-weight: bold; color: var(--item-name-color); letter-spacing: 0.5px;">
-                ${item.name} 
+                ${item.name} ${illegalBadge}
                 ${isLocked ? `<span style="color:var(--danger); font-size:11px; margin-left: 6px;">(${lockReason})</span>` : ''}
             </div>
             
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <div class="trade-item-sub" onclick="displayMarketAnalysis('${itemId}')" style="cursor:pointer; font-size: 13px; color: var(--text-color); line-height: 1.4;">
-                    <div>${isBuy ? `In Stock: ${qty}` : `Owned: ${qty}`}</div>
+                    <div>${isBuy ? `In Stock: ${qty}` : `Owned: ${qty}${demandNote}`}</div>
                     <div style="color:var(--gold-text); font-size: 11px;">Galactic Base: ${formatNumber(item.basePrice)}c</div>
+                    ${profitBadgeHtml}
                 </div>
                 
                 <div class="trade-item-actions">
@@ -321,6 +392,13 @@ function displayMarketAnalysis(itemId) {
         volColor = "var(--warning)"; 
     }
 
+    const avgPaid = (window.playerCargoCostBasis && window.playerCargoCostBasis[itemId] !== undefined)
+        ? `<div style="display:flex; justify-content:space-between; margin-top:8px; padding-top:8px; border-top:1px dashed #333; font-size:13px;">
+               <span style="color:var(--item-desc-color);">Your Avg Cost:</span>
+               <span style="color:var(--accent-color); font-weight:bold;">${formatNumber(Math.round(window.playerCargoCostBasis[itemId]))}c</span>
+           </div>`
+        : '';
+
     detailEl.innerHTML = `
         <div style="animation: fadeIn 0.3s ease-out; display: flex; flex-direction: column; min-height: 100%;">
             <div style="display:flex; gap:15px; margin-bottom:25px; align-items:center;">
@@ -338,16 +416,17 @@ function displayMarketAnalysis(itemId) {
                 <h4 style="margin:0 0 12px 0; color:var(--accent-color); font-size:12px; border-bottom:1px solid var(--border-color); padding-bottom:6px; letter-spacing:1px;">LOCAL MARKET DATA</h4>
                 <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
                     <span style="color:var(--text-color);">Market Buy:</span>
-                    <span style="color:var(--gold-text); font-weight:bold;">${localPrice}c</span>
+                    <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(localPrice)}c</span>
                 </div>
                 <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
                     <span style="color:var(--text-color);">Market Sell:</span>
-                    <span style="color:var(--success); font-weight:bold;">${sellPrice}c</span>
+                    <span style="color:var(--success); font-weight:bold;">${formatNumber(sellPrice)}c</span>
                 </div>
                 <div style="display:flex; justify-content:space-between; border-top:1px dashed var(--border-color); padding-top:10px; font-size:13px;">
                     <span style="color:var(--item-desc-color);">Galactic Base:</span>
-                    <span style="color:var(--item-desc-color);">${item.basePrice}c</span>
+                    <span style="color:var(--item-desc-color);">${formatNumber(item.basePrice)}c</span>
                 </div>
+                ${avgPaid}
             </div>
 
             <div style="margin-bottom:20px; padding: 0 5px;">
@@ -389,27 +468,29 @@ function clearMarketAnalysis() {
 }
 
 function executeTrade(itemId, isBuy, specificQty = 1) {
-    let leveledUp = false; // [FIX]: Globally scoped to the function
+    let leveledUp = false;
     
     const location = window.activeTradeNPC || chunkManager.getTile(playerX, playerY);
     const item = COMMODITIES[itemId];
+    if (!item || !location) return;
+
     const price = calculateItemPrice(item, isBuy, location);
 
     // --- FETCH ITEM ENTRY FOR STOCK/DEMAND LIMITS ---
     const tradeList = isBuy ? location.sells : location.buys;
     const itemEntry = tradeList ? tradeList.find(e => e.id === itemId || e === itemId) : null;
-    const availableStock = itemEntry ? itemEntry.stock : 999; 
+    const availableStock = (itemEntry && itemEntry.stock !== undefined) ? itemEntry.stock : 999; 
 
     let qtyToTrade = specificQty;
 
     if (specificQty === 'custom') {
         const promptMsg = isBuy 
-            ? `Buy how many ${item.name}? (Stock: ${availableStock}, Max affordable: ${Math.floor(playerCredits/price)})`
+            ? `Buy how many ${item.name}? (Stock: ${availableStock}, Max affordable: ${Math.floor(playerCredits / price)})`
             : `Sell how many ${item.name}? (Demand: ${availableStock}, Owned: ${playerCargo[itemId] || 0})`;
             
         let input = prompt(promptMsg, "1");
         if (input === null) return; 
-        qtyToTrade = parseInt(input);
+        qtyToTrade = parseInt(input, 10);
         
         if (isNaN(qtyToTrade) || qtyToTrade <= 0) {
             if (typeof showToast === 'function') showToast("Invalid Amount", "error");
@@ -418,9 +499,9 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
     }
 
     if (isBuy) {
-        const itemWeight = item.weight || 1; // 🚨 Grab the item's weight
+        const itemWeight = item.weight !== undefined ? item.weight : 1;
         const affordable = Math.floor(playerCredits / price);
-        const space = Math.floor((PLAYER_CARGO_CAPACITY - currentCargoLoad) / itemWeight); // 🚨 Divide space by weight!
+        const space = itemWeight > 0 ? Math.floor((PLAYER_CARGO_CAPACITY - currentCargoLoad) / itemWeight) : 999;
 
         if (qtyToTrade === 'max') {
             qtyToTrade = Math.min(affordable, space, availableStock);
@@ -443,21 +524,37 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
         }
         
         if (playerCredits < price * qtyToTrade) {
-             if (typeof showToast === 'function') showToast("Insufficient Credits!", "error");
-             return;
+            if (typeof showToast === 'function') showToast("Insufficient Credits!", "error");
+            return;
         }
         
-        // Multiply the requested quantity by the item's actual weight
-        if (currentCargoLoad + (qtyToTrade * itemWeight) > PLAYER_CARGO_CAPACITY) {
+        if (!item.isTroop && currentCargoLoad + (qtyToTrade * itemWeight) > PLAYER_CARGO_CAPACITY) {
             if (typeof showToast === 'function') showToast("Not enough Cargo Space!", "error");
             return;
         }
 
         const totalCost = price * qtyToTrade;
+        const prevOwned = playerCargo[itemId] || 0;
+        const prevAvg = window.playerCargoCostBasis[itemId] !== undefined ? window.playerCargoCostBasis[itemId] : price;
+
         playerCredits -= totalCost;
-        playerCargo[itemId] = (playerCargo[itemId] || 0) + qtyToTrade;
+
+        // Route Troop items directly into ship barracks if purchased
+        if (item.isTroop && typeof playerShip !== 'undefined' && playerShip.forces) {
+            if (item.isVehicle) {
+                playerShip.forces.heavyMechs = (playerShip.forces.heavyMechs || 0) + qtyToTrade;
+            } else {
+                playerShip.forces.marines = Math.min(
+                    playerShip.forces.maxTroops || 20,
+                    (playerShip.forces.marines || 0) + (qtyToTrade * (item.troopCount || 10))
+                );
+            }
+        } else {
+            playerCargo[itemId] = prevOwned + qtyToTrade;
+            window.playerCargoCostBasis[itemId] = ((prevOwned * prevAvg) + totalCost) / (prevOwned + qtyToTrade);
+        }
         
-        if (itemEntry) itemEntry.stock -= qtyToTrade;
+        if (itemEntry && itemEntry.stock !== undefined) itemEntry.stock -= qtyToTrade;
         
         updateCurrentCargoLoad();
 
@@ -472,7 +569,7 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
             logMessage("\n<span style='color:#40E0D0; font-weight:bold;'>! ARTIFACT ACTIVATED !</span>\nThe Wayfinder Core hums violently! Coordinates projected into navigation computer.");
         }
         
-        if (typeof soundManager !== 'undefined') soundManager.playUIClick();
+        if (typeof soundManager !== 'undefined') soundManager.playBuy();
         if (typeof showToast === 'function') showToast(`Bought ${qtyToTrade}x ${item.name}`, "success");
 
     } 
@@ -487,7 +584,7 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
 
         if (qtyToTrade <= 0) {
             if (availableStock <= 0) {
-                if (typeof showToast === 'function') showToast("Demand met!", "warning");
+                if (typeof showToast === 'function') showToast("Station demand met!", "warning");
                 if (typeof soundManager !== 'undefined') soundManager.playError();
             }
             return;
@@ -495,9 +592,24 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
 
         const totalEarned = price * qtyToTrade;
         playerCargo[itemId] -= qtyToTrade;
-        if (playerCargo[itemId] <= 0) delete playerCargo[itemId];
+        if (playerCargo[itemId] <= 0) {
+            delete playerCargo[itemId];
+            delete window.playerCargoCostBasis[itemId];
+        }
         
-        if (itemEntry) itemEntry.stock -= qtyToTrade;
+        if (itemEntry && itemEntry.stock !== undefined) {
+            itemEntry.stock = Math.max(0, itemEntry.stock - qtyToTrade);
+        }
+
+        // If the player sold raw inputs that this station's factory consumes, boost factory output!
+        if (location.factory && location.factory.consumes === itemId && location.sells) {
+            const producedEntry = location.sells.find(s => s.id === location.factory.produces);
+            if (producedEntry && producedEntry.stock !== undefined) {
+                const batches = Math.max(1, Math.floor(qtyToTrade / Math.max(1, location.factory.consumeQty)));
+                producedEntry.stock += batches * (location.factory.produceQty || 1);
+                producedEntry.priceMod = 1.0;
+            }
+        }
         
         playerCredits += totalEarned;
         updateCurrentCargoLoad();
@@ -505,34 +617,34 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
         const profitXP = Math.max(1, Math.floor((price * qtyToTrade) * (XP_PER_PROFIT_UNIT * 0.8)));
         playerXP += profitXP;
         
-        // [FIX]: Remove 'const' here!
         leveledUp = checkLevelUp();
 
-        if (typeof soundManager !== 'undefined') soundManager.playUIClick();
-        if (typeof showToast === 'function') showToast(`Sold ${qtyToTrade}x ${item.name}`, "success");
+        if (typeof soundManager !== 'undefined') soundManager.playBuy();
+        if (typeof showToast === 'function') showToast(`Sold ${qtyToTrade}x ${item.name} (+${formatNumber(totalEarned)}c)`, "success");
     }
 
     if (!window.activeTradeNPC && location && (location.sells || location.buys)) {
         updateWorldState(playerX, playerY, {
             sells: location.sells,
             buys: location.buys,
+            lastRestockTime: location.lastRestockTime,
             lastInteraction: currentGameDate
         });
     }
 
     const savedItemId = window.activeTradeItemId; 
     
-    // <--- ONLY RE-OPEN TRADE MODAL IF WE DIDN'T LEVEL UP --->
+    // Only re-open the trade modal if a level-up didn't take over the screen
     if (!leveledUp) {
         if (isBuy) openTradeModal('buy');
         else openTradeModal('sell');
+
+        if (savedItemId) {
+            displayMarketAnalysis(savedItemId);
+        }
     }
     
     renderUIStats();
-
-    if (savedItemId) {
-        displayMarketAnalysis(savedItemId);
-    }
 }
 
 function calculateItemPrice(itemOrId, isBuy, location) {
@@ -554,7 +666,8 @@ function calculateItemPrice(itemOrId, isBuy, location) {
         }
     }
 
-    if (locMult === 1.0 && location && location.type === OUTPOST_CHAR_VAL) {
+    // Check both .char and .type for procedural outposts
+    if (locMult === 1.0 && location && (location.type === OUTPOST_CHAR_VAL || location.char === OUTPOST_CHAR_VAL)) {
         locMult = isBuy ? 1.2 : 0.8;
     }
     
@@ -564,7 +677,10 @@ function calculateItemPrice(itemOrId, isBuy, location) {
 
     price = price * locMult;
 
-    if (item.illegal && !isBuy) {
+    const stationSellsItem = Boolean(location && location.sells && location.sells.some(e => (e.id === itemId) || (e === itemId)));
+
+    // Contraband commands a high premium when sold to markets that don't already supply it
+    if (item.illegal && !isBuy && !stationSellsItem) {
         price *= 2.5; 
     }
 
@@ -599,10 +715,19 @@ function calculateItemPrice(itemOrId, isBuy, location) {
     }
 
     price = Math.floor(price);
+
+    // Prevent same-station buy/sell arbitrage loop if the station also sells this item
+    if (!isBuy && stationSellsItem) {
+        const buyPriceHere = calculateItemPrice(itemId, true, location);
+        price = Math.min(price, Math.max(1, Math.floor(buyPriceHere * 0.85)));
+    }
+
     return Math.max(1, price);
 }
 
+// ==========================================
 // --- ECLIPSE SHADOW BROKER ---
+// ==========================================
 
 function openShadowBroker() {
     openGenericModal("SHADOW BROKER NETWORK");
@@ -614,16 +739,32 @@ function openShadowBroker() {
         <div style="text-align:center; padding: 20px;">
             <div style="font-size:60px; margin-bottom:15px; opacity:0.8;">🎲</div>
             <h3 style="color:#9933FF; margin-bottom:10px;">THE SHADOW BROKER</h3>
-            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">"Concord patrols breathing down your neck? I can make your problems disappear... for a cut. I pay top credit for goods that don't officially exist."</p>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                "Concord patrols breathing down your neck? I can make your problems disappear... for a cut. I pay top credit for goods that don't officially exist."
+            </p>
         </div>
     `;
-    actionsEl.innerHTML = '';
+    actionsEl.innerHTML = `
+        <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="returnFromTradeSubModal()">
+            ◀ BACK TO CONCOURSE
+        </button>
+    `;
 
     renderShadowBrokerList();
 }
 
+function getShadowBrokerUnitPrice(itemId) {
+    const item = COMMODITIES[itemId];
+    if (!item) return 0;
+    const loc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+    const soldLocally = loc && loc.sells && loc.sells.some(s => (s.id === itemId) || (s === itemId));
+    // Pay 3x galactic base for smuggled goods brought from off-station, or 1.25x if sold in the local shop
+    return soldLocally ? Math.floor(item.basePrice * 1.25) : Math.floor(item.basePrice * 3);
+}
+
 function renderShadowBrokerList() {
     const listEl = document.getElementById('genericModalList');
+    if (!listEl) return;
     listEl.innerHTML = '';
 
     let foundAny = false;
@@ -634,7 +775,7 @@ function renderShadowBrokerList() {
             foundAny = true;
             const item = COMMODITIES[itemId];
             const qty = playerCargo[itemId];
-            const value = (item.basePrice * 3) * qty; 
+            const value = getShadowBrokerUnitPrice(itemId) * qty; 
             totalBlackMarketValue += value;
             
             const row = document.createElement('div');
@@ -646,15 +787,10 @@ function renderShadowBrokerList() {
     }
 
     if (!foundAny) {
-        listEl.innerHTML = `<div style="padding:15px; color:var(--item-desc-color); text-align:center; line-height:1.5;">Your hold is clean. The Broker has no interest in legal commodities.</div>`;
-        document.getElementById('genericDetailContent').innerHTML = `
-            <div style="text-align:center; padding: 20px;">
-                <div style="font-size:60px; margin-bottom:15px; opacity:0.5;">🧼</div>
-                <h3 style="color:var(--accent-color); margin-bottom:10px;">CLEAN RECORD</h3>
-                <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">No contraband found.</p>
-            </div>
-        `;
-        document.getElementById('genericModalActions').innerHTML = '';
+        const emptyMsg = document.createElement('div');
+        emptyMsg.style.cssText = "padding:15px; color:var(--item-desc-color); text-align:center; line-height:1.5;";
+        emptyMsg.textContent = "Your hold is clean. The Broker has no interest in legal commodities.";
+        listEl.appendChild(emptyMsg);
     } else {
         const fenceAllRow = document.createElement('div');
         fenceAllRow.className = 'trade-item-row';
@@ -679,10 +815,22 @@ function showSmugglingContractDetails() {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
 
-    // Find all Black Markets to use as a destination
-    const blackMarkets = Object.keys(LOCATIONS_DATA).filter(k => LOCATIONS_DATA[k].isBlackMarket);
-    const destName = blackMarkets[Math.floor(Math.random() * blackMarkets.length)];
-    const payout = 15000 + Math.floor(Math.random() * 10000); // Massive payout!
+    const currentLoc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+    const currentName = currentLoc && currentLoc.name ? currentLoc.name : "";
+
+    // Filter Black Markets to exclude the current station and locked Xerxes
+    let blackMarkets = Object.keys(LOCATIONS_DATA).filter(k => {
+        if (k === currentName) return false;
+        if (k === "Planet Xerxes" && (typeof xerxesPuzzleLevel === 'undefined' || xerxesPuzzleLevel < 1)) return false;
+        return LOCATIONS_DATA[k].isBlackMarket;
+    });
+
+    if (blackMarkets.length === 0) {
+        blackMarkets = Object.keys(LOCATIONS_DATA).filter(k => k !== currentName);
+    }
+
+    const destName = blackMarkets[Math.floor(Math.random() * blackMarkets.length)] || "The Rusty Anchor";
+    const payout = 15000 + Math.floor(Math.random() * 10000);
 
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 15px;">
@@ -710,38 +858,38 @@ function showSmugglingContractDetails() {
         </div>
     `;
 
-    // Make sure they have 10 cargo space!
     const spaceLeft = (typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50) - currentCargoLoad;
+    let btnHtml = "";
     if (spaceLeft < 10) {
-        actionsEl.innerHTML = `<button class="action-button danger-btn" disabled>INSUFFICIENT CARGO SPACE (Needs 10)</button>`;
+        btnHtml = `<button class="action-button danger-btn" disabled>INSUFFICIENT CARGO SPACE (Needs 10)</button>`;
     } else if (playerActiveMission) {
-        actionsEl.innerHTML = `<button class="action-button danger-btn" disabled>LIMIT 1 ACTIVE CONTRACT</button>`;
+        btnHtml = `<button class="action-button danger-btn" disabled>LIMIT 1 ACTIVE CONTRACT</button>`;
     } else {
-        actionsEl.innerHTML = `
-            <button class="action-button" style="border-color:var(--danger); color:var(--danger); box-shadow: 0 0 15px rgba(255,0,0,0.3);" onclick="acceptSmugglingRun('${destName}', ${payout})">ACCEPT HOT CARGO</button>
+        btnHtml = `
+            <button class="action-button" style="border-color:var(--danger); color:var(--danger); box-shadow: 0 0 15px rgba(255,0,0,0.3);" onclick="acceptSmugglingRun('${destName.replace(/'/g, "\\'")}', ${payout})">ACCEPT HOT CARGO</button>
         `;
     }
+    btnHtml += `<button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="returnFromTradeSubModal()">◀ BACK TO CONCOURSE</button>`;
+    actionsEl.innerHTML = btnHtml;
 }
 
 function acceptSmugglingRun(destName, payout) {
-    // Give the player the cursed item
     playerCargo['HOT_CARGO'] = (playerCargo['HOT_CARGO'] || 0) + 1;
     if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
 
-    // Hook it into the existing mission system!
     playerActiveMission = {
         id: "SMUGGLE_" + Date.now(),
         type: "DELIVERY",
         title: "Smuggle Hot Cargo",
-        giver: "Shadow Broker",
+        giver: destName,
         isComplete: false,
-        description: `Evade Concord patrols and deliver the Tracked Contraband to the Shadow Broker at ${destName}. Use Silent Running (Q) to break target locks.`,
+        description: `Evade Concord patrols and deliver the Tracked Contraband to ${destName}. Use Silent Running (Q) to break target locks.`,
         rewards: { credits: payout, xp: 500, notoriety: 10 },
         objectives: [{ type: "DELIVERY", destinationName: destName, itemID: "HOT_CARGO", count: 1 }],
         progress: { delivery_0: { delivered: 0, required: 1, complete: false, destinationName: destName } }
     };
 
-    logMessage(`<span style="color:var(--danger); font-weight:bold;">[ CONTRACT ACCEPTED ]</span> The tracker is active. Concord intercepts will arrive momentarily. Fly fast and stay quiet.`);
+    logMessage(`<span style="color:var(--danger); font-weight:bold;">[ CONTRACT ACCEPTED ]</span> The tracker is active. Concord intercepts will arrive momentarily. Deliver to <b>${destName}</b>.`);
     if (typeof showToast === 'function') showToast("HOT CARGO LOADED", "warning");
     if (typeof soundManager !== 'undefined') soundManager.playWarning();
     
@@ -754,7 +902,7 @@ function acceptSmugglingRun(destName, payout) {
 function showShadowBrokerItemDetails(itemId) {
     const item = COMMODITIES[itemId];
     const qty = playerCargo[itemId];
-    const unitPrice = item.basePrice * 3;
+    const unitPrice = getShadowBrokerUnitPrice(itemId);
     const totalValue = unitPrice * qty;
     
     const detailEl = document.getElementById('genericDetailContent');
@@ -786,6 +934,7 @@ function showShadowBrokerItemDetails(itemId) {
 
     actionsEl.innerHTML = `
         <button class="action-button" style="border-color:#9933FF; color:#DDA0DD; box-shadow: 0 0 10px rgba(153,51,255,0.2);" onclick="processShadowBrokerTrade('${itemId}')">FENCE GOODS (${formatNumber(totalValue)}c)</button>
+        <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="returnFromTradeSubModal()">◀ BACK TO CONCOURSE</button>
     `;
 }
 
@@ -810,6 +959,7 @@ function showFenceAllDetails(totalValue) {
 
     actionsEl.innerHTML = `
         <button class="action-button" style="border-color:var(--success); color:var(--success); box-shadow: 0 0 15px rgba(0,255,0,0.2);" onclick="processShadowBrokerTrade('ALL')">FENCE ALL CONTRABAND</button>
+        <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="returnFromTradeSubModal()">◀ BACK TO CONCOURSE</button>
     `;
 }
 
@@ -821,27 +971,28 @@ function processShadowBrokerTrade(itemId) {
         for (const id in playerCargo) {
             if (playerCargo[id] > 0 && COMMODITIES[id] && COMMODITIES[id].illegal) {
                 const qty = playerCargo[id];
-                const value = (COMMODITIES[id].basePrice * 3) * qty;
+                const value = getShadowBrokerUnitPrice(id) * qty;
                 totalProfit += value;
                 soldItemsText.push(`${qty}x ${COMMODITIES[id].name}`);
                 
-                // FIX: Completely delete the item from the cargo object
-                delete playerCargo[id]; 
+                delete playerCargo[id];
+                delete window.playerCargoCostBasis[id];
             }
         }
-    } else {
+    } else if (playerCargo[itemId] > 0) {
         const qty = playerCargo[itemId];
-        const value = (COMMODITIES[itemId].basePrice * 3) * qty;
+        const value = getShadowBrokerUnitPrice(itemId) * qty;
         totalProfit += value;
         soldItemsText.push(`${qty}x ${COMMODITIES[itemId].name}`);
         
-        // Completely delete the item
         delete playerCargo[itemId];
+        delete window.playerCargoCostBasis[itemId];
     }
 
     if (totalProfit > 0) {
         playerCredits += totalProfit;
         updateCurrentCargoLoad();
+        if (typeof unlockLoreEntry === 'function') unlockLoreEntry("FACTION_ECLIPSE_SMUGGLING");
         
         if (typeof soundManager !== 'undefined') soundManager.playGain();
         
@@ -859,11 +1010,15 @@ function processShadowBrokerTrade(itemId) {
                 <p style="color:var(--gold-text); font-weight:bold; margin-top:10px;">+${formatNumber(totalProfit)}c</p>
             </div>
         `;
-        document.getElementById('genericModalActions').innerHTML = '';
+        document.getElementById('genericModalActions').innerHTML = `
+            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="returnFromTradeSubModal()">◀ BACK TO CONCOURSE</button>
+        `;
     }
 }
 
+// ==========================================
 // --- CRYPTARCH MODAL SYSTEM ---
+// ==========================================
 
 function visitCryptarch() {
     openGenericModal("CRYPTARCH SANCTUM");
@@ -883,13 +1038,18 @@ function visitCryptarch() {
             </p>
         </div>
     `;
-    actionsEl.innerHTML = '';
+    actionsEl.innerHTML = `
+        <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="returnFromTradeSubModal()">
+            ◀ BACK TO CONCOURSE
+        </button>
+    `;
 
     renderCryptarchList();
 }
 
 function renderCryptarchList() {
     const listEl = document.getElementById('genericModalList');
+    if (!listEl) return;
     listEl.innerHTML = '';
 
     const encryptedItems = ['ENCRYPTED_ENGRAM', 'ENCRYPTED_DATA', 'ANCIENT_ARCHIVE'];
@@ -960,11 +1120,14 @@ function showCryptarchItemDetails(itemId) {
     }
     const canAfford = playerCredits >= decryptCost;
     btnHtml += `<button class="action-button" ${canAfford ? '' : 'disabled'} style="border-color:var(--gold-text); color:var(--gold-text);" onclick="processDecryption('credits', '${itemId}')">PAY CRYPTARCH (${decryptCost}c)</button>`;
+    btnHtml += `<button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="returnFromTradeSubModal()">◀ BACK TO CONCOURSE</button>`;
 
     actionsEl.innerHTML = btnHtml;
 }
 
 function processDecryption(method, itemId = 'ENCRYPTED_ENGRAM') {
+    if (!playerCargo[itemId] || playerCargo[itemId] <= 0) return;
+
     let cost = 250;
     if (itemId === 'ENCRYPTED_DATA') cost = 500;
     if (itemId === 'ANCIENT_ARCHIVE') cost = 1000;
@@ -973,6 +1136,7 @@ function processDecryption(method, itemId = 'ENCRYPTED_ENGRAM') {
     const xpMultiplier = isAtXerxes ? 2 : 1;
 
     if (method === 'cipher') {
+        if ((playerCargo['PRECURSOR_CIPHER'] || 0) <= 0) return;
         playerCargo['PRECURSOR_CIPHER'] -= 1;
         if (playerCargo['PRECURSOR_CIPHER'] <= 0) delete playerCargo['PRECURSOR_CIPHER'];
         logMessage(`Cipher consumed. Initiating decryption...`);
@@ -1006,12 +1170,14 @@ function processDecryption(method, itemId = 'ENCRYPTED_ENGRAM') {
         textReward = r.text;
     } else if (itemId === 'ENCRYPTED_DATA') {
         xpReward = 250;
-        playerCredits += (500 + Math.floor(Math.random() * 500));
-        textReward = `Data core sold to brokers.`;
+        const creditBonus = 500 + Math.floor(Math.random() * 500);
+        playerCredits += creditBonus;
+        textReward = `Data core sold to brokers (+${formatNumber(creditBonus)}c).`;
     } else if (itemId === 'ANCIENT_ARCHIVE') {
         xpReward = 500;
-        playerCredits += (1000 + Math.floor(Math.random() * 1000));
-        textReward = `Holographic array unlocked! Forbidden history recovered.`;
+        const creditBonus = 1000 + Math.floor(Math.random() * 1000);
+        playerCredits += creditBonus;
+        textReward = `Holographic array unlocked! Forbidden history recovered (+${formatNumber(creditBonus)}c).`;
         if (typeof unlockLore === 'function') unlockLore('PRECURSOR_ORIGINS');
     }
     
@@ -1027,58 +1193,190 @@ function processDecryption(method, itemId = 'ENCRYPTED_ENGRAM') {
     showToast(`DECRYPTED: +${finalXP} XP`, "success");
     
     if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
-    checkLevelUp(); 
+    const leveledUp = checkLevelUp(); 
     
-    if (document.getElementById('cargoOverlay') && document.getElementById('cargoOverlay').style.display !== 'none') {
-        renderCargoList();
-    } else if (document.getElementById('genericModalOverlay') && document.getElementById('genericModalOverlay').style.display !== 'none') {
-        renderCryptarchList();
-        document.getElementById('genericDetailContent').innerHTML = `
-            <div style="text-align:center; padding: 20px;">
-                <div style="font-size:50px; margin-bottom:10px; color:var(--success);">✅</div>
-                <h3 style="color:var(--success);">DECRYPTION SUCCESSFUL</h3>
-                <p style="color:var(--text-color); font-size:13px;">${textReward}</p>
-                <p style="color:var(--accent-color); font-weight:bold; margin-top:10px;">+${finalXP} XP ${isAtXerxes ? '(XERXES BOOST)' : ''}</p>
-            </div>
-        `;
-        document.getElementById('genericModalActions').innerHTML = '';
+    if (!leveledUp) {
+        if (document.getElementById('cargoOverlay') && document.getElementById('cargoOverlay').style.display !== 'none') {
+            renderCargoList();
+        } else if (document.getElementById('genericModalOverlay') && document.getElementById('genericModalOverlay').style.display !== 'none') {
+            renderCryptarchList();
+            document.getElementById('genericDetailContent').innerHTML = `
+                <div style="text-align:center; padding: 20px;">
+                    <div style="font-size:50px; margin-bottom:10px; color:var(--success);">✅</div>
+                    <h3 style="color:var(--success);">DECRYPTION SUCCESSFUL</h3>
+                    <p style="color:var(--text-color); font-size:13px;">${textReward}</p>
+                    <p style="color:var(--accent-color); font-weight:bold; margin-top:10px;">+${finalXP} XP ${isAtXerxes ? '(XERXES BOOST)' : ''}</p>
+                </div>
+            `;
+            document.getElementById('genericModalActions').innerHTML = `
+                <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="returnFromTradeSubModal()">◀ BACK TO CONCOURSE</button>
+            `;
+        }
     }
     renderUIStats();
 }
 
+// Route Eclipse station "Shadow Broker" button directly into the full Shadow Broker & Smuggling UI
 function fenceEclipseContraband() {
-        let soldSomething = false;
-        let totalProfit = 0;
-        
-        for (const itemID in playerCargo) {
-            if (playerCargo[itemID] > 0 && typeof COMMODITIES !== 'undefined' && COMMODITIES[itemID] && COMMODITIES[itemID].illegal) {
-                const qty = playerCargo[itemID];
-                const value = (COMMODITIES[itemID].basePrice * 3) * qty; 
-                
-                playerCredits += value;
-                totalProfit += value;
-                
-                // Delete the key instead of setting it to 0
-                delete playerCargo[itemID];
-                soldSomething = true;
-            }
-        }
-    
-    if (soldSomething) {
-        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-        if (typeof soundManager !== 'undefined') soundManager.playGain();
-        showToast(`CONTRABAND FENCED (+${totalProfit}c)`, "success");
-        if (typeof renderUIStats === 'function') renderUIStats();
+    openShadowBroker();
+}
 
-        unlockLoreEntry("FACTION_ECLIPSE_SMUGGLING");
-    } else {
-        showToast("No contraband in cargo hold.", "info");
+// ==========================================
+// --- THE FORGER (TRANSPONDER & ID SPOOFING) ---
+// ==========================================
+
+function buyFakeID() {
+    openGenericModal("THE FORGER : IDENTITY SPOOFING");
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    const currentNotoriety = typeof playerNotoriety !== 'undefined' ? playerNotoriety : 0;
+    const scrubCost = Math.max(300, currentNotoriety * 300);
+    const concordRep = (typeof playerFactionStanding !== 'undefined' && playerFactionStanding['CONCORD']) ? playerFactionStanding['CONCORD'] : 0;
+
+    listEl.innerHTML = `
+        <div class="trade-list-header" style="color:#9933FF; font-size:10px; letter-spacing:2px; border-bottom:1px solid #333;">
+            FORGERY SERVICES
+        </div>
+        <div class="trade-item-row" onclick="showForgerService('SCRUB_WARRANTS')" style="padding:12px 10px;">
+            <div>
+                <div style="color:#DDA0DD; font-weight:bold; font-size:13px;">🪪 Wipe Concord Warrants</div>
+                <div style="color:var(--item-desc-color); font-size:10px; margin-top:4px;">Erases active Notoriety (${currentNotoriety})</div>
+            </div>
+            <span style="color:var(--gold-text); font-weight:bold;">${currentNotoriety > 0 ? formatNumber(scrubCost) + 'c' : 'CLEAN'}</span>
+        </div>
+        <div class="trade-item-row" onclick="showForgerService('DIPLOMATIC_ID')" style="padding:12px 10px;">
+            <div>
+                <div style="color:var(--accent-color); font-weight:bold; font-size:13px;">📜 Forged Concord Credentials</div>
+                <div style="color:var(--item-desc-color); font-size:10px; margin-top:4px;">Restores/Boosts Concord Rep (+15)</div>
+            </div>
+            <span style="color:var(--gold-text); font-weight:bold;">2,500c</span>
+        </div>
+        <div class="trade-item-row" onclick="showForgerService('CALLSIGN_SCRAMBLE')" style="padding:12px 10px;">
+            <div>
+                <div style="color:var(--success); font-weight:bold; font-size:13px;">📡 Scramble Hull Transponder</div>
+                <div style="color:var(--item-desc-color); font-size:10px; margin-top:4px;">Throws off active pursuit ships</div>
+            </div>
+            <span style="color:var(--gold-text); font-weight:bold;">1,200c</span>
+        </div>
+    `;
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:55px; margin-bottom:15px; filter: drop-shadow(0 0 15px #9933FF);">🪪</div>
+            <h3 style="color:#9933FF; margin-bottom:10px;">THE IDENTITY BROKER</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5; font-style:italic;">
+                "Names, hull registries, criminal ledgers—it's all just quantum ink in the Concord's database. Tell me who you want to be, Commander."
+            </p>
+        </div>
+    `;
+
+    actionsEl.innerHTML = `
+        <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="returnFromTradeSubModal()">
+            ◀ BACK TO CONCOURSE
+        </button>
+    `;
+}
+
+function showForgerService(serviceType) {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    const currentNotoriety = typeof playerNotoriety !== 'undefined' ? playerNotoriety : 0;
+
+    if (serviceType === 'SCRUB_WARRANTS') {
+        const cost = Math.max(300, currentNotoriety * 300);
+        const canUse = currentNotoriety > 0 && playerCredits >= cost;
+        detailEl.innerHTML = `
+            <div style="text-align:center; padding:15px;">
+                <div style="font-size:48px; margin-bottom:10px;">🪪</div>
+                <h3 style="color:#DDA0DD; margin:0 0 10px 0;">SCRUB CONCORD WARRANTS</h3>
+                <p style="font-size:12px; color:var(--text-color); line-height:1.5; background:rgba(0,0,0,0.3); padding:10px; border-left:2px solid #9933FF; text-align:left;">
+                    Slices into SEC-COM's regional relay and purges all active warrants tied to your biometric signature. Cheaper than paying official Concord fines.
+                </p>
+                <div class="trade-math-area" style="text-align:left;">
+                    <div class="trade-stat-row"><span>Current Notoriety:</span> <span style="color:var(--danger); font-weight:bold;">${currentNotoriety} Infractions</span></div>
+                    <div class="trade-stat-row"><span>Slicing Fee:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(cost)}c</span></div>
+                </div>
+            </div>
+        `;
+        actionsEl.innerHTML = `
+            <button class="action-button" ${!canUse ? 'disabled' : ''} style="border-color:#9933FF; color:#DDA0DD;" onclick="executeForgerService('SCRUB_WARRANTS', ${cost})">
+                ${currentNotoriety <= 0 ? 'RECORD ALREADY CLEAN' : (playerCredits < cost ? 'INSUFFICIENT FUNDS' : `PURGE WARRANTS (${formatNumber(cost)}c)`)}
+            </button>
+            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="returnFromTradeSubModal()">◀ BACK TO CONCOURSE</button>
+        `;
+    } else if (serviceType === 'DIPLOMATIC_ID') {
+        const cost = 2500;
+        const canAfford = playerCredits >= cost;
+        const concordRep = (typeof playerFactionStanding !== 'undefined' && playerFactionStanding['CONCORD']) ? playerFactionStanding['CONCORD'] : 0;
+        detailEl.innerHTML = `
+            <div style="text-align:center; padding:15px;">
+                <div style="font-size:48px; margin-bottom:10px;">📜</div>
+                <h3 style="color:var(--accent-color); margin:0 0 10px 0;">FORGED CLEARANCE CODES</h3>
+                <p style="font-size:12px; color:var(--text-color); line-height:1.5; background:rgba(0,0,0,0.3); padding:10px; border-left:2px solid var(--accent-color); text-align:left;">
+                     plants falsified merchant commendations into the Concord diplomatic registry, boosting your Concord standing by +15.
+                </p>
+                <div class="trade-math-area" style="text-align:left;">
+                    <div class="trade-stat-row"><span>Current Concord Rep:</span> <span style="color:var(--accent-color); font-weight:bold;">${concordRep}</span></div>
+                    <div class="trade-stat-row"><span>Forgery Fee:</span> <span style="color:var(--gold-text); font-weight:bold;">2,500c</span></div>
+                </div>
+            </div>
+        `;
+        actionsEl.innerHTML = `
+            <button class="action-button" ${!canAfford ? 'disabled' : ''} style="border-color:var(--accent-color); color:var(--accent-color);" onclick="executeForgerService('DIPLOMATIC_ID', 2500)">
+                ${canAfford ? 'PURCHASE CLEARANCE (2,500c)' : 'INSUFFICIENT FUNDS'}
+            </button>
+            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="returnFromTradeSubModal()">◀ BACK TO CONCOURSE</button>
+        `;
+    } else if (serviceType === 'CALLSIGN_SCRAMBLE') {
+        const cost = 1200;
+        const canAfford = playerCredits >= cost;
+        detailEl.innerHTML = `
+            <div style="text-align:center; padding:15px;">
+                <div style="font-size:48px; margin-bottom:10px;">📡</div>
+                <h3 style="color:var(--success); margin:0 0 10px 0;">TRANSPONDER SCRAMBLE</h3>
+                <p style="font-size:12px; color:var(--text-color); line-height:1.5; background:rgba(0,0,0,0.3); padding:10px; border-left:2px solid var(--success); text-align:left;">
+                    Cycles your hull's sub-space beacon frequencies, immediately throwing off all non-bounty hostile pursuers in the sector.
+                </p>
+                <div class="trade-math-area" style="text-align:left;">
+                    <div class="trade-stat-row"><span>Service Cost:</span> <span style="color:var(--gold-text); font-weight:bold;">1,200c</span></div>
+                </div>
+            </div>
+        `;
+        actionsEl.innerHTML = `
+            <button class="action-button" ${!canAfford ? 'disabled' : ''} style="border-color:var(--success); color:var(--success);" onclick="executeForgerService('CALLSIGN_SCRAMBLE', 1200)">
+                ${canAfford ? 'SCRAMBLE TRANSPONDER (1,200c)' : 'INSUFFICIENT FUNDS'}
+            </button>
+            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="returnFromTradeSubModal()">◀ BACK TO CONCOURSE</button>
+        `;
     }
 }
 
-function buyFakeID() {
-    showToast("The Forger is currently laying low.", "info");
-    logMessage("A hooded figure whispers: 'Got too much heat right now. Come back next cycle.'");
+function executeForgerService(serviceType, cost) {
+    if (playerCredits < cost) return;
+    playerCredits -= cost;
+
+    if (serviceType === 'SCRUB_WARRANTS') {
+        playerNotoriety = 0;
+        if (typeof updateNotorietyTitle === 'function') updateNotorietyTitle();
+        logMessage("<span style='color:#DDA0DD'>[ FORGER ] Biometric warrants purged from SEC-COM relays. Your record is clean.</span>");
+        if (typeof showToast === 'function') showToast("WARRANTS WIPED", "success");
+    } else if (serviceType === 'DIPLOMATIC_ID') {
+        playerFactionStanding['CONCORD'] = (playerFactionStanding['CONCORD'] || 0) + 15;
+        logMessage("<span style='color:var(--accent-color)'>[ FORGER ] Falsified diplomatic credentials uploaded (+15 Concord Standing).</span>");
+        if (typeof showToast === 'function') showToast("+15 CONCORD REP", "success");
+    } else if (serviceType === 'CALLSIGN_SCRAMBLE') {
+        if (typeof activeEnemies !== 'undefined') {
+            activeEnemies = activeEnemies.filter(e => e.isBountyTarget || e.isProbe || e.isLegendary);
+        }
+        logMessage("<span style='color:var(--success)'>[ FORGER ] Hull transponder cycled. Pursuing patrols have lost your signal.</span>");
+        if (typeof showToast === 'function') showToast("TRANSPONDER SCRAMBLED", "success");
+    }
+
+    if (typeof soundManager !== 'undefined') soundManager.playGain();
+    if (typeof renderUIStats === 'function') renderUIStats();
+    buyFakeID();
 }
 
 // ==========================================
@@ -1086,65 +1384,72 @@ function buyFakeID() {
 // ==========================================
 
 function openShipTrade(npc) {
-    // Generate a temporary trading profile based on the NPC being hailed
-    window.activeTradeNPC = {
-        id: npc.id, // Save the ID so the back button can use it!
-        name: npc.name + " (Ship-to-Ship)",
-        type: 'location',
-        isNPC: true,
-        faction: npc.faction || 'INDEPENDENT',
-        isBlackMarket: npc.faction === 'ECLIPSE',
-        sells: [
-            { id: "FUEL_CELLS", priceMod: 1.5, stock: Math.floor(Math.random() * 10) + 5 },
-            { id: "MEDICAL_SUPPLIES", priceMod: 1.2, stock: Math.floor(Math.random() * 5) + 2 }
-        ],
-        buys: [
-            { id: "MINERALS", priceMod: 0.9, stock: 50 },
-            { id: "TECH_PARTS", priceMod: 1.1, stock: 10 }
-        ]
-    };
+    if (!npc) return;
 
-    // Customize inventories based on the NPC's actual role/faction
-    const lowerDesc = (npc.desc || "").toLowerCase();
-    const lowerName = (npc.name || "").toLowerCase();
+    // Cache the generated trade inventory on the NPC entity so re-opening doesn't reroll infinite stock
+    if (!npc.cachedTradeProfile) {
+        const profile = {
+            id: npc.id,
+            name: npc.name + " (Ship-to-Ship)",
+            type: 'location',
+            isNPC: true,
+            faction: npc.faction || 'INDEPENDENT',
+            isBlackMarket: npc.faction === 'ECLIPSE',
+            sells: [
+                { id: "FUEL_CELLS", priceMod: 1.5, stock: Math.floor(Math.random() * 10) + 5 },
+                { id: "MEDICAL_SUPPLIES", priceMod: 1.2, stock: Math.floor(Math.random() * 5) + 2 }
+            ],
+            buys: [
+                { id: "MINERALS", priceMod: 0.9, stock: 50 },
+                { id: "TECH_PARTS", priceMod: 1.1, stock: 10 }
+            ]
+        };
 
-    if (lowerName.includes("miner") || lowerDesc.includes("mining") || lowerDesc.includes("ore")) {
-        window.activeTradeNPC.sells = [
-            { id: "MINERALS", priceMod: 0.7, stock: Math.floor(Math.random() * 30) + 15 },
-            { id: "RARE_METALS", priceMod: 0.8, stock: Math.floor(Math.random() * 5) + 1 }
-        ];
-        window.activeTradeNPC.buys = [
-            { id: "FOOD_SUPPLIES", priceMod: 1.5, stock: 20 },
-            { id: "FUEL_CELLS", priceMod: 1.5, stock: 15 }
-        ];
-    } else if (npc.faction === 'ECLIPSE' || lowerName.includes("smuggler")) {
-        window.activeTradeNPC.sells = [
-            { id: "PROHIBITED_STIMS", priceMod: 1.1, stock: Math.floor(Math.random() * 8) + 2 },
-            { id: "FORBIDDEN_TEXTS", priceMod: 1.3, stock: Math.floor(Math.random() * 3) + 1 }
-        ];
-        window.activeTradeNPC.buys = [
-            { id: "FOOD_SUPPLIES", priceMod: 0.8, stock: 30 },
-            { id: "MEDICAL_SUPPLIES", priceMod: 1.2, stock: 15 }
-        ];
-    } else if (npc.faction === 'KTHARR') {
-        window.activeTradeNPC.sells = [
-            { id: "KTHARR_SPICES", priceMod: 1.0, stock: Math.floor(Math.random() * 10) + 5 },
-            { id: "LIVING_HULL_TISSUE", priceMod: 1.2, stock: Math.floor(Math.random() * 2) + 1 }
-        ];
-        window.activeTradeNPC.buys = [
-            { id: "RARE_METALS", priceMod: 1.1, stock: 20 },
-            { id: "MEDICAL_SUPPLIES", priceMod: 1.3, stock: 10 }
-        ];
-    } else if (npc.faction === 'CONCORD') {
-        window.activeTradeNPC.sells = [
-            { id: "NAVIGATION_CHARTS", priceMod: 1.0, stock: Math.floor(Math.random() * 5) + 1 },
-            { id: "FUEL_CELLS", priceMod: 1.0, stock: Math.floor(Math.random() * 20) + 10 }
-        ];
-        window.activeTradeNPC.buys = [
-            { id: "FOOD_SUPPLIES", priceMod: 1.1, stock: 30 }
-        ];
+        const lowerDesc = (npc.desc || "").toLowerCase();
+        const lowerName = (npc.name || "").toLowerCase();
+
+        if (lowerName.includes("miner") || lowerDesc.includes("mining") || lowerDesc.includes("ore")) {
+            profile.sells = [
+                { id: "MINERALS", priceMod: 0.7, stock: Math.floor(Math.random() * 30) + 15 },
+                { id: "RARE_METALS", priceMod: 0.8, stock: Math.floor(Math.random() * 5) + 1 }
+            ];
+            profile.buys = [
+                { id: "FOOD_SUPPLIES", priceMod: 1.5, stock: 20 },
+                { id: "FUEL_CELLS", priceMod: 1.5, stock: 15 }
+            ];
+        } else if (npc.faction === 'ECLIPSE' || lowerName.includes("smuggler")) {
+            profile.sells = [
+                { id: "PROHIBITED_STIMS", priceMod: 1.1, stock: Math.floor(Math.random() * 8) + 2 },
+                { id: "FORBIDDEN_TEXTS", priceMod: 1.3, stock: Math.floor(Math.random() * 3) + 1 }
+            ];
+            profile.buys = [
+                { id: "FOOD_SUPPLIES", priceMod: 0.8, stock: 30 },
+                { id: "MEDICAL_SUPPLIES", priceMod: 1.2, stock: 15 }
+            ];
+        } else if (npc.faction === 'KTHARR') {
+            profile.sells = [
+                { id: "KTHARR_SPICES", priceMod: 1.0, stock: Math.floor(Math.random() * 10) + 5 },
+                { id: "LIVING_HULL_TISSUE", priceMod: 1.2, stock: Math.floor(Math.random() * 2) + 1 }
+            ];
+            profile.buys = [
+                { id: "RARE_METALS", priceMod: 1.1, stock: 20 },
+                { id: "MEDICAL_SUPPLIES", priceMod: 1.3, stock: 10 }
+            ];
+        } else if (npc.faction === 'CONCORD') {
+            profile.sells = [
+                { id: "NAVIGATION_CHARTS", priceMod: 1.0, stock: Math.floor(Math.random() * 5) + 1 },
+                { id: "FUEL_CELLS", priceMod: 1.0, stock: Math.floor(Math.random() * 20) + 10 }
+            ];
+            profile.buys = [
+                { id: "FOOD_SUPPLIES", priceMod: 1.1, stock: 30 }
+            ];
+        }
+
+        npc.cachedTradeProfile = profile;
     }
 
-    // Launch the standard trade interface loaded with our custom ship logic!
+    window.activeTradeNPC = npc.cachedTradeProfile;
     openTradeModal('buy');
 }
+
+// --- END OF FILE trade.js ---
