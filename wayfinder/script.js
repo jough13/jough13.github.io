@@ -1105,10 +1105,9 @@ function performGarbageCollection() {
         const delta = worldStateDeltas[key];
 
         // Never delete critical story flags, player-built colonies, or mapped wormhole networks.
-        if (delta.activated || delta.studied || delta.isUnique || delta.hasColony || delta.isDiscoveredWormhole) {
+        if (delta.activated || delta.studied || delta.isUnique || delta.hasColony || delta.isDiscoveredWormhole || delta.isPlayerOwned) {
             return; 
         }
-
         // 1. Standard Time Check
         // If it's been a long time since the player touched this tile, it's safe to let resources respawn.
         const isOld = delta.lastInteraction && (currentGameDate - delta.lastInteraction > RESOURCE_RESPAWN_TIME);
