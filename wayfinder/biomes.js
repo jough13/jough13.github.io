@@ -14,7 +14,8 @@ const PLANET_BIOMES = {
         description: "A lifeless, crater-scarred rock rich in common silicate and iron ores.",
         resources: ['MINERALS'],
         image: 'assets/barren_rock.png',
-        expeditionFlavor: "Your rover traverses miles of silent, dust-choked craters and exposed basalt ridges."
+        expeditionFlavor: "Your rover traverses miles of silent, dust-choked craters and exposed basalt ridges.",
+        expeditionData: { baseXp: 80 }
     },
     GAS_GIANT: {
         id: "GAS_GIANT",
@@ -45,7 +46,8 @@ const PLANET_BIOMES = {
         description: "Endless seas of wind-carved quartz dunes hiding ancient dry seabeds and spice-rich fissures.",
         resources: ['MINERALS', 'GOLD', 'KTHARR_SPICES'],
         image: 'assets/desert_world.png',
-        expeditionFlavor: "Fighting through a howling electrostatic sandstorm, your team locates a sheltered canyon vein."
+        expeditionFlavor: "Fighting through a howling electrostatic sandstorm, your team locates a sheltered canyon vein.",
+        expeditionData: { baseXp: 90 }
     },
     GLACIAL: {
         id: "GLACIAL",
@@ -56,7 +58,8 @@ const PLANET_BIOMES = {
         description: "A frozen world locked in a permanent ice age. Sub-glacial pockets hold ultra-pure water and super-cooled fluids.",
         resources: ['WATER', 'MINERALS', 'QUANTUM_FLUID'],
         image: 'assets/glacial_world.png',
-        expeditionFlavor: "Descending into a glowing blue glacial crevasse, you tap into a pressurized sub-surface thermal vent."
+        expeditionFlavor: "Descending into a glowing blue glacial crevasse, you tap into a pressurized sub-surface thermal vent.",
+        expeditionData: { baseXp: 95 }
     },
     VOLCANIC: {
         id: "VOLCANIC",
@@ -67,7 +70,11 @@ const PLANET_BIOMES = {
         description: "A molten hellscape of tectonic rivers and ash clouds, rich in heavy platinum-group metals.",
         resources: ['RARE_METALS', 'PLATINUM_ORE', 'MINERALS'],
         image: 'assets/volcanic_world.png',
-        expeditionFlavor: "Heat shields straining against the magma plumes, your survey team extracts samples from a cooling lava tube."
+        expeditionFlavor: "Heat shields straining against the magma plumes, your survey team extracts samples from a cooling lava tube.",
+        expeditionData: { 
+            baseXp: 100,
+            hazard: { chance: 0.30, type: "HEAT", damage: 12, msg: "⚠️ THERMAL SPIKE: Magma proximity scorched the hull." }
+        }
     },
     TOXIC: {
         id: "TOXIC",
@@ -78,7 +85,8 @@ const PLANET_BIOMES = {
         description: "A sweltering greenhouse world teeming with aggressive, hyper-evolved alien flora.",
         resources: ['GENETIC_SAMPLES', 'KTHARR_SPICES', 'SENTIENT_MYCELIUM'],
         image: 'assets/toxic_jungle.png',
-        expeditionFlavor: "Hacking through bioluminescent vines and acid-spitting flora, you catalog a pristine xeno-botanical grove."
+        expeditionFlavor: "Hacking through bioluminescent vines and acid-spitting flora, you catalog a pristine xeno-botanical grove.",
+        expeditionData: { baseXp: 110, loreKey: 'LEGEND_SENTIENT_MYCELIUM_NETWORK' }
     },
     OCEANIC: {
         id: "OCEANIC",
@@ -89,7 +97,8 @@ const PLANET_BIOMES = {
         description: "A pelagic world covered in deep, turbulent oceans dotted with volcanic archipelagos and kelp forests.",
         resources: ['WATER', 'FOOD_SUPPLIES', 'GENETIC_SAMPLES', 'HYDROGEN_3'],
         image: 'assets/ocean_world.png',
-        expeditionFlavor: "Touching down on a narrow basalt atoll, you deploy submersible drones into a thriving abyssal trench."
+        expeditionFlavor: "Touching down on a narrow basalt atoll, you deploy submersible drones into a thriving abyssal trench.",
+        expeditionData: { baseXp: 115 }
     },
     SHATTERED_CORE: {
         id: "SHATTERED_CORE",
@@ -100,7 +109,8 @@ const PLANET_BIOMES = {
         description: "A planet partially ripped open by an ancient orbital impact, exposing its dense metallic planetary core.",
         resources: ['PLATINUM_ORE', 'RARE_METALS', 'REFINED_ALLOY'],
         image: 'assets/shattered_core.png',
-        expeditionFlavor: "Navigating zero-G debris ribbons hovering above the exposed planetary mantle, you cut free slabs of pure core alloy."
+        expeditionFlavor: "Navigating zero-G debris ribbons hovering above the exposed planetary mantle, you cut free slabs of pure core alloy.",
+        expeditionData: { baseXp: 130 }
     },
     MYCELIAL: {
         id: "MYCELIAL",
@@ -111,7 +121,12 @@ const PLANET_BIOMES = {
         description: "A twilight world carpeted in towering fungal spires linked by a planet-spanning neural root network.",
         resources: ['SENTIENT_MYCELIUM', 'GENETIC_SAMPLES', 'MEDICAL_SUPPLIES'],
         image: 'assets/mycelial_world.png',
-        expeditionFlavor: "The fungal canopy pulses in mathematical rhythm with your ship's engine as you harvest psychoactive spore clusters."
+        expeditionFlavor: "The fungal canopy pulses in mathematical rhythm with your ship's engine as you harvest psychoactive spore clusters.",
+        expeditionData: { 
+            baseXp: 150, 
+            loreKey: 'LEGEND_SENTIENT_MYCELIUM_NETWORK',
+            guaranteedLoot: [{ id: 'SENTIENT_MYCELIUM', min: 2, max: 5 }]
+        }
     },
     TERRAN: {
         id: "TERRAN",
@@ -122,7 +137,8 @@ const PLANET_BIOMES = {
         description: "A garden world with liquid oceans, nitrogen-oxygen atmosphere, and thriving continental ecosystems.",
         resources: ['FOOD_SUPPLIES', 'WATER', 'MINERALS', 'GENETIC_SAMPLES'],
         image: 'assets/terran_world.png',
-        expeditionFlavor: "Cruising over temperate river valleys and lush forests, your team maps an ideal site for human habitation."
+        expeditionFlavor: "Cruising over temperate river valleys and lush forests, your team maps an ideal site for human habitation.",
+        expeditionData: { baseXp: 160 }
     },
     IRRADIATED: {
         id: "IRRADIATED",
@@ -133,7 +149,13 @@ const PLANET_BIOMES = {
         description: "A dangerously radioactive rock. Surface gamma spectrometry readings are off the charts, indicating high concentrations of unstable Uranium isotopes.",
         resources: ['RARE_METALS', 'VOID_CRYSTALS', 'PLATINUM_ORE'],
         image: 'assets/wasteland.png',
-        expeditionFlavor: "Dosimeters clicking frantically, you brave the glassed craters of an ancient nuclear bombardment."
+        expeditionFlavor: "Dosimeters clicking frantically, you brave the glassed craters of an ancient nuclear bombardment.",
+        expeditionData: { 
+            baseXp: 180, 
+            loreKey: 'PHENOMENON_IRRADIATED',
+            guaranteedLoot: [{ id: 'VOID_CRYSTALS', min: 1, max: 3 }],
+            hazard: { chance: 0.45, type: 'RADIATION', damage: 15, msg: '⚠️ RADIATION HAZARD: Surface gamma flux penetrated shielding.' }
+        }
     },
     TOMB_WORLD: {
         id: "TOMB_WORLD",
@@ -144,7 +166,12 @@ const PLANET_BIOMES = {
         description: "A dead world covered in the weathered obsidian geometry of a vanished Precursor civilization.",
         resources: ['ARTIFACT_SHARDS', 'TECH_PARTS', 'ANCIENT_RELICS'],
         image: 'assets/tomb_world.png',
-        expeditionFlavor: "Beneath a collapsed monolith, your scanners pinpoint a sealed Precursor subterranean archive."
+        expeditionFlavor: "Beneath a collapsed monolith, your scanners pinpoint a sealed Precursor subterranean archive.",
+        expeditionData: { 
+            baseXp: 250, 
+            loreKey: 'XENO_PRECURSORS',
+            guaranteedLoot: [{ id: 'ANCIENT_RELICS', min: 1, max: 1 }, { id: 'ARTIFACT_SHARDS', min: 2, max: 5 }]
+        }
     },
     CRYSTAL: {
         id: "CRYSTAL",
@@ -155,7 +182,12 @@ const PLANET_BIOMES = {
         description: "A rare world composed entirely of exotic, resonant silicon-void crystal lattices.",
         resources: ['VOID_CRYSTALS', 'PHASE_SHIFTED_ALLOY', 'QUANTUM_LENS'],
         image: 'assets/crystal_anomaly.png',
-        expeditionFlavor: "Laser cutters hum in harmonic sympathy with towering violet crystal spires that refract starlight into impossible angles."
+        expeditionFlavor: "Laser cutters hum in harmonic sympathy with towering violet crystal spires that refract starlight into impossible angles.",
+        expeditionData: { 
+            baseXp: 200, 
+            loreKey: 'PHENOMENON_VOID_CRYSTALS',
+            guaranteedLoot: [{ id: 'VOID_CRYSTALS', min: 2, max: 4 }, { id: 'QUANTUM_LENS', min: 0, max: 1 }]
+        }
     },
     MACHINE_WORLD: {
         id: "MACHINE_WORLD",
@@ -166,10 +198,29 @@ const PLANET_BIOMES = {
         description: "A planet entirely encased in metallic structures, humming data-conduits, and sprawling orbital rings. No biological life detected.",
         resources: ['TECH_PARTS', 'CYBERNETIC_IMPLANTS', 'AI_CORE'],
         image: 'assets/machine_world.png',
-        expeditionFlavor: "Descending into a canyon-sized server trench, you tap directly into an ancient planetary data-conduit."
+        expeditionFlavor: "Descending into a canyon-sized server trench, you tap directly into an ancient planetary data-conduit.",
+        expeditionData: { baseXp: 200 } // Interacted with primarily via the Hacking Minigame
+    },
+    DEATH_WORLD: {
+        id: "DEATH_WORLD",
+        name: "Death World",
+        landable: true,
+        weight: 2, // Ultra Rare
+        hazard: "APEX PREDATORS",
+        description: "A hyper-lethal paradise. The flora is venomous, the fauna is armored, and the weather is apocalyptic.",
+        resources: ['GENETIC_SAMPLES', 'ILLEGAL_ORGANS'],
+        image: 'assets/toxic_jungle.png', // Reusing asset for now
+        expeditionFlavor: "Your away team barely survives an ambush by cloaked, scythe-limbed apex predators.",
+        expeditionData: { 
+            baseXp: 220, 
+            guaranteedLoot: [{ id: 'ILLEGAL_ORGANS', min: 1, max: 2 }, { id: 'GENETIC_SAMPLES', min: 3, max: 6 }],
+            hazard: { chance: 0.60, type: 'COMBAT', damage: 20, msg: '⚠️ PREDATOR AMBUSH: The local fauna breached your rover hull!' }
+        }
     }
 };
 
+// Freeze the database to optimize V8 memory lookups
+Object.freeze(PLANET_BIOMES);
 window.PLANET_BIOMES = PLANET_BIOMES;
 
 // ==========================================
@@ -321,12 +372,13 @@ window.PLANET_BIOMES = PLANET_BIOMES;
             window._biomeRenderPlanetPatched = true;
         }
 
-        // 5. FULL SURFACE EXPEDITION ENGINE (Replaces v1.1 Stub)
+        // 5. DATA-DRIVEN SURFACE EXPEDITION ENGINE
         window.startSurfaceExpedition = function() {
             if (!currentSystemData || !currentSystemData.planets) return;
             const planet = currentSystemData.planets[selectedPlanetIndex];
             if (!planet || planet.exploredThisVisit) return;
 
+            // Mark as explored persistently
             const sysKey = `${currentSystemData.x},${currentSystemData.y}_p${selectedPlanetIndex}`;
             planet.exploredThisVisit = true;
             if (typeof worldStateDeltas !== 'undefined') {
@@ -339,48 +391,61 @@ window.PLANET_BIOMES = PLANET_BIOMES;
             if (typeof soundManager !== 'undefined') soundManager.playScan();
 
             const biome = planet.biome || PLANET_BIOMES.BARREN_ROCK;
+            const expData = biome.expeditionData || { baseXp: 80 }; // Fallback
             const flavor = biome.expeditionFlavor || "Your away team conducts a thorough overland traverse of the landing zone.";
 
-            // Calculate Multipliers from Perks & Crew
-            const hasScavenger = (typeof playerPerks !== 'undefined' && playerPerks.has && playerPerks.has('SCAVENGER_PROTOCOL')) ||
-                                 (typeof hasCrewPerk === 'function' && hasCrewPerk('SCAVENGER_PROTOCOL'));
-            const hasBio = typeof playerPerks !== 'undefined' && playerPerks.has && playerPerks.has('XENO_BIOLOGIST');
-            const hasHealthPhysicist = (typeof playerPerks !== 'undefined' && playerPerks.has && playerPerks.has('HEALTH_PHYSICIST')) ||
+            // Robust Perk Checks (Supports both Sets and Arrays from older save formats)
+            const hasScavenger = typeof playerPerks !== 'undefined' && 
+                                 ((playerPerks.has && playerPerks.has('SCAVENGER_PROTOCOL')) || 
+                                  (playerPerks.includes && playerPerks.includes('SCAVENGER_PROTOCOL')) ||
+                                  (typeof hasCrewPerk === 'function' && hasCrewPerk('SCAVENGER_PROTOCOL')));
+            
+            const hasBio = typeof playerPerks !== 'undefined' && 
+                           ((playerPerks.has && playerPerks.has('XENO_BIOLOGIST')) ||
+                            (playerPerks.includes && playerPerks.includes('XENO_BIOLOGIST')));
+            
+            const hasHealthPhysicist = (typeof playerPerks !== 'undefined' && 
+                                       ((playerPerks.has && playerPerks.has('HEALTH_PHYSICIST')) || 
+                                        (playerPerks.includes && playerPerks.includes('HEALTH_PHYSICIST')))) ||
                                        (typeof playerShip !== 'undefined' && playerShip.components && playerShip.components.utility === 'UTIL_DOSIMETRY_ARRAY');
 
-            let xpGain = 80 + Math.floor(Math.random() * 60);
-            if (hasBio) xpGain *= 2;
+            let xpGain = (expData.baseXp || 80) + Math.floor(Math.random() * 40);
+            if (hasBio && (biome.id === 'TOXIC' || biome.id === 'MYCELIAL' || biome.id === 'OCEANIC' || biome.id === 'TERRAN' || biome.id === 'DEATH_WORLD')) {
+                xpGain *= 2;
+            }
 
             let creditFind = 0;
             let lootItems = [];
             let hazardMsg = "";
 
-            // Biome-specific outcomes & Lore Unlocks
-            if (biome.id === 'TOMB_WORLD' || biome.name.includes('Tomb')) {
-                if (typeof unlockLoreEntry === 'function') unlockLoreEntry('XENO_PRECURSORS');
-                lootItems.push({ id: 'ANCIENT_RELICS', qty: 1 * (hasScavenger ? 2 : 1) });
-                lootItems.push({ id: 'ARTIFACT_SHARDS', qty: (2 + Math.floor(Math.random() * 3)) * (hasScavenger ? 2 : 1) });
-                xpGain += 100;
-            } else if (biome.id === 'IRRADIATED' || biome.name.includes('Irradiated')) {
-                if (typeof unlockLoreEntry === 'function') unlockLoreEntry('PHENOMENON_IRRADIATED');
-                lootItems.push({ id: 'VOID_CRYSTALS', qty: (1 + Math.floor(Math.random() * 2)) * (hasScavenger ? 2 : 1) });
-                if (!hasHealthPhysicist && Math.random() < 0.45) {
-                    const radDmg = 15;
-                    if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: radDmg, reason: "Planetary Gamma Radiation" });
-                    hazardMsg = `<br><br><span style="color:var(--danger)">⚠️ RADIATION HAZARD: Surface gamma flux penetrated shielding (-${radDmg} Hull).</span>`;
-                } else if (hasHealthPhysicist) {
+            // --- 1. LORE UNLOCKS ---
+            if (expData.loreKey && typeof unlockLoreEntry === 'function') {
+                unlockLoreEntry(expData.loreKey);
+            }
+
+            // --- 2. DYNAMIC HAZARD RESOLUTION ---
+            if (expData.hazard && Math.random() < expData.hazard.chance) {
+                const haz = expData.hazard;
+                
+                if (haz.type === 'RADIATION' && hasHealthPhysicist) {
                     hazardMsg = `<br><br><span style="color:var(--success)">☢️ DOSIMETRY SHIELDING: Zero radiation damage taken during surface EVA.</span>`;
+                } else {
+                    hazardMsg = `<br><br><span style="color:var(--danger)">${haz.msg} (-${haz.damage} Hull).</span>`;
+                    if (typeof GameBus !== 'undefined') {
+                        GameBus.emit('HULL_DAMAGED', { amount: haz.damage, reason: `Planetary Hazard (${biome.name})` });
+                    }
                 }
-            } else if (biome.id === 'MYCELIAL' || biome.id === 'TOXIC') {
-                if (typeof unlockLoreEntry === 'function') unlockLoreEntry('LEGEND_SENTIENT_MYCELIUM_NETWORK');
-                lootItems.push({ id: 'SENTIENT_MYCELIUM', qty: (2 + Math.floor(Math.random() * 3)) * (hasScavenger ? 2 : 1) });
-                lootItems.push({ id: 'GENETIC_SAMPLES', qty: 2 * (hasScavenger ? 2 : 1) });
-            } else if (biome.id === 'CRYSTAL') {
-                if (typeof unlockLoreEntry === 'function') unlockLoreEntry('PHENOMENON_VOID_CRYSTALS');
-                lootItems.push({ id: 'VOID_CRYSTALS', qty: 2 * (hasScavenger ? 2 : 1) });
-                if (Math.random() < 0.5) lootItems.push({ id: 'QUANTUM_LENS', qty: 1 });
+            }
+
+            // --- 3. DYNAMIC LOOT RESOLUTION ---
+            if (expData.guaranteedLoot) {
+                // If the biome dictates specific loot (e.g. Tomb Worlds)
+                expData.guaranteedLoot.forEach(loot => {
+                    const qty = loot.min + Math.floor(Math.random() * (loot.max - loot.min + 1));
+                    if (qty > 0) lootItems.push({ id: loot.id, qty: qty * (hasScavenger ? 2 : 1) });
+                });
             } else {
-                // Standard resource cache from the planet's biome pool
+                // Standard random cache based on the biome's resource pool
                 const pool = biome.resources && biome.resources.length > 0 ? biome.resources : ['MINERALS'];
                 const pickedId = pool[Math.floor(Math.random() * pool.length)];
                 const baseQty = 4 + Math.floor(Math.random() * 6);
@@ -388,9 +453,9 @@ window.PLANET_BIOMES = PLANET_BIOMES;
                 creditFind = (150 + Math.floor(Math.random() * 250)) * (hasScavenger ? 2 : 1);
             }
 
-            // Award Loot & Credits
+            // --- 4. AWARD INVENTORY & CREDITS ---
             let rewardSummary = [];
-            if (creditFind > 0) {
+            if (creditFind > 0 && typeof playerCredits !== 'undefined') {
                 playerCredits += creditFind;
                 rewardSummary.push(`<span style="color:var(--gold-text)">+${formatNumber(creditFind)}c Salvage Cache</span>`);
             }
@@ -398,21 +463,25 @@ window.PLANET_BIOMES = PLANET_BIOMES;
             lootItems.forEach(item => {
                 if (typeof COMMODITIES !== 'undefined' && COMMODITIES[item.id]) {
                     const weight = COMMODITIES[item.id].weight !== undefined ? COMMODITIES[item.id].weight : 1;
-                    const spaceLeft = Math.floor((PLAYER_CARGO_CAPACITY - currentCargoLoad) / Math.max(1, weight));
+                    const spaceLeft = Math.floor((PLAYER_CARGO_CAPACITY - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0)) / Math.max(1, weight));
                     const actualQty = Math.min(item.qty, Math.max(0, spaceLeft));
+                    
                     if (actualQty > 0) {
                         playerCargo[item.id] = (playerCargo[item.id] || 0) + actualQty;
                         if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
                         rewardSummary.push(`<span style="color:var(--accent-color)">+${actualQty}x ${COMMODITIES[item.id].name}</span>`);
-                    } else {
+                    } else if (item.qty > 0) {
                         rewardSummary.push(`<span style="color:var(--danger)">${COMMODITIES[item.id].name} (Hold Full)</span>`);
                     }
                 }
             });
 
-            playerXP += xpGain;
-            rewardSummary.push(`<span style="color:var(--success)">+${formatNumber(xpGain)} XP</span>`);
+            if (typeof playerXP !== 'undefined') {
+                playerXP += xpGain;
+                rewardSummary.push(`<span style="color:var(--success)">+${formatNumber(xpGain)} XP</span>`);
+            }
 
+            // --- 5. LOGGING & UI ---
             if (typeof logMessage === 'function') {
                 logMessage(`<span style="color:#DDA0DD">[ SURFACE EXPEDITION ]</span> ${flavor} Recovered: ${rewardSummary.join(', ')}.${hazardMsg}`);
             }
@@ -423,7 +492,7 @@ window.PLANET_BIOMES = PLANET_BIOMES;
             if (typeof autoSaveGame === 'function') autoSaveGame();
         };
 
-        // 6. MACHINE WORLD CORE INTERFACE (Replaces v1.1 Stub)
+        // 6. MACHINE WORLD CORE INTERFACE
         window.hackMachineWorld = function() {
             if (!currentSystemData || !currentSystemData.planets) return;
             const planet = currentSystemData.planets[selectedPlanetIndex];
@@ -440,19 +509,22 @@ window.PLANET_BIOMES = PLANET_BIOMES;
             if (typeof unlockLoreEntry === 'function') unlockLoreEntry('XENO_MACHINE_WORLD');
             if (typeof advanceGameTime === 'function') advanceGameTime(0.20);
 
-            const hasSlicer = (typeof playerPerks !== 'undefined' && playerPerks.has && playerPerks.has('CYBER_SLICER')) ||
-                              (typeof hasCrewPerk === 'function' && hasCrewPerk('ASTROMETRICS'));
+            // Check perks robustly
+            const hasSlicer = typeof playerPerks !== 'undefined' && 
+                              ((playerPerks.has && playerPerks.has('CYBER_SLICER')) ||
+                               (playerPerks.includes && playerPerks.includes('CYBER_SLICER')) ||
+                               (typeof hasCrewPerk === 'function' && hasCrewPerk('ASTROMETRICS')));
 
             const successChance = hasSlicer ? 0.90 : 0.60;
 
             if (Math.random() < successChance) {
                 const credits = 1500 + Math.floor(Math.random() * 1500);
                 const xp = 250;
-                playerCredits += credits;
-                playerXP += xp;
+                if (typeof playerCredits !== 'undefined') playerCredits += credits;
+                if (typeof playerXP !== 'undefined') playerXP += xp;
 
                 let lootMsg = "";
-                if (currentCargoLoad + 1 <= PLAYER_CARGO_CAPACITY) {
+                if ((typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0) + 1 <= PLAYER_CARGO_CAPACITY) {
                     const dropId = Math.random() < 0.5 ? 'AI_CORE' : 'ENCRYPTED_DATA';
                     playerCargo[dropId] = (playerCargo[dropId] || 0) + 1;
                     if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
