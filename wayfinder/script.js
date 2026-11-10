@@ -3866,6 +3866,9 @@ function checkLevelUp() {
     const stationModal = document.getElementById('stationOverlay');
     if (stationModal) stationModal.style.display = 'none';
     
+    // BUG FIX: Remember the previous state (or default to Map if coming from Combat)
+    window.previousGameState = (currentGameState === GAME_STATES.COMBAT) ? GAME_STATES.GALACTIC_MAP : currentGameState;
+    
     if (typeof changeGameState === 'function') changeGameState(GAME_STATES.LEVEL_UP); 
     if (typeof renderLevelUpScreen === 'function') renderLevelUpScreen();
     
@@ -3939,9 +3942,10 @@ function selectPerk(perkId) {
     
     document.getElementById('levelUpOverlay').style.display = 'none';
     
-    // --- NO MORE FORCED GALACTIC MAP RETURN ---
-    // By removing changeGameState(GAME_STATES.GALACTIC_MAP) here, 
-    // the game seamlessly leaves you in whatever menu you were already looking at!
+    // BUG FIX: Restore the exact view the player was looking at before leveling up!
+    if (typeof changeGameState === 'function') {
+        changeGameState(window.previousGameState || GAME_STATES.GALACTIC_MAP);
+    }
     
     renderUIStats();
     saveGame(); // Auto-save on level up
@@ -5308,14 +5312,27 @@ function performSave(saveType) {
     if (!currentCampaignId) currentCampaignId = "cmp_" + Date.now();
     const safeSaveType = (saveType === 'MANUAL') ? 'MANUAL' : 'AUTO';
 
+    // BUG FIX: Extract dynamically generated components and commodities (IDs end with _numbers)
+    let customComponents = {};
+    if (typeof COMPONENTS_DATABASE !== 'undefined') {
+        Object.keys(COMPONENTS_DATABASE).forEach(k => {
+            if (k.match(/_\d+$/)) customComponents[k] = COMPONENTS_DATABASE[k];
+        });
+    }
+    let customCommodities = {};
+    if (typeof COMMODITIES !== 'undefined') {
+        Object.keys(COMMODITIES).forEach(k => {
+            if (k.match(/_\d+$/)) customCommodities[k] = COMMODITIES[k];
+        });
+    }
+
     const saveFile = {
         version: GAME_VERSION,
         realTimestamp: Date.now(),
         campaignId: currentCampaignId, 
         saveType: safeSaveType,
         
-                // Save the entire GameState object instantly!
-        coreState: GameState, 
+        coreState: GameState,
         
         // Metadata / Collections
         playerName, playerPfp, playerLevel, currentSectorName, playerCrew,
@@ -5329,6 +5346,16 @@ function performSave(saveType) {
         mystery_first_nexus_location, mystery_nexus_activated, xerxesPuzzleLevel,
         worldStateDeltas: worldStateDeltas || {},
         activeProbes: window.activeProbes || [],
+        
+        // Inject missing progression flags and procedural databases
+        defeatedLegendaries: window.defeatedLegendaries || [],
+        hasEclipseMerc: window.hasEclipseMerc || false,
+        isAwaitingRescue: typeof isAwaitingRescue !== 'undefined' ? isAwaitingRescue : false,
+        rescueTargetStation: typeof rescueTargetStation !== 'undefined' ? rescueTargetStation : null,
+        rescueFeePaid: typeof rescueFeePaid !== 'undefined' ? rescueFeePaid : 0,
+        freebieUsed: typeof freebieUsed !== 'undefined' ? freebieUsed : false,
+        customComponents: customComponents,
+        customCommodities: customCommodities,
         
         // Sets
         visitedSectors: Array.from(visitedSectors),
@@ -5408,11 +5435,15 @@ function respawnPlayer() {
     playerXP = Math.max(0, playerXP - 100); 
 
     // 2. Reset Stats
-    playerHull = MAX_PLAYER_HULL;
-    playerShields = MAX_SHIELDS;
-    playerFuel = MAX_FUEL;
+    playerHull = typeof MAX_PLAYER_HULL !== 'undefined' ? MAX_PLAYER_HULL : 100;
+    playerShields = typeof MAX_SHIELDS !== 'undefined' ? MAX_SHIELDS : 50;
+    playerFuel = typeof MAX_FUEL !== 'undefined' ? MAX_FUEL : 220;
 
     playerAbilityCooldown = 0;
+    
+    // 👇 BUG FIX: Purge stealth state so you don't instantly melt on respawn
+    isSilentRunning = false;
+    stealthHeat = 0;
 
     // 3. Move to Starbase Alpha (Safe Zone)
     // We use the coordinates defined in your locations.js
@@ -5538,6 +5569,17 @@ function loadGameData(jsonString) {
         rescueTargetStation = savedState.rescueTargetStation || null; 
         rescueFeePaid = savedState.rescueFeePaid || 0; 
         freebieUsed = savedState.freebieUsed || false; 
+        
+        // Restore progression flags and inject procedural items back into databases
+        window.defeatedLegendaries = savedState.defeatedLegendaries || [];
+        window.hasEclipseMerc = savedState.hasEclipseMerc || false;
+
+        if (savedState.customComponents && typeof COMPONENTS_DATABASE !== 'undefined') {
+            Object.assign(COMPONENTS_DATABASE, savedState.customComponents);
+        }
+        if (savedState.customCommodities && typeof COMMODITIES !== 'undefined') {
+            Object.assign(COMMODITIES, savedState.customCommodities);
+        }
         
         xerxesPuzzleLevel = savedState.xerxesPuzzleLevel || 0;
         mystery_wayfinder_progress = savedState.mystery_wayfinder_progress || 0;
