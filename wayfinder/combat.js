@@ -369,6 +369,9 @@ function handleCombatAction(action) {
             // 🎯 SUBSYSTEM DAMAGE ROUTING
             if (window.playerTargeting === 'WEAPONS' && currentCombatContext.pirateShields <= 0) {
                 currentCombatContext.subsystems.weapons.hp -= damageDealt;
+                
+                currentCombatContext.pirateHull -= damageDealt; 
+                
                 combatLog += `Enemy Weapons took ${Math.floor(damageDealt)} damage!`;
                 if (currentCombatContext.subsystems.weapons.hp <= 0 && currentCombatContext.subsystems.weapons.status === 'ONLINE') {
                     currentCombatContext.subsystems.weapons.status = 'OFFLINE';
@@ -376,6 +379,9 @@ function handleCombatAction(action) {
                 }
             } else if (window.playerTargeting === 'ENGINES' && currentCombatContext.pirateShields <= 0) {
                 currentCombatContext.subsystems.engines.hp -= damageDealt;
+                
+                currentCombatContext.pirateHull -= damageDealt; 
+                
                 combatLog += `Enemy Engines took ${Math.floor(damageDealt)} damage!`;
                 if (currentCombatContext.subsystems.engines.hp <= 0 && currentCombatContext.subsystems.engines.status === 'ONLINE') {
                     currentCombatContext.subsystems.engines.status = 'OFFLINE';
@@ -868,7 +874,8 @@ function renderCombatView() {
                 
                 <div style="width: 120px; height: 120px; background: rgba(0, 224, 224, 0.05); border: 1px dashed var(--accent-color); border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center;">
                     ${shipClass.image 
-                        ? `<img src="${shipClass.image}" style="max-width: 90%; max-height: 90%; object-fit: contain; transform: scaleX(-1); filter: drop-shadow(0 0 10px rgba(0,224,224,0.3));">` 
+                        ? `<img src="${shipClass.image}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" style="max-width: 90%; max-height: 90%; object-fit: contain; transform: scaleX(-1); filter: drop-shadow(0 0 10px rgba(0,224,224,0.3));">
+                           <span style="font-size: 40px; opacity: 0.6; filter: hue-rotate(180deg); display: none;">🚀</span>` 
                         : `<span style="font-size: 40px; opacity: 0.6; filter: hue-rotate(180deg);">🚀</span>`
                     }
                 </div>
@@ -908,8 +915,10 @@ function renderCombatView() {
                 
                 <div style="width: 120px; height: 120px; background: rgba(255, 0, 0, 0.05); border: 1px dashed var(--danger); border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center;">
                     ${currentCombatContext.ship.image 
-                        ? `<img src="${currentCombatContext.ship.image}" style="max-width: 90%; max-height: 90%; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255,0,0,0.3));">` 
-                        : `<img src="assets/pirate_ship.png" style="max-width: 90%; max-height: 90%; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255,0,0,0.3));">`
+                        ? `<img src="${currentCombatContext.ship.image}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" style="max-width: 90%; max-height: 90%; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255,0,0,0.3));">
+                           <span style="font-size: 50px; opacity: 0.8; display: none;">🛸</span>` 
+                        : `<img src="assets/pirate_ship.png" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" style="max-width: 90%; max-height: 90%; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255,0,0,0.3));">
+                           <span style="font-size: 50px; opacity: 0.8; display: none;">🛸</span>`
                     }
                 </div>
 
