@@ -7,6 +7,7 @@
 const COLONY_PHASES = ['OUTPOST', 'SETTLEMENT', 'METROPOLIS', 'CAPITAL'];
 
 // --- 1. COLONY DATA STRUCTURES ---
+// The engine is data-driven. Add any effects here, and the Tick Engine handles the math automatically.
 const COLONY_BUILDINGS = {
     // --- TIER 1: OUTPOST ---
     "HAB_BLOCK": { 
@@ -18,7 +19,7 @@ const COLONY_BUILDINGS = {
     "SHANTY_TOWN": {
         name: "Shanty Town", tier: 1, unique: false,
         cost: { "MINERALS": 10 },
-        upkeep: 2, time: 5, effects: { popCap: 200, moralePenalty: -1 },
+        upkeep: 2, time: 5, effects: { popCap: 200, moralePenalty: 1 },
         desc: "Cheap, unregulated housing. +200 Max Population, but poor conditions cause -1 Morale."
     },
     "RAIN_CATCHERS": {
@@ -54,13 +55,13 @@ const COLONY_BUILDINGS = {
     "HYDRO_FARM": { 
         name: "Hydroponics Farm", tier: 1, unique: false,
         cost: { "REFINED_ALLOY": 20, "TECH_PARTS": 5 }, 
-        upkeep: 25, time: 15, effects: { foodProd: 5, waterConsume: 2 }, 
+        upkeep: 25, time: 15, effects: { foodProd: 5, consume: { "WATER": 2 } }, 
         desc: "Generates 5 Food. Consumes 2 Water per Stardate." 
     },
     "ALGAE_VATS": { 
         name: "Nutrient Algae Vats", tier: 1, unique: false,
         cost: { "REFINED_ALLOY": 10, "MINERALS": 10 }, 
-        upkeep: 10, time: 12, effects: { foodProd: 3, moralePenalty: -1 }, 
+        upkeep: 10, time: 12, effects: { foodProd: 3, moralePenalty: 1 }, 
         desc: "Generates 3 Food without needing Water. The awful taste reduces Morale by 1." 
     },
     "SMELTING_FACILITY": {
@@ -84,14 +85,14 @@ const COLONY_BUILDINGS = {
     "SCAVENGER_GUILD": {
         name: "Scavenger Guild", tier: 1, unique: true,
         cost: { "REFINED_ALLOY": 20, "FOOD_SUPPLIES": 10 },
-        upkeep: 20, time: 14, effects: { randomLoot: true },
-        desc: "Locals comb the wastes. Passively generates random Minerals or Tech Parts."
+        upkeep: 20, time: 14, effects: { mineralProd: 2, techProd: 1 },
+        desc: "Locals comb the wastes. Passively generates 2 Minerals and 1 Tech Part."
     },
     "PROSPECTOR_CAMP": {
         name: "Prospector Camp", tier: 1, unique: true,
         cost: { "MINERALS": 25, "TECH_PARTS": 5 },
-        upkeep: 30, time: 10, effects: { miningBoost: 1.2, passiveXP: 2 },
-        desc: "Maps out local veins. +20% raw mining yields and +2 XP per Stardate."
+        upkeep: 30, time: 10, effects: { mineralProd: 5, passiveXP: 2 },
+        desc: "Maps out local veins. Generates 5 Minerals and +2 XP per Stardate."
     },
     "CLINIC_TENT": {
         name: "Clinic Tent", tier: 1, unique: false,
@@ -126,7 +127,7 @@ const COLONY_BUILDINGS = {
     "LOCAL_BAZAAR": {
         name: "Local Bazaar", tier: 1, unique: true,
         cost: { "MINERALS": 20, "REFINED_ALLOY": 10 },
-        upkeep: 5, time: 15, effects: { taxEfficiency: 1.1, passiveCredits: 50 },
+        upkeep: 5, time: 15, effects: { taxMult: 0.1, passiveCredits: 50 },
         desc: "A gritty trading post. Generates 50c per Stardate and boosts tax yield by 10%."
     },
     "FRONTIER_TAVERN": {
@@ -170,14 +171,14 @@ const COLONY_BUILDINGS = {
     "DEEP_CORE_RIG": { 
         name: "Deep Core Rig", tier: 2, unique: false,
         cost: { "REFINED_ALLOY": 80, "TECH_PARTS": 25 }, 
-        upkeep: 150, time: 30, effects: { resourceMult: 2 }, 
-        desc: "Doubles the base planetary mining yields." 
+        upkeep: 150, time: 30, effects: { mineralProd: 15 }, 
+        desc: "Heavy industrial mining. Generates 15 Minerals per stardate." 
     },
     "DRONE_HUB": {
         name: "Automated Drone Hub", tier: 2, unique: false,
         cost: { "REFINED_ALLOY": 80, "TECH_PARTS": 40 },
         upkeep: 200, time: 30, effects: { mineralProd: 5, alloyProd: 2 },
-        desc: "Self-sustaining miners. Generates 5 Minerals and 2 Alloys per Stardate, regardless of pop."
+        desc: "Self-sustaining miners. Generates 5 Minerals and 2 Alloys per Stardate."
     },
     "ATMOS_PROCESSOR": { 
         name: "Atmos-Processor", tier: 2, unique: false,
@@ -188,13 +189,13 @@ const COLONY_BUILDINGS = {
     "HYDROPONIC_ORCHARDS": {
         name: "Hydroponic Orchards", tier: 2, unique: false,
         cost: { "REFINED_ALLOY": 60, "TECH_PARTS": 15, "WATER": 20 },
-        upkeep: 80, time: 25, effects: { foodProd: 12, waterConsume: 4 },
-        desc: "Massive indoor fruit cultivation. Generates 12 Food. Consumes 4 Water per Stardate."
+        upkeep: 80, time: 25, effects: { foodProd: 12, consume: { "WATER": 4 } },
+        desc: "Massive indoor fruit cultivation. Generates 12 Food. Consumes 4 Water."
     },
     "PROTEIN_VATS": {
         name: "Synthetic Protein Vats", tier: 2, unique: false,
         cost: { "REFINED_ALLOY": 50, "TECH_PARTS": 30, "WATER": 50 },
-        upkeep: 120, time: 25, effects: { foodProd: 15, waterConsume: 5 },
+        upkeep: 120, time: 25, effects: { foodProd: 15, consume: { "WATER": 5 } },
         desc: "Mass-produces 15 Food. Consumes 5 Water per Stardate."
     },
     "DEFENSE_BATTERY": { 
@@ -203,59 +204,47 @@ const COLONY_BUILDINGS = {
         upkeep: 100, time: 20, effects: { defense: 50 }, 
         desc: "Adds 50 Defense Rating to deter raids." 
     },
-    "MERCENARY_GARRISON": {
-        name: "Mercenary Garrison", tier: 2, unique: true,
-        cost: { "REFINED_ALLOY": 60, "WEAPONS": 30, "FOOD_SUPPLIES": 20 },
-        upkeep: 120, time: 20, effects: { defense: 40 },
-        desc: "A massive upgrade over the Militia Tent. Grants +40 Defense."
-    },
     "LAW_ENFORCEMENT_HQ": {
         name: "Law Enforcement HQ", tier: 2, unique: true,
         cost: { "REFINED_ALLOY": 50, "WEAPONS": 20, "TECH_PARTS": 10 },
         upkeep: 150, time: 22, effects: { defense: 30, moraleBonus: 2, crimeReduction: 15 },
-        desc: "Establishes order. +30 Defense, +2 Morale, offsets Black Market penalties."
+        desc: "Establishes order. +30 Defense, +2 Morale, suppresses Black Market penalties."
     },
     "AUTOMATED_FACTORY": {
         name: "Automated Factory", tier: 2, unique: false,
         cost: { "REFINED_ALLOY": 100, "TECH_PARTS": 30, "AI_CORE": 1 },
-        upkeep: 200, time: 40, effects: { techProd: 2, alloyConsume: 2 },
+        upkeep: 200, time: 40, effects: { techProd: 2, consume: { "REFINED_ALLOY": 2 } },
         desc: "Generates 2 Tech Parts. Consumes 2 Refined Alloys per Stardate."
-    },
-    "TECH_REFINERY": {
-        name: "Tech Component Refinery", tier: 2, unique: false,
-        cost: { "REFINED_ALLOY": 70, "TECH_PARTS": 20 },
-        upkeep: 150, time: 35, effects: { techProd: 2, mineralConsume: 5 },
-        desc: "An alternative to Auto-Factories. Generates 2 Tech Parts by consuming 5 Minerals."
     },
     "MUNITIONS_PLANT": {
         name: "Munitions Plant", tier: 2, unique: false,
         cost: { "REFINED_ALLOY": 80, "TECH_PARTS": 20 },
-        upkeep: 200, time: 30, effects: { weaponProd: 1, alloyConsume: 5, mineralConsume: 5 },
-        desc: "Actively manufactures 1 unit of Weapons. Consumes 5 Alloys and 5 Minerals per Stardate."
+        upkeep: 200, time: 30, effects: { weaponProd: 1, consume: { "REFINED_ALLOY": 5, "MINERALS": 5 } },
+        desc: "Actively manufactures 1 unit of Weapons. Consumes 5 Alloys and 5 Minerals."
     },
     "RECYCLING_PLANT": {
         name: "Industrial Recycling Plant", tier: 2, unique: false,
         cost: { "REFINED_ALLOY": 40, "TECH_PARTS": 10 },
-        upkeep: 100, time: 25, effects: { alloyProd: 2, techProd: 1, moralePenalty: -1 },
+        upkeep: 100, time: 25, effects: { alloyProd: 2, techProd: 1, moralePenalty: 1 },
         desc: "Turns waste into 2 Alloys and 1 Tech Part per Stardate, but the smog reduces Morale by 1."
     },
     "ADVANCED_ARMORY": {
         name: "Advanced Armory", tier: 2, unique: false,
         cost: { "REFINED_ALLOY": 120, "TECH_PARTS": 50, "WEAPONS": 50 },
-        upkeep: 250, time: 30, effects: { troopProd: 1, foodConsume: 5, alloyConsume: 5 },
+        upkeep: 250, time: 30, effects: { troopProd: 1, consume: { "FOOD_SUPPLIES": 5, "REFINED_ALLOY": 5 } },
         desc: "Trains 1 MERCENARY_PLATOON per Stardate. Consumes 5 Food and 5 Alloys."
     },
     "SYNTHETIC_WEAVERS": {
         name: "Synthetic Weavers", tier: 2, unique: false,
         cost: { "REFINED_ALLOY": 80, "TECH_PARTS": 40 },
-        upkeep: 200, time: 30, effects: { luxuryProd: 2, waterConsume: 3, mineralConsume: 5 },
+        upkeep: 200, time: 30, effects: { luxuryProd: 2, consume: { "WATER": 3, "MINERALS": 5 } },
         desc: "Generates 2 Luxury Goods per stardate. Consumes 3 Water and 5 Minerals."
     },
     "STIM_LAB": {
         name: "Underground Stim Lab", tier: 2, unique: false,
         cost: { "REFINED_ALLOY": 40, "TECH_PARTS": 15 },
-        upkeep: 100, time: 20, effects: { stimProd: 2, medConsume: 1, mineralConsume: 2, moralePenalty: -1 },
-        desc: "Illegally synthesizes 2 PROHIBITED_STIMS per Stardate. Consumes Meds and Minerals. -1 Morale."
+        upkeep: 100, time: 20, effects: { stimProd: 2, moralePenalty: 1, consume: { "MEDICAL_SUPPLIES": 1, "MINERALS": 2 } },
+        desc: "Illegally synthesizes 2 PROHIBITED_STIMS. Consumes Meds and Minerals. -1 Morale."
     },
     "MEDICAL_CLINIC": {
         name: "Frontier Clinic", tier: 2, unique: false,
@@ -263,59 +252,17 @@ const COLONY_BUILDINGS = {
         upkeep: 80, time: 15, effects: { medProd: 2, moraleBonus: 1 },
         desc: "Synthesizes 2 Medical Supplies per Stardate and boosts morale."
     },
-    "BOUNTY_OFFICE": {
-        name: "Bounty Hunter Lodge", tier: 2, unique: true,
-        cost: { "REFINED_ALLOY": 50, "WEAPONS": 20, "TECH_PARTS": 15 },
-        upkeep: 50, time: 20, effects: { defense: 20, passiveCredits: 200 },
-        desc: "Attracts local mercenaries. +20 Defense and +200c per Stardate from bounty payouts."
-    },
-    "SMUGGLERS_DEN": {
-        name: "Smuggler's Den", tier: 2, unique: true,
-        cost: { "REFINED_ALLOY": 40, "WEAPONS": 15 },
-        upkeep: 0, time: 20, effects: { illegalTaxes: 500, defense: -20, moralePenalty: -1 },
-        desc: "A hive of villainy. Launders 500c per Stardate, but invites crime (-20 Def, -1 Morale)."
-    },
-    "GLADIATOR_PIT": {
-        name: "Gladiator Pit", tier: 2, unique: true,
-        cost: { "REFINED_ALLOY": 50, "WEAPONS": 20 },
-        upkeep: 150, time: 25, effects: { moraleBonus: 4, defense: 10, foodConsume: 2 },
-        desc: "Brutal bloodsports. +4 Morale, +10 Defense, but consumes 2 extra Food to feed the fighters."
-    },
-    "CUSTOMS_OFFICE": {
-        name: "Customs & Security Node", tier: 2, unique: true,
-        cost: { "REFINED_ALLOY": 40, "WEAPONS": 10, "TECH_PARTS": 15 },
-        upkeep: 200, time: 20, effects: { taxEfficiency: 1.2, crimeReduction: 10 },
-        desc: "Increases tax yields by 20% and reduces the penalties of black market nodes."
-    },
     "CIVILIAN_SPACEPORT": {
         name: "Civilian Spaceport", tier: 2, unique: true,
         cost: { "REFINED_ALLOY": 120, "TECH_PARTS": 40 },
-        upkeep: 250, time: 30, effects: { taxEfficiency: 1.25, growthBoost: 1 },
-        desc: "Establishes commercial flight paths. +25% Tax Yields and permanently boosts pop growth rate."
-    },
-    "ORBITAL_BEACON": {
-        name: "Orbital Trade Beacon", tier: 2, unique: true,
-        cost: { "REFINED_ALLOY": 60, "TECH_PARTS": 40 },
-        upkeep: 250, time: 25, effects: { taxEfficiency: 1.3 },
-        desc: "Guides massive transport ships safely into orbit. Flat 30% boost to tax yields."
-    },
-    "ORBITAL_TETHER": {
-        name: "Orbital Tether", tier: 2, unique: true,
-        cost: { "REFINED_ALLOY": 80, "TECH_PARTS": 30 },
-        upkeep: 300, time: 30, effects: { taxEfficiency: 1.15, passiveCredits: 300 },
-        desc: "A localized mini space-elevator. +15% to tax yields and +300c per Stardate."
+        upkeep: 250, time: 30, effects: { taxMult: 0.25, popGrowthMult: 1.5 },
+        desc: "Establishes commercial flight paths. +25% Tax Yields and boosts pop growth rate."
     },
     "COMMERCE_HUB": {
         name: "Galactic Commerce Hub", tier: 2, unique: true,
         cost: { "REFINED_ALLOY": 60, "TECH_PARTS": 25, "LUXURY_GOODS": 10 },
-        upkeep: 400, time: 30, effects: { taxMult: 1.5 },
+        upkeep: 400, time: 30, effects: { taxMult: 0.5 },
         desc: "Attracts off-world traders. Increases overall tax revenue by 50%."
-    },
-    "ENTERTAINMENT_NEXUS": {
-        name: "Holo-Theater Nexus", tier: 2, unique: false,
-        cost: { "REFINED_ALLOY": 50, "TECH_PARTS": 30, "LUXURY_GOODS": 20 },
-        upkeep: 300, time: 25, effects: { moraleBonus: 5 },
-        desc: "Provides massive entertainment value, regenerating 5 Morale per Stardate."
     },
 
     // --- TIER 3: METROPOLIS ---
@@ -331,29 +278,11 @@ const COLONY_BUILDINGS = {
         upkeep: 500, time: 40, effects: { foodProd: 10, medProd: 5 },
         desc: "Cultivates rare flora. Generates 10 Food and 5 Medical Supplies per Stardate."
     },
-    "CLIMATE_CONTROLLER": {
-        name: "Climate Controller", tier: 3, unique: true,
-        cost: { "REFINED_ALLOY": 250, "TECH_PARTS": 100, "VOID_CRYSTALS": 2 },
-        upkeep: 2000, time: 60, effects: { waterProd: 30, moraleBonus: 5 },
-        desc: "Dominates the planetary weather. Generates 30 Water and +5 Morale."
-    },
-    "GENE_CLINIC": {
-        name: "Gene-Tailoring Clinic", tier: 3, unique: true,
-        cost: { "REFINED_ALLOY": 200, "TECH_PARTS": 150, "MEDICAL_SUPPLIES": 100, "AI_CORE": 1 },
-        upkeep: 1200, time: 50, effects: { medProd: 10, moraleBonus: 5, foodEfficiency: 0.8 },
-        desc: "Edits citizen DNA. +10 Medical Supplies, +5 Morale, and permanently reduces colony food consumption by 20%."
-    },
     "SPACE_ELEVATOR": {
         name: "Orbital Space Elevator", tier: 3, unique: true,
         cost: { "REFINED_ALLOY": 500, "TECH_PARTS": 200, "AI_CORE": 2 },
-        upkeep: 2500, time: 90, effects: { taxMult: 2.0 },
-        desc: "A tether to the heavens. Doubles tax revenue and is required to become a Capital."
-    },
-    "ORBITAL_SHIELD": {
-        name: "Planetary Aegis Shield", tier: 3, unique: true,
-        cost: { "REFINED_ALLOY": 250, "TECH_PARTS": 150, "VOID_CRYSTALS": 10 },
-        upkeep: 3000, time: 75, effects: { defense: 300, moraleBonus: 5 },
-        desc: "An impenetrable energy grid. Massive defense boost. Citizens feel truly safe."
+        upkeep: 2500, time: 90, effects: { taxMult: 1.0 },
+        desc: "A tether to the heavens. +100% tax revenue and is required to become a Capital."
     },
     "PLANETARY_ION_CANNON": {
         name: "Planetary Ion Cannon", tier: 3, unique: true,
@@ -361,23 +290,11 @@ const COLONY_BUILDINGS = {
         upkeep: 4000, time: 65, effects: { defense: 500 },
         desc: "An apocalyptic surface-to-orbit weapon. Grants +500 Defense."
     },
-    "HEAVY_VEHICLE_BAY": {
-        name: "Heavy Vehicle Bay", tier: 3, unique: false,
-        cost: { "REFINED_ALLOY": 400, "TECH_PARTS": 150, "AI_CORE": 5 },
-        upkeep: 2000, time: 50, effects: { mechProd: 1, alloyConsume: 15, techConsume: 5 },
-        desc: "Manufactures 1 ASSAULT_MECH per Stardate. Consumes 15 Alloys and 5 Tech Parts."
-    },
     "ORBITAL_SHIPYARD": {
         name: "Orbital Shipyard", tier: 3, unique: true,
         cost: { "REFINED_ALLOY": 400, "TECH_PARTS": 200, "AI_CORE": 3 },
         upkeep: 1500, time: 100, effects: { passiveCredits: 5000 },
         desc: "Constructs and sells civilian freighters automatically. Generates 5,000c per Stardate."
-    },
-    "RESEARCH_LABORATORY": {
-        name: "Xeno-Research Lab", tier: 3, unique: false,
-        cost: { "REFINED_ALLOY": 100, "TECH_PARTS": 80, "ANCIENT_RELICS": 2 },
-        upkeep: 800, time: 45, effects: { passiveXP: 50 },
-        desc: "Scientists study the planet. Grants you 50 XP globally per Stardate."
     },
     "AI_RESEARCH_LAB": {
         name: "A.I. Research Hub", tier: 3, unique: true,
@@ -385,22 +302,10 @@ const COLONY_BUILDINGS = {
         upkeep: 1500, time: 50, effects: { passiveXP: 100, techProd: 5 },
         desc: "A sprawling silicon mind. Generates an incredible 100 XP and 5 Tech Parts per Stardate."
     },
-    "CLONING_FACILITY": {
-        name: "Vat-Cloning Facility", tier: 3, unique: true,
-        cost: { "REFINED_ALLOY": 150, "MEDICAL_SUPPLIES": 100, "ILLEGAL_ORGANS": 15 },
-        upkeep: 2000, time: 50, effects: { popGrowthMult: 4, moralePenalty: -5 },
-        desc: "Quadruples population growth speed. The ethical violations massively reduce morale."
-    },
-    "BLACK_MARKET_NODE": {
-        name: "Syndicate Node", tier: 3, unique: true,
-        cost: { "REFINED_ALLOY": 50, "WEAPONS": 50, "PROHIBITED_STIMS": 20 },
-        upkeep: 0, time: 30, effects: { illegalTaxes: 1000, defense: -50, moralePenalty: -2 },
-        desc: "Launders 1000c per Stardate, but invites heavy crime (-50 Defense, -2 Morale)."
-    },
     "SYNDICATE_HEADQUARTERS": {
         name: "Syndicate Headquarters", tier: 3, unique: true,
         cost: { "REFINED_ALLOY": 100, "WEAPONS": 100, "LUXURY_GOODS": 50 },
-        upkeep: 0, time: 40, effects: { illegalTaxes: 2500, defense: -100, moralePenalty: -5 },
+        upkeep: 0, time: 40, effects: { illegalTaxes: 2500, defense: -100, moralePenalty: 5 },
         desc: "The absolute apex of organized crime. Launders 2,500c per tick. Decimates Defense (-100) and Morale (-5)."
     },
 
@@ -411,37 +316,20 @@ const COLONY_BUILDINGS = {
         upkeep: 5000, time: 150, effects: { autoTrade: true },
         desc: "Automatically sells 10% of all excess colony resources to the galactic market for pure credits every Stardate."
     },
-    "BIOSPHERE_RESERVE": {
-        name: "Utopian Biosphere", tier: 4, unique: true,
-        cost: { "REFINED_ALLOY": 800, "WATER": 500, "TECH_PARTS": 300, "VOID_CRYSTALS": 15 },
-        upkeep: 10000, time: 120, effects: { popCap: 50000, moraleBonus: 10 },
-        desc: "A massive, planetary-scale terraforming paradise. +50,000 Max Population and +10 Morale."
-    },
     "ASTRAL_MONUMENT": {
         name: "Astral Monument", tier: 4, unique: true,
         cost: { "REFINED_ALLOY": 2000, "LUXURY_GOODS": 1000, "ANCIENT_RELICS": 10, "VOID_CRYSTALS": 10 },
         upkeep: 2500, time: 180, effects: { moraleBonus: 20, passiveCredits: 10000 },
         desc: "A staggering, awe-inspiring megastructure. Generates +20 Morale and 10,000c per Stardate from galactic tourism."
     },
-    "STELLAR_FORGE": {
-        name: "Stellar Forge", tier: 4, unique: true,
-        cost: { "REFINED_ALLOY": 1500, "TECH_PARTS": 800, "AI_CORE": 10, "ANCIENT_RELICS": 5 },
-        upkeep: 8000, time: 200, effects: { alloyProd: 20, techProd: 10 },
-        desc: "Harnesses the core of the planet for ultimate industry. Generates 20 Alloys and 10 Tech Parts per Stardate. No resource cost."
-    },
-    "DARK_MATTER_COLLIDER": {
-        name: "Dark Matter Collider", tier: 4, unique: true,
-        cost: { "REFINED_ALLOY": 3000, "TECH_PARTS": 1500, "AI_CORE": 25, "VOID_CRYSTALS": 5 },
-        upkeep: 15000, time: 300, effects: { voidProd: 1, passiveXP: 200 },
-        desc: "Shatters the fabric of reality. Generates 200 XP and synthesizes 1 VOID_CRYSTAL per Stardate."
-    },
     "AI_OVERLORD_CORE": {
         name: "A.I. Overlord Core", tier: 4, unique: true,
         cost: { "REFINED_ALLOY": 2000, "TECH_PARTS": 1000, "AI_CORE": 20, "VOID_CRYSTALS": 5 },
-        upkeep: 12000, time: 250, effects: { omniProd: 2.0, moralePenalty: -10 },
-        desc: "Cedes control to a hyper-intelligent AI. Doubles all factory and farm outputs, but heavily penalizes morale and displaces organics."
+        upkeep: 12000, time: 250, effects: { omniProd: 2.0, moralePenalty: 10 },
+        desc: "Cedes control to a hyper-intelligent AI. Doubles all factory outputs, but heavily penalizes morale."
     }
 };
+Object.freeze(COLONY_BUILDINGS); // Optimizes memory usage in the V8 engine
 
 let currentColonyTab = 'OVERVIEW';
 
@@ -487,8 +375,9 @@ function establishColony(locationIndex) {
         storage: { "FOOD_SUPPLIES": 25, "WATER": 20, "REFINED_ALLOY": 30 },
         buildings: { "HAB_BLOCK": 1 }, 
         activeConstruction: null, 
-        biome: planet.biome.id, // BUG 1 FIXED: Store the ID, not the Name
-        lastTick: currentGameDate
+        biome: planet.biome.id,
+        lastTick: currentGameDate,
+        alerts: [] // Stores local colony events and raid notifications
     };
 
     updateWorldState(playerX, playerY, { hasColony: true, colonyId: colId }, colId);
@@ -524,24 +413,25 @@ function openColonyManagement(colonyId) {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
 
-    const numHabs = colony.buildings['HAB_BLOCK'] || 0;
-    const numShanties = colony.buildings['SHANTY_TOWN'] || 0;
-    const numArcos = colony.buildings['ARCOLOGY_SPIRE'] || 0;
-    const numBios = colony.buildings['BIOSPHERE_RESERVE'] || 0;
-    const maxPop = (numHabs * 500) + (numShanties * 200) + (numArcos * 5000) + (numBios * 50000); 
-    
-    // Dynamic Storage Limit
-    const maxStorage = 1000 + ((colony.buildings['STORAGE_SILOS'] || 0) * 2500);
-    let currentStorage = Object.values(colony.storage).reduce((a,b) => a + b, 0);
+    // Aggregate Stats for UI reading
+    let projectedUpkeep = 0;
+    let maxPop = 0;
+    let maxStorage = 1000;
 
+    for (const [bId, count] of Object.entries(colony.buildings)) {
+        const bData = COLONY_BUILDINGS[bId];
+        if (bData) {
+            projectedUpkeep += (bData.upkeep || 0) * count;
+            if (bData.effects.popCap) maxPop += bData.effects.popCap * count;
+            if (bData.effects.storageCap) maxStorage += bData.effects.storageCap * count;
+        }
+    }
+    
+    let currentStorage = Object.values(colony.storage).reduce((a,b) => a + b, 0);
     const isStarving = (colony.storage['FOOD_SUPPLIES'] || 0) <= 0;
     const phaseIndex = COLONY_PHASES.indexOf(colony.phase);
-
-    // Calculate Projected Upkeep for UI
-    let projectedUpkeep = 0;
-    for (const [bId, count] of Object.entries(colony.buildings)) {
-        if (COLONY_BUILDINGS[bId] && COLONY_BUILDINGS[bId].upkeep) projectedUpkeep += (COLONY_BUILDINGS[bId].upkeep * count);
-    }
+    const inDebt = colony.treasury < 0;
+    const efficiency = inDebt ? 50 : 100; // Display efficiency drop in debt
 
     // Policy Color Formatting
     let policyColor = "var(--text-color)";
@@ -562,6 +452,7 @@ function openColonyManagement(colonyId) {
                     ${isStarving ? '🏚️' : (phaseIndex === 3 ? '👑' : (phaseIndex === 2 ? '🏙️' : (phaseIndex === 1 ? '🏭' : '⛺')))}
                 </div>
                 <div style="color:${isStarving ? 'var(--danger)' : 'var(--success)'}; font-weight:bold; letter-spacing:2px; font-size:12px;">STATUS: ${isStarving ? 'FAMINE' : colony.phase}</div>
+                <div style="color:${inDebt ? 'var(--danger)' : 'var(--item-desc-color)'}; font-size:10px; margin-top:4px;">Operational Efficiency: ${efficiency}%</div>
             </div>
 
             <div class="trade-math-area" style="background: rgba(0,0,0,0.3); border: 1px solid #333; padding: 10px; border-radius: 4px; margin-bottom: 20px;">
@@ -572,7 +463,7 @@ function openColonyManagement(colonyId) {
                 <div class="trade-stat-row" style="margin-top:10px; border-top:1px dashed #444; padding-top:5px;"><span>Daily Upkeep:</span> <span style="color:var(--danger); font-weight:bold;">-${formatNumber(projectedUpkeep)}c</span></div>
             </div>
             
-            <button class="action-button full-width-btn" style="margin-bottom:5px; border-color:${currentColonyTab === 'OVERVIEW' ? 'var(--accent-color)' : '#333'}" onclick="setColonyTab('${colonyId}', 'OVERVIEW')">OVERVIEW & CENSUS</button>
+            <button class="action-button full-width-btn" style="margin-bottom:5px; border-color:${currentColonyTab === 'OVERVIEW' ? 'var(--accent-color)' : '#333'}" onclick="setColonyTab('${colonyId}', 'OVERVIEW')">OVERVIEW & LOGS</button>
             <button class="action-button full-width-btn" style="margin-bottom:5px; border-color:${currentColonyTab === 'LOGISTICS' ? 'var(--accent-color)' : '#333'}" onclick="setColonyTab('${colonyId}', 'LOGISTICS')">LOGISTICS</button>
             <button class="action-button full-width-btn" style="border-color:${currentColonyTab === 'CONSTRUCTION' ? 'var(--accent-color)' : '#333'}" onclick="setColonyTab('${colonyId}', 'CONSTRUCTION')">ENGINEERING</button>
         </div>
@@ -620,6 +511,12 @@ function openColonyManagement(colonyId) {
         const synPop = Math.floor(colony.population * ((colony.demographics["Synthetic"] || 10) / 100));
         const vdBornPop = colony.population - humPop - kthPop - synPop; 
 
+        // RENDER EVENT LOG
+        let alertsHtml = `<div style="color:var(--item-desc-color); font-size:11px; font-style:italic;">No recent events.</div>`;
+        if (colony.alerts && colony.alerts.length > 0) {
+            alertsHtml = colony.alerts.map(a => `<div style="margin-bottom:4px;">> ${a}</div>`).join('');
+        }
+
         tabContent.innerHTML = `
             <div style="display:flex; gap: 20px; margin-bottom: 20px;">
                 <div style="flex: 1; background:rgba(0,0,0,0.5); border:1px solid ${colony.treasury < 0 ? 'var(--danger)' : 'var(--gold-text)'}; padding:15px; border-radius:4px;">
@@ -631,6 +528,13 @@ function openColonyManagement(colonyId) {
                     <div style="font-size:10px; color:var(--accent-color); letter-spacing:1px; margin-bottom:5px;">ACTIVE POLICY</div>
                     <div style="font-size:16px; font-weight:bold; color:${policyColor};">${colony.policy}</div>
                     <button class="action-button small-btn" style="margin-top:16px; width:100%;" onclick="cycleColonyPolicy('${colonyId}')">CYCLE DIRECTIVE</button>
+                </div>
+            </div>
+
+            <div style="background:rgba(0,0,0,0.5); border:1px solid var(--border-color); padding:15px; border-radius:4px; margin-bottom:20px;">
+                <h4 style="color:var(--item-name-color); margin:0 0 10px 0; border-bottom:1px dashed #444; padding-bottom:5px;">GOVERNOR'S LOG</h4>
+                <div style="font-size:12px; color:var(--text-color); max-height:100px; overflow-y:auto; line-height:1.5;">
+                    ${alertsHtml}
                 </div>
             </div>
 
@@ -657,13 +561,11 @@ function openColonyManagement(colonyId) {
         let storageHtml = `<table style="width:100%; text-align:left; font-size:12px; border-collapse: collapse;">`;
         const allItems = new Set([...Object.keys(playerCargo), ...Object.keys(colony.storage)]);
         
-        // [FIX]: Make sure troops show up in the logistics list!
         if (playerShip.forces.marines >= 10 || colony.storage['MERCENARY_PLATOON']) allItems.add('MERCENARY_PLATOON');
         if (playerShip.forces.heavyMechs >= 1 || colony.storage['ASSAULT_MECH']) allItems.add('ASSAULT_MECH');
 
         allItems.forEach(item => {
             let shipQty = playerCargo[item] || 0;
-            // [FIX]: Read actual troop counts for the UI!
             if (item === 'MERCENARY_PLATOON') shipQty = Math.floor((playerShip.forces.marines || 0) / 10);
             if (item === 'ASSAULT_MECH') shipQty = playerShip.forces.heavyMechs || 0;
             const colQty = colony.storage[item] || 0;
@@ -845,8 +747,7 @@ function cancelConstruction(colonyId) {
     
     const bData = COLONY_BUILDINGS[colony.activeConstruction.id];
     
-    // BUG 3 FIXED: Check storage cap before refunding!
-    const maxStorage = 1000 + ((colony.buildings['STORAGE_SILOS'] || 0) * 2500);
+    let maxStorage = 1000 + ((colony.buildings['STORAGE_SILOS'] || 0) * 2500);
     let currentStorage = Object.values(colony.storage).reduce((a,b) => a + b, 0);
     let refundVolume = Object.values(bData.cost).reduce((a,b) => a + b, 0);
     
@@ -856,7 +757,6 @@ function cancelConstruction(colonyId) {
         return;
     }
     
-    // Refund the exact cost safely
     for (const [cId, qty] of Object.entries(bData.cost)) {
         colony.storage[cId] = (colony.storage[cId] || 0) + qty; 
     }
@@ -875,8 +775,7 @@ function demolishBuilding(colonyId, buildingId) {
 
     const bData = COLONY_BUILDINGS[buildingId];
     
-    // BUG 3 FIXED: Check storage cap before refunding!
-    const maxStorage = 1000 + ((colony.buildings['STORAGE_SILOS'] || 0) * 2500);
+    let maxStorage = 1000 + ((colony.buildings['STORAGE_SILOS'] || 0) * 2500);
     let currentStorage = Object.values(colony.storage).reduce((a,b) => a + b, 0);
     let refundVolume = Object.values(bData.cost).reduce((a,b) => a + b, 0);
     
@@ -889,7 +788,6 @@ function demolishBuilding(colonyId, buildingId) {
     colony.buildings[buildingId] -= 1;
     if (colony.buildings[buildingId] <= 0) delete colony.buildings[buildingId];
 
-    // Painless Revision: Refund 100% of the raw materials safely!
     for (const [cId, qty] of Object.entries(bData.cost)) {
         colony.storage[cId] = (colony.storage[cId] || 0) + qty;
     }
@@ -983,7 +881,40 @@ function cycleColonyPolicy(colonyId) {
     openColonyManagement(colonyId); 
 }
 
-// --- 5. THE SIMULATION MASTER TICK ---
+// --- Helper function for random colony events ---
+function triggerColonyEvent(colony) {
+    const events = [];
+    const inDebt = colony.treasury < 0;
+    const isStarving = (colony.storage['FOOD_SUPPLIES'] || 0) <= 0;
+
+    if (colony.defense < 50 && Math.random() < 0.1) {
+        events.push(() => {
+            const stolen = Math.floor(Math.random() * 500) + 100;
+            colony.treasury -= stolen;
+            colony.alerts.unshift(`<span style="color:var(--danger)">[ RAID ] Pirates overwhelmed defenses and looted ${stolen}c.</span>`);
+        });
+    }
+    if (colony.morale < 30 && Math.random() < 0.1) {
+        events.push(() => {
+            colony.alerts.unshift(`<span style="color:var(--danger)">[ STRIKE ] Unhappy workers halted production for the day.</span>`);
+            // Effectively skips production this tick
+        });
+    }
+    if (colony.morale >= 80 && Math.random() < 0.1) {
+        events.push(() => {
+            const boost = Math.floor(Math.random() * 300) + 100;
+            colony.treasury += boost;
+            colony.alerts.unshift(`<span style="color:var(--success)">[ FESTIVAL ] High morale led to a local festival! +${boost}c</span>`);
+        });
+    }
+
+    if (events.length > 0) {
+        events[Math.floor(Math.random() * events.length)]();
+        if (colony.alerts.length > 5) colony.alerts.pop();
+    }
+}
+
+// --- 5. THE DATA-DRIVEN SIMULATION MASTER TICK ---
 GameBus.on('TICK_PROCESSED', (tick) => {
     if (tick.interrupt) return;
 
@@ -996,482 +927,282 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                     colony.lastTick = currentGameDate;
                     const policy = colony.policy || 'BALANCED';
 
-                    // 1. DYNAMIC STAT CALCULATION
-                    const numHabs = colony.buildings['HAB_BLOCK'] || 0;
-                    const numShanties = colony.buildings['SHANTY_TOWN'] || 0;
-                    const numArcos = colony.buildings['ARCOLOGY_SPIRE'] || 0;
-                    const numBios = colony.buildings['BIOSPHERE_RESERVE'] || 0;
-                    const maxPop = (numHabs * 500) + (numShanties * 200) + (numArcos * 5000) + (numBios * 50000); 
+                    // 1. DATA-DRIVEN STAT AGGREGATOR
+                    let stats = {
+                        upkeep: 0, popCap: 0, storageCap: 1000, defense: 0,
+                        waterProd: 0, foodProd: 0, alloyProd: 0, techProd: 0, mineralProd: 0,
+                        weaponProd: 0, mechProd: 0, troopProd: 0, luxuryProd: 0, stimProd: 0, medProd: 0, voidProd: 0,
+                        moraleRegen: 0, moralePenalty: 0,
+                        taxMult: 1.0, taxFlat: 0, illegalTaxes: 0,
+                        passiveCredits: 0, passiveXP: 0,
+                        crimeReduction: 0, popGrowthMult: 1.0, foodEfficiency: 1.0, omniProd: 1.0,
+                        miningBoost: 1.0, resourceMult: 1.0, autoTrade: false,
+                        consume: { "WATER": 0, "FOOD_SUPPLIES": 0, "REFINED_ALLOY": 0, "MINERALS": 0, "TECH_PARTS": 0, "MEDICAL_SUPPLIES": 0 }
+                    };
 
-                    // Check Dynamic Storage Cap
-                    const maxStorage = 1000 + ((colony.buildings['STORAGE_SILOS'] || 0) * 2500);
-                    let currentStorage = Object.values(colony.storage).reduce((a,b) => a + b, 0);
-
-                    const numAtmos = colony.buildings['ATMOS_PROCESSOR'] || 0;
-                    const numFarms = colony.buildings['HYDRO_FARM'] || 0;
-                    const numOrchards = colony.buildings['HYDROPONIC_ORCHARDS'] || 0;
-                    const numAlgae = colony.buildings['ALGAE_VATS'] || 0;
-                    const numMycelium = colony.buildings['MYCELIUM_CAVES'] || 0;
-                    const numVats = colony.buildings['PROTEIN_VATS'] || 0;
-                    const numWeavers = colony.buildings['SYNTHETIC_WEAVERS'] || 0;
-                    const numXenoDomes = colony.buildings['XENOBOTANY_DOME'] || 0;
-                    const numGeneClinics = colony.buildings['GENE_CLINIC'] || 0;
-                    const numClimate = colony.buildings['CLIMATE_CONTROLLER'] || 0;
-                    
-                    const numRainCatchers = colony.buildings['RAIN_CATCHERS'] || 0;
-                    const numWindTraps = colony.buildings['WIND_TRAPS'] || 0;
-                    const numSolarStills = colony.buildings['SOLAR_STILLS'] || 0;
-                    
-                    const numMilitia = colony.buildings['MILITIA_TENT'] || 0;
-                    const numDustWalls = colony.buildings['DUST_WALLS'] || 0;
-                    const numWatchTowers = colony.buildings['WATCHTOWER'] || 0;
-                    const numAutoTurrets = colony.buildings['AUTOMATED_TURRET'] || 0;
-                    const numMercGarrison = colony.buildings['MERCENARY_GARRISON'] || 0;
-                    const numDef = colony.buildings['DEFENSE_BATTERY'] || 0;
-                    const numLawHQ = colony.buildings['LAW_ENFORCEMENT_HQ'] || 0;
-                    const numPits = colony.buildings['GLADIATOR_PIT'] || 0;
-                    const numCannons = colony.buildings['PLANETARY_ION_CANNON'] || 0;
-                    
-                    const numClinics = colony.buildings['MEDICAL_CLINIC'] || 0;
-                    const numClinicTents = colony.buildings['CLINIC_TENT'] || 0;
-                    const numCantinas = colony.buildings['OUTPOST_CANTINA'] || 0;
-                    const numTaverns = colony.buildings['FRONTIER_TAVERN'] || 0;
-                    const numHoloCasters = colony.buildings['HOLO_CASTER'] || 0;
-                    const numNexus = colony.buildings['ENTERTAINMENT_NEXUS'] || 0;
-                    const numShields = colony.buildings['ORBITAL_SHIELD'] || 0;
-                    const numBounties = colony.buildings['BOUNTY_OFFICE'] || 0;
-                    
-                    const numArmories = colony.buildings['ADVANCED_ARMORY'] || 0;
-                    const numMunitions = colony.buildings['MUNITIONS_PLANT'] || 0;
-                    const numVehicleBays = colony.buildings['HEAVY_VEHICLE_BAY'] || 0;
-
-                    const numFactories = colony.buildings['AUTOMATED_FACTORY'] || 0;
-
-                    const numScrapYards = colony.buildings['SCRAP_YARD'] || 0;
-                    const numRecyclers = colony.buildings['RECYCLING_PLANT'] || 0;
-                    const numOreCrushers = colony.buildings['ORE_CRUSHER'] || 0;
-                    const numScavengers = colony.buildings['SCAVENGER_GUILD'] || 0;
-                    const numProspectors = colony.buildings['PROSPECTOR_CAMP'] || 0;
-                    const numDroneHubs = colony.buildings['DRONE_HUB'] || 0;
-                    const numBazaars = colony.buildings['LOCAL_BAZAAR'] || 0;
-                    
-                    const numCommRelays = colony.buildings['COMM_RELAY'] || 0;
-                    const numListeningPosts = colony.buildings['LISTENING_POST'] || 0;
-                    const numAILabs = colony.buildings['AI_RESEARCH_LAB'] || 0;
-                    
-                    const numClones = colony.buildings['CLONING_FACILITY'] || 0;
-                    const numNodes = colony.buildings['BLACK_MARKET_NODE'] || 0;
-                    const numSmugglers = colony.buildings['SMUGGLERS_DEN'] || 0;
-                    const numStimLabs = colony.buildings['STIM_LAB'] || 0;
-                    const numSyndicateHQ = colony.buildings['SYNDICATE_HEADQUARTERS'] || 0;
-                    
-                    const numCustoms = colony.buildings['CUSTOMS_OFFICE'] || 0;
-                    const numTethers = colony.buildings['ORBITAL_TETHER'] || 0;
-                    const numSpaceports = colony.buildings['CIVILIAN_SPACEPORT'] || 0;
-                    const numAIs = colony.buildings['AI_OVERLORD_CORE'] || 0;
-                    const numMonuments = colony.buildings['ASTRAL_MONUMENT'] || 0;
-                    const numColliders = colony.buildings['DARK_MATTER_COLLIDER'] || 0;
-                    
-                    const prodMultiplier = (numAIs > 0) ? 2.0 : 1.0;
-
-                    // Update Defense calculation
-                    colony.defense = (numMilitia * 15) + (numDustWalls * 10) + (numWatchTowers * 5) + (numAutoTurrets * 10) + (numMercGarrison * 40) + (numDef * 50) + (numLawHQ * 30) + (numShields * 300) + (numCannons * 500) + (numBounties * 20) + (numPits * 10);
-                    colony.defense -= (numNodes * 50) + (numSmugglers * 20) + (numSyndicateHQ * 100);
-                    colony.defense += (numCustoms * 20); 
-                    
-                    if (policy === 'AUTHORITARIAN') colony.defense += 100;
-                    if (policy === 'SURVIVALIST') colony.defense += 10;
-                    if (policy === 'EXPANSIONIST') colony.defense -= 20;
-                    if (colony.defense < 0) colony.defense = 0;
-
-                    // --- MAINTENANCE COST MECHANIC ---
-                    let totalUpkeep = 0;
+                    // Aggregate all building effects!
                     for (const [bId, count] of Object.entries(colony.buildings)) {
-                        if (COLONY_BUILDINGS[bId] && COLONY_BUILDINGS[bId].upkeep) {
-                            totalUpkeep += (COLONY_BUILDINGS[bId].upkeep * count);
-                        }
-                    }
-                    colony.treasury -= totalUpkeep; 
-                    const isInDebt = colony.treasury < 0;
-                    
-                    // Update Morale calculation
-                    if (policy === 'AUTHORITARIAN') {
-                        colony.morale = 40; 
-                    } else {
-                        let moraleRegen = (numAtmos * 3) + (numClinicTents * 1) + (numClinics * 1) + (numCantinas * 3) + (numTaverns * 2) + (numHoloCasters * 2) + (numNexus * 5) + (numDustWalls * 1) + (numWatchTowers * 1) + (numLawHQ * 2) + (numShields * 5) + (numArcos * 2) + (numBios * 10) + (numCommRelays * 1) + (numGeneClinics * 5) + (numMonuments * 20) + (numPits * 4) + (numClimate * 5);
-                        if (policy === 'UTOPIAN') moraleRegen += 10;
-                        
-                        let moralePenalty = 0;
-                        if (isInDebt) moralePenalty += 2; 
-                        if (numClones > 0) moralePenalty += 5; 
-                        if (numAlgae > 0) moralePenalty += numAlgae; 
-                        if (numStimLabs > 0) moralePenalty += numStimLabs;
-                        if (numShanties > 0) moralePenalty += numShanties;
-                        if (numRecyclers > 0) moralePenalty += numRecyclers;
-                        if (numSyndicateHQ > 0) moralePenalty += (numSyndicateHQ * 5);
-                        
-                        let crimeBuildings = numNodes + numSmugglers;
-                        if (crimeBuildings > 0 && numCustoms === 0 && numLawHQ === 0) moralePenalty += (crimeBuildings * 2); 
-                        if (numAIs > 0) moralePenalty += 10; 
-                        
-                        colony.morale = Math.min(100, colony.morale + moraleRegen - moralePenalty);
-                    }
-
-                    // 2. CONSTRUCTION PROGRESS
-                    if (colony.activeConstruction) {
-                        colony.activeConstruction.progress += 1;
-                        if (colony.activeConstruction.progress >= colony.activeConstruction.total) {
-                            const bId = colony.activeConstruction.id;
-                            colony.buildings[bId] = (colony.buildings[bId] || 0) + 1;
-                            logMessage(`<span style='color:var(--success)'>[ ENGINEERING ] ${colony.name} has finished constructing a ${COLONY_BUILDINGS[bId].name}!</span>`);
-                            if (typeof soundManager !== 'undefined') soundManager.playGain();
-                            colony.activeConstruction = null;
+                        const bData = COLONY_BUILDINGS[bId];
+                        if (bData && count > 0) {
+                            stats.upkeep += (bData.upkeep || 0) * count;
+                            
+                            if (bData.effects) {
+                                for (const [effect, val] of Object.entries(bData.effects)) {
+                                    // Multipliers stack by addition or multiplication depending on logic
+                                    if (effect === 'taxMult') stats.taxMult *= Math.pow(val, count);
+                                    else if (effect === 'popGrowthMult') stats.popGrowthMult *= Math.pow(val, count);
+                                    else if (effect === 'foodEfficiency') stats.foodEfficiency *= Math.pow(val, count);
+                                    else if (effect === 'omniProd') stats.omniProd *= Math.pow(val, count);
+                                    else if (effect === 'miningBoost') stats.miningBoost *= Math.pow(val, count);
+                                    else if (effect === 'resourceMult') stats.resourceMult *= Math.pow(val, count);
+                                    else if (effect === 'autoTrade') stats.autoTrade = val; // Boolean
+                                    // Complicated consumption objects
+                                    else if (effect === 'consume') {
+                                        for (const [cId, cVal] of Object.entries(val)) {
+                                            stats.consume[cId] = (stats.consume[cId] || 0) + (cVal * count);
+                                        }
+                                    }
+                                    // Standard additive stats
+                                    else {
+                                        stats[effect] += (val * count);
+                                    }
+                                }
+                            }
                         }
                     }
 
-                    // 3. SUPPLY CHAINS & WEAPONS MANUFACTURING
-                    
-                    // BUG 3 FIXED: Apply storage capping to organic processes
-                    
-                    // Water Extraction
-                    let waterGenerated = 0;
-                    if (colony.buildings['WATER_EXTRACTOR']) waterGenerated += (10 * colony.buildings['WATER_EXTRACTOR'] * prodMultiplier);
-                    if (numWindTraps > 0) waterGenerated += (5 * numWindTraps * prodMultiplier);
-                    if (numSolarStills > 0) waterGenerated += (3 * numSolarStills * prodMultiplier);
-                    if (numClimate > 0) waterGenerated += (30 * numClimate * prodMultiplier);
-                    if (numRainCatchers > 0) waterGenerated += (2 * numRainCatchers * prodMultiplier); // BUG 2 FIXED
-                    
-                    if (currentStorage + waterGenerated > maxStorage) waterGenerated = Math.max(0, maxStorage - currentStorage);
-                    colony.storage['WATER'] = (colony.storage['WATER'] || 0) + waterGenerated;
-                    currentStorage += waterGenerated;
-                    
-                    // Food Generation
-                    let foodGenerated = 0;
-                    foodGenerated += (numAlgae * 3 * prodMultiplier); 
-                    foodGenerated += (numMycelium * 2 * prodMultiplier); 
-                    foodGenerated += (numXenoDomes * 10 * prodMultiplier); 
-                    
-                    // Hydro Farms (CONSUMES WATER)
-                    if (numFarms > 0) {
-                        const waterNeeded = numFarms * 2;
-                        if ((colony.storage['WATER'] || 0) >= waterNeeded) {
-                            colony.storage['WATER'] -= waterNeeded;
-                            foodGenerated += (numFarms * 5 * prodMultiplier);
-                        } else {
-                            foodGenerated += Math.floor(numFarms * 2 * prodMultiplier); 
-                            colony.storage['WATER'] = 0; // Cap at 0
-                        }
+                    // --- 2. BIOME MODIFIERS ---
+                    let biomeDef = typeof PLANET_BIOMES !== 'undefined' ? PLANET_BIOMES[colony.biome] : null;
+                    if (!biomeDef && typeof PLANET_BIOMES !== 'undefined') {
+                        // Legacy save fallback
+                        const legacyKey = Object.keys(PLANET_BIOMES).find(k => PLANET_BIOMES[k].name === colony.biome);
+                        if (legacyKey) biomeDef = PLANET_BIOMES[legacyKey];
                     }
 
-                    // Hydroponic Orchards (CONSUMES WATER)
-                    if (numOrchards > 0) {
-                        const waterNeeded = numOrchards * 4;
-                        if ((colony.storage['WATER'] || 0) >= waterNeeded) {
-                            colony.storage['WATER'] -= waterNeeded;
-                            foodGenerated += (numOrchards * 12 * prodMultiplier);
-                        } else {
-                            foodGenerated += Math.floor(numOrchards * 4 * prodMultiplier); 
-                            colony.storage['WATER'] = 0;
-                        }
+                    if (biomeDef) {
+                        if (biomeDef.id === 'VOLCANIC') { stats.alloyProd = Math.floor(stats.alloyProd * 1.5); }
+                        else if (biomeDef.id === 'GLACIAL' || biomeDef.id === 'OCEANIC') { stats.waterProd = Math.floor(stats.waterProd * 1.5); }
+                        else if (biomeDef.id === 'DESERT') { stats.waterProd = Math.floor(stats.waterProd * 0.5); }
+                        else if (biomeDef.id === 'MACHINE_WORLD') { stats.techProd = Math.floor(stats.techProd * 1.5); }
                     }
 
-                    // Protein Vats (CONSUMES LOTS OF WATER)
-                    if (numVats > 0) {
-                        const waterNeeded = numVats * 5;
-                        if ((colony.storage['WATER'] || 0) >= waterNeeded) {
-                            colony.storage['WATER'] -= waterNeeded;
-                            foodGenerated += (numVats * 15 * prodMultiplier);
-                        } else {
-                            foodGenerated += Math.floor(numVats * 5 * prodMultiplier); 
-                            colony.storage['WATER'] = 0;
-                        }
-                    }
-                    
-                    // Clamp food generated against max storage
-                    if (currentStorage + foodGenerated > maxStorage) foodGenerated = Math.max(0, maxStorage - currentStorage);
-                    colony.storage['FOOD_SUPPLIES'] = (colony.storage['FOOD_SUPPLIES'] || 0) + foodGenerated;
-                    currentStorage += foodGenerated;
+                    // --- 3. APPLY DEBT EFFICIENCY ---
+                    colony.treasury -= stats.upkeep; 
+                    const inDebt = colony.treasury < 0;
+                    // If in debt, buildings only work at 50% capacity (rounded down)
+                    const eff = inDebt ? 0.5 : 1.0;
 
-                    // Re-calculate isStorageFull for the Industrial Block
-                    const isStorageFull = currentStorage >= maxStorage;
+                    // --- 4. APPLY POLICY MODIFIERS ---
+                    if (policy === 'AUTHORITARIAN') { stats.defense += 100; stats.taxMult *= 1.4; stats.moralePenalty += 20; stats.popGrowthMult *= 0.5; }
+                    if (policy === 'SURVIVALIST') { stats.defense += 10; stats.foodEfficiency *= 0.8; stats.popGrowthMult *= 0.5; }
+                    if (policy === 'EXPANSIONIST') { stats.defense -= 20; stats.foodEfficiency *= 1.5; stats.popGrowthMult *= 2.0; }
+                    if (policy === 'INDUSTRY') { stats.mineralProd *= 2; }
+                    if (policy === 'WEALTH') { stats.taxMult *= 2; stats.moralePenalty += 5; }
+                    if (policy === 'UTOPIAN') { stats.moraleRegen += 10; stats.taxMult = 0; }
+                    if (policy === 'RESEARCH') { stats.passiveXP *= 2; stats.taxMult *= 0.5; }
 
-                    // INDUSTRIAL PRODUCTION (Halts if Storage is Full!)
+                    // Apply standard formulas
+                    colony.defense = Math.max(0, stats.defense);
+                    if (colony.alerts === undefined) colony.alerts = [];
+
+                    // --- 5. PRODUCE RESOURCES (Checking Inputs!) ---
+                    let currentStorage = Object.values(colony.storage).reduce((a,b) => a + b, 0);
+                    const isStorageFull = currentStorage >= stats.storageCap;
+
+                    // A. Raw Materials (No inputs required)
                     if (!isStorageFull) {
-                        // Early Game Resource Generation
-                        if (numScrapYards > 0) colony.storage['REFINED_ALLOY'] = (colony.storage['REFINED_ALLOY'] || 0) + (1 * numScrapYards * prodMultiplier);
-                        if (numRecyclers > 0) {
-                            colony.storage['REFINED_ALLOY'] = (colony.storage['REFINED_ALLOY'] || 0) + (2 * numRecyclers * prodMultiplier);
-                            colony.storage['TECH_PARTS'] = (colony.storage['TECH_PARTS'] || 0) + (1 * numRecyclers * prodMultiplier);
-                        }
-                        if (numOreCrushers > 0) colony.storage['MINERALS'] = (colony.storage['MINERALS'] || 0) + (5 * numOreCrushers * prodMultiplier);
+                        let wProd = Math.floor(stats.waterProd * eff * stats.omniProd);
+                        if (currentStorage + wProd > stats.storageCap) wProd = Math.max(0, stats.storageCap - currentStorage);
+                        colony.storage['WATER'] = (colony.storage['WATER'] || 0) + wProd;
+                        currentStorage += wProd;
 
-                        // Scavengers
-                        if (numScavengers > 0) {
-                            if (Math.random() < 0.5) colony.storage['MINERALS'] = (colony.storage['MINERALS'] || 0) + (Math.floor(Math.random() * 3) + 1) * numScavengers;
-                            if (Math.random() < 0.1) colony.storage['TECH_PARTS'] = (colony.storage['TECH_PARTS'] || 0) + numScavengers;
-                        }
-                        
-                        // Drone Hubs
-                        if (numDroneHubs > 0) {
-                            colony.storage['MINERALS'] = (colony.storage['MINERALS'] || 0) + (5 * numDroneHubs * prodMultiplier);
-                            colony.storage['REFINED_ALLOY'] = (colony.storage['REFINED_ALLOY'] || 0) + (2 * numDroneHubs * prodMultiplier);
-                        }
-
-                        // Smelting
-                        if (colony.buildings['SMELTING_FACILITY']) colony.storage['REFINED_ALLOY'] = (colony.storage['REFINED_ALLOY'] || 0) + (3 * colony.buildings['SMELTING_FACILITY'] * prodMultiplier);
-                        
-                        // Stellar Forge
-                        if (colony.buildings['STELLAR_FORGE']) {
-                            colony.storage['REFINED_ALLOY'] = (colony.storage['REFINED_ALLOY'] || 0) + (20 * colony.buildings['STELLAR_FORGE'] * prodMultiplier);
-                            colony.storage['TECH_PARTS'] = (colony.storage['TECH_PARTS'] || 0) + (10 * colony.buildings['STELLAR_FORGE'] * prodMultiplier);
-                        }
-
-                        // Dark Matter Collider
-                        if (numColliders > 0) colony.storage['VOID_CRYSTALS'] = (colony.storage['VOID_CRYSTALS'] || 0) + numColliders;
-
-                        // Auto Factory
-                        if (numFactories > 0) {
-                            const alloyNeeded = numFactories * 2;
-                            if ((colony.storage['REFINED_ALLOY'] || 0) >= alloyNeeded) {
-                                colony.storage['REFINED_ALLOY'] -= alloyNeeded;
-                                colony.storage['TECH_PARTS'] = (colony.storage['TECH_PARTS'] || 0) + (numFactories * 2 * prodMultiplier);
-                            }
-                        }
-                        
-                        // AI Research Lab Component Fabrication
-                        if (numAILabs > 0) colony.storage['TECH_PARTS'] = (colony.storage['TECH_PARTS'] || 0) + (5 * numAILabs * prodMultiplier);
-
-                        // Tech Refinery
-                        const numTechRefs = colony.buildings['TECH_REFINERY'] || 0;
-                        if (numTechRefs > 0) {
-                            const mineralNeeded = numTechRefs * 5;
-                            if ((colony.storage['MINERALS'] || 0) >= mineralNeeded) {
-                                colony.storage['MINERALS'] -= mineralNeeded;
-                                colony.storage['TECH_PARTS'] = (colony.storage['TECH_PARTS'] || 0) + (numTechRefs * 2 * prodMultiplier);
-                            }
-                        }
-
-                        // Synthetic Weavers
-                        if (numWeavers > 0) {
-                            const minNeeded = numWeavers * 5;
-                            const watNeeded = numWeavers * 3;
-                            if ((colony.storage['MINERALS'] || 0) >= minNeeded && (colony.storage['WATER'] || 0) >= watNeeded) {
-                                colony.storage['MINERALS'] -= minNeeded;
-                                colony.storage['WATER'] -= watNeeded;
-                                colony.storage['LUXURY_GOODS'] = (colony.storage['LUXURY_GOODS'] || 0) + (numWeavers * 2 * prodMultiplier);
-                            }
-                        }
-
-                        // Stim Labs (Illegal Manufacturing)
-                        if (numStimLabs > 0) {
-                            const medNeeded = numStimLabs * 1;
-                            const minNeeded = numStimLabs * 2;
-                            if ((colony.storage['MEDICAL_SUPPLIES'] || 0) >= medNeeded && (colony.storage['MINERALS'] || 0) >= minNeeded) {
-                                colony.storage['MEDICAL_SUPPLIES'] -= medNeeded;
-                                colony.storage['MINERALS'] -= minNeeded;
-                                colony.storage['PROHIBITED_STIMS'] = (colony.storage['PROHIBITED_STIMS'] || 0) + (numStimLabs * 2);
-                            }
-                        }
-
-                        // MILITARY MANUFACTURING
-                        if (numMunitions > 0) {
-                            const alloyNeeded = numMunitions * 5;
-                            const minNeeded = numMunitions * 5;
-                            if ((colony.storage['REFINED_ALLOY'] || 0) >= alloyNeeded && (colony.storage['MINERALS'] || 0) >= minNeeded) {
-                                colony.storage['REFINED_ALLOY'] -= alloyNeeded;
-                                colony.storage['MINERALS'] -= minNeeded;
-                                colony.storage['WEAPONS'] = (colony.storage['WEAPONS'] || 0) + numMunitions;
-                            }
-                        }
-                        
-                        if (numArmories > 0) {
-                            const alloyNeeded = numArmories * 5;
-                            const foodNeeded = numArmories * 5;
-                            if ((colony.storage['REFINED_ALLOY'] || 0) >= alloyNeeded && (colony.storage['FOOD_SUPPLIES'] || 0) >= foodNeeded) {
-                                colony.storage['REFINED_ALLOY'] -= alloyNeeded;
-                                colony.storage['FOOD_SUPPLIES'] -= foodNeeded;
-                                colony.storage['MERCENARY_PLATOON'] = (colony.storage['MERCENARY_PLATOON'] || 0) + numArmories;
-                            }
-                        }
-
-                        if (numVehicleBays > 0) {
-                            const alloyNeeded = numVehicleBays * 15;
-                            const techNeeded = numVehicleBays * 5;
-                            if ((colony.storage['REFINED_ALLOY'] || 0) >= alloyNeeded && (colony.storage['TECH_PARTS'] || 0) >= techNeeded) {
-                                colony.storage['REFINED_ALLOY'] -= alloyNeeded;
-                                colony.storage['TECH_PARTS'] -= techNeeded;
-                                colony.storage['ASSAULT_MECH'] = (colony.storage['ASSAULT_MECH'] || 0) + numVehicleBays;
-                            }
-                        }
-
-                        // Medical Generation
-                        if (numClinicTents > 0) colony.storage['MEDICAL_SUPPLIES'] = (colony.storage['MEDICAL_SUPPLIES'] || 0) + (1 * numClinicTents);
-                        if (numClinics > 0) colony.storage['MEDICAL_SUPPLIES'] = (colony.storage['MEDICAL_SUPPLIES'] || 0) + (2 * numClinics);
-                        if (numXenoDomes > 0) colony.storage['MEDICAL_SUPPLIES'] = (colony.storage['MEDICAL_SUPPLIES'] || 0) + (5 * numXenoDomes);
-                        if (numGeneClinics > 0) colony.storage['MEDICAL_SUPPLIES'] = (colony.storage['MEDICAL_SUPPLIES'] || 0) + (10 * numGeneClinics);
-
-                        // 6. RAW MINING
-                        // BUG 1 FIXED: Resolve the string ID back to the biome object (with fallback for legacy saves)
-                        let biomeDef = typeof PLANET_BIOMES !== 'undefined' ? PLANET_BIOMES[colony.biome] : null;
-                        if (!biomeDef && typeof PLANET_BIOMES !== 'undefined') {
-                            const legacyKey = Object.keys(PLANET_BIOMES).find(k => PLANET_BIOMES[k].name === colony.biome);
-                            if (legacyKey) biomeDef = PLANET_BIOMES[legacyKey];
-                        }
-
+                        // Planetary Mining
                         if (biomeDef && biomeDef.resources && biomeDef.resources.length > 0) {
                             const res = biomeDef.resources[Math.floor(Math.random() * biomeDef.resources.length)];
-                            
                             let amount = Math.floor(Math.random() * 2) + 1;
                             amount += Math.floor(colony.population / 500); 
-                            if (numProspectors > 0) amount = Math.floor(amount * 1.2); 
-                            if (colony.buildings['DEEP_CORE_RIG']) amount *= 2;
-                            if (policy === 'INDUSTRY') amount *= 2; 
-                            amount *= prodMultiplier; 
-                            
+                            amount = Math.floor(amount * stats.miningBoost * stats.resourceMult * eff * stats.omniProd);
+                            if (currentStorage + amount > stats.storageCap) amount = Math.max(0, stats.storageCap - currentStorage);
                             colony.storage[res] = (colony.storage[res] || 0) + amount;
+                            currentStorage += amount;
                         }
-                    } // End Industrial Production Block
+                        
+                        let mProd = Math.floor(stats.mineralProd * eff * stats.omniProd);
+                        if (currentStorage + mProd > stats.storageCap) mProd = Math.max(0, stats.storageCap - currentStorage);
+                        colony.storage['MINERALS'] = (colony.storage['MINERALS'] || 0) + mProd;
+                        currentStorage += mProd;
+                    }
 
-                    // 4. DEMOGRAPHICS (The slow sim engine)
-                    let foodConsumption = Math.ceil(colony.population / 100); 
-                    
-                    if (numGeneClinics > 0) foodConsumption = Math.ceil(foodConsumption * 0.8);
-                    if (policy === 'EXPANSIONIST') foodConsumption = Math.ceil(foodConsumption * 1.5);
-                    if (policy === 'SURVIVALIST') foodConsumption = Math.floor(foodConsumption * 0.8);
-                    
-                    foodConsumption += (numPits * 2);
+                    // B. Refined Materials (Requires Inputs)
+                    if (!isStorageFull) {
+                        // Food (Consumes Water)
+                        let fProd = Math.floor(stats.foodProd * eff * stats.omniProd);
+                        let waterNeed = Math.floor(stats.consume['WATER'] * eff);
+                        if ((colony.storage['WATER'] || 0) >= waterNeed) {
+                            colony.storage['WATER'] -= waterNeed;
+                        } else {
+                            fProd = Math.floor(fProd / 2); // Half production if missing water
+                            colony.storage['WATER'] = 0;
+                        }
+                        if (currentStorage + fProd > stats.storageCap) fProd = Math.max(0, stats.storageCap - currentStorage);
+                        colony.storage['FOOD_SUPPLIES'] = (colony.storage['FOOD_SUPPLIES'] || 0) + fProd;
+                        currentStorage += fProd;
+
+                        // Alloys (Consumes Minerals)
+                        let aProd = Math.floor(stats.alloyProd * eff * stats.omniProd);
+                        let minNeed = Math.floor(stats.consume['MINERALS'] * eff);
+                        if ((colony.storage['MINERALS'] || 0) >= minNeed) {
+                            colony.storage['MINERALS'] -= minNeed;
+                        } else {
+                            aProd = Math.floor(aProd / 2);
+                            colony.storage['MINERALS'] = 0;
+                        }
+                        if (currentStorage + aProd > stats.storageCap) aProd = Math.max(0, stats.storageCap - currentStorage);
+                        colony.storage['REFINED_ALLOY'] = (colony.storage['REFINED_ALLOY'] || 0) + aProd;
+                        currentStorage += aProd;
+
+                        // Tech Parts (Consumes Alloys)
+                        let tProd = Math.floor(stats.techProd * eff * stats.omniProd);
+                        let alNeed = Math.floor(stats.consume['REFINED_ALLOY'] * eff);
+                        if ((colony.storage['REFINED_ALLOY'] || 0) >= alNeed) {
+                            colony.storage['REFINED_ALLOY'] -= alNeed;
+                        } else {
+                            tProd = Math.floor(tProd / 2);
+                            colony.storage['REFINED_ALLOY'] = 0;
+                        }
+                        if (currentStorage + tProd > stats.storageCap) tProd = Math.max(0, stats.storageCap - currentStorage);
+                        colony.storage['TECH_PARTS'] = (colony.storage['TECH_PARTS'] || 0) + tProd;
+                        currentStorage += tProd;
+                    }
+
+                    // C. Advanced Logistics (Consumes specific multi-inputs)
+                    if (!isStorageFull && eff > 0) {
+                        // Weapons
+                        let wProd = Math.floor(stats.weaponProd * eff * stats.omniProd);
+                        if (wProd > 0 && (colony.storage['REFINED_ALLOY']||0) >= 5 && (colony.storage['MINERALS']||0) >= 5) {
+                            colony.storage['REFINED_ALLOY'] -= 5; colony.storage['MINERALS'] -= 5;
+                            colony.storage['WEAPONS'] = (colony.storage['WEAPONS'] || 0) + wProd;
+                        }
+                        // Mercs
+                        let trProd = Math.floor(stats.troopProd * eff * stats.omniProd);
+                        if (trProd > 0 && (colony.storage['REFINED_ALLOY']||0) >= 5 && (colony.storage['FOOD_SUPPLIES']||0) >= 5) {
+                            colony.storage['REFINED_ALLOY'] -= 5; colony.storage['FOOD_SUPPLIES'] -= 5;
+                            colony.storage['MERCENARY_PLATOON'] = (colony.storage['MERCENARY_PLATOON'] || 0) + trProd;
+                        }
+                        // Mechs
+                        let meProd = Math.floor(stats.mechProd * eff * stats.omniProd);
+                        if (meProd > 0 && (colony.storage['REFINED_ALLOY']||0) >= 15 && (colony.storage['TECH_PARTS']||0) >= 5) {
+                            colony.storage['REFINED_ALLOY'] -= 15; colony.storage['TECH_PARTS'] -= 5;
+                            colony.storage['ASSAULT_MECH'] = (colony.storage['ASSAULT_MECH'] || 0) + meProd;
+                        }
+                        // Stims
+                        let stProd = Math.floor(stats.stimProd * eff * stats.omniProd);
+                        if (stProd > 0 && (colony.storage['MEDICAL_SUPPLIES']||0) >= 1 && (colony.storage['MINERALS']||0) >= 2) {
+                            colony.storage['MEDICAL_SUPPLIES'] -= 1; colony.storage['MINERALS'] -= 2;
+                            colony.storage['PROHIBITED_STIMS'] = (colony.storage['PROHIBITED_STIMS'] || 0) + stProd;
+                        }
+                        // Void Crystals
+                        let vProd = Math.floor(stats.voidProd * eff * stats.omniProd);
+                        if (vProd > 0) colony.storage['VOID_CRYSTALS'] = (colony.storage['VOID_CRYSTALS'] || 0) + vProd;
+                        
+                        // Meds
+                        let mdProd = Math.floor(stats.medProd * eff * stats.omniProd);
+                        if (mdProd > 0) colony.storage['MEDICAL_SUPPLIES'] = (colony.storage['MEDICAL_SUPPLIES'] || 0) + mdProd;
+                    }
+
+                    // --- 6. DEMOGRAPHICS & CONSUMPTION ---
+                    let foodConsumption = Math.ceil((colony.population / 100) * stats.foodEfficiency); 
                     
                     if ((colony.storage['FOOD_SUPPLIES'] || 0) >= foodConsumption) {
                         colony.storage['FOOD_SUPPLIES'] -= foodConsumption;
                         
-                        // SLOW BURN GROWTH
-                        if (colony.morale >= 50 && colony.population < maxPop) {
-                            let growthTick = 1; 
+                        // Growth Tick
+                        if (colony.morale >= 50 && colony.population < stats.popCap) {
+                            let growthTick = 1 * stats.popGrowthMult; 
                             if (colony.storage['FOOD_SUPPLIES'] > foodConsumption * 10) growthTick += 1;
                             if (colony.morale > 90) growthTick += 2;
-                            if (numSpaceports > 0) growthTick += numSpaceports; 
-                            if (numClones > 0) growthTick *= 4; 
-                            if (policy === 'UTOPIAN') growthTick += 3;
-                            if (policy === 'EXPANSIONIST') growthTick *= 2;
-                            if (policy === 'AUTHORITARIAN') growthTick = Math.floor(growthTick / 2); 
-                            if (policy === 'SURVIVALIST') growthTick = Math.max(0, growthTick - 2); 
 
                             colony.growthProgress += growthTick;
 
                             if (colony.growthProgress >= 100) {
                                 colony.growthProgress = 0;
                                 const phaseIndex = COLONY_PHASES.indexOf(colony.phase);
-                                const newCitizens = Math.floor(Math.random() * 50 * (phaseIndex + 1)) + 10; 
-                                colony.population += newCitizens;
-                                if (colony.population > maxPop) colony.population = maxPop;
-                                
-                                // BUG 4 FIXED: Prevent demographic percentages from falling below zero
-                                if (policy === 'INDUSTRY' && colony.demographics["Synthetic"] < 40 && colony.demographics["Human"] > 0) { 
-                                    colony.demographics["Synthetic"]++; colony.demographics["Human"]--; 
-                                }
-                                if (policy === 'WEALTH' && colony.demographics["K'tharr"] < 30 && colony.demographics["Human"] > 0) { 
-                                    colony.demographics["K'tharr"]++; colony.demographics["Human"]--; 
-                                }
-                                if (numAIs > 0 && colony.demographics["Synthetic"] < 90 && colony.demographics["Human"] >= 2) { 
-                                    colony.demographics["Synthetic"] += 2; colony.demographics["Human"] -= 2; 
-                                }
+                                const newCitizens = Math.floor((Math.random() * 50 * (phaseIndex + 1)) + 10); 
+                                colony.population = Math.min(stats.popCap, colony.population + newCitizens);
                             }
                         }
                     } else {
+                        // Starvation
                         colony.storage['FOOD_SUPPLIES'] = 0;
-                        colony.morale -= 15;
+                        stats.moralePenalty += 15;
                         colony.growthProgress = 0; 
                         colony.population -= Math.ceil(colony.population * 0.10); 
                         if (colony.population < 0) colony.population = 0;
-                        
-                        if (Math.random() < 0.2) logMessage(`<span style='color:var(--danger)'>[ ALERT ] Famine at ${colony.name}! The dead lie in the streets. Deliver food immediately.</span>`);
                     }
 
-                    // 5. ECONOMY & TAXES
-                    let taxRate = 0.5; 
-                    if (policy === 'WEALTH') taxRate = 1.0; 
-                    if (policy === 'RESEARCH') taxRate = 0.25; 
-                    if (policy === 'UTOPIAN') taxRate = 0.0; 
-                    if (policy === 'AUTHORITARIAN') taxRate = 0.7; 
-                    
-                    if (colony.buildings['COMMERCE_HUB']) taxRate *= 1.5; 
-                    if (colony.buildings['ORBITAL_BEACON']) taxRate *= 1.3;
-                    if (colony.buildings['CIVILIAN_SPACEPORT']) taxRate *= 1.25;
-                    if (colony.buildings['SPACE_ELEVATOR']) taxRate *= 2.0; 
-                    if (numBazaars > 0) taxRate *= 1.1;
-                    if (numTethers > 0) taxRate *= 1.15;
-                    if (numCustoms > 0) taxRate *= 1.2; 
-                    
+                    // --- 7. MORALE UPDATE ---
+                    if (policy === 'AUTHORITARIAN') {
+                        colony.morale = 40; 
+                    } else {
+                        if (inDebt) stats.moralePenalty += 2; 
+                        colony.morale = Math.min(100, colony.morale + stats.moraleRegen - stats.moralePenalty);
+                    }
+
+                    // --- 8. ECONOMY & TAXES ---
                     let moraleMult = colony.morale / 100;
-                    if (policy === 'WEALTH') colony.morale = Math.max(0, colony.morale - 5); 
                     if (policy === 'AUTHORITARIAN') moraleMult = 1.0; 
                     
-                    colony.treasury += Math.floor(colony.population * taxRate * moraleMult);
+                    let taxIncome = Math.floor(colony.population * 0.5 * stats.taxMult * moraleMult);
+                    colony.treasury += taxIncome;
+                    colony.treasury += Math.floor(stats.passiveCredits * eff);
                     
-                    // Additional Credit Sources
-                    if (numSolarStills > 0) colony.treasury += (10 * numSolarStills);
-                    if (numTaverns > 0) colony.treasury += (20 * numTaverns);
-                    if (numBazaars > 0) colony.treasury += (50 * numBazaars);
-                    if (numBounties > 0) colony.treasury += (200 * numBounties);
-                    if (numTethers > 0) colony.treasury += (300 * numTethers);
-                    if (numMonuments > 0) colony.treasury += (10000 * numMonuments);
-
-                    // Syndicate Laundering
-                    if (numNodes > 0) {
-                        let syndicateCredits = 1000 * numNodes;
-                        if (numCustoms > 0) syndicateCredits *= 0.5; 
-                        colony.treasury += syndicateCredits;
-                    }
-                    if (numSmugglers > 0) {
-                        let smugglerCredits = 500 * numSmugglers;
-                        if (numCustoms > 0) smugglerCredits *= 0.5;
-                        colony.treasury += smugglerCredits;
-                    }
-                    if (numSyndicateHQ > 0) {
-                        let hqCredits = 2500 * numSyndicateHQ;
-                        if (numCustoms > 0) hqCredits *= 0.5;
-                        colony.treasury += hqCredits;
-                    }
-
-                    if (colony.buildings['ORBITAL_SHIPYARD']) {
-                        colony.treasury += (5000 * colony.buildings['ORBITAL_SHIPYARD']);
-                    }
+                    // Syndicate Laundering (Crime reduces defense/morale, but pays out)
+                    let crimeLaundering = Math.floor(stats.illegalTaxes * eff);
+                    if (stats.crimeReduction > 0) crimeLaundering = Math.floor(crimeLaundering * 0.5);
+                    colony.treasury += crimeLaundering;
 
                     // Global Research Lab Bonus
-                    if (colony.buildings['RESEARCH_LABORATORY'] || numCommRelays > 0 || numListeningPosts > 0 || numColliders > 0 || numProspectors > 0 || numAILabs > 0) {
-                        let xpYield = 0;
-                        if (colony.buildings['RESEARCH_LABORATORY']) xpYield += (50 * colony.buildings['RESEARCH_LABORATORY']);
-                        if (numCommRelays > 0) xpYield += (5 * numCommRelays);
-                        if (numListeningPosts > 0) xpYield += (10 * numListeningPosts);
-                        if (numProspectors > 0) xpYield += (2 * numProspectors);
-                        if (numColliders > 0) xpYield += (200 * numColliders);
-                        if (numAILabs > 0) xpYield += (100 * numAILabs);
-
-                        if (policy === 'RESEARCH') xpYield *= 2; 
-                        
-                        if (typeof playerXP !== 'undefined') playerXP += xpYield;
-                        if (typeof checkLevelUp === 'function') checkLevelUp();
+                    if (stats.passiveXP > 0) {
+                        let xpYield = Math.floor(stats.passiveXP * eff);
+                        if (typeof playerXP !== 'undefined') {
+                            playerXP += xpYield;
+                            if (typeof checkLevelUp === 'function') checkLevelUp();
+                        }
                     }
 
-                    // 7. INTERSTELLAR EXCHANGE (Auto-Liquidation)
-                    if (colony.buildings['INTERSTELLAR_EXCHANGE']) {
+                    // INTERSTELLAR EXCHANGE (Auto-Liquidation)
+                    if (stats.autoTrade) {
                         let autoCredits = 0;
                         for (const itemKey in colony.storage) {
                             if (colony.storage[itemKey] > 50) {
                                 const excess = colony.storage[itemKey] - 50;
                                 const amountToSell = Math.ceil(excess * 0.10); 
-                                
                                 const basePrice = (typeof COMMODITIES !== 'undefined' && COMMODITIES[itemKey]) ? COMMODITIES[itemKey].basePrice : 10;
-                                
                                 colony.storage[itemKey] -= amountToSell;
                                 autoCredits += (amountToSell * basePrice);
                             }
                         }
                         if (autoCredits > 0) colony.treasury += autoCredits;
                     }
+
+                    // --- 9. CONSTRUCTION PROGRESS ---
+                    if (colony.activeConstruction) {
+                        colony.activeConstruction.progress += 1;
+                        if (colony.activeConstruction.progress >= colony.activeConstruction.total) {
+                            const bId = colony.activeConstruction.id;
+                            colony.buildings[bId] = (colony.buildings[bId] || 0) + 1;
+                            colony.activeConstruction = null;
+                            if (typeof soundManager !== 'undefined') soundManager.playGain();
+                            colony.alerts.unshift(`<span style='color:var(--success)'>[ ENGINEER ] Construction complete: ${COLONY_BUILDINGS[bId].name}</span>`);
+                        }
+                    }
+
+                    // --- 10. RANDOM COLONY EVENTS ---
+                    triggerColonyEvent(colony);
                 }
             }
         });
     }
 });
+
 // --- END OF FILE colonies.js ---
