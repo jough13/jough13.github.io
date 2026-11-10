@@ -5596,6 +5596,8 @@ function loadGameData(jsonString) {
         chunkManager.lastChunkKey = null;
         chunkManager.lastChunkRef = null;
 
+        currentStationRecruits = null;
+
         currentSectorX = Math.floor(playerX / SECTOR_SIZE);
         currentSectorY = Math.floor(playerY / SECTOR_SIZE);
         currentSectorName = generateSectorName(currentSectorX, currentSectorY);
