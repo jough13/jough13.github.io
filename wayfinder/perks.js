@@ -96,6 +96,13 @@ const PERKS_DATABASE = {
         icon: "🕶️",
         category: "Social"
     },
+    SMUGGLERS_LUCK: {
+        id: "SMUGGLERS_LUCK",
+        name: "Smuggler's Luck",
+        description: "Concord Customs scans have a flat 25% chance to 'glitch' and find nothing, even if contraband is exposed.",
+        icon: "🎲",
+        category: "Social"
+    },
 
     // ==========================================
     // --- EXPLORATION & SCIENCE ---
@@ -135,6 +142,13 @@ const PERKS_DATABASE = {
         icon: "🗺️",
         category: "Exploration"
     },
+    HYPER_LANE_MAPPER: {
+        id: "HYPER_LANE_MAPPER",
+        name: "Hyper-Lane Mapper",
+        description: "Wormhole jumps cost 50% less fuel and never cause structural hull damage.",
+        icon: "🗺️",
+        category: "Exploration"
+    },
 
     // ==========================================
     // --- SURVIVAL ---
@@ -161,6 +175,11 @@ const PERKS_DATABASE = {
         category: "Survival"
     }
 };
+
+// --- PERFORMANCE OPTIMIZATION ---
+// Freezing the array tells the V8 JavaScript engine that this dictionary will never 
+// be modified at runtime, allowing it to optimize memory lookup speeds.
+Object.freeze(PERKS_DATABASE);
 
 // Expose globally for safe access across all modules
 window.PERKS_DATABASE = PERKS_DATABASE;
@@ -452,6 +471,37 @@ window.PERKS_DATABASE = PERKS_DATABASE;
                 }
             };
             window._perksCombatHooked = true;
+        }
+        
+        // D. Wrap executeWormholeJump to apply the HYPER_LANE_MAPPER fuel & damage reductions
+        if (typeof window.executeWormholeJump === 'function' && !window._perksWormholeHooked) {
+            const originalExecuteWormholeJump = window.executeWormholeJump;
+            window.executeWormholeJump = function(targetX, targetY, fuelCost, damageRisk) {
+                if (typeof playerPerks !== 'undefined' && playerPerks.has && playerPerks.has('HYPER_LANE_MAPPER')) {
+                    fuelCost = Math.floor(fuelCost * 0.5);
+                    damageRisk = 0; // Zero risk of hull damage!
+                }
+                originalExecuteWormholeJump.call(this, targetX, targetY, fuelCost, damageRisk);
+            };
+            window._perksWormholeHooked = true;
+        }
+        
+        // E. Wrap performCustomsScan to apply the SMUGGLERS_LUCK bypass chance
+        if (typeof window.performCustomsScan === 'function' && !window._perksCustomsHooked) {
+            const originalPerformCustomsScan = window.performCustomsScan;
+            window.performCustomsScan = function() {
+                if (typeof playerPerks !== 'undefined' && playerPerks.has && playerPerks.has('SMUGGLERS_LUCK')) {
+                    // 25% chance to flat-out bypass the scan, even if contraband is actively exposed!
+                    if (Math.random() < 0.25) {
+                        if (typeof logMessage === 'function') {
+                            logMessage("<span style='color:var(--success); font-weight:bold;'>[ SMUGGLER'S LUCK ] Concord Customs sensor grid experienced a 'random malfunction'. They found nothing.</span>");
+                        }
+                        return true; // Bypass successful
+                    }
+                }
+                return originalPerformCustomsScan.apply(this, arguments);
+            };
+            window._perksCustomsHooked = true;
         }
     });
 })();
