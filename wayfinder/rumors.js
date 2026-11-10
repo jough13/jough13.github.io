@@ -34,12 +34,40 @@ const RUMORS = [
     "Don't buy the 'Discount Cyberservos' from independent outposts. I know a guy who installed one in his auto-loader droid, and the thing locked the doors and tried to unionize his cargo bay. Just spend the extra credits for the Concord-certified parts.",
     "I picked up a terrifying transmission near a Volcanic World... it sounded like a choir of Xeno-anomalies singing in perfect mathematical harmony. My ship's AI immediately shut itself down to 'protect its cognitive integrity'. I'm never flying through an anomaly without maximum shields again.",
 
-    // --- NEW MECHANIC HINTS ---
+    // --- GAMEPLAY & MECHANICS HINTS (NEW) ---
     "Concord is handing out Pioneer Charters to anyone with the credits. Setting up a colony is a license to print money, assuming the local fauna doesn't eat your atmospheric scrubbers.",
     "Got charged 25 credits just to fly through a random sector today. Some hotshot captain set up a custom waystation and an automated toll beacon. Bold move. Let's see how long the Cartel lets them keep it.",
-    "If you ever find yourself running on fumes in the deep black, broadcast a general distress on a wide band. The Fuel Rats will find you. Just make sure you tip them; they remember who stiffs them.",
+    "If you ever find yourself running on fumes in the deep black, broadcast a general distress (Z) on a wide band. The Fuel Rats will find you. Just make sure you tip them; they remember who stiffs them.",
     "Don't hire from the Eclipse Mercenary Den unless you like counting your cargo twice a day. They hit hard in a firefight, but they've got incredibly sticky fingers.",
     "Commander Thorne went rogue, took an Aegis Interceptor with him. Concord Sec-Com is offering a fortune for his head. Word is he mounted an experimental Void Beam on it.",
     "Bought one of those Auto-Miner Drones. Best investment I ever made. I just sit back, sip Moon Ale, and let the little guy chew on asteroids. Just don't jump away while it's deployed, or it'll run out of fuel trying to catch you.",
-    "They say if you combine enough Phase-Shifted Alloy and Quantum Lenses at a fabrication bench, you can build a stable Stargate. Instant transit without the random hull damage. Good luck finding the parts, though."
+    "They say if you combine enough Phase-Shifted Alloy and Quantum Lenses at a fabrication bench, you can build a stable Stargate. Instant transit without the random hull damage. Good luck finding the parts, though.",
+    
+    // --- STEALTH & NAVIGATION HINTS ---
+    "Heard about the 'Silent Running' trick? Hit [Q] to cut your main reactor. You can slip right past Concord patrols or Cartel ambushes, but watch your heat gauge. Overheat, and you'll cook yourself alive in your own cockpit.",
+    "Your Nav-Computer (N) isn't just for show. If you're lost, ping it. It prioritizes active bounties and mission drop-offs, but it'll always point you to the nearest safe harbor if you're in a pinch.",
+    
+    // --- COMBAT TARGETING HINTS ---
+    "Any rookie can shoot a hull. A real pilot uses the Targeting Computer to draw their teeth. Take out their Weapons to halve their damage, or knock out their Engines to stop them from dodging. Makes a world of difference when you're outgunned.",
+    "If a pirate demands a toll, check their ship class before you try to run. You can probably outrun a Bruiser, but those Cartel Interceptors will chase you to the ends of the galaxy.",
+    
+    // --- MINING MINIGAME HINTS ---
+    "Don't just hold the trigger down when mining an asteroid. You gotta time the laser phase to the structural fault lines. Hit the sweet spot, and you might crack open a vein of Platinum or Rare Metals. Miss it, and you'll blow your own hull off.",
+    
+    // --- BOARDING & PLANETARY RAIDS HINTS ---
+    "Found a derelict out near the Badlands. I wanted to breach the airlock, but I didn't have any Mercenaries in the barracks. Going in alone with just your sidearm is a good way to end up as ghost ship decor.",
+    "The Cartel builds their planetary bases tough. If you're going to raid one, make sure your ship has enough fuel for an Orbital Bombardment to soften them up before sending the Marines down.",
+    "Boarding an enemy ship while its shields are down is suicidal, but if your Marines actually pull it off? Intact cargo holds yield triple the salvage you'd get from blowing it to dust.",
+    
+    // --- CRYPTARCH & BLACK MARKET HINTS ---
+    "Got an Encrypted Engram? Don't toss it. Take it to the Cryptarch at a major hub, or use a Cyber Slicer perk if you've got it. The data inside is worth ten times the scrap value.",
+    "Looking to fence 'Hot Cargo'? Don't try it at Starbase Alpha. You need to find a Shadow Network node. I hear The Rusty Anchor or Planet Xerxes are your best bets, assuming you survive the trip.",
+    "If you find yourself holding illegal tech when a Concord Patrol pulls you over, pray you have the 'Smooth Talker' perk, or dump it all out the airlock before they finish their scan."
 ];
+
+// --- PERFORMANCE & SAFETY OPTIMIZATION ---
+// Freezing the array prevents it from being modified at runtime, 
+// allowing the V8 JS engine to optimize it as a true constant in memory!
+Object.freeze(RUMORS);
+
+// --- END OF FILE rumors.js ---
