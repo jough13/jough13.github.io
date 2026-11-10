@@ -209,7 +209,7 @@ const PLANET_BIOMES = {
         hazard: "APEX PREDATORS",
         description: "A hyper-lethal paradise. The flora is venomous, the fauna is armored, and the weather is apocalyptic.",
         resources: ['GENETIC_SAMPLES', 'ILLEGAL_ORGANS'],
-        image: 'assets/toxic_jungle.png', // Reusing asset for now
+        image: 'assets/death_world.png',
         expeditionFlavor: "Your away team barely survives an ambush by cloaked, scythe-limbed apex predators.",
         expeditionData: { 
             baseXp: 220, 
