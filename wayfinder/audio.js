@@ -57,6 +57,13 @@ class SoundManager {
         }
     }
 
+    // Safely ensures the audio context is running before attempting to play a synth sound
+    _ensureContextRunning() {
+        if (this.ctx && this.ctx.state === 'suspended' && this.enabled) {
+            this.ctx.resume().catch(() => {});
+        }
+    }
+
     initBackgroundMusic() {
         if (this.bgMusic) return; // Prevent creating multiple tracks
 
@@ -84,11 +91,17 @@ class SoundManager {
 
     startProceduralDrone() {
         if (!this.enabled || !this.ctx || this.ambientNodes) return;
+        this._ensureContextRunning();
+        
         try {
             const osc1 = this.ctx.createOscillator();
             const osc2 = this.ctx.createOscillator();
             const filter = this.ctx.createBiquadFilter();
             const padGain = this.ctx.createGain();
+
+            // LFO (Low Frequency Oscillator) to make the space drone "breathe"
+            const lfo = this.ctx.createOscillator();
+            const lfoGain = this.ctx.createGain();
 
             osc1.type = 'sawtooth';
             osc2.type = 'triangle';
@@ -96,19 +109,31 @@ class SoundManager {
             osc2.frequency.setValueAtTime(82.41, this.ctx.currentTime); // E2 fifth harmony
             osc2.detune.setValueAtTime(6, this.ctx.currentTime); // Warm chorus detune
 
+            // Filter setup
             filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(180, this.ctx.currentTime);
+            filter.frequency.setValueAtTime(200, this.ctx.currentTime);
+
+            // LFO Setup: Cycles every 8 seconds (0.125 Hz)
+            lfo.type = 'sine';
+            lfo.frequency.setValueAtTime(0.125, this.ctx.currentTime);
+            lfoGain.gain.setValueAtTime(150, this.ctx.currentTime); // Sweeps filter by +/- 150hz
 
             padGain.gain.setValueAtTime(0.06, this.ctx.currentTime);
+
+            // Connections
+            lfo.connect(lfoGain);
+            lfoGain.connect(filter.frequency);
 
             osc1.connect(filter);
             osc2.connect(filter);
             filter.connect(padGain);
             padGain.connect(this.masterGain);
 
+            lfo.start();
             osc1.start();
             osc2.start();
-            this.ambientNodes = { osc1, osc2, filter, padGain };
+            
+            this.ambientNodes = { osc1, osc2, filter, padGain, lfo, lfoGain };
         } catch (e) {}
     }
 
@@ -117,7 +142,15 @@ class SoundManager {
         try {
             this.ambientNodes.osc1.stop();
             this.ambientNodes.osc2.stop();
+            this.ambientNodes.lfo.stop();
             this.ambientNodes.padGain.disconnect();
+            
+            // Clean up to prevent memory leaks
+            this.ambientNodes.osc1.disconnect();
+            this.ambientNodes.osc2.disconnect();
+            this.ambientNodes.filter.disconnect();
+            this.ambientNodes.lfo.disconnect();
+            this.ambientNodes.lfoGain.disconnect();
         } catch (e) {}
         this.ambientNodes = null;
     }
@@ -134,9 +167,7 @@ class SoundManager {
         }
 
         if (this.enabled) {
-            if (this.ctx && this.ctx.state === 'suspended') {
-                this.ctx.resume().catch(() => {});
-            }
+            this._ensureContextRunning();
 
             if (this.bgMusic && !this.bgMusicFailed) {
                 this.bgMusic.play().catch(e => console.warn("Awaiting user interaction to play audio:", e));
@@ -186,10 +217,9 @@ class SoundManager {
 
     playTone(freq, type, duration, vol = 1, slideTo = null) {
         if (!this.enabled || !this.ctx) return;
+        this._ensureContextRunning();
 
         try {
-            if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
-
             // Safeguard: If passed seconds instead of milliseconds (e.g., 0.1, 0.5), auto-convert
             if (duration < 10) {
                 duration *= 1000;
@@ -233,10 +263,9 @@ class SoundManager {
 
     playNoise(duration, vol = 1, cutoffFreq = 800) {
         if (!this.enabled || !this.ctx || !this.noiseBuffer) return;
+        this._ensureContextRunning();
 
         try {
-            if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
-
             const durSec = Math.min(2.0, Math.max(0.02, Number(duration) || 0.2));
             const safeVol = Math.max(0.0001, Number(vol) || 0.5);
             const now = this.ctx.currentTime;
@@ -302,9 +331,24 @@ class SoundManager {
         this.playTone(150, 'sawtooth', 300, 0.3, 100);
     }
 
+    playAlarm() {
+        // High priority repeating alarm, limit to once every 2 seconds
+        if (!this._canPlay('alarm', 2000)) return;
+        this.playTone(600, 'square', 400, 0.1, 500);
+        setTimeout(() => this.playTone(800, 'square', 400, 0.1, 700), 500);
+    }
+
     playBuy() {
         this.playTone(400, 'sine', 100, 0.2, 600);
         setTimeout(() => this.playTone(800, 'sine', 200, 0.2), 100);
+    }
+
+    playMissionComplete() {
+        if (!this._canPlay('missionComplete', 1000)) return;
+        this.playTone(440, 'sine', 150, 0.2);
+        setTimeout(() => this.playTone(554.37, 'sine', 150, 0.2), 150); // C#
+        setTimeout(() => this.playTone(659.25, 'sine', 150, 0.2), 300); // E
+        setTimeout(() => this.playTone(880, 'sine', 400, 0.2), 450);    // High A
     }
 
     playGain() {
@@ -491,6 +535,15 @@ window.soundManager = soundManager;
         GameBus.on('TICK_PROCESSED', (tick) => {
             if (tick && tick.isMovement && !tick.interrupt) {
                 soundManager.playThruster();
+            }
+        });
+        
+        // 🚨 ADDED: Dynamic Low Vitals Alarm
+        GameBus.on('UI_REFRESH_REQUESTED', () => {
+            if (typeof playerHull !== 'undefined' && typeof MAX_PLAYER_HULL !== 'undefined') {
+                if (playerHull > 0 && playerHull < (MAX_PLAYER_HULL * 0.25)) {
+                    soundManager.playAlarm(); // Has internal 2-second rate limiting
+                }
             }
         });
     }
