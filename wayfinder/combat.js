@@ -27,7 +27,11 @@ function startCombat(specificEnemyEntity = null) {
     // --- ECLIPSE CARTEL TRUCE PERK ---
     // If the player has 50+ Rep with Eclipse, generic pirates won't attack!
     if (typeof playerFactionStanding !== 'undefined' && (playerFactionStanding['ECLIPSE'] || 0) >= 50) {
-        if (!pirateShip.id.includes('KTHARR') && !pirateShip.id.includes('CONCORD')) {
+        
+        // 👇 BUG FIX: Do not honor the truce if this is an active assassination target or warzone boss!
+        const isMissionTarget = specificEnemyEntity && (specificEnemyEntity.isSkirmishTarget || specificEnemyEntity.isBountyTarget);
+        
+        if (!isMissionTarget && !pirateShip.id.includes('KTHARR') && !pirateShip.id.includes('CONCORD')) {
             logMessage("<span style='color:var(--success); font-weight:bold;'>[ TRUCE ] The Cartel recognizes your transponder. They hold their fire and let you pass.</span>");
             if (typeof removeEnemyAt === 'function') removeEnemyAt(playerX, playerY);
             if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
@@ -1949,13 +1953,14 @@ function handleSkirmishAction(index, action) {
         } else { // 20% failure
             sk.advantage -= 5;
             const dmg = 35 + Math.floor(Math.random() * 20);
-            playerHull -= dmg;
-            logMsg = `<span style="color:var(--danger); font-weight:bold;">[ WARZONE ]</span> Hack failed! We drew direct Concord counter-battery fire! Took ${dmg} hull damage!`;
-            if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
+            
+            // 👇 BUG FIX: Route to GameBus instead of subtracting playerHull directly
+            if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Aegis Cruiser counter-battery" });
+            
+            logMsg = `<span style="color:var(--danger); font-weight:bold;">[ WARZONE ]</span> Hack failed! We drew direct Concord counter-battery fire! Took ${dmg} damage!`;
             if (playerHull <= 0) {
                 closeGenericModal();
-                if (typeof triggerGameOver === 'function') triggerGameOver("Obliterated by an Aegis Cruiser counter-battery");
-                return;
+                return; // Game over triggers automatically via GameBus
             }
         }
         if (logMsg) logMessage(logMsg);
@@ -1984,12 +1989,13 @@ function handleSkirmishAction(index, action) {
         sk.advantage += 8; // Massive Advantage!
         sk.chaosLevel += 5; // expedite chaos
         const dmg = 15 + Math.floor(Math.random() * 10);
-        playerHull -= dmg; // ALWAYS take damage coordinating a ram!
+        
+        // 👇 BUG FIX: Route to GameBus
+        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Coordinated Ramming Impact" });
+        
         logMsg = `<span style="color:var(--danger); font-weight:bold;">[ WARZONE ]</span> Coordinated ramming complete! Hull integrity compromised! (+8 Advantage, -${dmg} Hull)`;
-        if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
         if (playerHull <= 0) {
             closeGenericModal();
-            if (typeof triggerGameOver === 'function') triggerGameOver("Killed coordinating a K'tharr Ramming Vector");
             return;
         }
         if (logMsg) logMessage(logMsg);
@@ -2009,19 +2015,28 @@ function handleSkirmishAction(index, action) {
         if (Math.random() < successChance) { 
             const reward = (3500 + Math.floor(Math.random() * 2000)) * (1 + (sk.chaosLevel / 10)); // chaotic mult
             playerCredits += reward;
-            playerCargo['VOID_CRYSTALS'] = (playerCargo['VOID_CRYSTALS'] || 0) + 1;
+            
+            // 👇 BUG FIX: Check cargo capacity
+            if (currentCargoLoad + 1 <= PLAYER_CARGO_CAPACITY) {
+                playerCargo['VOID_CRYSTALS'] = (playerCargo['VOID_CRYSTALS'] || 0) + 1;
+                if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+            } else {
+                logMsg += `<br><span style="color:var(--danger)">Cargo full! Left Void Crystal behind.</span>`;
+            }
+            
             sk.salvagePoints += 20; // Massive salvage buildup!
             logMsg = `<span style="color:var(--success); font-weight:bold;">[ SCAVENGE ]</span> Vault bypassed successfully! Salvaged a VOID CRYSTAL and picked up heavy salvage!`;
             if (typeof soundManager !== 'undefined') soundManager.playGain();
         } else {
             // Built-up risk converts to immediate critical damage!
             const finalDmg = (35 + sk.investedRisk) * 2; 
-            playerHull -= finalDmg;
-            logMsg = `<span style="color:var(--danger); font-weight:bold;">[ SCAVENGE ]</span> Eruption! Built-up stray fire built up risk and reactor ignited simultaneously! Took ${finalDmg} hull damage!`;
-            if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
+            
+            // 👇 BUG FIX: Route to GameBus
+            if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: finalDmg, reason: "Warzone Reactor Eruption" });
+            
+            logMsg = `<span style="color:var(--danger); font-weight:bold;">[ SCAVENGE ]</span> Eruption! Built-up stray fire and reactor ignited simultaneously! Took ${finalDmg} damage!`;
             if (playerHull <= 0) {
                 closeGenericModal();
-                if (typeof triggerGameOver === 'function') triggerGameOver("Obliterated in a Warzone Scavenging Critical Failure");
                 return;
             }
         }
@@ -2090,22 +2105,20 @@ function launchSkirmishCombat(index, targetFaction, logMsg, bonusAdvantage = 0) 
     // Safety check for faction standing
     if (typeof playerFactionStanding === 'undefined') window.playerFactionStanding = {};
 
-    let specificEnemyId = null;
-    if (typeof PIRATE_SHIP_CLASSES !== 'undefined') {
-        const shipOptions = Object.values(PIRATE_SHIP_CLASSES).filter(s => s.id && s.id.includes(targetFaction));
-        if (shipOptions.length > 0) {
-            specificEnemyId = shipOptions[Math.floor(Math.random() * shipOptions.length)].id;
-        }
-    }
+    // 👇 BUG FIX: Map narrative faction strings to actual ship database keys
+    let specificEnemyId = 'BRUISER'; // Fallback
+    if (targetFaction === 'ECLIPSE') specificEnemyId = 'STRIKER';
+    else if (targetFaction === 'KTHARR') specificEnemyId = 'KTHARR_DESTROYER';
+    else if (targetFaction === 'CONCORD') specificEnemyId = 'CONCORD_ENFORCER';
 
     // Package data for the combat engine
     const specificEnemy = {
         x: sk.x, y: sk.y,
-        shipClassKey: specificEnemyId || "PIRATE_INTERCEPTOR", // Default fallback
-        customCombatBackground: 'assets/skirmish.jpeg', // 🚨 INJECT Warzone Background! 🚨
-        isSkirmishTarget: true, // Flag for victory screen bonus check
+        shipClassKey: specificEnemyId,
+        customCombatBackground: 'assets/skirmish.jpeg', 
+        isSkirmishTarget: true, 
         supportedFaction: sk.supportedSide,
-        combatBonusAdvantage: bonusAdvantage // pass the built-up advantage!
+        combatBonusAdvantage: bonusAdvantage 
     };
 
     activeSkirmishes.splice(index, 1);
