@@ -4411,35 +4411,43 @@ function handleCombatInput(key) {
             // Generic Interact Key
             case 'e': 
             case 'enter':
-            case ' ': // <--- Browsers read spacebar as a literal space (' ')
+            case ' ': 
                 const currentTileForE = chunkManager.getTile(playerX, playerY);
                 if (!currentTileForE) return true;
                 
                 // --- THE ROUTING ORDER ---
-                
-                // 1. Xerxes Intercept
                 if (currentTileForE.name && currentTileForE.name.includes("Xerxes")) {
                     if (typeof openXerxesView === 'function') openXerxesView();
                 }
-                // 🚨 NEW: 2. Pirate Base Intercept
-                else if (currentTileForE.isPirateBase) {
-                    if (currentTileForE.cleared) {
-                        logMessage("The outpost is a smoking ruin. Nothing left to salvage.");
-                    } else if (typeof startOutpostRaid === 'function') {
-                        startOutpostRaid(currentTileForE);
-                    }
+                else if (currentTileForE.isColony) {
+                    if (typeof openColonyManagement === 'function') openColonyManagement(currentTileForE.id);
                 }
-                // 3. Station & Hub Routing
+                else if (currentTileForE.isPlayerOwned && currentTileForE.isTinyOutpost) {
+                    if (typeof openPlayerOutpost === 'function') openPlayerOutpost(currentTileForE);
+                }
+                else if (currentTileForE.isPirateBase) {
+                    if (currentTileForE.cleared) logMessage("The outpost is a smoking ruin. Nothing left to salvage.");
+                    else if (typeof startOutpostRaid === 'function') startOutpostRaid(currentTileForE);
+                }
+                else if (currentTileForE.char === 'Ω') {
+                    if (typeof traverseWormhole === 'function') traverseWormhole();
+                }
                 else if (currentTileForE.isMajorHub || currentTileForE.char === OUTPOST_CHAR_VAL) {
                     if (typeof performCustomsScan === 'function' && currentTileForE.isMajorHub) {
-                        if (!performCustomsScan()) return true; // Stop if they fail customs!
+                        if (!performCustomsScan()) return true; 
                     }
                     openStationView();
                 } 
-                // 4. Planetary Routing (Standard Planets)
                 else if (currentTileForE.char === 'O' || (currentTileForE.name && currentTileForE.name.toLowerCase().includes("planet")) || currentTileForE.biome) {
                     openPlanetView(currentTileForE);
-                } 
+                }
+                else if (typeof TILE_INTERACTIONS !== 'undefined' && TILE_INTERACTIONS[currentTileForE.char]) {
+                    // 👇 BUG FIX: Support custom interactions like Obsidian Obelisk ('I', 'Ψ', etc.) via hotkey
+                    const customDef = TILE_INTERACTIONS[currentTileForE.char];
+                    const acts = typeof customDef.actions === 'function' ? customDef.actions(currentTileForE) : (customDef.actions || []);
+                    const matched = acts.find(a => a.key && a.key.toLowerCase() === 'e');
+                    if (matched && typeof matched.onclick === 'function') matched.onclick();
+                }
                 return true;
             case 'c':
                 // Fallback to Delivery Missions
@@ -4676,6 +4684,11 @@ function handleCombatInput(key) {
         case 'u':
         case 'U':
             if (typeof openCraftingMenu === 'function') openCraftingMenu();
+            return true;
+            
+        case 'o':
+        case 'O':
+            if (typeof openObservatory === 'function') openObservatory();
             return true;
             
         case 't': { 
