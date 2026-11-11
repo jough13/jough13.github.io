@@ -429,15 +429,14 @@ function renderPlanetView() {
         showToast(toastHTML, "success");
         
          // 1. Update local object so UI updates instantly
+        planet.mined = true;
         planet.minedThisVisit = true;
 
         // 2. Save to World State Deltas so it persists across saves
-        // We create a unique key: "SystemX,SystemY_PlanetIndex"
         const sysKey = `${currentSystemData.x},${currentSystemData.y}_p${selectedPlanetIndex}`;
-        
-        // We reuse the global worldStateDeltas object
         if (!worldStateDeltas[sysKey]) worldStateDeltas[sysKey] = {};
-        worldStateDeltas[sysKey].mined = true;
+        
+        worldStateDeltas[sysKey].mined = true; 
         worldStateDeltas[sysKey].lastInteraction = currentGameDate;
         
         // Advance time slightly
@@ -989,9 +988,10 @@ function attemptExtraction() {
         }
         if (typeof advanceGameTime === 'function') advanceGameTime(mineTime);
         if (typeof updateWorldState === 'function') {
-            updateWorldState(playerX, playerY, { minedThisVisit: true, lastInteraction: typeof currentGameDate !== 'undefined' ? currentGameDate : 0 });
+            // 👇 BUG FIX: Added mined: true to the persistent delta
+            updateWorldState(playerX, playerY, { mined: true, minedThisVisit: true, lastInteraction: typeof currentGameDate !== 'undefined' ? currentGameDate : 0 });
         } else if (tile) {
-            tile.mined = true; // Fallback
+            tile.mined = true; 
             tile.minedThisVisit = true;
         }
 
