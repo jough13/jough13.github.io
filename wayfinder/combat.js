@@ -341,11 +341,11 @@ function handleCombatAction(action) {
             combatLog += "(Enemy Braced) ";
         }
 
-        // Hit Chance Calculation
-        let hitChance = weaponStats.hitChance;
+        // 👇 BUG FIX: Use the aggregated PLAYER_HIT_CHANCE instead of raw weaponStats
+        let hitChance = typeof PLAYER_HIT_CHANCE !== 'undefined' ? PLAYER_HIT_CHANCE : weaponStats.hitChance;
 
         if (currentCombatContext.playerGuaranteedHit) {
-            hitChance = 2.0; 
+            hitChance = 2.0;
             currentCombatContext.playerGuaranteedHit = false; 
         }
         
