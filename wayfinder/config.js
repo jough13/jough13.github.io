@@ -236,6 +236,9 @@ let playerFactionStanding = getStartingFactionStanding();
 // ==========================================
 
 function _clearCustomTileAtPlayer() {
+    // 👇 BUG FIX: Do not attempt to clear tiles or re-render if the player was killed by the interaction!
+    if (typeof playerHull !== 'undefined' && playerHull <= 0) return;
+
     if (typeof updateWorldState === 'function') {
         updateWorldState(playerX, playerY, {
             char: EMPTY_SPACE_CHAR_VAL,
