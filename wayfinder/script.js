@@ -2,14 +2,6 @@
 // --- SHARED MODULE UI & GAME STATES ---
 // ==========================================
 
-// [FIX]: Legacy HTML support for old boot buttons
-function bootSequence() {
-    console.warn("bootSequence() is deprecated. Routing to checkSaveStateAndRenderTitle().");
-    if (typeof checkSaveStateAndRenderTitle === 'function') {
-        checkSaveStateAndRenderTitle();
-    }
-}
-
 let visitedSectors;
 
 let playerActiveBounty = null;
@@ -5096,10 +5088,12 @@ function initializeDOMElements() {
 
     if (startButton) {
         startButton.addEventListener('click', () => {
-            soundManager.init(); // Initialize Audio Context
-            
-            // 🎵 FIRE UP THE AMBIENT MUSIC!
-            if (typeof soundManager !== 'undefined') soundManager.initBackgroundMusic();
+            // 👇 BUG FIX: Explicitly apply the player's preference on user interaction!
+            if (typeof soundManager !== 'undefined') {
+                const savedPref = localStorage.getItem('wayfinder_audio_pref');
+                const wantsAudio = savedPref === null ? true : (savedPref === 'true');
+                soundManager.setMuteState(wantsAudio);
+            }
             
             initializeGame(); 
             startGame(seedInput ? seedInput.value : "");
@@ -5908,8 +5902,12 @@ function renderSaveSlots(savesArray) {
         `;
         
         contentDiv.onclick = () => {
-            // 🎵 FIRE UP THE AMBIENT MUSIC!
-            if (typeof soundManager !== 'undefined') soundManager.initBackgroundMusic();
+            // 👇 BUG FIX: Explicitly apply the player's preference on user interaction!
+            if (typeof soundManager !== 'undefined') {
+                const savedPref = localStorage.getItem('wayfinder_audio_pref');
+                const wantsAudio = savedPref === null ? true : (savedPref === 'true');
+                soundManager.setMuteState(wantsAudio);
+            }
             
             initializeGame();
             loadGameData(saveObj.raw);
