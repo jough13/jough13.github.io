@@ -3183,7 +3183,9 @@ GameBus.on('TICK_PROCESSED', (tick) => {
     // 2. Fuel Math
     const currentEngine = COMPONENTS_DATABASE[playerShip.components.engine];
     let actualFuelPerMove = typeof BASE_FUEL_PER_MOVE !== 'undefined' ? BASE_FUEL_PER_MOVE : 1.0;
-    actualFuelPerMove *= (currentEngine.stats.fuelEfficiency || 1.0);
+    
+    // 👇 BUG FIX: Use the aggregated global efficiency, not just the engine's raw stat
+    actualFuelPerMove *= (window.PLAYER_FUEL_EFFICIENCY || 1.0);
     
     if (playerPerks.has('EFFICIENT_THRUSTERS')) actualFuelPerMove *= 0.8; 
     if (typeof hasCrewPerk === 'function' && hasCrewPerk('FUEL_EFFICIENCY')) {
