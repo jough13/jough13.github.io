@@ -1017,7 +1017,13 @@ function attemptExtraction() {
         // --- FAILURE: LASER OVERLOAD ---
         // ==========================================
         const damage = Math.floor(Math.random() * 20) + 10;
-        playerHull -= damage;
+        
+        // 👇 BUG FIX: Route damage to GameBus instead of subtracting directly to trigger death immediately
+        if (typeof GameBus !== 'undefined') {
+            GameBus.emit('HULL_DAMAGED', { amount: damage, reason: "Mining Laser Overload" });
+        } else {
+            playerHull -= damage;
+        }
         
         if (typeof soundManager !== 'undefined' && soundManager.playExplosion) soundManager.playExplosion();
         if (typeof triggerHaptic === 'function') triggerHaptic([100, 50, 100]); // Heavier failure haptic
@@ -1809,12 +1815,18 @@ function handleDerelictAction(action) {
             }
         } else {
             const dmg = 5;
-            playerHull -= dmg;
             logDerelict(`Accident! Debris collision. Hull -${dmg}`, 'bad');
-            if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
-            if (playerHull <= 0) {
-                closeDerelictView();
-                if (typeof triggerGameOver === 'function') triggerGameOver("Crushed by Derelict Debris");
+            
+            // 👇 BUG FIX: Route damage through GameBus
+            if (typeof GameBus !== 'undefined') {
+                GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Crushed by Derelict Debris" });
+            } else {
+                playerHull -= dmg;
+                if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
+                if (playerHull <= 0) {
+                    closeDerelictView();
+                    if (typeof triggerGameOver === 'function') triggerGameOver("Crushed by Derelict Debris");
+                }
             }
         }
         if (typeof updateModalInfoBar === 'function') updateModalInfoBar('derelictInfoBar');
