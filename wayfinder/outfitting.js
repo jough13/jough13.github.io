@@ -775,11 +775,12 @@ function applyPlayerShipStats() {
     PLAYER_CARGO_CAPACITY = calcCargo;
     MAX_SHIELDS = calcShields;
     
-    // Apply efficiency multiplier to base engine fuel, then set global
-    MAX_FUEL = Math.floor(calcFuel * fuelEfficiencyMult);
+    // 👇 BUG FIX: Do NOT shrink Max Fuel! Save efficiency separately to be used in movement!
+    MAX_FUEL = Math.floor(calcFuel);
+    window.PLAYER_FUEL_EFFICIENCY = Math.max(0.1, fuelEfficiencyMult);
     
     PLAYER_EVASION = calcEvasion; 
-    window.PLAYER_SIGNATURE = Math.max(0.1, calcSignature); 
+    window.PLAYER_SIGNATURE = Math.max(0.1, calcSignature);
 
     // 8. Apply Synergies (SET BONUSES)
     if (typeof SYNERGIES_DATABASE !== 'undefined') {
