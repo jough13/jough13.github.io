@@ -883,11 +883,15 @@ function useCargoItem(key) {
             if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
             if (typeof renderUIStats === 'function') renderUIStats();
             
-            // Refresh the UI to reflect the new quantity, or close if we ran out
-            if (playerCargo[key]) {
-                selectCargoItem(key); 
-            } else {
-                renderCargoList();
+            // 👇 BUG FIX: Check if the onUse function forcibly closed the modal (e.g. Drone Deploy)
+            const modal = document.getElementById('genericModalOverlay');
+            if (modal && modal.style.display === 'flex') {
+                // Refresh the UI to reflect the new quantity, or close if we ran out
+                if (playerCargo[key]) {
+                    selectCargoItem(key); 
+                } else {
+                    renderCargoList();
+                }
             }
         }
     }
@@ -906,7 +910,7 @@ function jettisonItem(key, amount) {
     // Clean up the object if it hits zero
     if (playerCargo[key] <= 0) {
         delete playerCargo[key];
-        window.activeCargoItem = null; // 🚨 FIX: Unselect the item so the UI doesn't crash trying to render it!
+        window.activeCargoItem = null;
     }
 
     // Ping the rest of the game to update UI bars
