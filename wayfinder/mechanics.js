@@ -599,11 +599,11 @@ function resolveUniversalEncounter(encounterId, choiceIndex) {
             currentEncounterContext = null;
             const passed = typeof performCustomsScan === 'function' ? performCustomsScan() : true;
             if (passed) {
-                logMessage("<span style='color:var(--success)'>[ CUSTOMS STING ]</span> Concord Interceptors complete their deep-scan of your hold. Finding no exposed contraband, they解锁 weapons and jump away.");
+                logMessage("<span style='color:var(--success)'>[ CUSTOMS STING ]</span> Concord Interceptors complete their deep-scan of your hold. Finding no exposed contraband, they disarm weapons and jump away.");
                 if (typeof showToast === 'function') showToast("INSPECTION PASSED", "success");
             }
             return;
-        } 
+        }
         else if (choice.actionType === "FLEE_CONCORD") {
             closeGenericModal();
             currentEncounterContext = null;
