@@ -1136,15 +1136,15 @@ function updateEnemies() {
         if (enemy.x === playerX && enemy.y === playerY) {
             activeEnemies.splice(i, 1);
             
-            // Route to Extortion or Combat
-            if (enemy.isLegendary || enemy.isProbe || (enemy.shipClassKey && (enemy.shipClassKey.includes('CONCORD') || enemy.shipClassKey.includes('KTHARR')))) {
+            // 👇 BUG FIX: Added enemy.isBountyTarget to the condition so bounties NEVER trigger Extortion
+            if (enemy.isLegendary || enemy.isBountyTarget || enemy.isProbe || (enemy.shipClassKey && (enemy.shipClassKey.includes('CONCORD') || enemy.shipClassKey.includes('KTHARR')))) {
                 logMessage(`<span style='color:#FF5555'>ALERT: Hostile vessel engaging!</span>`);
                 if (typeof startCombat === 'function') startCombat(enemy);
             } else {
                 if (typeof initiatePirateExtortion === 'function') initiatePirateExtortion(enemy);
                 else startCombat(enemy);
             }
-            break; // Prevent overlapping encounters on the same tick
+            break; 
         }
     }
 }
