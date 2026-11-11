@@ -272,12 +272,22 @@ window.PERKS_DATABASE = PERKS_DATABASE;
         if (typeof COMMODITIES === 'undefined') return;
 
         ['ENCRYPTED_ENGRAM', 'ENCRYPTED_DATA', 'ANCIENT_ARCHIVE'].forEach(itemId => {
-            if (COMMODITIES[itemId] && !COMMODITIES[itemId].onUse) {
-                COMMODITIES[itemId].onUse = () => executeFieldDecryption(itemId, false);
+            if (COMMODITIES[itemId]) {
+                // 👇 BUG FIX: Intelligently route to Cryptarch or Field Decryption
+                COMMODITIES[itemId].onUse = () => {
+                    const loc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+                    if (loc && loc.isMajorHub && loc.name !== 'The Rusty Anchor') {
+                        if (typeof visitCryptarch === 'function') {
+                            visitCryptarch();
+                            return false; // Don't consume item natively
+                        }
+                    }
+                    return executeFieldDecryption(itemId, false);
+                };
             }
         });
 
-        if (COMMODITIES['PRECURSOR_CIPHER'] && !COMMODITIES['PRECURSOR_CIPHER'].onUse) {
+        if (COMMODITIES['PRECURSOR_CIPHER']) {
             COMMODITIES['PRECURSOR_CIPHER'].onUse = () => {
                 const targetTypes = ['ENCRYPTED_ENGRAM', 'ENCRYPTED_DATA', 'ANCIENT_ARCHIVE'];
                 const targetId = targetTypes.find(id => (playerCargo[id] || 0) > 0);
@@ -288,13 +298,11 @@ window.PERKS_DATABASE = PERKS_DATABASE;
                     return false;
                 }
 
-                // Decrypt the target item and consume 1 unit of it
                 const success = executeFieldDecryption(targetId, true);
                 if (success) {
                     playerCargo[targetId] -= 1;
                     if (playerCargo[targetId] <= 0) delete playerCargo[targetId];
                     const hasSlicer = typeof playerPerks !== 'undefined' && playerPerks.has && playerPerks.has('CYBER_SLICER');
-                    // If Cyber Slicer is active, don't even consume the cipher!
                     return !hasSlicer;
                 }
                 return false;
