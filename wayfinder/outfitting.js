@@ -516,6 +516,17 @@ function confirmBuyComponent(compId, isOwned = false) {
     const tradeInValue = currentComp ? Math.floor(currentComp.cost * 0.5) : 0;
     const netCost = isOwned ? 0 : newComp.cost - tradeInValue;
 
+    // 👇 BUG FIX: Simulate new cargo capacity to prevent over-encumbrance exploit!
+    const oldCargoBonus = (currentComp && currentComp.stats && currentComp.stats.cargoBonus) ? currentComp.stats.cargoBonus : 0;
+    const newCargoBonus = (newComp && newComp.stats && newComp.stats.cargoBonus) ? newComp.stats.cargoBonus : 0;
+    const simulatedCapacity = PLAYER_CARGO_CAPACITY - oldCargoBonus + newCargoBonus;
+    
+    if (typeof currentCargoLoad !== 'undefined' && currentCargoLoad > simulatedCapacity) {
+        if (typeof showToast === 'function') showToast(`CARGO OVERFLOW: Need ${currentCargoLoad - simulatedCapacity} free space`, "error");
+        if (typeof soundManager !== 'undefined') soundManager.playError();
+        return;
+    }
+
     if(!isOwned && playerCredits < netCost) {
         if (typeof showToast === 'function') showToast(`Insufficient Funds!`, "error");
         return;
