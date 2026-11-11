@@ -436,89 +436,8 @@ window.soundManager = soundManager;
 // ==========================================
 
 (function initAudioHooks() {
-    // 1. Restore bootSequence() & completeBootTransition() if omitted from script.js
-    if (typeof window.completeBootTransition === 'undefined') {
-        window.completeBootTransition = function(titleScreen, shouldEnableAudio) {
-            if (titleScreen) {
-                titleScreen.style.transition = "opacity 1.5s ease-out";
-                titleScreen.style.opacity = "0";
-                setTimeout(() => {
-                    titleScreen.style.display = "none";
-                }, 1500);
-            }
-
-            if (shouldEnableAudio && typeof soundManager !== 'undefined') {
-                setTimeout(() => soundManager.playWarp(), 300);
-                if (soundManager.bgMusic && !soundManager.bgMusicFailed) {
-                    soundManager.bgMusic.play().catch(err => {
-                        console.warn("Browser blocked autoplay until user interaction.", err);
-                    });
-                }
-            }
-
-            if (typeof logMessage === 'function') {
-                logMessage("<span style='color:var(--accent-color); font-weight:bold;'>> SHIP SYSTEMS INITIALIZED.</span>");
-                if (typeof soundManager !== 'undefined' && !soundManager.enabled) {
-                    logMessage("> <span style='color:var(--warning)'>WARNING: Audio Telemetry remains offline. Use dashboard toggle to enable.</span>");
-                }
-                logMessage("> Life support green. Engines hot. Awaiting captain's orders.");
-            }
-        };
-    }
-
-    if (typeof window.bootSequence === 'undefined') {
-        window.bootSequence = function() {
-            const titleScreen = document.getElementById('titleScreenOverlay');
-            let audioPref = localStorage.getItem('wayfinder_audio_pref');
-            let shouldEnableAudio = (audioPref === null) ? false : (audioPref === 'true');
-
-            if (typeof soundManager !== 'undefined') {
-                soundManager.setMuteState(shouldEnableAudio);
-            }
-
-            let isReturningPlayer = false;
-            for (let i = 0; i < localStorage.length; i++) {
-                const k = localStorage.key(i);
-                if (k && k.startsWith('wayfinder_')) {
-                    isReturningPlayer = true;
-                    break;
-                }
-            }
-
-            if (!isReturningPlayer && titleScreen) {
-                const isBodyLight = document.body.classList.contains('light-mode');
-                const isOSLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
-                const isLightMode = isBodyLight || isOSLight;
-                const videoSrc = isLightMode ? 'assets/intro_white.mp4' : 'assets/intro_black.mp4';
-
-                titleScreen.innerHTML = `
-                    <video id="bootIntroVideo" style="width: 100vw; height: 100vh; object-fit: cover;" autoplay playsinline>
-                        <source src="${videoSrc}" type="video/mp4">
-                    </video>
-                `;
-
-                const video = document.getElementById('bootIntroVideo');
-                if (video) {
-                    video.muted = !shouldEnableAudio;
-                    if (shouldEnableAudio && typeof soundManager !== 'undefined' && soundManager.bgMusic) {
-                        soundManager.bgMusic.pause();
-                    }
-                    video.onended = () => window.completeBootTransition(titleScreen, shouldEnableAudio);
-                    video.onerror = () => window.completeBootTransition(titleScreen, shouldEnableAudio);
-                    video.onclick = () => {
-                        video.pause();
-                        window.completeBootTransition(titleScreen, shouldEnableAudio);
-                    };
-                } else {
-                    window.completeBootTransition(titleScreen, shouldEnableAudio);
-                }
-            } else {
-                window.completeBootTransition(titleScreen, shouldEnableAudio);
-            }
-        };
-    }
-
-    // 2. Hook GameBus Events for Automatic Audio Feedback
+    
+    // 1. Hook GameBus Events for Automatic Audio Feedback
     if (typeof GameBus !== 'undefined') {
         GameBus.on('HULL_DAMAGED', (data) => {
             if (data && data.amount > 0) {
@@ -548,7 +467,7 @@ window.soundManager = soundManager;
         });
     }
 
-    // 3. Pause/Resume Audio Cleanly on Browser Tab Switch
+    // 2. Pause/Resume Audio Cleanly on Browser Tab Switch
     document.addEventListener('visibilitychange', () => {
         if (!soundManager.enabled) return;
         if (document.hidden) {
@@ -566,13 +485,14 @@ window.soundManager = soundManager;
         }
     });
 
-    // 4. Sync Mute Button Text & Add Subtle Hover/Typing SFX on DOM Load
+    // 3. Sync Mute Button Text, Set Initial State, & Add Subtle Hover/Typing SFX on DOM Load
     window.addEventListener('DOMContentLoaded', () => {
-        const audioPref = localStorage.getItem('wayfinder_audio_pref') === 'true';
-        const soundBtn = document.getElementById('soundButton');
-        if (soundBtn) {
-            soundBtn.textContent = audioPref ? "Mute Audio" : "Enable Audio";
-        }
+        // 👇 BUG FIX: Properly initialize audio state on load (Default to TRUE if no save exists)
+        const savedPref = localStorage.getItem('wayfinder_audio_pref');
+        const wantsAudio = savedPref === null ? true : (savedPref === 'true');
+        
+        // This sets the internal boolean and updates the button label automatically!
+        soundManager.setMuteState(wantsAudio);
 
         // Delegated hover sound for interactive buttons and rows
         document.addEventListener('mouseover', (e) => {
