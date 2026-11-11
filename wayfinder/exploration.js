@@ -1937,6 +1937,108 @@ function triggerRandomEvent() {
 }
 
 // ==========================================
+// --- AUTONOMOUS PROBES ---
+// ==========================================
+
+window.activeProbes = window.activeProbes || [];
+
+function deployProbe() {
+    if (!playerCargo['TELEMETRY_PROBE'] || playerCargo['TELEMETRY_PROBE'] <= 0) {
+        if (typeof showToast === 'function') showToast("No Probes in Cargo Hold!", "error");
+        return;
+    }
+    
+    const loc = chunkManager.getTile(playerX, playerY);
+    if (loc && (loc.type === 'station' || loc.type === 'planet')) {
+        if (typeof showToast === 'function') showToast("Interference too high. Deploy in Deep Space.", "warning");
+        return;
+    }
+    
+    playerCargo['TELEMETRY_PROBE']--;
+    if (playerCargo['TELEMETRY_PROBE'] <= 0) delete playerCargo['TELEMETRY_PROBE'];
+    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+
+    const probeId = "PROBE_" + Date.now();
+
+    window.activeProbes.push({
+        x: playerX,
+        y: playerY,
+        id: probeId,
+        deployedAt: currentGameDate,
+        dataGathered: 0
+    });
+
+    if (typeof activeEnemies === 'undefined') window.activeEnemies = [];
+    activeEnemies.push({
+        x: playerX, y: playerY, id: probeId,
+        char: '📡', color: '#00FF00', name: "Active Probe", isProbe: true
+    });
+
+    logMessage("<span style='color:var(--success)'>[ PROBE DEPLOYED ]</span> It will passively gather data over time.");
+    if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+    if (typeof render === 'function') render();
+}
+
+// Intercept the Combat Engine so when you bump into a Probe, it collects it instead of fighting it!
+if (typeof window.startCombat === 'function' && !window._originalStartCombatForProbes) {
+    window._originalStartCombatForProbes = window.startCombat;
+    
+    window.startCombat = function(specificEnemyEntity = null) {
+        if (specificEnemyEntity && specificEnemyEntity.isProbe) {
+            const probeIdx = window.activeProbes.findIndex(p => p.x === specificEnemyEntity.x && p.y === specificEnemyEntity.y);
+            if (probeIdx > -1) {
+                const probe = window.activeProbes[probeIdx];
+                const dataAmount = Math.floor((currentGameDate - probe.deployedAt) / 10);
+                
+                // 👇 BUG FIX: Check cargo capacity before recovering probe and data!
+                let spaceLeft = PLAYER_CARGO_CAPACITY - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
+                
+                if (spaceLeft >= 1) {
+                    // Pick up the probe hardware
+                    playerCargo['TELEMETRY_PROBE'] = (playerCargo['TELEMETRY_PROBE'] || 0) + 1; 
+                    spaceLeft--;
+                    
+                    if (dataAmount > 0) {
+                        const dataTypes = ['DATA_PULSAR', 'DATA_MAGNETAR', 'DATA_SINGULARITY'];
+                        const dataId = dataTypes[Math.floor(Math.random() * dataTypes.length)];
+                        
+                        // Grab as much data as we have space for
+                        const actualDataAmount = Math.min(dataAmount, spaceLeft);
+                        
+                        if (actualDataAmount > 0) {
+                            playerCargo[dataId] = (playerCargo[dataId] || 0) + actualDataAmount;
+                            logMessage(`<span style='color:var(--success)'>[ PROBE RECOVERED ]</span> Harvested ${actualDataAmount}x ${COMMODITIES[dataId].name}!`);
+                            if (actualDataAmount < dataAmount) {
+                                logMessage(`<span style='color:var(--warning)'>Cargo full! Dropped ${dataAmount - actualDataAmount} data drives.</span>`);
+                            }
+                        } else {
+                            logMessage(`<span style='color:var(--warning)'>[ PROBE RECOVERED ]</span> Cargo full! Gathered data drives discarded.`);
+                        }
+                    } else {
+                        logMessage("<span style='color:var(--warning)'>[ PROBE RECOVERED ]</span> Probe retrieved. Not enough time passed to gather data.");
+                    }
+                } else {
+                    logMessage(`<span style='color:var(--danger)'>[ PROBE ABANDONED ]</span> Cargo full! Could not retrieve probe.`);
+                    return; // Abort so it stays floating in space!
+                }
+                
+                if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                window.activeProbes.splice(probeIdx, 1);
+                activeEnemies = activeEnemies.filter(e => e.id !== specificEnemyEntity.id);
+                
+                if (typeof soundManager !== 'undefined') soundManager.playGain();
+                if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
+                if (typeof render === 'function') render();
+            }
+            return; // Abort combat!
+        }
+        
+        // Otherwise, run normal combat!
+        window._originalStartCombatForProbes(specificEnemyEntity);
+    };
+}
+
+// ==========================================
 // --- DYNAMIC SIGNAL INTERCEPTS ---
 // ==========================================
 
