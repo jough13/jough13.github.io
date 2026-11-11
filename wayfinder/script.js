@@ -7951,8 +7951,11 @@ function updatePlayerDrones() {
                 drone.payload = 15 + Math.floor(Math.random() * 15); // 15 to 30 minerals!
                 
                 // Deplete the asteroid on the map!
+                drone.targetTile.mined = true; //
                 drone.targetTile.minedThisVisit = true;
-                updateWorldState(drone.x, drone.y, { minedThisVisit: true, lastInteraction: currentGameDate });
+                
+                // 👇 BUG FIX: Add mined: true to the persistent delta
+                updateWorldState(drone.x, drone.y, { mined: true, minedThisVisit: true, lastInteraction: currentGameDate });
                 
                 drone.state = 'INBOUND';
             }
