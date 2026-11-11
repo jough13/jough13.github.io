@@ -4137,25 +4137,53 @@ function activateDistressBeacon() {
 function executeRescueSequence() {
     isAwaitingRescue = false;
     
-    // 1. Move Player to the Station
-    playerX = rescueTargetStation.x;
-    playerY = rescueTargetStation.y;
-    
-    // Give 15% fuel (enough to dock/fly around, but forces them to buy more)
-    playerFuel = Math.max(playerFuel, Math.floor(MAX_FUEL * 0.15)); 
+    // 👇 BUG FIX: Do NOT teleport the player! The Fuel Rat comes to you in deep space.
+    // playerX = rescueTargetStation.x;
+    // playerY = rescueTargetStation.y;
 
-    // Clear the map cache so the new sector renders instantly
-    chunkManager.loadedChunks = {}; 
-    chunkManager.lastChunkKey = null;
-    chunkManager.lastChunkRef = null;
-    updateSectorState();
-
-    // 2. Setup the game state for UI interaction
+    // Setup the game state for UI interaction
     changeGameState(GAME_STATES.GALACTIC_MAP);
     renderUIStats();
     
-    // 3. Trigger the View-Screen Modal instead of a silent log drop
+    // Trigger the View-Screen Modal instead of a silent log drop
     showFuelRatRescueModal();
+}
+
+function executeFuelRatRescue(tipAmount) {
+    if (playerCredits < tipAmount) {
+        if (typeof showToast === 'function') showToast("Insufficient credits for tip!", "error");
+        return;
+    }
+    
+    playerCredits -= tipAmount;
+    playerFuel = typeof MAX_FUEL !== 'undefined' ? MAX_FUEL : 220;
+    
+    // Process the tip reputation
+    if (tipAmount > 0) {
+        const repGain = tipAmount === 500 ? 5 : 1;
+        playerFactionStanding['FUEL_RATS'] = (playerFactionStanding['FUEL_RATS'] || 0) + repGain;
+        logMessage(`<span style='color:var(--success)'>+${repGain} Fuel Rats Reputation</span>`);
+    }
+
+    // Process the VIP Perk: Free Hull Repair!
+    if ((playerFactionStanding['FUEL_RATS'] || 0) >= 5) {
+        playerHull = typeof MAX_PLAYER_HULL !== 'undefined' ? MAX_PLAYER_HULL : 100;
+        if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
+    }
+
+    if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    if (typeof showToast === 'function') showToast("TANKS REFILLED", "success");
+    logMessage("<span style='color:var(--warning)'>[ RESCUE ] The Fuel Rats detach and jump away. Tanks are full.</span>");
+    
+    // 👇 BUG FIX: Route to the orphaned UI actions so the player can actually tip!
+    if (tipAmount === 0 && playerCredits >= 100) {
+        renderFuelRatActions();
+        document.getElementById('genericDetailContent').innerHTML += `<div style="margin-top: 15px; padding: 10px; background: rgba(0, 255, 0, 0.1); border-left: 3px solid var(--success); color: var(--success); font-size: 13px; animation: fadeIn 0.5s;">> Fuel transfer complete. Hull integrity stabilized.</div>`;
+    } else {
+        closeFuelRatModal();
+    }
+    
+    if (typeof renderUIStats === 'function') renderUIStats();
 }
 
 function showFuelRatRescueModal() {
@@ -6853,12 +6881,14 @@ function trackLegendaryTarget(bossId) {
     
     if (typeof activeEnemies === 'undefined') window.activeEnemies = [];
     
+    const uniqueId = boss.id + "_" + Date.now();
+    
     activeEnemies.push({
         x: bx,
         y: by,
-        id: boss.id + "_" + Date.now(),
+        id: uniqueId,
         type: 'BOSS',
-        char: '☠️', // They get a literal skull on the map!
+        char: '☠️', 
         color: boss.color,
         shipClassKey: boss.shipClassKey,
         isBoss: true,
@@ -6867,11 +6897,15 @@ function trackLegendaryTarget(bossId) {
         // --- Combat Hooks ---
         isLegendary: true,
         exclusiveDrop: boss.exclusiveDrop,
-        difficultyMultiplier: 1.5, // 50% harder than normal scaling
+        difficultyMultiplier: 1.5, 
         reward: boss.reward 
     });
     
-    logMessage(`<span style='color:${boss.color}; font-weight:bold;'>[ SEC-COM ALERT ]</span> ${boss.title} located at local coordinates [${bx}, ${by}]. Updating Nav-Computer.`);
+    // 👇 BUG FIX: Bind the boss to the Nav-Computer and Compass!
+    playerActiveBounty = { x: bx, y: by, targetName: boss.title, id: uniqueId };
+    
+    // 👇 BUG FIX: Invert the Y-axis output so it matches the HUD coordinates!
+    logMessage(`<span style='color:${boss.color}; font-weight:bold;'>[ SEC-COM ALERT ]</span> ${boss.title} located at local coordinates [${bx}, ${-by}]. Updating Nav-Computer.`);
     if (typeof showToast === 'function') showToast("TARGET LOCATED ON MAP", "warning");
     
     closeGenericModal();
