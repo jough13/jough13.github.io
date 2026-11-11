@@ -3361,14 +3361,15 @@ function handleInteraction() {
             if (typeof soundManager !== 'undefined') soundManager.playUIHover();
             if (typeof showToast === 'function') showToast(`WELCOME TO ${location.name.toUpperCase()}`, "success");
 
-            availableActions.push({ label: `Manage Colony`, key: 'e', onclick: openColonyManagement });
+            // 👇 BUG FIX: Wrapped in an arrow function so the MouseEvent isn't passed as colonyId
+            availableActions.push({ label: `Manage Colony`, key: 'e', onclick: () => openColonyManagement() });
             if (typeof renderContextualActions === 'function') renderContextualActions(availableActions);
 
             openColonyManagement();
             return; 
         }
 
-        // 🚨 NEW: 1.5 PLAYER TINY OUTPOST INTERCEPT
+        // 1.5 PLAYER TINY OUTPOST INTERCEPT
         if (location.isPlayerOwned && location.isTinyOutpost) {
             if (typeof soundManager !== 'undefined') soundManager.playUIHover();
             if (typeof showToast === 'function') showToast(`DOCKED: ${location.name.toUpperCase()}`, "success");
