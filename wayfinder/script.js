@@ -4722,12 +4722,15 @@ function handleCombatInput(key) {
             return true;
             
         case 't': { 
-            const tileForWormhole = chunkManager.getTile(playerX, playerY);
-            let whType = '';
-            if (typeof getTileType === 'function') whType = getTileType(tileForWormhole);
+            const tileForWh = chunkManager.getTile(playerX, playerY);
+            const charForWh = typeof getTileChar === 'function' ? getTileChar(tileForWh) : '.';
             
-            if (whType === 'wormhole' && typeof traverseRandomWormhole === 'function') traverseRandomWormhole();
-            else logMessage("No wormhole here.");
+            // 👇 BUG FIX: Unify hotkey logic to check for 'W' or 'Ω' and trigger the Subspace UI!
+            if (charForWh === WORMHOLE_CHAR_VAL || charForWh === 'Ω') {
+                if (typeof traverseWormhole === 'function') traverseWormhole();
+            } else {
+                logMessage("No stable wormhole or Stargate here.");
+            }
             return true;
         }
         
