@@ -83,8 +83,14 @@ function openPlanetView(location) {
     // Quick Action: Surface Scan
     btnHtml += `<button class="action-button" onclick="if(typeof conductSurfaceScan === 'function') conductSurfaceScan()" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;">CONDUCT SURFACE SCAN</button>`;
     
-    // Quick Action: Orbital Drill
-    btnHtml += `<button class="action-button" onclick="if(typeof startOrbitalMining === 'function') startOrbitalMining()" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;">ORBITAL EXTRACTION</button>`;
+    // 👇 BUG FIX: Check utility slot for the orbital extractor!
+    const utilId = typeof playerShip !== 'undefined' ? playerShip.components.utility : null;
+    const utilData = typeof COMPONENTS_DATABASE !== 'undefined' && utilId ? COMPONENTS_DATABASE[utilId] : null;
+    const hasExtractor = utilData && utilData.stats && utilData.stats.unlocksMining;
+    
+    btnHtml += `<button class="action-button" ${hasExtractor ? '' : 'disabled'} onclick="if(typeof startOrbitalMining === 'function') startOrbitalMining()" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;">
+        ORBITAL EXTRACTION ${hasExtractor ? '' : '<br><span style="font-size:9px; opacity:0.7;">(Requires Extractor Module)</span>'}
+    </button>`;
 
     // --- Routing to the proper Planet View ---
     if (biomeData && biomeData.landable) {
