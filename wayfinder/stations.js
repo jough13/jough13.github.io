@@ -1367,4 +1367,7 @@ function purchaseTroops(itemId, cost) {
 
     if (typeof renderUIStats === 'function') renderUIStats();
     if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+    
+    // 👇 BUG FIX: Re-render the detail pane to show updated counts and button states
+    showTroopDetails(itemId); 
 }
