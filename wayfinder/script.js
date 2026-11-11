@@ -5401,6 +5401,12 @@ function performSave(saveType) {
         rescueTargetStation: typeof rescueTargetStation !== 'undefined' ? rescueTargetStation : null,
         rescueFeePaid: typeof rescueFeePaid !== 'undefined' ? rescueFeePaid : 0,
         freebieUsed: typeof freebieUsed !== 'undefined' ? freebieUsed : false,
+        
+        // 👇 BUG FIX: Save Trade and Mission session globals!
+        playerCargoCostBasis: window.playerCargoCostBasis || {},
+        MISSIONS_DATABASE: typeof MISSIONS_DATABASE !== 'undefined' ? MISSIONS_DATABASE : {},
+        _stationMissionLastRefresh: window._stationMissionLastRefresh || {},
+        
         customComponents: customComponents,
         customCommodities: customCommodities,
         
@@ -5620,6 +5626,11 @@ function loadGameData(jsonString) {
         // Restore progression flags and inject procedural items back into databases
         window.defeatedLegendaries = savedState.defeatedLegendaries || [];
         window.hasEclipseMerc = savedState.hasEclipseMerc || false;
+
+        // 👇 BUG FIX: Load Trade and Mission session globals!
+        window.playerCargoCostBasis = savedState.playerCargoCostBasis || {};
+        if (savedState.MISSIONS_DATABASE) window.MISSIONS_DATABASE = savedState.MISSIONS_DATABASE;
+        window._stationMissionLastRefresh = savedState._stationMissionLastRefresh || {};
 
         if (savedState.customComponents && typeof COMPONENTS_DATABASE !== 'undefined') {
             Object.assign(COMPONENTS_DATABASE, savedState.customComponents);
