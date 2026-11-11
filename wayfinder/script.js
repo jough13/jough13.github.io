@@ -5658,7 +5658,11 @@ function loadGameData(jsonString) {
                     x: playerActiveBounty.x,
                     y: playerActiveBounty.y,
                     name: playerActiveBounty.targetName,
-                    shipClass: playerActiveBounty.shipClass,
+                    
+                    // 👇 BUG FIX: Assign the shipClassKey correctly so startCombat can read it
+                    shipClassKey: playerActiveBounty.shipClassKey || playerActiveBounty.shipClass || "STRIKER",
+                    shipClass: playerActiveBounty.shipClassKey || playerActiveBounty.shipClass || "STRIKER",
+                    
                     faction: playerActiveBounty.faction,
                     isBountyTarget: true,
                     level: playerActiveBounty.difficulty,
@@ -6507,7 +6511,6 @@ function generateBountyTargets() {
         const totalReward = baseReward + distanceBonus;
         
         currentStationBounties.push({
-            // 🚨 FIXED: Added random entropy to prevent duplicate Bounty IDs
             id: `BOUNTY_${Date.now()}_${Math.floor(Math.random() * 100000)}_${i}`,
             targetName: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
             crime: crimeList[Math.floor(Math.random() * crimeList.length)],
@@ -6516,7 +6519,9 @@ function generateBountyTargets() {
             difficulty: difficultyLevel,
             reward: totalReward, 
             faction: "ECLIPSE", 
-            shipClass: difficultyLevel > 5 ? "STRIKER" : "SCOUT" 
+            
+            // 👇 BUG FIX: Replaced "SCOUT" with valid "RAIDER" class
+            shipClass: difficultyLevel > 5 ? "STRIKER" : "RAIDER" 
         });
     }
 }
