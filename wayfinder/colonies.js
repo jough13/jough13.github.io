@@ -932,7 +932,10 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                         upkeep: 0, popCap: 0, storageCap: 1000, defense: 0,
                         waterProd: 0, foodProd: 0, alloyProd: 0, techProd: 0, mineralProd: 0,
                         weaponProd: 0, mechProd: 0, troopProd: 0, luxuryProd: 0, stimProd: 0, medProd: 0, voidProd: 0,
-                        moraleRegen: 0, moralePenalty: 0,
+                        
+                        // 👇 BUG FIX: Added moraleBonus to prevent NaN math errors
+                        moraleRegen: 0, moraleBonus: 0, moralePenalty: 0,
+                        
                         taxMult: 1.0, taxFlat: 0, illegalTaxes: 0,
                         passiveCredits: 0, passiveXP: 0,
                         crimeReduction: 0, popGrowthMult: 1.0, foodEfficiency: 1.0, omniProd: 1.0,
@@ -946,10 +949,12 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                         if (bData && count > 0) {
                             stats.upkeep += (bData.upkeep || 0) * count;
                             
-                            if (bData.effects) {
-                                for (const [effect, val] of Object.entries(bData.effects)) {
+                            for (const [effect, val] of Object.entries(bData.effects)) {
                                     // Multipliers stack by addition or multiplication depending on logic
-                                    if (effect === 'taxMult') stats.taxMult *= Math.pow(val, count);
+                                    
+                                    // 👇 BUG FIX: Additive tax scaling so 0.5 increases taxes by 50% instead of cutting them in half
+                                    if (effect === 'taxMult') stats.taxMult += (val * count);
+                                    
                                     else if (effect === 'popGrowthMult') stats.popGrowthMult *= Math.pow(val, count);
                                     else if (effect === 'foodEfficiency') stats.foodEfficiency *= Math.pow(val, count);
                                     else if (effect === 'omniProd') stats.omniProd *= Math.pow(val, count);
@@ -1077,37 +1082,29 @@ GameBus.on('TICK_PROCESSED', (tick) => {
 
                     // C. Advanced Logistics (Consumes specific multi-inputs)
                     if (!isStorageFull && eff > 0) {
-                        // Weapons
+                        // 👇 BUG FIX: Removed double-dipping manual deductions (Step 5B already handles it)
+                        
                         let wProd = Math.floor(stats.weaponProd * eff * stats.omniProd);
-                        if (wProd > 0 && (colony.storage['REFINED_ALLOY']||0) >= 5 && (colony.storage['MINERALS']||0) >= 5) {
-                            colony.storage['REFINED_ALLOY'] -= 5; colony.storage['MINERALS'] -= 5;
-                            colony.storage['WEAPONS'] = (colony.storage['WEAPONS'] || 0) + wProd;
-                        }
-                        // Mercs
+                        if (wProd > 0) colony.storage['WEAPONS'] = (colony.storage['WEAPONS'] || 0) + wProd;
+                        
                         let trProd = Math.floor(stats.troopProd * eff * stats.omniProd);
-                        if (trProd > 0 && (colony.storage['REFINED_ALLOY']||0) >= 5 && (colony.storage['FOOD_SUPPLIES']||0) >= 5) {
-                            colony.storage['REFINED_ALLOY'] -= 5; colony.storage['FOOD_SUPPLIES'] -= 5;
-                            colony.storage['MERCENARY_PLATOON'] = (colony.storage['MERCENARY_PLATOON'] || 0) + trProd;
-                        }
-                        // Mechs
+                        if (trProd > 0) colony.storage['MERCENARY_PLATOON'] = (colony.storage['MERCENARY_PLATOON'] || 0) + trProd;
+                        
                         let meProd = Math.floor(stats.mechProd * eff * stats.omniProd);
-                        if (meProd > 0 && (colony.storage['REFINED_ALLOY']||0) >= 15 && (colony.storage['TECH_PARTS']||0) >= 5) {
-                            colony.storage['REFINED_ALLOY'] -= 15; colony.storage['TECH_PARTS'] -= 5;
-                            colony.storage['ASSAULT_MECH'] = (colony.storage['ASSAULT_MECH'] || 0) + meProd;
-                        }
-                        // Stims
+                        if (meProd > 0) colony.storage['ASSAULT_MECH'] = (colony.storage['ASSAULT_MECH'] || 0) + meProd;
+                        
                         let stProd = Math.floor(stats.stimProd * eff * stats.omniProd);
-                        if (stProd > 0 && (colony.storage['MEDICAL_SUPPLIES']||0) >= 1 && (colony.storage['MINERALS']||0) >= 2) {
-                            colony.storage['MEDICAL_SUPPLIES'] -= 1; colony.storage['MINERALS'] -= 2;
-                            colony.storage['PROHIBITED_STIMS'] = (colony.storage['PROHIBITED_STIMS'] || 0) + stProd;
-                        }
-                        // Void Crystals
+                        if (stProd > 0) colony.storage['PROHIBITED_STIMS'] = (colony.storage['PROHIBITED_STIMS'] || 0) + stProd;
+                        
                         let vProd = Math.floor(stats.voidProd * eff * stats.omniProd);
                         if (vProd > 0) colony.storage['VOID_CRYSTALS'] = (colony.storage['VOID_CRYSTALS'] || 0) + vProd;
                         
-                        // Meds
                         let mdProd = Math.floor(stats.medProd * eff * stats.omniProd);
                         if (mdProd > 0) colony.storage['MEDICAL_SUPPLIES'] = (colony.storage['MEDICAL_SUPPLIES'] || 0) + mdProd;
+                        
+                        // 👇 BUG FIX: Added Luxury Goods generation
+                        let luxProd = Math.floor(stats.luxuryProd * eff * stats.omniProd);
+                        if (luxProd > 0) colony.storage['LUXURY_GOODS'] = (colony.storage['LUXURY_GOODS'] || 0) + luxProd;
                     }
 
                     // --- 6. DEMOGRAPHICS & CONSUMPTION ---
@@ -1145,7 +1142,9 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                         colony.morale = 40; 
                     } else {
                         if (inDebt) stats.moralePenalty += 2; 
-                        colony.morale = Math.min(100, colony.morale + stats.moraleRegen - stats.moralePenalty);
+                        
+                        // 👇 BUG FIX: Added stats.moraleBonus and hard-clamped to a minimum of 0
+                        colony.morale = Math.max(0, Math.min(100, colony.morale + stats.moraleBonus + stats.moraleRegen - stats.moralePenalty));
                     }
 
                     // --- 8. ECONOMY & TAXES ---
