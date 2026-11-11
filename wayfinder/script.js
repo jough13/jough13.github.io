@@ -6261,6 +6261,30 @@ function renderXerxesMenu() {
         `;
     }
     
+   // ... [Spire and Core Vault Code] ...
+
+    // 👇 BUG FIX: Inject Mission Turn-in & Delivery buttons for Planet Xerxes!
+    if (typeof playerActiveMission !== 'undefined' && playerActiveMission) {
+        const obj = playerActiveMission.objectives && playerActiveMission.objectives[0] ? playerActiveMission.objectives[0] : null;
+        const xerxesName = "Planet Xerxes";
+        
+        if (!playerActiveMission.isComplete && playerActiveMission.type === "DELIVERY" && obj && obj.destinationName === xerxesName) {
+            menu.innerHTML += `
+                <button class="station-action-btn xerxes-btn" style="border-color:var(--gold-text); color:var(--gold-text);" onclick="if(typeof handleCompleteDelivery==='function') handleCompleteDelivery(); closeXerxesView();">
+                    <div class="btn-icon">📦</div>
+                    <div><div class="btn-label">Complete Delivery</div><span class="btn-sub">Offload ${obj.count}x Contraband</span></div>
+                </button>`;
+        }
+        
+        if (playerActiveMission.isComplete && (playerActiveMission.giver === xerxesName || playerActiveMission.giver === "Shadow Broker")) {
+            menu.innerHTML += `
+                <button class="station-action-btn xerxes-btn" style="border-color:var(--success); color:var(--success);" onclick="if(typeof grantMissionRewards==='function') grantMissionRewards(); closeXerxesView();">
+                    <div class="btn-icon">🏆</div>
+                    <div><div class="btn-label">Claim Reward</div><span class="btn-sub">Receive ${formatNumber(playerActiveMission.rewards.credits)}c</span></div>
+                </button>`;
+        }
+    }
+
     // --- 4. LEAVE ---
     menu.innerHTML += `
         <button class="station-action-btn xerxes-btn" onclick="closeXerxesView()">
