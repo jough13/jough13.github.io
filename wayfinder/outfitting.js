@@ -725,8 +725,11 @@ function applyPlayerShipStats() {
     
     // 4. Apply Crew & Mercenary Bonuses
     if (typeof playerCrew !== 'undefined' && playerCrew.length > 0) {
-        window.hasEclipseMerc = false;
+        window.hasEclipseMerc = false; // 👇 BUG FIX: Reset the global flag before recounting!
+
         playerCrew.forEach(crew => {
+            if (crew.isMercenary) window.hasEclipseMerc = true; // 👇 Restore it if they exist
+            
             if (crew.stats) {
                 if (crew.stats.hullBonus) calcHull += crew.stats.hullBonus;
                 if (crew.stats.damageBonus) PLAYER_ATTACK_DAMAGE += crew.stats.damageBonus;
