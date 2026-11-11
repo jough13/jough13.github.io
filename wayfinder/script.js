@@ -3419,7 +3419,10 @@ function handleInteraction() {
                 discoveredLocations.add(location.name);
                 playerXP += XP_PER_LOCATION_DISCOVERY;
                 if (typeof showToast === 'function') showToast(`Discovered: ${location.name}! +${XP_PER_LOCATION_DISCOVERY} XP`, "success");
-                unlockLoreEntry(`LOCATION_${location.name.replace(/\s+/g, '_').toUpperCase()}`);
+                
+                // 👇 BUG FIX: Added hyphen to regex so Karak-Tor becomes KARAK_TOR instead of KARAK-TOR
+                unlockLoreEntry(`LOCATION_${location.name.replace(/[\s-]+/g, '_').toUpperCase()}`);
+                
                 checkLevelUp();
             }
 
@@ -3488,7 +3491,10 @@ function handleInteraction() {
             discoveredLocations.add(location.name);
             playerXP += XP_PER_LOCATION_DISCOVERY;
             bM += `\n<span style='color:var(--success);'>Location Discovered: ${location.name}! +${formatNumber(XP_PER_LOCATION_DISCOVERY)} XP!</span>`;
-            unlockLoreEntry(`LOCATION_${location.name.replace(/\s+/g, '_').toUpperCase()}`);
+            
+            // 👇 BUG FIX: Added hyphen to regex here too!
+            unlockLoreEntry(`LOCATION_${location.name.replace(/[\s-]+/g, '_').toUpperCase()}`);
+            
             checkLevelUp();
         }
 
