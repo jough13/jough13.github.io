@@ -206,10 +206,11 @@ function handleVictory() {
     const credits = Math.floor(baseCredits * mult);
     const xp = Math.floor(baseXP * mult);
 
-    // 2. Apply Rewards & Notoriety
+    // 2. Apply Rewards
     playerCredits += credits;
     playerXP += xp;
-    if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(5);
+    
+    // Removed updatePlayerNotoriety(5) so self-defense isn't a crime!
 
     // 3. Trigger Visual & Audio FX
     if (typeof spawnParticles === 'function') spawnParticles(playerX, playerY, 'explosion');
