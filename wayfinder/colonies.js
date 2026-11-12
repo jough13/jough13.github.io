@@ -1045,26 +1045,14 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                         colony.storage['FOOD_SUPPLIES'] = (colony.storage['FOOD_SUPPLIES'] || 0) + fProd;
                         currentStorage += fProd;
 
+                        // 👇 BUG FIX: Removed double-dipping Mineral deductions from Alloy production
                         let aProd = Math.floor(stats.alloyProd * eff * stats.omniProd);
-                        let minNeed = Math.floor(stats.consume['MINERALS'] * eff);
-                        if ((colony.storage['MINERALS'] || 0) >= minNeed) {
-                            colony.storage['MINERALS'] -= minNeed;
-                        } else {
-                            aProd = Math.floor(aProd / 2);
-                            colony.storage['MINERALS'] = 0;
-                        }
                         if (currentStorage + aProd > stats.storageCap) aProd = Math.max(0, stats.storageCap - currentStorage);
                         colony.storage['REFINED_ALLOY'] = (colony.storage['REFINED_ALLOY'] || 0) + aProd;
                         currentStorage += aProd;
 
+                        // 👇 BUG FIX: Removed double-dipping Alloy deductions from Tech Part production
                         let tProd = Math.floor(stats.techProd * eff * stats.omniProd);
-                        let alNeed = Math.floor(stats.consume['REFINED_ALLOY'] * eff);
-                        if ((colony.storage['REFINED_ALLOY'] || 0) >= alNeed) {
-                            colony.storage['REFINED_ALLOY'] -= alNeed;
-                        } else {
-                            tProd = Math.floor(tProd / 2);
-                            colony.storage['REFINED_ALLOY'] = 0;
-                        }
                         if (currentStorage + tProd > stats.storageCap) tProd = Math.max(0, stats.storageCap - currentStorage);
                         colony.storage['TECH_PARTS'] = (colony.storage['TECH_PARTS'] || 0) + tProd;
                         currentStorage += tProd;
