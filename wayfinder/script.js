@@ -3007,7 +3007,13 @@ GameBus.on('TICK_PROCESSED', (tick) => {
         const enemyAtLoc = activeEnemies.find(e => e.x === playerX && e.y === playerY);
         if (enemyAtLoc) {
             if (typeof triggerHaptic === 'function') triggerHaptic(200);
-            if (typeof removeEnemyAt === 'function') removeEnemyAt(playerX, playerY);
+            
+            // Do NOT delete Probes immediately! 
+            // Exploration.js will handle removing them only if you actually have cargo space.
+            if (!enemyAtLoc.isProbe && typeof removeEnemyAt === 'function') {
+                removeEnemyAt(playerX, playerY);
+            }
+            
             if (enemyAtLoc.isLegendary || enemyAtLoc.isProbe || (enemyAtLoc.shipClassKey && (enemyAtLoc.shipClassKey.includes('CONCORD') || enemyAtLoc.shipClassKey.includes('KTHARR')))) {
                 if (typeof startCombat === 'function') startCombat(enemyAtLoc);
             } else {
@@ -4138,7 +4144,7 @@ function activateDistressBeacon() {
 function executeRescueSequence() {
     isAwaitingRescue = false;
     
-    // 👇 BUG FIX: Do NOT teleport the player! The Fuel Rat comes to you in deep space.
+    // Do NOT teleport the player! The Fuel Rat comes to you in deep space.
     // playerX = rescueTargetStation.x;
     // playerY = rescueTargetStation.y;
 
