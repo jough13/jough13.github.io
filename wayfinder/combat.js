@@ -226,9 +226,10 @@ function handleVictory() {
 
     // 4. Build the Combat Log Message
     let msg = `Victory! Enemy destroyed.\nSalvaged: ${credits}c\nExperience: +${xp}`;
-    if (boardingMsg) msg += boardingMsg;
-    if (skirmishMsg) msg += skirmishMsg;
+    if (boardingMsg) msg += boardingMsg; 
+    if (skirmishMsg) msg += skirmishMsg; 
 
+    // 👇 BUG FIX: Moved Warlord check DOWN here so 'msg' is already initialized!
     if (currentCombatContext.ship && currentCombatContext.ship.isBoss && currentCombatContext.ship.name.includes("Warlord")) {
         if (typeof playerFactionStanding !== 'undefined') {
             playerFactionStanding['KTHARR'] = (playerFactionStanding['KTHARR'] || 0) + 50;
@@ -506,10 +507,14 @@ function handleCombatAction(action) {
         }
 
     } else if (action === 'hail') {
-        // 👇 BUG FIX: Warlords and Bosses cannot be reasoned with!
+        // Warlords and Bosses cannot be reasoned with!
         if (currentCombatContext.ship.isBoss || currentCombatContext.isLegendary) {
             combatLog += "<span style='color:var(--danger)'>[ COMM REJECTED ] They have no interest in your words. Only your death.</span>";
             enemyCanAct = true;
+            
+            // 👇 BUG FIX: Print the log and play the sound before returning!
+            logMessage(combatLog);
+            if (typeof soundManager !== 'undefined') soundManager.playError();
             return;
         }
         // --- DIPLOMACY & BRIBERY LOGIC ---
@@ -584,9 +589,13 @@ function handleCombatAction(action) {
         }
         
     } else if (action === 'run') {
-        // 👇 BUG FIX: Escaping the Rite of Combat is forbidden!
+        // Escaping the Rite of Combat is forbidden!
         if (currentCombatContext.ship.isBoss && currentCombatContext.ship.name.includes("Warlord")) {
             combatLog += "<span style='color:var(--danger)'>[ ESCAPE FAILED ] The Warlord's tractor beams have locked you into the arena! There is no retreat!</span>";
+            
+            // 👇 BUG FIX: Print the log and play the sound before returning!
+            logMessage(combatLog);
+            if (typeof soundManager !== 'undefined') soundManager.playError();
             return;
         }
         
