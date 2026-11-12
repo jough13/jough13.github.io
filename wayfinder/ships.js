@@ -249,10 +249,14 @@ const SHIP_CLASSES = {
            cooldown: 5,
            execute: (combatCtx, playerStats) => {
                 const dmg = 60;
-                const selfDmg = 15;
+                
+                // Prevent the player from committing suicide with their own ability
+                // You can only take up to (Hull - 1) damage. It will always leave you with 1 HP.
+                const actualSelfDmg = Math.min(15, playerStats.hull - 1);
+                
                 combatCtx.pirateHull -= dmg;
-                playerStats.hull -= selfDmg;
-                return `RAMMING SPEED! Dealt ${dmg} damage to enemy, took ${selfDmg} structural damage!`;
+                playerStats.hull -= actualSelfDmg;
+                return `RAMMING SPEED! Dealt ${dmg} damage to enemy, took ${actualSelfDmg} structural damage!`;
            }
        }
    }
