@@ -211,14 +211,6 @@ function handleVictory() {
     playerXP += xp;
     if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(5);
 
-    // 👇 BUG FIX: Award massive K'tharr rep for surviving the Rite of Combat!
-    if (currentCombatContext.ship && currentCombatContext.ship.isBoss && currentCombatContext.ship.name.includes("Warlord")) {
-        if (typeof playerFactionStanding !== 'undefined') {
-            playerFactionStanding['KTHARR'] = (playerFactionStanding['KTHARR'] || 0) + 50;
-            msg += `\n<span style='color:var(--success); font-weight:bold;'>[ RITE OF COMBAT WON ]</span> You have slain the Warlord! The Hegemony respects your brutal strength. (+50 K'tharr Rep)`;
-        }
-    }
-
     // 3. Trigger Visual & Audio FX
     if (typeof spawnParticles === 'function') spawnParticles(playerX, playerY, 'explosion');
     if (typeof soundManager !== 'undefined') soundManager.playExplosion();
@@ -229,7 +221,7 @@ function handleVictory() {
     if (boardingMsg) msg += boardingMsg; 
     if (skirmishMsg) msg += skirmishMsg; 
 
-    // 👇 BUG FIX: Moved Warlord check DOWN here so 'msg' is already initialized!
+    // 👇 BUG FIX: Warlord check safely evaluates AFTER 'msg' is initialized!
     if (currentCombatContext.ship && currentCombatContext.ship.isBoss && currentCombatContext.ship.name.includes("Warlord")) {
         if (typeof playerFactionStanding !== 'undefined') {
             playerFactionStanding['KTHARR'] = (playerFactionStanding['KTHARR'] || 0) + 50;
@@ -255,12 +247,12 @@ function handleVictory() {
             
             const loot = lootTable[Math.floor(Math.random() * lootTable.length)];
             const qty = loot.qty[0] + Math.floor(Math.random() * (loot.qty[1] - loot.qty[0] + 1));
-            const spaceLeft = PLAYER_CARGO_CAPACITY - currentCargoLoad;
+            const spaceLeft = PLAYER_CARGO_CAPACITY - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
             
             if (spaceLeft > 0) {
                 const actualQty = Math.min(qty, spaceLeft);
                 playerCargo[loot.id] = (playerCargo[loot.id] || 0) + actualQty;
-                updateCurrentCargoLoad();
+                if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
                 msg += `\n<span style="color:var(--accent-color);">[ TRACTOR BEAM ]</span> Recovered: ${actualQty}x ${COMMODITIES[loot.id].name}`;
                 if (actualQty < qty) msg += " (Hold full, left remainder)";
             } else {
@@ -283,25 +275,25 @@ function handleVictory() {
             msg += `\n<span style='color:var(--success); font-weight:bold;'>Bounty Progress: ${progress.current}/${progress.required}</span>`;
             if (progress.current >= progress.required) {
                 progress.complete = true;
-                checkMissionObjectiveCompletion(); 
+                if (typeof checkMissionObjectiveCompletion === 'function') checkMissionObjectiveCompletion(); 
             }
-            renderMissionTracker();
+            if (typeof renderMissionTracker === 'function') renderMissionTracker();
         }
     }
 
     // 7. Finalize and Clean Up
     logMessage(msg);
-    showToast("TARGET DESTROYED", "success");
+    if (typeof showToast === 'function') showToast("TARGET DESTROYED", "success");
     
-    const leveledUp = checkLevelUp(); // Capture the boolean!
+    const leveledUp = typeof checkLevelUp === 'function' ? checkLevelUp() : false; 
 
     // 8. Exit Combat State
     currentCombatContext = null;
     
     // ONLY return to the map if the level up screen didn't hijack the view!
     if (!leveledUp) {
-        changeGameState(GAME_STATES.GALACTIC_MAP);
-        handleInteraction();
+        if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
+        if (typeof handleInteraction === 'function') handleInteraction();
     }
 
     // Stumble Protection
