@@ -74,13 +74,17 @@ function startCombat(specificEnemyEntity = null) {
          let prefix = enemyPrefixes[Math.floor(Math.random() * enemyPrefixes.length)];
          
          // Apply the mutations
-         enemyShipClone.name = `${prefix.name} ${enemyShipClone.name}`;
-         enemyShipClone.baseHull = Math.floor(enemyShipClone.baseHull * prefix.hullMult);
-         enemyShipClone.baseShields = Math.floor(enemyShipClone.baseShields * prefix.shieldMult);
-         difficultyMultiplier += prefix.diffMod;
-     }
+            enemyShipClone.baseHull = Math.floor(enemyShipClone.baseHull * prefix.hullMult);
+            enemyShipClone.baseShields = Math.floor(enemyShipClone.baseShields * prefix.shieldMult);
+            difficultyMultiplier += prefix.diffMod;
+        }
 
-     const baseHull = enemyShipClone.baseHull + Math.floor(Math.random() * 10) - 5;
+        // 👇 BUG FIX: Preserve custom names for bosses/bounties!
+        if (specificEnemyEntity && specificEnemyEntity.name) {
+            enemyShipClone.name = specificEnemyEntity.name;
+        }
+
+ const baseHull = enemyShipClone.baseHull + Math.floor(Math.random() * 10) - 5;
      const baseShields = enemyShipClone.baseShields + Math.floor(Math.random() * 10) - 5;
 
      const scaledHull = Math.floor(baseHull * difficultyMultiplier);
@@ -207,6 +211,14 @@ function handleVictory() {
     playerXP += xp;
     if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(5);
 
+    // 👇 BUG FIX: Award massive K'tharr rep for surviving the Rite of Combat!
+    if (currentCombatContext.ship && currentCombatContext.ship.isBoss && currentCombatContext.ship.name.includes("Warlord")) {
+        if (typeof playerFactionStanding !== 'undefined') {
+            playerFactionStanding['KTHARR'] = (playerFactionStanding['KTHARR'] || 0) + 50;
+            msg += `\n<span style='color:var(--success); font-weight:bold;'>[ RITE OF COMBAT WON ]</span> You have slain the Warlord! The Hegemony respects your brutal strength. (+50 K'tharr Rep)`;
+        }
+    }
+
     // 3. Trigger Visual & Audio FX
     if (typeof spawnParticles === 'function') spawnParticles(playerX, playerY, 'explosion');
     if (typeof soundManager !== 'undefined') soundManager.playExplosion();
@@ -214,8 +226,15 @@ function handleVictory() {
 
     // 4. Build the Combat Log Message
     let msg = `Victory! Enemy destroyed.\nSalvaged: ${credits}c\nExperience: +${xp}`;
-    if (boardingMsg) msg += boardingMsg; // Attach the boarding bonus text!
-    if (skirmishMsg) msg += skirmishMsg; // Attach the shiny skirmish bonus text!
+    if (boardingMsg) msg += boardingMsg;
+    if (skirmishMsg) msg += skirmishMsg;
+
+    if (currentCombatContext.ship && currentCombatContext.ship.isBoss && currentCombatContext.ship.name.includes("Warlord")) {
+        if (typeof playerFactionStanding !== 'undefined') {
+            playerFactionStanding['KTHARR'] = (playerFactionStanding['KTHARR'] || 0) + 50;
+            msg += `\n<span style='color:var(--success); font-weight:bold;'>[ RITE OF COMBAT WON ]</span> You have slain the Warlord! The Hegemony respects your brutal strength. (+50 K'tharr Rep)`;
+        }
+    }
 
     // --- 5. TRACTOR BEAM LOOT RECOVERY ---
     // The player only gets physical cargo if they have the equipment to tractor it in!
@@ -487,6 +506,12 @@ function handleCombatAction(action) {
         }
 
     } else if (action === 'hail') {
+        // 👇 BUG FIX: Warlords and Bosses cannot be reasoned with!
+        if (currentCombatContext.ship.isBoss || currentCombatContext.isLegendary) {
+            combatLog += "<span style='color:var(--danger)'>[ COMM REJECTED ] They have no interest in your words. Only your death.</span>";
+            enemyCanAct = true;
+            return;
+        }
         // --- DIPLOMACY & BRIBERY LOGIC ---
         let faction = "PIRATE";
         const shipId = currentCombatContext.ship && currentCombatContext.ship.id ? currentCombatContext.ship.id : "PIRATE";
@@ -559,6 +584,12 @@ function handleCombatAction(action) {
         }
         
     } else if (action === 'run') {
+        // 👇 BUG FIX: Escaping the Rite of Combat is forbidden!
+        if (currentCombatContext.ship.isBoss && currentCombatContext.ship.name.includes("Warlord")) {
+            combatLog += "<span style='color:var(--danger)'>[ ESCAPE FAILED ] The Warlord's tractor beams have locked you into the arena! There is no retreat!</span>";
+            return;
+        }
+        
         const cost = typeof RUN_FUEL_COST !== 'undefined' ? RUN_FUEL_COST : 30;
         
         // 🚨 TACTICAL FIX: Dynamic Escape Math!
