@@ -1225,7 +1225,7 @@ function updateWorldState(x, y, changes, exactKey = null) {
          rewards_template: {
              credits: [250, 500],
              xp: [40, 75],
-             notoriety: [3, 6]
+             notoriety: [-3, -1] // 👇 BUG FIX: Legal bounties now REDUCE your heat!
          },
          prerequisites: {
              minLevel: 1
