@@ -6571,47 +6571,6 @@ function skipIntroVideo() {
     }
 }
 
-function generateBountyTargets() {
-    currentStationBounties = [];
-    const numBounties = Math.floor(Math.random() * 3) + 2; // 2 to 4 bounties per station
-    
-    const firstNames = ["'Mad Dog'", "Viper", "'Iron'", "Jax", "Silas", "Kaelen", "'Ghost'", "Rook", "Vane", "Kira"];
-    const lastNames = ["Vance", "Karn", "Trex", "the Butcher", "Valerius", "Thorne", "Graves", "Black", "Kryik"];
-    const crimeList = ["Smuggling", "Piracy", "Assassination", "Data Theft", "Illegal Cybernetics", "Shipjacking"];
-    
-    for (let i = 0; i < numBounties; i++) {
-        // Pick a random direction and distance to spawn the target
-        const angle = Math.random() * Math.PI * 2;
-        const distance = Math.floor(Math.random() * 15) + 5; // 5 to 20 tiles away
-        
-        const targetX = Math.floor(playerX + Math.cos(angle) * distance);
-        const targetY = Math.floor(playerY + Math.sin(angle) * distance);
-        
-        // Scale difficulty with player level
-        let difficultyLevel = playerLevel;
-        if (Math.random() > 0.7) difficultyLevel += 2; 
-        
-        // --- DYNAMIC ECONOMY MATH ---
-        const baseReward = (difficultyLevel * 1500) + Math.floor(Math.random() * 500);
-        const distanceBonus = distance * 50; // +50c per tile of travel distance
-        const totalReward = baseReward + distanceBonus;
-        
-        currentStationBounties.push({
-            id: `BOUNTY_${Date.now()}_${Math.floor(Math.random() * 100000)}_${i}`,
-            targetName: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
-            crime: crimeList[Math.floor(Math.random() * crimeList.length)],
-            x: targetX,
-            y: targetY,
-            difficulty: difficultyLevel,
-            reward: totalReward, 
-            faction: "ECLIPSE", 
-            
-            // 👇 BUG FIX: Replaced "SCOUT" with valid "RAIDER" class
-            shipClass: difficultyLevel > 5 ? "STRIKER" : "RAIDER" 
-        });
-    }
-}
-
 // --- AMBIENT MAP ANIMATION ---
 // Gives the galactic map a heartbeat so stars twinkle naturally without player movement
 setInterval(() => {
