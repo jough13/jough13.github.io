@@ -1212,7 +1212,7 @@ function updateWorldState(x, y, changes, exactKey = null) {
  const MISSION_TEMPLATES = [{
          id_prefix: "BOUNTY_PIRATE_",
          type: "BOUNTY",
-         weight: 4, // <-- ADD THIS
+         weight: 4,
          title_template: "Pirate Cull in {sectorName}",
          briefing_template: "Concord Security is offering a bounty for pirate vessels in the {sectorName} sector.",
          description_template: "Increased pirate activity in the {sectorName} ({sectorCoords}) sector is disrupting trade. Eliminate {count} pirate threats to secure the area and claim your reward.",
@@ -1225,7 +1225,7 @@ function updateWorldState(x, y, changes, exactKey = null) {
          rewards_template: {
              credits: [250, 500],
              xp: [40, 75],
-             notoriety: [-3, -1] // 👇 BUG FIX: Legal bounties now REDUCE your heat!
+             notoriety: [-3, -1]
          },
          prerequisites: {
              minLevel: 1
@@ -1369,9 +1369,16 @@ function landOnPlanet(index) {
      changeGameState(GAME_STATES.PLANET_VIEW);
  }
 
- function returnToOrbit() {
+function returnToOrbit() {
      logMessage("Leaving planetary surface. Returning to orbit.");
-     changeGameState(GAME_STATES.SYSTEM_MAP);
+     
+     // If it's a standalone rogue planet, return to deep space!
+     if (currentSystemData && currentSystemData.name.includes("Rogue Planet")) {
+         changeGameState(GAME_STATES.GALACTIC_MAP);
+         handleInteraction();
+     } else {
+         changeGameState(GAME_STATES.SYSTEM_MAP);
+     }
  }
 
  function calculateXpToNextLevel(level) {
