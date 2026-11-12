@@ -404,8 +404,11 @@ function renderComponentComparison(compId, slot, isEquipped = false, isOwned = f
 
     const mfg = selectedComp.manufacturer || "Standard";
     
-    // Trade-in Math
-    const tradeInValue = isEquipped ? 0 : Math.floor((currentComp.cost || 0) * 0.5);
+    // Cap trade-in at 0 if the item is a Legendary Boss Drop (Cost >= 999999)
+    const tradeInValue = (isEquipped || (currentComp.cost && currentComp.cost >= 999999)) 
+        ? 0 
+        : Math.floor((currentComp.cost || 0) * 0.5);
+        
     const netCost = (isEquipped || isOwned) ? 0 : (selectedComp.cost || 0) - tradeInValue;
 
     // --- DYNAMIC STAT COMPARISON BUILDER ---
@@ -516,7 +519,7 @@ function confirmBuyComponent(compId, isOwned = false) {
     const tradeInValue = currentComp ? Math.floor(currentComp.cost * 0.5) : 0;
     const netCost = isOwned ? 0 : newComp.cost - tradeInValue;
 
-    // 👇 BUG FIX: Simulate new cargo capacity to prevent over-encumbrance exploit!
+    // Simulate new cargo capacity to prevent over-encumbrance exploit!
     const oldCargoBonus = (currentComp && currentComp.stats && currentComp.stats.cargoBonus) ? currentComp.stats.cargoBonus : 0;
     const newCargoBonus = (newComp && newComp.stats && newComp.stats.cargoBonus) ? newComp.stats.cargoBonus : 0;
     const simulatedCapacity = PLAYER_CARGO_CAPACITY - oldCargoBonus + newCargoBonus;
