@@ -516,7 +516,8 @@ function confirmBuyComponent(compId, isOwned = false) {
     const currentCompId = playerShip.components[newComp.slot];
     const currentComp = COMPONENTS_DATABASE[currentCompId];
     
-    const tradeInValue = currentComp ? Math.floor(currentComp.cost * 0.5) : 0;
+    // 👇 BUG FIX: Prevent half-million credit exploits
+    const tradeInValue = (currentComp && currentComp.cost < 999999) ? Math.floor(currentComp.cost * 0.5) : 0;
     const netCost = isOwned ? 0 : newComp.cost - tradeInValue;
 
     // Simulate new cargo capacity to prevent over-encumbrance exploit!
@@ -538,13 +539,14 @@ function confirmBuyComponent(compId, isOwned = false) {
     if (!isOwned) {
         playerCredits -= netCost;
     } else {
-        // Remove the new component from cargo
         playerCargo[compId]--;
         if (playerCargo[compId] <= 0) delete playerCargo[compId];
         
-        // Pack the old component into cargo (if it's not a free Mk1)
-        if (currentComp && currentComp.cost > 0) {
+        // Allow Unknown/Crafted prototypes to be stowed, but DESTROY 999999 boss drops!
+        if (currentComp && currentComp.cost < 999999 && (currentComp.cost > 0 || currentComp.manufacturer === 'UNKNOWN')) {
             playerCargo[currentCompId] = (playerCargo[currentCompId] || 0) + 1;
+        } else if (currentComp && currentComp.cost >= 999999) {
+            logMessage(`<span style="color:var(--danger)">[ WARNING ] Prototype weapon ${currentComp.name} could not be safely unmounted and was destroyed.</span>`);
         }
     }
     
