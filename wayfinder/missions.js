@@ -891,7 +891,7 @@ function createStationBountyTargets() {
     }
 }
 
-let generateBountyTargets = createStationBountyTargets;
+window.generateBountyTargets = createStationBountyTargets;
 
 function selectRandomDestination(currentStationName) {
     const allLocationKeys = Object.keys(LOCATIONS_DATA);
