@@ -4218,36 +4218,6 @@ function showFuelRatRescueModal() {
     `;
 }
 
-function executeFuelRatRescue(tipAmount) {
-    if (playerCredits < tipAmount) {
-        if (typeof showToast === 'function') showToast("Insufficient credits for tip!", "error");
-        return;
-    }
-    
-    playerCredits -= tipAmount;
-    playerFuel = typeof MAX_FUEL !== 'undefined' ? MAX_FUEL : 220;
-    
-    // Process the tip reputation
-    if (tipAmount > 0) {
-        const repGain = tipAmount === 500 ? 5 : 1;
-        playerFactionStanding['FUEL_RATS'] = (playerFactionStanding['FUEL_RATS'] || 0) + repGain;
-        logMessage(`<span style='color:var(--success)'>+${repGain} Fuel Rats Reputation</span>`);
-    }
-
-    // Process the VIP Perk: Free Hull Repair!
-    if ((playerFactionStanding['FUEL_RATS'] || 0) >= 5) {
-        playerHull = typeof MAX_PLAYER_HULL !== 'undefined' ? MAX_PLAYER_HULL : 100;
-        if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
-    }
-
-    if (typeof soundManager !== 'undefined') soundManager.playBuy();
-    if (typeof showToast === 'function') showToast("TANKS REFILLED", "success");
-    logMessage("<span style='color:var(--warning)'>[ RESCUE ] The Fuel Rats detach and jump away. Tanks are full.</span>");
-    
-    closeGenericModal();
-    if (typeof renderUIStats === 'function') renderUIStats();
-}
-
 function renderFuelRatActions() {
     const actionsEl = document.getElementById('genericModalActions');
     
