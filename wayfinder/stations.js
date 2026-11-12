@@ -166,7 +166,7 @@ function renderStationMenu(location, faction) {
     // Point the Outfitting button to our new UI function!
     html += createBtn('⚙️', 'Outfitting', 'Subsystems & Upgrades', "openOutfittingUI()", "border-left: 3px solid var(--accent-color);");
     
-    html += createBtn('🍸', 'Cantina', 'Rumors & Rest (10c)', "visitCantina()");
+    html += createBtn('🍸', 'Cantina', 'Rumors & Rest (15c)', "visitCantina()");
 
     // --- 3. MAJOR HUB ONLY SERVICES ---
     let cryptarchRendered = false; 
@@ -337,48 +337,6 @@ function visitCantina() {
 // ==========================================
 // --- CANTINA ACTIONS ---
 // ==========================================
-
-function buyDrink() {
-    const detailEl = document.getElementById('genericDetailContent');
-    
-    if (playerCredits >= 10) {
-        playerCredits -= 10;
-        
-        const healAmount = 15;
-        const previousHull = playerHull;
-        playerHull = Math.min(MAX_PLAYER_HULL, playerHull + healAmount);
-        const actualHeal = playerHull - previousHull;
-        
-        if (typeof soundManager !== 'undefined' && soundManager.playBuy) soundManager.playBuy();
-        if (typeof renderUIStats === 'function') renderUIStats();
-        
-        if (detailEl) {
-            detailEl.innerHTML = `
-                <div style="text-align:center; padding: 20px;">
-                    <div style="font-size:48px; margin-bottom:10px;">🍺</div>
-                    <h3 style="color:var(--success); margin: 0 0 5px 0; font-size:22px;">REFRESHED</h3>
-                    <div style="color:var(--text-color); font-weight:bold; margin-bottom:20px;">
-                        -10c | +${actualHeal} Hull Restored
-                    </div>
-                    <p style="font-size:13px; color:var(--item-desc-color); font-style:italic;">
-                        The synth-ale burns going down, but you feel ready to face the void again.
-                    </p>
-                </div>
-            `;
-        }
-    } else {
-        if (typeof showToast === 'function') showToast("INSUFFICIENT FUNDS", "error");
-        if (detailEl) {
-            detailEl.innerHTML = `
-                <div style="text-align:center; padding: 40px 20px;">
-                    <div style="font-size:40px; margin-bottom:10px;">🚫</div>
-                    <h3 style="color:var(--danger); margin-bottom:10px;">BAR TAB DECLINED</h3>
-                    <p style="color:var(--item-desc-color);">You need at least 10 credits to buy a drink here, space cowboy.</p>
-                </div>
-            `;
-        }
-    }
-}
 
 function listenToRumors() {
     const detailEl = document.getElementById('genericDetailContent');
