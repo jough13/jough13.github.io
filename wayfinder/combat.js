@@ -1566,14 +1566,19 @@ function finalizeRaid(choice) {
         
         // Steal Cartel Contraband & Vault Tech
         if (typeof playerCargo !== 'undefined') {
-            playerCargo['PROHIBITED_STIMS'] = (playerCargo['PROHIBITED_STIMS'] || 0) + Math.floor(Math.random() * 3) + 2;
-            playerCargo['STOLEN_CONCORD_MEDALS'] = (playerCargo['STOLEN_CONCORD_MEDALS'] || 0) + Math.floor(Math.random() * 5) + 1;
-            
-            const rareLoot = typeof generateProceduralModule === 'function' ? generateProceduralModule("MILITARY_SHIELD_MOD") : null;
-            if (rareLoot) {
-                if (typeof COMPONENTS_DATABASE !== 'undefined') COMPONENTS_DATABASE[rareLoot.id] = rareLoot;
-                playerCargo[rareLoot.id] = (playerCargo[rareLoot.id] || 0) + 1;
-                logMessage(`<span style="color:#FF33FF; font-weight:bold;">[ VAULT BREACHED ]</span> You recovered a prototype module: <span style="color:var(--gold-text)">${rareLoot.name}</span>!`);
+            const spaceLeft = PLAYER_CARGO_CAPACITY - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
+            if (spaceLeft >= 3) { // Rough estimate for the vault loot
+                playerCargo['PROHIBITED_STIMS'] = (playerCargo['PROHIBITED_STIMS'] || 0) + Math.floor(Math.random() * 3) + 2;
+                playerCargo['STOLEN_CONCORD_MEDALS'] = (playerCargo['STOLEN_CONCORD_MEDALS'] || 0) + Math.floor(Math.random() * 5) + 1;
+                
+                const rareLoot = typeof generateProceduralModule === 'function' ? generateProceduralModule("MILITARY_SHIELD_MOD") : null;
+                if (rareLoot) {
+                    if (typeof COMPONENTS_DATABASE !== 'undefined') COMPONENTS_DATABASE[rareLoot.id] = rareLoot;
+                    playerCargo[rareLoot.id] = (playerCargo[rareLoot.id] || 0) + 1;
+                    logMessage(`<span style="color:#FF33FF; font-weight:bold;">[ VAULT BREACHED ]</span> You recovered a prototype module: <span style="color:var(--gold-text)">${rareLoot.name}</span>!`);
+                }
+            } else {
+                logMessage(`<span style="color:var(--warning); font-weight:bold;">[ VAULT BREACHED ]</span> Cargo hold full! You had to leave the physical contraband behind!`);
             }
             if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
         }
