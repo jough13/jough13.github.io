@@ -238,7 +238,11 @@ const LOCATIONS_DATA = {
             { id: "UNSHACKLED_AI", priceMod: 1.2, stock: 3 },
             { id: "PROHIBITED_STIMS", priceMod: 0.8, stock: 20 },
             { id: "STARDUST_EXOTICA", priceMod: 0.9, stock: 10 },
-            { id: "OBSIDIAN_TEAR_PLATING", priceMod: 1.0, stock: 6 }
+            { id: "OBSIDIAN_TEAR_PLATING", priceMod: 1.0, stock: 6 },
+            
+            // Station Umbra now legally sells Cartel Troops!
+            { id: "MERCENARY_PLATOON", priceMod: 1.0, stock: 10 },
+            { id: "ASSAULT_MECH", priceMod: 1.2, stock: 2 }
         ],
         buys: [
             { id: "FUEL_CELLS", priceMod: 1.6, stock: 100 }, 
