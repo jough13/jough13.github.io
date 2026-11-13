@@ -305,11 +305,17 @@ function displayCrewRoster() {
                         "${crew.desc}"
                     </p>
                     
-                    <div class="trade-math-area" style="text-align:left; border-color: var(--success);">
-                        <div class="trade-stat-row">
-                            <span style="color:#888;">Active Perk:</span> 
-                            <span style="color:var(--success); font-weight:bold;">${crew.perk.replace(/_/g, ' ')}</span>
-                        </div>
+                    <div class="trade-math-area" style="text-align:left; border-color: ${crew.isMercenary ? 'var(--danger)' : 'var(--success)'};">
+                        ${crew.isMercenary 
+                            ? `<div class="trade-stat-row">
+                                 <span style="color:#888;">Operative Bonus:</span> 
+                                 <span style="color:var(--danger); font-weight:bold;">${crew.stats.damageBonus ? `+${crew.stats.damageBonus} Damage` : `+${(crew.stats.evasionBonus || 0) * 100}% Evasion`}</span>
+                               </div>`
+                            : `<div class="trade-stat-row">
+                                 <span style="color:#888;">Active Perk:</span> 
+                                 <span style="color:var(--success); font-weight:bold;">${crew.perk.replace(/_/g, ' ')}</span>
+                               </div>`
+                        }
                     </div>
 
                     ${crew.drawback ? `
@@ -429,6 +435,12 @@ function hireMercenary(mercId) {
     
     const merc = ECLIPSE_MERCENARIES.find(m => m.id === mercId);
     if (!merc) return;
+
+    // Prevent cloning the same mercenary into multiple slots!
+    if (playerCrew.some(c => c.id === mercId)) {
+        if (typeof showToast === 'function') showToast("OPERATIVE ALREADY HIRED", "error");
+        return;
+    }
     
     if (playerCredits < merc.cost) {
         if (typeof showToast === 'function') showToast("INSUFFICIENT FUNDS", "error");
