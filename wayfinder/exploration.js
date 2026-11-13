@@ -460,17 +460,11 @@ function renderPlanetView() {
     renderUIStats();
     // We do NOT call handleInteraction() here, because that would print the 
     // generic "You are on a planet" text over our nice mining report.
+
+    if (typeof renderPlanetView === 'function') renderPlanetView();
 }
 
-
-
-
-
-
-
-
-
- function scoopHydrogen() {
+function scoopHydrogen() {
      if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) {
          logMessage("Cannot scoop fuel now.");
          return;
@@ -771,9 +765,12 @@ function scanPlanetForLife() {
          scanMessage = "Scan complete. No viable samples could be collected.";
      }
 
-     logMessage(scanMessage);
-     renderUIStats();
- }
+    logMessage(scanMessage);
+    renderUIStats();
+
+    if (typeof renderPlanetView === 'function') renderPlanetView();
+
+}
 
 
  function performGeoSurvey() {
