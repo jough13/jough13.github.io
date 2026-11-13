@@ -7770,9 +7770,13 @@ function openPlayerOutpost(location) {
 
     // --- ACTIONS MENU ---
     let btnHtml = ``;
+    
+    // 👇 BUG FIX: Provide bulletproof fallback coordinates if missing from older saves
+    const ox = location.x ?? (typeof playerX !== 'undefined' ? playerX : 0);
+    const oy = location.y ?? (typeof playerY !== 'undefined' ? playerY : 0);
 
     if (location.treasury > 0) {
-        btnHtml += `<button class="action-button" onclick="collectOutpostTolls(${location.x}, ${location.y})" style="border-color:var(--gold-text); color:var(--gold-text); box-shadow: 0 0 15px rgba(255,215,0,0.2);">COLLECT TOLLS (${formatNumber(location.treasury)}c)</button>`;
+        btnHtml += `<button class="action-button" onclick="collectOutpostTolls(${ox}, ${oy})" style="border-color:var(--gold-text); color:var(--gold-text); box-shadow: 0 0 15px rgba(255,215,0,0.2);">COLLECT TOLLS (${formatNumber(location.treasury)}c)</button>`;
     }
 
     if (tier >= 2) {
@@ -7785,7 +7789,7 @@ function openPlayerOutpost(location) {
         const hasTech = (playerCargo['TECH_PARTS'] || 0) >= 15;
         const canUpgrade = hasAlloy && hasTech;
         
-        btnHtml += `<button class="action-button" ${!canUpgrade ? 'disabled' : ''} style="${canUpgrade ? 'border-color:var(--success); color:var(--success);' : ''}" onclick="executeOutpostUpgrade(${location.x}, ${location.y}, 2)">
+        btnHtml += `<button class="action-button" ${!canUpgrade ? 'disabled' : ''} style="${canUpgrade ? 'border-color:var(--success); color:var(--success);' : ''}" onclick="executeOutpostUpgrade(${ox}, ${oy}, 2)">
             UPGRADE TO TIER 2 (10 Refined Alloy, 15 Tech Parts)
         </button>`;
     } else if (tier === 2) {
@@ -7793,7 +7797,7 @@ function openPlayerOutpost(location) {
         const hasAlloy = (playerCargo['REFINED_ALLOY'] || 0) >= 20;
         const canUpgrade = hasLens && hasAlloy;
         
-        btnHtml += `<button class="action-button" ${!canUpgrade ? 'disabled' : ''} style="${canUpgrade ? 'border-color:var(--danger); color:var(--danger); box-shadow: 0 0 10px rgba(255,0,0,0.3);' : ''}" onclick="executeOutpostUpgrade(${location.x}, ${location.y}, 3)">
+        btnHtml += `<button class="action-button" ${!canUpgrade ? 'disabled' : ''} style="${canUpgrade ? 'border-color:var(--danger); color:var(--danger); box-shadow: 0 0 10px rgba(255,0,0,0.3);' : ''}" onclick="executeOutpostUpgrade(${ox}, ${oy}, 3)">
             UPGRADE DEFENSES (2 Quantum Lens, 20 Refined Alloy)
         </button>`;
     } else {
