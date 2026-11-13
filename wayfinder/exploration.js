@@ -60,8 +60,10 @@ function openPlanetView(location) {
                 </div>
             </div>
             
-            <div id="genericModalDetails" style="width: 340px; display: flex; flex-direction: column; overflow: hidden; padding-left: 5px; padding-right: 15px;">
-                <div id="genericDetailContent" style="flex: 1; overflow-y: auto; padding-right: 10px;">
+            <div id="genericModalDetails" style="width: 340px; display: flex; flex-direction: column; overflow-y: auto; padding-left: 5px; padding-right: 10px;">
+                
+                <!-- 👇 BUG FIX: Removed internal scroll so the text and buttons scroll together -->
+                <div id="genericDetailContent" style="flex-shrink: 0;">
                     <div style="text-align:center; padding: 10px 0 20px 0;">
                         <div style="font-size:50px; margin-bottom:15px; filter: drop-shadow(0 0 15px ${bannerColor}); opacity:0.9;">🪐</div>
                         <h3 style="color:${bannerColor}; margin-top:0; margin-bottom:10px;">ORBITAL APPROACH</h3>
@@ -71,8 +73,9 @@ function openPlanetView(location) {
                     </div>
                 </div>
                 
-                <div class="trade-btn-group" id="genericModalActions" style="margin-top: 15px; flex-shrink: 0; padding-bottom: 5px;">
+                <div class="trade-btn-group" id="genericModalActions" style="margin-top: auto; flex-shrink: 0; padding-bottom: 15px;">
                 </div>
+                
             </div>
         </div>
     `;
@@ -191,11 +194,11 @@ function renderPlanetView() {
     const bioResources = planet.biome.resources.filter(r => BIOLOGICAL_RESOURCES.has(r));
     const mineralResources = planet.biome.resources.filter(r => !BIOLOGICAL_RESOURCES.has(r));
 
-    const canMine = planet.biome.landable && mineralResources.length > 0;
+    // Check !planet.minedThisVisit so the button actually disables!
+    const canMine = planet.biome.landable && mineralResources.length > 0 && !planet.minedThisVisit;
     const mineButtonState = canMine ? '' : 'disabled';
-    const mineLabel = canMine ? 'Mine Minerals' : 'No Minerals Detected';
+    const mineLabel = planet.minedThisVisit ? 'Minerals Depleted' : (canMine ? 'Mine Minerals' : 'No Minerals Detected');
 
-    // [FIX]: Added check for scannedThisVisit to disable the button
     const canScan = planet.biome.landable && bioResources.length > 0 && !planet.scannedThisVisit;
     const scanButtonState = canScan ? '' : 'disabled';
     const scanLabel = planet.scannedThisVisit ? 'Bio-Scan Complete' : (canScan ? 'Scan Lifeforms' : 'No Bio-Signs');
@@ -2348,8 +2351,10 @@ function openDerelictView() {
                 </div>
             </div>
             
-            <div id="genericModalDetails" style="width: 340px; display: flex; flex-direction: column; overflow: hidden; padding-left: 5px; padding-right: 15px;">
-                <div id="genericDetailContent" style="flex: 1; overflow-y: auto; padding-right: 10px;">
+            <div id="genericModalDetails" style="width: 340px; display: flex; flex-direction: column; overflow-y: auto; padding-left: 5px; padding-right: 10px;">
+                
+                <!-- 👇 BUG FIX: Removed 'overflow-y: auto' and 'flex: 1' so it combines with the buttons into one scrollable column -->
+                <div id="genericDetailContent" style="flex-shrink: 0;">
                     <div style="text-align:center; padding: 20px 0;">
                         <div style="font-size:50px; margin-bottom:15px; filter: drop-shadow(0 0 15px ${eerieColor}); opacity:0.8;">👻</div>
                         <h3 style="color:${eerieColor}; margin-top:0; margin-bottom:10px; letter-spacing: 2px;">DEAD IN THE WATER</h3>
@@ -2359,8 +2364,10 @@ function openDerelictView() {
                         <div id="derelictInfoBar" style="margin-top:15px; font-weight:bold; font-size:12px;"></div>
                     </div>
                 </div>
-                <div class="trade-btn-group" id="genericModalActions" style="margin-top: 15px; flex-shrink: 0; padding-bottom: 5px;">
-                    </div>
+                
+                <div class="trade-btn-group" id="genericModalActions" style="margin-top: auto; flex-shrink: 0; padding-bottom: 15px;">
+                </div>
+                
             </div>
         </div>
     `;
