@@ -5421,8 +5421,7 @@ function performSave(saveType) {
                 const key = keys[i];
                 const delta = worldStateDeltas[key];
                 
-                // Never delete critical flags (Colonies, Puzzles, Wormholes)
-                if (key === 'CRAFTING_BONUSES' || delta.activated || delta.isUnique || delta.hasColony || delta.isDiscoveredWormhole) continue;
+                if (key === 'CRAFTING_BONUSES' || delta.activated || delta.isUnique || delta.hasColony || delta.isDiscoveredWormhole || delta.isPlayerOwned || delta.cleared) continue;
                 
                 delete worldStateDeltas[key];
                 purged++;
