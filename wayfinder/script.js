@@ -1855,20 +1855,19 @@ function checkCodexCompletion(categoryToCheck, isSilent = false) {
         ammo: {},
         cargo: {},
         cargoLoad: 0,
-        // 🚨 Re-injected the forces object so it doesn't get deleted on New Game!
         forces: {
             marines: 0,         
             heavyMechs: 0,      
             dropDropships: 0,   
-            maxTroops: 10       
+            maxTroops: 20 
         }
     };
 
-    // --- THE FIX: INITIALIZE CARGO PROXY AFTER SHIP ---
+    // --- INITIALIZE CARGO PROXY AFTER SHIP ---
     // Now that GameState.ship is fresh, we can safely bind the proxy to it
     playerCargo = {};
     
-    // [FIX]: The inventory system automatically creates keys when items are acquired. 
+    // The inventory system automatically creates keys when items are acquired. 
     // Pre-populating it with 0s just bloats the save file and spams the proxy!
 
     // Initialize Ammo if applicable
