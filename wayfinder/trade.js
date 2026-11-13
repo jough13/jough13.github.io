@@ -501,7 +501,20 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
     if (isBuy) {
         const itemWeight = item.weight !== undefined ? item.weight : 1;
         const affordable = Math.floor(playerCredits / price);
-        const space = itemWeight > 0 ? Math.floor((PLAYER_CARGO_CAPACITY - currentCargoLoad) / itemWeight) : 999;
+        
+        let space = 999;
+        // 👇 BUG FIX: Handle Troop limits BEFORE completing the transaction!
+        if (item.isTroop && typeof playerShip !== 'undefined' && playerShip.forces) {
+            const maxTroops = playerShip.forces.maxTroops || 20;
+            if (item.isVehicle) {
+                space = Math.max(0, maxTroops - (playerShip.forces.heavyMechs || 0));
+            } else {
+                // Number of platoons you can buy based on marine capacity
+                space = Math.max(0, Math.floor((maxTroops - (playerShip.forces.marines || 0)) / (item.troopCount || 10)));
+            }
+        } else if (itemWeight > 0) {
+            space = Math.floor((PLAYER_CARGO_CAPACITY - currentCargoLoad) / itemWeight);
+        }
 
         if (qtyToTrade === 'max') {
             qtyToTrade = Math.min(affordable, space, availableStock);
@@ -517,7 +530,7 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
             } else if (playerCredits < price) {
                 if (typeof showToast === 'function') showToast("Insufficient Credits!", "error");
             } else {
-                if (typeof showToast === 'function') showToast("Cargo Hold Full!", "warning");
+                if (typeof showToast === 'function') showToast(item.isTroop ? "Barracks Full!" : "Cargo Hold Full!", "warning");
             }
             if (typeof soundManager !== 'undefined') soundManager.playError();
             return;
