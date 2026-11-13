@@ -7279,6 +7279,22 @@ function showCraftingDetails(tab, idx, canCraft) {
 function executeCrafting(tab, idx) {
     const rec = CRAFTING_RECIPES[tab][idx];
     
+    // Calculate NET weight change to prevent crafting beyond capacity!
+    if (rec.type === "item") {
+        let weightRemoved = 0;
+        for (const req in rec.req) {
+            const w = COMMODITIES[req].weight !== undefined ? COMMODITIES[req].weight : 1;
+            weightRemoved += (rec.req[req] * w);
+        }
+        const weightAdded = (COMMODITIES[rec.id].weight !== undefined ? COMMODITIES[rec.id].weight : 1) * rec.yield;
+        
+        const spaceLeft = PLAYER_CARGO_CAPACITY - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
+        if (spaceLeft + weightRemoved < weightAdded) {
+            if (typeof showToast === 'function') showToast("CARGO HOLD FULL", "error");
+            return;
+        }
+    }
+    
     // 1. Deduct ingredients
     for (const req in rec.req) {
         playerCargo[req] -= rec.req[req];
