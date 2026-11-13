@@ -622,13 +622,11 @@
     <script src="crew.js"></script>
     <script src="colonies.js"></script>
     <script src="stations.js"></script>
-
-    <!-- BACKGROUND SIMULATIONS -->
-    <script src="mechanics.js"></script>
-
-    <script src="audio.js"></script>
-    <!-- MAIN ENGINE LAST -->
+    
+    <!-- Load Core Engine BEFORE background mechanics so coordinates sync first! -->
     <script src="script.js"></script>
+    <script src="mechanics.js"></script>
+    <script src="audio.js"></script>
 
     <div id="damageFlash" class="damage-flash"></div>
     
