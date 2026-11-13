@@ -758,8 +758,16 @@ function getShadowBrokerUnitPrice(itemId) {
     if (!item) return 0;
     const loc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
     const soldLocally = loc && loc.sells && loc.sells.some(s => (s.id === itemId) || (s === itemId));
-    // Pay 3x galactic base for smuggled goods brought from off-station, or 1.25x if sold in the local shop
-    return soldLocally ? Math.floor(item.basePrice * 1.25) : Math.floor(item.basePrice * 3);
+    
+    // Prevent Same-Station Black Market Arbitrage
+    // If the station sells it, the broker knows you just bought it locally and will rip you off.
+    // Otherwise, they pay a massive 3x premium for imported, high-risk contraband!
+    if (soldLocally) {
+        const localSellPrice = calculateItemPrice(item, false, loc);
+        return Math.floor(Math.min(item.basePrice * 0.75, localSellPrice * 0.8));
+    }
+    
+    return Math.floor(item.basePrice * 3);
 }
 
 function renderShadowBrokerList() {
