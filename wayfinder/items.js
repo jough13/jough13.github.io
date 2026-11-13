@@ -493,10 +493,9 @@ const COMMODITIES = {
         description: "A mysterious, polyhedral data-matrix glowing with a faint purple light. Cryptarchs pay handsomely to decrypt the tech inside.",
         loreKey: "COMMODITY_ENCRYPTED_ENGRAM",
         onUse: () => {
-            if (typeof visitCryptarch === 'function') {
-                visitCryptarch();
-                return false;
-            }
+            // 👇 BUG FIX: Prevent Telepathic Cryptarch Access!
+            if (typeof showToast === 'function') showToast("Field Decryption Requires Cyber Slicer or Cipher", "error");
+            if (typeof soundManager !== 'undefined') soundManager.playError();
             return false;
         }
     },
@@ -505,10 +504,8 @@ const COMMODITIES = {
         basePrice: 500,
         description: "A locked memory core from the Old Empire. Requires a Cryptarch or a Cipher to decipher.",
         onUse: () => {
-            if (typeof visitCryptarch === 'function') {
-                visitCryptarch();
-                return false;
-            }
+            if (typeof showToast === 'function') showToast("Field Decryption Requires Cyber Slicer or Cipher", "error");
+            if (typeof soundManager !== 'undefined') soundManager.playError();
             return false;
         }
     },
@@ -518,10 +515,8 @@ const COMMODITIES = {
         description: "A high-density holographic array. Contains forbidden history, advanced schematics, and lost truths.",
         loreKey: "XENO_PRECURSORS",
         onUse: () => {
-            if (typeof visitCryptarch === 'function') {
-                visitCryptarch();
-                return false;
-            }
+            if (typeof showToast === 'function') showToast("Field Decryption Requires Cyber Slicer or Cipher", "error");
+            if (typeof soundManager !== 'undefined') soundManager.playError();
             return false;
         }
     },
