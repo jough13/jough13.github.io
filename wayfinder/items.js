@@ -296,7 +296,7 @@ const COMMODITIES = {
             if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
             if (typeof render === 'function') render();
             
-            // 👇 BUG FIX: Close the Cargo UI and trigger interaction immediately
+            // Close the Cargo UI and trigger interaction immediately
             if (typeof closeGenericModal === 'function') closeGenericModal();
             if (typeof handleInteraction === 'function') handleInteraction();
             return true;
@@ -539,7 +539,8 @@ const COMMODITIES = {
         name: "Mercenary Platoon",
         basePrice: 5000,
         isTroop: true,
-        troopCount: 10, // Buying 1 unit grants 10 marines
+        weight: 0, // 👇 BUG FIX: Troops do not occupy standard cargo holds!
+        troopCount: 10, 
         description: "A squad of hardened, disposable freelancers equipped with standard plasma rifles. Ready for immediate deployment."
     },
     ASSAULT_MECH: {
@@ -547,6 +548,7 @@ const COMMODITIES = {
         basePrice: 15000,
         isTroop: true,
         isVehicle: true,
+        weight: 0, // 👇 BUG FIX: Mechs deploy to the vehicle bay, not the cargo bay!
         description: "A massive, bipedal walking tank. Provides heavy covering fire and drastically reduces marine casualties during ground raids."
     }
 };
