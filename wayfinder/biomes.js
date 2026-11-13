@@ -434,6 +434,9 @@ window.PLANET_BIOMES = PLANET_BIOMES;
                     if (typeof GameBus !== 'undefined') {
                         GameBus.emit('HULL_DAMAGED', { amount: haz.damage, reason: `Planetary Hazard (${biome.name})` });
                     }
+                    
+                    // Stop execution if the hazard killed the player! 
+                    if (typeof playerHull !== 'undefined' && playerHull <= 0) return;
                 }
             }
 
@@ -547,6 +550,9 @@ window.PLANET_BIOMES = PLANET_BIOMES;
                 if (typeof GameBus !== 'undefined') {
                     GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Machine World Black-ICE Feedback" });
                 }
+                
+                // Stop execution if the firewall feedback killed the player! 
+                if (typeof playerHull !== 'undefined' && playerHull <= 0) return;
             }
 
             if (typeof renderPlanetView === 'function') renderPlanetView();
