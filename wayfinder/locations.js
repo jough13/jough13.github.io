@@ -129,36 +129,10 @@ const LOCATIONS_DATA = {
         name: "Obsidian Obelisk",
         coords: { x: -20, y: 35 },
         type: 'location',
-        char: 'I',
+        char: 'I', // Used as the key in TILE_INTERACTIONS
+        displayChar: 'Ψ',
         customColor: "#9933FF",
-        onInteract: function(tileObj) {
-            if (tileObj && tileObj.studied) {
-                logMessage("The obelisk is dark and silent. Its energy is spent.", "color:var(--item-desc-color)");
-                if (typeof renderContextualActions === 'function') {
-                    renderContextualActions([
-                        { label: 'Inspect Runes', key: 'e', onclick: () => logMessage("Cold geometric trenches run deep into the stone. Whatever intelligence dwelled within has departed.") }
-                    ]);
-                }
-                return;
-            }
-             
-            logMessage("<span style='color:#9933FF'>The obelisk hums. You feel strange...</span>");
-            if (typeof unlockLoreEntry === 'function') unlockLoreEntry("XENO_PRECURSORS");
-            GameBus.emit('HULL_REPAIRED', 50);
-            GameBus.emit('XP_GAINED', 100);
-             
-            // Mark as used so it can't be exploited
-            if (typeof updateWorldState === 'function') {
-                updateWorldState(playerX, playerY, { studied: true, lastInteraction: typeof currentGameDate !== 'undefined' ? currentGameDate : 0 });
-            } else if (tileObj) {
-                tileObj.studied = true;
-            }
-             
-            renderContextualActions([
-                { label: 'Touch the Singularity Core', key: 'e', onclick: () => triggerGameOver("Your mind was absorbed into the stone.") },
-                { label: 'Back Away Slowly', key: 'l', onclick: () => { logMessage("You sever sensor lock with the monolith."); renderContextualActions([]); } }
-            ]);
-        }
+        scanFlavor: "An ancient, monolithic spire floating in deep space. Its geometric trenches pulse with residual Precursor energy."
     },
 
     "Planet Xerxes": {
