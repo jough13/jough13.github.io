@@ -45,12 +45,14 @@ const COMMODITIES = {
     LUXURY_GOODS: { 
         name: "Luxury Goods", 
         basePrice: 350, 
+        icon: "💎", // Added Icons
         description: "High-end textiles, holovids, and artisanal crafts produced by advanced colonies." 
     },
     
     FUEL_CELLS: {
         name: "Fuel Cells",
         basePrice: 10,
+        icon: "🔋",
         description: "Concord-grade hyper-refined hydrogen. Use from the Cargo Manifest to manually restore 50 Fuel in an emergency.",
         onUse: () => {
             if (typeof playerFuel !== 'undefined' && playerFuel >= MAX_FUEL) {
@@ -66,6 +68,7 @@ const COMMODITIES = {
     NANO_REPAIR_KIT: {
         name: "Nano-Repair Kit",
         basePrice: 150,
+        icon: "🔧",
         description: "A pressurized canister of programmable smart-matter. Use from the Cargo Manifest to instantly patch 35 Hull Integrity.",
         onUse: () => {
             if (typeof playerHull !== 'undefined' && playerHull >= MAX_PLAYER_HULL) {
@@ -83,6 +86,7 @@ const COMMODITIES = {
         name: "Sensor Decoy",
         basePrice: 500,
         illegal: true,
+        icon: "🛰️",
         description: "A spoofing buoy that broadcasts your ship's transponder data while flying in the opposite direction. Use to instantly reduce Concord Notoriety by 1.",
         onUse: () => {
             if (typeof playerNotoriety !== 'undefined' && playerNotoriety > 0) {
@@ -99,77 +103,92 @@ const COMMODITIES = {
     REFINED_ALLOY: {
         name: "Refined Alloy",
         basePrice: 350,
+        icon: "⚙️",
         description: "High-grade industrial alloy smelted from bulk minerals. Essential for advanced engineering and prototypes."
     },
     QUANTUM_LENS: {
         name: "Quantum Lens",
         basePrice: 800,
+        icon: "👁️",
         description: "A perfectly stabilized void crystal matrix. Used in extreme-precision targeting and shield technology."
     },
     MINERALS: {
         name: "Minerals",
         basePrice: 25,
+        icon: "🪨",
         description: "Bulk-processed common ores – iron, bauxite, silicates. The gritty backbone of galactic construction."
     },
     FOOD_SUPPLIES: {
         name: "Food Supplies",
         basePrice: 15,
+        icon: "🥫",
         description: "A spectrum of sustenance: from bland nutrient paste to surprisingly palatable hydroponic greens."
     },
     TECH_PARTS: {
         name: "Tech Parts",
         basePrice: 50,
+        icon: "🔌",
         description: "A chaotic assortment of salvaged electronic components. Essential for ship repairs and unsanctioned upgrades."
     },
     MEDICAL_SUPPLIES: {
         name: "Medical Supplies",
         basePrice: 60,
+        icon: "⚕️",
         description: "Sterile field kits, broad-spectrum anti-rads, and auto-suture devices. Highly valued during colony outbreaks."
     },
     RARE_METALS: {
         name: "Rare Metals",
         basePrice: 75,
+        icon: "✨",
         description: "Platinum, Iridium, and Osmium. Vital for high-tech manufacturing, especially sensitive FTL drive components."
     },
     GOLD: {
         name: "Gold Bullion",
         basePrice: 100,
+        icon: "🥇",
         description: "Refined gold bullion. A stable store of wealth ensuring constant demand across all factions."
     },
     PLATINUM_ORE: {
         name: "Platinum Ore",
         basePrice: 60,
+        icon: "🥈",
         description: "Raw, unrefined ore rich in platinum group metals. Essential for advanced catalysts and sensor components."
     },
     HYDROGEN_3: {
         name: "Hydrogen-3",
         basePrice: 300,
+        icon: "❄️",
         description: "Also known as Tritium, a critical component in high-yield fusion reactors and experimental FTL drives."
     },
     QUANTUM_FLUID: {
         name: "Quantum Fluid",
         basePrice: 180,
+        icon: "🧪",
         description: "Super-cooled conductive gel used in advanced computing and life-support cryo-pods."
     },
     WATER: { 
         name: "Purified Water", 
         basePrice: 15, 
+        icon: "💧",
         description: "Essential for hydro-farms and organic life." 
     },
     WEAPONS: { 
         name: "Munitions", 
         basePrice: 200, 
+        icon: "🔫",
         description: "Standard-issue armaments and munitions." 
     },
     ILLEGAL_ORGANS: { 
         name: "Black Market Organs", 
         basePrice: 800, 
         illegal: true, 
+        icon: "🫀",
         description: "Highly illegal biological harvest." 
     },
     AI_CORE: { 
         name: "A.I. Core", 
         basePrice: 1500, 
+        icon: "🧠",
         description: "A heavy processing unit required for advanced automation." 
     },
 
@@ -296,7 +315,7 @@ const COMMODITIES = {
             if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
             if (typeof render === 'function') render();
             
-            // Close the Cargo UI and trigger interaction immediately
+            // 👇 BUG FIX: Close the Cargo UI and trigger interaction immediately
             if (typeof closeGenericModal === 'function') closeGenericModal();
             if (typeof handleInteraction === 'function') handleInteraction();
             return true;
