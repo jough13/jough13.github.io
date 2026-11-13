@@ -246,21 +246,26 @@ const COMMODITIES = {
             const gateName = prompt("Designate Stargate:", "Alpha Gate");
             if (!gateName) return false; 
 
-            // Permanently change the map tile into a Stargate!
+            // 👇 BUG FIX: Inject explicit x and y coordinates into the persistent state
             updateWorldState(playerX, playerY, {
+                x: playerX, y: playerY,
                 char: 'Ω', 
                 type: 'location', 
                 name: gateName, 
-                isDiscoveredWormhole: true, // Injects it into the fast-travel network
+                isDiscoveredWormhole: true, 
                 customName: gateName,
-                isStargate: true, // Tells the engine it's safe!
+                isStargate: true, 
                 scanFlavor: "A player-constructed subspace transit ring."
             });
 
             logMessage(`<span style="color:var(--gold-text); font-weight:bold;">[ STARGATE ONLINE ] ${gateName} is now locked into the subspace network!</span>`);
             if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
             if (typeof render === 'function') render();
-            return true; // Consume the item!
+            
+            // 👇 BUG FIX: Close the Cargo UI and trigger interaction immediately
+            if (typeof closeGenericModal === 'function') closeGenericModal();
+            if (typeof handleInteraction === 'function') handleInteraction();
+            return true;
         },
         loreKey: "PHENOMENON_WORMHOLE"
     },
@@ -272,14 +277,15 @@ const COMMODITIES = {
             const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
             if (tile && getTileChar(tile) !== '.') {
                 if (typeof showToast === 'function') showToast("MUST DEPLOY IN EMPTY SPACE", "error");
-                return false; // Don't consume the item
+                return false; 
             }
             
             const stationName = prompt("Enter a name for your new Waystation:", "Outpost " + Math.floor(Math.random()*1000));
-            if (!stationName) return false; // Canceled
+            if (!stationName) return false; 
 
-            // Spawns 'h' and flags it as a Tiny Outpost!
+            // 👇 BUG FIX: Inject explicit x and y coordinates into the persistent state
             updateWorldState(playerX, playerY, {
+                x: playerX, y: playerY,
                 char: 'h', type: 'location', name: stationName, faction: 'INDEPENDENT',
                 isMajorHub: false, isPlayerOwned: true, isTinyOutpost: true, 
                 treasury: 0, storage: {}, 
@@ -289,7 +295,11 @@ const COMMODITIES = {
             logMessage(`<span style="color:var(--success)">[ OUTPOST CONSTRUCTED ] ${stationName} is now operational!</span>`);
             if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
             if (typeof render === 'function') render();
-            return true; // Consume the item!
+            
+            // 👇 BUG FIX: Close the Cargo UI and trigger interaction immediately
+            if (typeof closeGenericModal === 'function') closeGenericModal();
+            if (typeof handleInteraction === 'function') handleInteraction();
+            return true;
         },
         loreKey: "LOCATION_OUTPOST"
     },
