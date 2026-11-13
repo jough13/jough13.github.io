@@ -3,6 +3,9 @@
 window.playerTargeting = 'HULL';
 
 function startCombat(specificEnemyEntity = null) {
+    // Always reset targeting to Hull at the start of a new fight!
+    window.playerTargeting = 'HULL';
+    
     let pirateShip;
     let aiType = "AGGRESSIVE"; // Default behavior
 
@@ -69,17 +72,19 @@ function startCombat(specificEnemyEntity = null) {
              { name: "Armored", hullMult: 1.5, shieldMult: 1.0, diffMod: 0.1 },
              { name: "Overcharged", hullMult: 1.0, shieldMult: 1.5, diffMod: 0.1 },
              { name: "Elite", hullMult: 1.3, shieldMult: 1.3, diffMod: 0.2 },
-             { name: "Deranged", hullMult: 0.6, shieldMult: 0.4, diffMod: 0.4 } // Glass cannon, hits way harder!
+             { name: "Deranged", hullMult: 0.6, shieldMult: 0.4, diffMod: 0.4 } 
          ];
          let prefix = enemyPrefixes[Math.floor(Math.random() * enemyPrefixes.length)];
          
-         // Apply the mutations
-            enemyShipClone.baseHull = Math.floor(enemyShipClone.baseHull * prefix.hullMult);
+         // Actually apply the prefix to the enemy's name!
+         enemyShipClone.name = `${prefix.name} ${enemyShipClone.name}`;
+         
+         enemyShipClone.baseHull = Math.floor(enemyShipClone.baseHull * prefix.hullMult);
             enemyShipClone.baseShields = Math.floor(enemyShipClone.baseShields * prefix.shieldMult);
             difficultyMultiplier += prefix.diffMod;
         }
 
-        // 👇 BUG FIX: Preserve custom names for bosses/bounties!
+        // Preserve custom names for bosses/bounties!
         if (specificEnemyEntity && specificEnemyEntity.name) {
             enemyShipClone.name = specificEnemyEntity.name;
         }
@@ -306,10 +311,8 @@ function handleCombatAction(action) {
     let combatLog = "";
     let enemyCanAct = true; 
 
-    if (action !== 'fight' && action !== 'charge') {
-        playerIsChargingAttack = false; 
-    }
-
+    // 👇 BUG FIX: Removed playerIsChargingAttack = false; from here!
+    
     // --- 1. PLAYER TURN ---
     if (action === 'fight') {
         const weaponId = playerShip.components.weapon;
@@ -811,6 +814,11 @@ function handleCombatAction(action) {
     }
 
     playerIsEvading = false;
+    
+    // 👇 BUG FIX: Only wipe the charge if a valid turn actually progressed!
+    if (enemyCanAct && action !== 'charge') {
+        playerIsChargingAttack = false; 
+    }
 
     // --- 4. DEFEAT CHECK ---
     if (playerHull <= 0) {
