@@ -399,6 +399,34 @@ const TILE_INTERACTIONS = {
         ]
     },
 
+    // 👇 BUG FIX: Added the specific static "Alien Obelisk" from locations.js
+    'I': {
+        log: "", // Let the logic handle the log dynamically
+        actions: (tileObj) => {
+            if (tileObj && tileObj.studied) {
+                logMessage("The obelisk is dark and silent. Its energy is spent.", "color:var(--item-desc-color)");
+                return [
+                    { label: 'Inspect Runes', key: 'e', onclick: () => logMessage("Cold geometric trenches run deep into the stone. Whatever intelligence dwelled within has departed.") }
+                ];
+            }
+            
+            logMessage("<span style='color:#9933FF'>The obelisk hums. You feel strange...</span>");
+            if (typeof unlockLoreEntry === 'function') unlockLoreEntry("XENO_PRECURSORS");
+            if (typeof GameBus !== 'undefined') {
+                GameBus.emit('HULL_REPAIRED', 50);
+                GameBus.emit('XP_GAINED', 100);
+            }
+            
+            // Mark as used persistently
+            updateWorldState(playerX, playerY, { studied: true, lastInteraction: typeof currentGameDate !== 'undefined' ? currentGameDate : 0 });
+            
+            return [
+                { label: 'Touch the Singularity Core', key: 'e', onclick: () => triggerGameOver("Your mind was absorbed into the stone.") },
+                { label: 'Back Away Slowly', key: 'l', onclick: () => { logMessage("You sever sensor lock with the monolith."); renderContextualActions([]); } }
+            ];
+        }
+    },
+
     // 4. Cargo Cache
     [CARGO_CACHE_CHAR_VAL]: {
         log: "<span style='color:#AAAAAA'>[ SENSORS ]</span> A cluster of reinforced cargo containers is drifting amidst wreckage debris.",
