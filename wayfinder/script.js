@@ -4722,6 +4722,9 @@ function handleCombatInput(key) {
         case 'x':
             confirmSelfDestruct();
             return true;
+            
+        // 👇 BUG FIX: Bind Spacebar correctly to match the UI Command Reference!
+        case ' ':
         case '.': 
             if (typeof playerWaitTurn === 'function') playerWaitTurn();
             return true;
@@ -4867,16 +4870,6 @@ document.addEventListener('keydown', function(event) {
         logMessage("<span style='color:#00FF00'>DEV OVERRIDE: Funds injected, Hull stabilized.</span>");
         if (typeof renderUIStats === 'function') renderUIStats();
         if (typeof soundManager !== 'undefined') soundManager.playUIClick();
-        return;
-    }
-
-    // --- QoL: DOCK / INTERACT HOTKEY ---
-    // We removed 'e' from here so it can pass through to your native contextual menus!
-    // 'Enter' remains as a global backup.
-    if (key === 'enter' && currentGameState === GAME_STATES.GALACTIC_MAP && event.target.tagName !== 'INPUT') {
-        if (typeof reEnterCurrentTile === 'function') {
-            reEnterCurrentTile();
-        }
         return;
     }
 
@@ -6681,8 +6674,13 @@ function devMaxStats() {
 }
 
 function devLevelUp() {
-    playerLevel += 5;
-    playerXP += 5000;
+    // 👇 BUG FIX: Don't manipulate playerLevel directly! Just give enough XP to trigger the UI natively.
+    if (typeof xpToNextLevel !== 'undefined') {
+        playerXP += xpToNextLevel; 
+    } else {
+        playerXP += 5000;
+    }
+    
     if (typeof checkLevelUp === 'function') checkLevelUp();
     if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
     if (typeof showToast === 'function') showToast("DEV: Leveled Up", "success");
