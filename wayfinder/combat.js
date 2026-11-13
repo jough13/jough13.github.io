@@ -815,7 +815,7 @@ function handleCombatAction(action) {
 
     playerIsEvading = false;
     
-    // 👇 BUG FIX: Only wipe the charge if a valid turn actually progressed!
+    // Only wipe the charge if a valid turn actually progressed!
     if (enemyCanAct && action !== 'charge') {
         playerIsChargingAttack = false; 
     }
@@ -1601,19 +1601,19 @@ function finalizeRaid(choice) {
         const finalName = stationName ? stationName : "Cartel Hideout";
 
         updateWorldState(playerX, playerY, {
+            x: playerX, y: playerY, // Injected coordinates so keyboard UI doesn't crash!
             char: 'H', 
             type: 'location', 
             name: finalName, 
-            faction: 'ECLIPSE', // Stays Cartel aligned, but you own it!
+            faction: 'ECLIPSE', 
             isMajorHub: false, 
             isPlayerOwned: true, 
-            isTinyOutpost: true, // Uses our outpost logic
-            outpostTier: 2, // Starts as a Hub!
-            isBlackMarket: true, // Access to the Shadow Broker
+            isTinyOutpost: true, 
+            outpostTier: 2, 
+            isBlackMarket: true, 
             treasury: 0, 
             scanFlavor: "A seized pirate fortress turned player-owned shadow port."
         });
-
         // Massive Notoriety hit for claiming a pirate base!
         if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(15);
 
