@@ -2084,11 +2084,22 @@ function handleSkirmishAction(index, action) {
         closeAndCleanSkirmish(index, logMsg); // Perk path allows clean exit
     }
     else if (action === 'SCAVENGE_TRACTOR_LOOSE') {
-        const scrap = (2 + Math.floor(Math.random() * 5)) * sk.chaosLevel; // chaos mult!
-        playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + Math.floor(scrap);
+        const scrap = (2 + Math.floor(Math.random() * 5)) * sk.chaosLevel; 
+        
+        // Cap the loot!
+        const spaceLeft = PLAYER_CARGO_CAPACITY - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
+        const actualScrap = Math.min(scrap, spaceLeft);
+        
+        if (actualScrap > 0) {
+            playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + Math.floor(actualScrap);
+            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+            logMsg = `<span style="color:var(--gold-text); font-weight:bold;">[ SCAVENGE ]</span> Tractored ${Math.floor(actualScrap)}x Tech Parts. (+5 Salvage, +2 Risk)`;
+        } else {
+            logMsg = `<span style="color:var(--danger); font-weight:bold;">[ SCAVENGE ]</span> Cargo full! Left Tech Parts behind.`;
+        }
+        
         sk.salvagePoints += 5; // building salvage
         sk.investedRisk += 2; // building risk
-        logMsg = `<span style="color:var(--gold-text); font-weight:bold;">[ SCAVENGE ]</span> Tractored ${Math.floor(scrap)}x Tech Parts. (+5 Salvage, +2 Risk)`;
         if (typeof soundManager !== 'undefined') soundManager.playGain();
         if (logMsg) logMessage(logMsg);
         openSkirmishUI(sk, index);
