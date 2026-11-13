@@ -668,7 +668,6 @@ function animateParticles() {
      initializeStaticLocations() {
          this.staticLocations.clear();
          
-         // Safety Check: Ensure LOCATIONS_DATA exists before looping
          if (typeof LOCATIONS_DATA === 'undefined') {
              console.warn("locations.js failed to load or is missing.");
              return; 
@@ -676,10 +675,22 @@ function animateParticles() {
 
          for (const name in LOCATIONS_DATA) {
              const location = LOCATIONS_DATA[name];
-             const key = `${location.coords.x},${location.coords.y}`;
+             
+             // DEEP CLONE nested arrays/objects (like 'sells' and 'buys') 
+             // so trading doesn't permanently deplete the master file across save slots!
+             const deepClonedData = JSON.parse(JSON.stringify(location));
+             
+             // Restore any functions that JSON.parse stripped out (like Alien Obelisk interactions)
+             for (const prop in location) {
+                 if (typeof location[prop] === 'function') {
+                     deepClonedData[prop] = location[prop];
+                 }
+             }
+
+             const key = `${deepClonedData.coords.x},${deepClonedData.coords.y}`;
              this.staticLocations.set(key, {
                  name,
-                 ...location
+                 ...deepClonedData
              });
          }
      },
