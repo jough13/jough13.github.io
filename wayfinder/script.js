@@ -5094,36 +5094,17 @@ function initializeDOMElements() {
     }
 
     createLevelUpDOM();
-
-    function createLevelUpDOM() {
-    // Create the overlay container if it doesn't exist
-    if (!document.getElementById('levelUpOverlay')) {
-        const div = document.createElement('div');
-        div.id = 'levelUpOverlay';
-        // Note: Styles are now handled in style.css!
-        div.innerHTML = `
-            <div style="text-align:center; margin-bottom:30px;">
-                <h1 style="color:#FFD700; font-family:'Orbitron', sans-serif; font-size:40px; margin:0; text-shadow: 0 0 10px #FFaa00;">LEVEL UP!</h1>
-                <p style="color:#FFF; font-family:'Roboto Mono', monospace;">Select a specialized upgrade for your captain.</p>
-            </div>
-            <div id="perkCardsContainer" style="display:flex; gap:20px; flex-wrap:wrap; justify-content:center;"></div>
-        `;
-        if (document.body) {
-            document.body.appendChild(div);
-        } else {
-            window.addEventListener('DOMContentLoaded', () => document.body.appendChild(div));
-        }
-    }
-}
     
     // Enter key support for seed input
     if (seedInput) {
         seedInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
-                soundManager.init(); // Initialize Audio Context
-                
-                // 🎵 FIRE UP THE AMBIENT MUSIC!
-                if (typeof soundManager !== 'undefined') soundManager.initBackgroundMusic();
+                // 👇 BUG FIX: Explicitly apply the player's preference on Enter key press!
+                if (typeof soundManager !== 'undefined') {
+                    const savedPref = localStorage.getItem('wayfinder_audio_pref');
+                    const wantsAudio = savedPref === null ? true : (savedPref === 'true');
+                    soundManager.setMuteState(wantsAudio);
+                }
                 
                 initializeGame();
                 startGame(seedInput.value);
@@ -5274,6 +5255,27 @@ function initializeDOMElements() {
     
     // Apply the random face immediately
     updatePfp();
+}
+
+function createLevelUpDOM() {
+    // Create the overlay container if it doesn't exist
+    if (!document.getElementById('levelUpOverlay')) {
+        const div = document.createElement('div');
+        div.id = 'levelUpOverlay';
+        // Note: Styles are now handled in style.css!
+        div.innerHTML = `
+            <div style="text-align:center; margin-bottom:30px;">
+                <h1 style="color:#FFD700; font-family:'Orbitron', sans-serif; font-size:40px; margin:0; text-shadow: 0 0 10px #FFaa00;">LEVEL UP!</h1>
+                <p style="color:#FFF; font-family:'Roboto Mono', monospace;">Select a specialized upgrade for your captain.</p>
+            </div>
+            <div id="perkCardsContainer" style="display:flex; gap:20px; flex-wrap:wrap; justify-content:center;"></div>
+        `;
+        if (document.body) {
+            document.body.appendChild(div);
+        } else {
+            window.addEventListener('DOMContentLoaded', () => document.body.appendChild(div));
+        }
+    }
 }
 
 function closeTradeModal() {
