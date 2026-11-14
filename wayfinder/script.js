@@ -1178,21 +1178,23 @@ function updateWorldState(x, y, changes, exactKey = null) {
     Object.assign(worldStateDeltas[key], changes);
 }
 
- const SECTOR_SIZE = 480; // Let's say a sector is a 160x160 tile area.
+const SECTOR_SIZE = 480; // Let's say a sector is a 160x160 tile area.
 
- const TILE_SIZE = 32;
+const TILE_SIZE = 32;
 
- let gameCanvas, ctx; // For our new canvas
+let gameCanvas, ctx; // For our new canvas
 
- const MAX_LOG_MESSAGES = 50; // The maximum number of messages to keep in the log
- let messageLog = []; // This array will hold our message history
+const MAX_LOG_MESSAGES = 50; // The maximum number of messages to keep in the log
+let messageLog = []; // This array will hold our message history
 
- let currentTradeItemIndex = -1;
- let currentTradeQty = 1;
+let currentTradeItemIndex = -1;
+let currentTradeQty = 1;
 
- let playerActiveMission = null;
- let missionsAvailableAtStation = [];
- let MISSIONS_DATABASE = {};
+let playerActiveMission = null;
+let missionsAvailableAtStation = [];
+ 
+// 👇 BUG FIX: Using 'window.' natively prevents lexical shadowing when loadGameData() sets it!
+window.MISSIONS_DATABASE = window.MISSIONS_DATABASE || {};
 
  let scannedObjectTypes;
  let discoveredLocations;
@@ -6905,31 +6907,6 @@ function trackLegendaryTarget(bossId) {
     closeGenericModal();
     if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
     if (typeof render === 'function') render();
-}
-
-// ==========================================
-// --- DEEP SPACE ASTRONOMY & PHENOMENA ---
-// ==========================================
-
-if (typeof COMMODITIES !== 'undefined') {
-    // Existing Data
-    COMMODITIES['DATA_PULSAR'] = { name: "Pulsar Timing Data", basePrice: 2500, illegal: false, description: "Precise millisecond pulsar telemetry." };
-    COMMODITIES['DATA_MAGNETAR'] = { name: "Magnetar Harmonics", basePrice: 4000, illegal: false, description: "Raw magnetic field fluctuation data." };
-    COMMODITIES['DATA_SINGULARITY'] = { name: "Singularity Telemetry", basePrice: 8500, illegal: false, description: "Gravitational lensing spectroscopy." };
-    
-    // NEW Data
-    COMMODITIES['DATA_QUASAR'] = { name: "Quasar Spectrography", basePrice: 12000, illegal: false, description: "Incredibly rare relativistic jet measurements." };
-    COMMODITIES['DATA_SUPERNOVA'] = { name: "Supernova Isotope Data", basePrice: 6000, illegal: false, description: "Measurements of heavy element nucleosynthesis." };
-    COMMODITIES['TELEMETRY_PROBE'] = { 
-        name: "Autonomous Telemetry Probe", 
-        basePrice: 1500, 
-        illegal: false, 
-        description: "Deploy in deep space to passively gather valuable astrometric data over time.",
-        onUse: () => {
-            if (typeof deployProbe === 'function') { deployProbe(); return true; }
-            return false;
-        }
-    };
 }
 
 function handleAnomaly() { 
