@@ -564,7 +564,8 @@ function confirmBuyComponent(compId, isOwned = false) {
     
     let msg = `Installed ${newComp.name}.`;
     if (isOwned) {
-        if (currentComp && currentComp.cost > 0) {
+        // 👇 BUG FIX: Ensure the boss weapon wasn't destroyed before telling the player it was stowed!
+        if (currentComp && currentComp.cost < 999999 && (currentComp.cost > 0 || currentComp.manufacturer === 'UNKNOWN')) {
             msg += `<br><span style="font-size:11px; color:var(--success);">(Stowed ${currentComp.name} in Cargo Hold)</span>`;
         }
     } else {
