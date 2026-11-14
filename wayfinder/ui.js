@@ -883,10 +883,10 @@ function useCargoItem(key) {
             if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
             if (typeof renderUIStats === 'function') renderUIStats();
             
-            // 👇 BUG FIX: Check if the onUse function forcibly closed the modal (e.g. Drone Deploy)
+            // 👇 BUG FIX: Ensure we only rebuild the cargo list if the Cargo Modal is STILL what the player is looking at!
             const modal = document.getElementById('genericModalOverlay');
-            if (modal && modal.style.display === 'flex') {
-                // Refresh the UI to reflect the new quantity, or close if we ran out
+            const title = document.getElementById('genericModalTitle');
+            if (modal && modal.style.display === 'flex' && title && title.textContent === "CARGO MANIFEST") {
                 if (playerCargo[key]) {
                     selectCargoItem(key); 
                 } else {
@@ -919,7 +919,7 @@ function jettisonItem(key, amount) {
     
     // Feedback
     logMessage(`<span style="color:var(--danger)">[ CARGO ] Ejected ${amountToDrop}x ${itemName} into the void.</span>`);
-    if (typeof soundManager !== 'undefined') soundManager.playHullHit(); // We'll use the dull thud sound for the airlock cycling
+    if (typeof soundManager !== 'undefined') soundManager.playHullHit(); 
     
     // --- Refresh the Cargo Modal so the ghost item disappears! ---
     if (document.getElementById('genericModalOverlay').style.display === 'flex') {
