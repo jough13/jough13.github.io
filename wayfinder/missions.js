@@ -11,12 +11,106 @@ if (typeof window._stationMissionLastRefresh === 'undefined') {
     window._stationMissionLastRefresh = {};
 }
 
+// Safely close the generic modal before returning to the underlying station or Xerxes concourse
+function returnToConcourseFromMissions() {
+    if (typeof closeGenericModal === 'function') closeGenericModal();
+    const xerxesEl = document.getElementById('xerxesOverlay');
+    const stationEl = document.getElementById('stationOverlay');
+
+    if (xerxesEl && xerxesEl.style.display === 'flex') return;
+    if (stationEl && stationEl.style.display === 'flex') return;
+
+    const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+    if (tile && tile.type === 'location') {
+        if (tile.name && tile.name.includes('Xerxes') && typeof openXerxesView === 'function') {
+            openXerxesView();
+        } else if ((tile.isMajorHub || tile.char === OUTPOST_CHAR_VAL) && typeof openStationView === 'function') {
+            openStationView();
+        }
+    }
+}
+
+// Inject expanded mission templates into MISSION_TEMPLATES once when available
+function _ensureExpandedMissionTemplates() {
+    if (typeof MISSION_TEMPLATES === 'undefined' || !Array.isArray(MISSION_TEMPLATES) || window._missionsTemplatesExpanded) return;
+
+    const extraTemplates = [
+        {
+            id_prefix: "SALVAGE_RECOVERY_",
+            type: "ACQUIRE",
+            weight: 2,
+            title_template: "Salvage Recovery: {itemName}",
+            briefing_template: "Engineering teams require salvaged {itemName} from deep space.",
+            description_template: "Our shipyards are running critically low on {itemName}. Salvage, mine, or trade for {count} units and deliver them to our quartermaster for immediate compensation.",
+            objective_templates: [{
+                type: "ACQUIRE",
+                itemID: "SALVAGE_POOL",
+                count: [3, 7]
+            }],
+            rewards_template: {
+                credits: [450, 950],
+                xp: [60, 120],
+                notoriety: [-2, -1]
+            },
+            prerequisites: { minLevel: 1 }
+        },
+        {
+            id_prefix: "BLACK_MARKET_ACQUIRE_",
+            type: "ACQUIRE",
+            weight: 2,
+            onlyBlackMarket: true,
+            title_template: "Syndicate Procurement: {itemName}",
+            briefing_template: "Shadow Network brokers are paying top credit for {itemName}.",
+            description_template: "A discreet buyer at this port requires {count} units of {itemName}. Bypass Concord patrols and bring the goods directly to our dock.",
+            objective_templates: [{
+                type: "ACQUIRE",
+                itemID: "CONTRABAND_POOL",
+                count: [2, 5]
+            }],
+            rewards_template: {
+                credits: [1200, 2600],
+                xp: [100, 180],
+                notoriety: [3, 6]
+            },
+            prerequisites: { minLevel: 2 }
+        },
+        {
+            id_prefix: "ASTRO_SURVEY_",
+            type: "SURVEY",
+            weight: 2,
+            title_template: "Astrometric Survey Directive",
+            briefing_template: "Science Division requests high-resolution anomaly or stellar telemetry.",
+            description_template: "Deploy into deep space and complete a detailed sensor study of an uncharted Spatial Anomaly (?), Precursor Monolith (Ψ), Stellar Corona (V), or Deep-Sky Observatory Plate (O). Return here with the telemetry.",
+            objective_templates: [{
+                type: "SURVEY",
+                targetType: "anomaly",
+                subtype: "spatial or stellar phenomenon",
+                sectorKey: "ANY"
+            }],
+            rewards_template: {
+                credits: [350, 650],
+                xp: [75, 130],
+                notoriety: [-2, -1]
+            },
+            prerequisites: { minLevel: 1 }
+        }
+    ];
+
+    extraTemplates.forEach(t => {
+        if (!MISSION_TEMPLATES.some(existing => existing.id_prefix === t.id_prefix)) {
+            MISSION_TEMPLATES.push(t);
+        }
+    });
+
+    window._missionsTemplatesExpanded = true;
+}
+
 // Helper to keep progress keys synchronized across legacy and updated objective names
 function syncActiveMissionProgress() {
     if (typeof playerActiveMission === 'undefined' || !playerActiveMission || !playerActiveMission.progress) return;
     const p = playerActiveMission.progress;
 
-    // 1. Sync Bounty / Eliminate keys (combat.js increments eliminate_0, script_2.js templates use bounty_0)
+    // 1. Sync Bounty / Eliminate keys (combat.js increments eliminate_0, script.js templates use bounty_0)
     if (p.bounty_0 && !p.eliminate_0) p.eliminate_0 = p.bounty_0;
     else if (p.eliminate_0 && !p.bounty_0) p.bounty_0 = p.eliminate_0;
     else if (p.bounty_0 && p.eliminate_0 && p.bounty_0 !== p.eliminate_0) {
@@ -37,17 +131,25 @@ function syncActiveMissionProgress() {
 }
 
 function generateMissionsForStation(stationName) {
+    _ensureExpandedMissionTemplates();
+
     const generatedMissions = [];
-    const availableTemplates = MISSION_TEMPLATES.filter(t => playerLevel >= (t.prerequisites.minLevel || 1));
-    
-    // Generate 3 to 4 contracts per station
-    const numMissionsToGenerate = 3 + Math.floor(Math.random() * 2);
-
-    let attempts = 0;
-    const MAX_ATTEMPTS = 25;
-
     const locationTile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
     const giverFaction = locationTile ? (locationTile.faction || 'INDEPENDENT') : 'INDEPENDENT';
+    const isBlackMarketPort = Boolean(locationTile && (locationTile.isBlackMarket || giverFaction === 'ECLIPSE'));
+
+    const availableTemplates = (typeof MISSION_TEMPLATES !== 'undefined' ? MISSION_TEMPLATES : []).filter(t => {
+        if (playerLevel < (t.prerequisites.minLevel || 1)) return false;
+        if (t.onlyBlackMarket && !isBlackMarketPort) return false;
+        return true;
+    });
+    
+    // Generate 4 contracts per station for a fuller board
+    const numMissionsToGenerate = 4;
+
+    let attempts = 0;
+    const MAX_ATTEMPTS = 30;
+    const usedTitles = new Set();
 
     while (generatedMissions.length < numMissionsToGenerate && availableTemplates.length > 0 && attempts < MAX_ATTEMPTS) {
         attempts++;
@@ -90,7 +192,7 @@ function generateMissionsForStation(stationName) {
 
                     const itemWeight = COMMODITIES[deliveryItem].weight || 1;
                     const maxHold = typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50;
-                    const maxSafeUnits = Math.max(1, Math.floor((maxHold * 0.7) / Math.max(1, itemWeight)));
+                    const maxSafeUnits = Math.max(1, Math.floor((maxHold * 0.65) / Math.max(1, itemWeight)));
 
                     let itemCount = objective.count[0] + Math.floor(Math.random() * (objective.count[1] - objective.count[0] + 1));
                     itemCount = Math.min(itemCount, maxSafeUnits);
@@ -109,7 +211,17 @@ function generateMissionsForStation(stationName) {
                 }
 
                 case "ACQUIRE": {
-                    const acquireItem = selectRandomCommodity(stationName);
+                    let acquireItem = null;
+                    if (objective.itemID === "SALVAGE_POOL") {
+                        const salvagePool = ['TECH_PARTS', 'MINERALS', 'RARE_METALS', 'PLATINUM_ORE', 'ARTIFACT_SHARDS', 'VOID_CRYSTALS'].filter(id => COMMODITIES[id]);
+                        acquireItem = salvagePool[Math.floor(Math.random() * salvagePool.length)];
+                    } else if (objective.itemID === "CONTRABAND_POOL") {
+                        const illicitPool = ['PROHIBITED_STIMS', 'STARDUST_EXOTICA', 'SENTIENT_MYCELIUM', 'ARTIFACT_SHARDS', 'OBSIDIAN_TEAR_PLATING', 'FORBIDDEN_TEXTS'].filter(id => COMMODITIES[id]);
+                        acquireItem = illicitPool[Math.floor(Math.random() * illicitPool.length)];
+                    } else {
+                        acquireItem = selectRandomCommodity(stationName);
+                    }
+
                     if (!acquireItem || !COMMODITIES[acquireItem]) {
                         success = false;
                         break;
@@ -117,7 +229,7 @@ function generateMissionsForStation(stationName) {
 
                     const itemWeight = COMMODITIES[acquireItem].weight || 1;
                     const maxHold = typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50;
-                    const maxSafeUnits = Math.max(1, Math.floor((maxHold * 0.7) / Math.max(1, itemWeight)));
+                    const maxSafeUnits = Math.max(1, Math.floor((maxHold * 0.65) / Math.max(1, itemWeight)));
 
                     let itemCount = objective.count[0] + Math.floor(Math.random() * (objective.count[1] - objective.count[0] + 1));
                     itemCount = Math.min(itemCount, maxSafeUnits);
@@ -134,7 +246,7 @@ function generateMissionsForStation(stationName) {
 
                 case "SURVEY": {
                     objective.targetType = 'anomaly';
-                    objective.subtype = 'unstable warp pocket';
+                    objective.subtype = objective.subtype === 'ANY_ANOMALY' ? 'unstable warp pocket' : (objective.subtype || 'spatial anomaly');
                     objective.sectorKey = "ANY";
                     newMission.title = newMission.title_template.replace('{subtype}', objective.subtype);
                     newMission.description = newMission.description_template.replace('{subtype}', objective.subtype);
@@ -143,6 +255,11 @@ function generateMissionsForStation(stationName) {
 
                 default:
                     success = false;
+            }
+
+            // Avoid duplicate contract titles on the same board
+            if (usedTitles.has(newMission.title)) {
+                success = false;
             }
 
             newMission.objectives = [objective];
@@ -155,10 +272,10 @@ function generateMissionsForStation(stationName) {
             const levelScale = 1 + Math.min(1.5, ((typeof playerLevel !== 'undefined' ? playerLevel : 1) - 1) * 0.1);
             let baseCreds = newMission.rewards_template.credits[0] + Math.floor(Math.random() * (newMission.rewards_template.credits[1] - newMission.rewards_template.credits[0] + 1));
 
-            // Ensure ACQUIRE and DELIVERY missions reimburse the commodity's base cost + profit margin!
+            // Ensure ACQUIRE and DELIVERY missions reimburse the commodity's base cost + healthy profit margin!
             if ((newMission.type === "ACQUIRE" || newMission.type === "DELIVERY") && objective.itemID && COMMODITIES[objective.itemID]) {
                 const goodsValue = (COMMODITIES[objective.itemID].basePrice || 25) * (objective.count || 1);
-                baseCreds = Math.max(baseCreds, Math.floor(goodsValue * 1.4) + 200);
+                baseCreds = Math.max(baseCreds, Math.floor(goodsValue * 1.45) + 250);
             }
 
             newMission.rewards.credits = Math.floor(baseCreds * levelScale);
@@ -166,6 +283,7 @@ function generateMissionsForStation(stationName) {
             newMission.rewards.notoriety = newMission.rewards_template.notoriety[0] + Math.floor(Math.random() * (newMission.rewards_template.notoriety[1] - newMission.rewards_template.notoriety[0] + 1));
 
             if (success) {
+                usedTitles.add(newMission.title);
                 generatedMissions.push(newMission);
             }
         } catch (error) {
@@ -184,8 +302,8 @@ function displayMissionBoard(forceRefresh = false) {
     syncActiveMissionProgress();
 
     const location = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : { name: "STARBASE", faction: "INDEPENDENT" };
-    const stationName = location.name || "STARBASE";
-    const faction = location.faction || "INDEPENDENT";
+    const stationName = (location && location.name) ? location.name : "STARBASE";
+    const faction = (location && location.faction) ? location.faction : "INDEPENDENT";
     
     let brandColor = "var(--accent-color)";
     if (faction === 'CONCORD') brandColor = "#4488FF";
@@ -212,11 +330,12 @@ function displayMissionBoard(forceRefresh = false) {
     openGenericModal(`${stationName.toUpperCase()} : CONTRACTS`);
     
     const container = document.getElementById('genericModalContent');
+    if (!container) return;
     container.style.cssText = "display: flex; flex-direction: column; height: 100%; overflow: hidden;";
     
     const headerImageHTML = `
         <div style="width: 100%; height: 180px; border-radius: 4px; border: 1px solid ${brandColor}; margin-bottom: 15px; box-shadow: 0 0 25px ${brandColor}44; flex-shrink: 0; overflow: hidden; background: rgba(0,0,0,0.5);">
-            <img src="assets/mission_banner.png" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='assets/mission_banner.png';">
+            <img src="assets/mission_banner.png" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none';">
         </div>
     `;
 
@@ -245,19 +364,19 @@ function displayMissionBoard(forceRefresh = false) {
                     </div>
                 </div>
                 <div class="trade-btn-group" id="genericModalActions" style="margin-top: 15px; flex-shrink: 0; padding-bottom: 5px;">
-                    <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openStationView()">◀ BACK TO CONCOURSE</button>
+                    <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="returnToConcourseFromMissions()">◀ BACK TO CONCOURSE</button>
                 </div>
             </div>
         </div>
     `;
 
     const listEl = document.getElementById('genericModalList');
-    const missions = MISSIONS_DATABASE[stationName];
+    const missions = MISSIONS_DATABASE[stationName] || [];
     let foundActive = false;
     let activeMissionIdx = -1;
 
     missions.forEach((mission, index) => {
-        if (playerCompletedMissions.has(mission.id)) return;
+        if (!mission || playerCompletedMissions.has(mission.id)) return;
         foundActive = true;
         
         const isCurrentMission = playerActiveMission && playerActiveMission.id === mission.id;
@@ -304,7 +423,7 @@ function displayMissionBoard(forceRefresh = false) {
 function showMissionDetails(stationName, index, brandColor) {
     syncActiveMissionProgress();
 
-    const mission = MISSIONS_DATABASE[stationName][index];
+    const mission = MISSIONS_DATABASE[stationName] ? MISSIONS_DATABASE[stationName][index] : null;
     if (!mission) return;
 
     const isThisMission = playerActiveMission && playerActiveMission.id === mission.id;
@@ -317,6 +436,38 @@ function showMissionDetails(stationName, index, brandColor) {
     if (activeMission.type === 'DELIVERY') typeColor = "var(--warning)";
     if (activeMission.type === 'SURVEY') typeColor = "#4488FF";
 
+    // Build live cargo/location telemetry for DELIVERY and ACQUIRE contracts
+    let logisticsHtml = "";
+    if (obj && (activeMission.type === 'DELIVERY' || activeMission.type === 'ACQUIRE') && obj.itemID) {
+        const itemDef = COMMODITIES[obj.itemID] || { name: obj.itemID };
+        const ownedQty = playerCargo[obj.itemID] || 0;
+        const hasEnough = ownedQty >= obj.count;
+        const locTile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+        const soldHere = Boolean(locTile && locTile.sells && locTile.sells.some(s => (s.id === obj.itemID) || (s === obj.itemID)));
+
+        let destCoordText = "";
+        if (activeMission.type === 'DELIVERY' && obj.destinationName && typeof LOCATIONS_DATA !== 'undefined' && LOCATIONS_DATA[obj.destinationName]) {
+            const c = LOCATIONS_DATA[obj.destinationName].coords;
+            destCoordText = `<div class="trade-stat-row"><span style="color:var(--item-desc-color);">Destination Coords:</span> <span style="color:var(--accent-color); font-weight:bold;">[${c.x}, ${-c.y}]</span></div>`;
+        }
+
+        logisticsHtml = `
+            <div class="trade-math-area" style="margin-bottom:12px; background:rgba(0,0,0,0.4);">
+                <div style="font-size:10px; color:var(--warning); letter-spacing:1px; margin-bottom:8px; border-bottom:1px solid #333; padding-bottom:4px;">LOGISTICS MANIFEST</div>
+                <div class="trade-stat-row">
+                    <span style="color:var(--item-desc-color);">Required Cargo:</span>
+                    <span style="color:var(--text-color); font-weight:bold;">${obj.count}x ${itemDef.name}</span>
+                </div>
+                <div class="trade-stat-row">
+                    <span style="color:var(--item-desc-color);">In Your Hold:</span>
+                    <span style="color:${hasEnough ? 'var(--success)' : 'var(--warning)'}; font-weight:bold;">${ownedQty} / ${obj.count}</span>
+                </div>
+                ${soldHere ? `<div style="font-size:10px; color:var(--success); margin-top:4px;">✓ Available in this station's Marketplace</div>` : ''}
+                ${destCoordText}
+            </div>
+        `;
+    }
+
     let html = `
         <div style="font-size:10px; color:${typeColor}; letter-spacing:2px; margin-bottom:5px;">
             [ ${activeMission.type} CONTRACT ]
@@ -324,9 +475,11 @@ function showMissionDetails(stationName, index, brandColor) {
         <h3 style="color:${brandColor}; margin:0 0 5px 0;">${activeMission.title}</h3>
         <p style="font-size:11px; color:var(--item-desc-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px;">Client: ${activeMission.giver} (${activeMission.faction || 'INDEPENDENT'})</p>
         
-        <p style="color:var(--text-color); font-size:12px; line-height: 1.5; background:rgba(0,0,0,0.3); padding:10px; border-left:2px solid ${typeColor}; margin-bottom:20px;">
+        <p style="color:var(--text-color); font-size:12px; line-height: 1.5; background:rgba(0,0,0,0.3); padding:10px; border-left:2px solid ${typeColor}; margin-bottom:15px;">
             "${activeMission.description}"
         </p>
+
+        ${logisticsHtml}
         
         <div class="trade-math-area">
             <div style="font-size:10px; color:${brandColor}; letter-spacing:1px; margin-bottom:8px; border-bottom:1px solid #333; padding-bottom:4px;">REWARD TELEMETRY</div>
@@ -336,7 +489,8 @@ function showMissionDetails(stationName, index, brandColor) {
         </div>
     `;
     
-    document.getElementById('genericDetailContent').innerHTML = html;
+    const detailEl = document.getElementById('genericDetailContent');
+    if (detailEl) detailEl.innerHTML = html;
     
     let btnHtml = "";
     
@@ -351,7 +505,7 @@ function showMissionDetails(stationName, index, brandColor) {
         } else if (!playerActiveMission.isComplete && playerActiveMission.type === "ACQUIRE" && obj && playerActiveMission.giver === stationName) {
             const haveQty = playerCargo[obj.itemID] || 0;
             const canTurnIn = haveQty >= obj.count;
-            btnHtml += `<button class="action-button" ${!canTurnIn ? 'disabled' : ''} style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px; border-color:var(--gold-text); color:var(--gold-text);" onclick="handleTurnInAcquire(); displayMissionBoard();">💎 TURN IN RESOURCES (${haveQty}/${obj.count})</button>`;
+            btnHtml += `<button class="action-button" ${!canTurnIn ? 'disabled' : ''} style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px; border-color:var(--gold-text); color:var(--gold-text);" onclick="handleTurnInAcquire(); displayMissionBoard();">💎 TURN IN & CLAIM REWARD (${haveQty}/${obj.count})</button>`;
         }
 
         btnHtml += `<button class="action-button danger-btn" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" onclick="abandonMission()">ABANDON CONTRACT</button>`;
@@ -361,13 +515,14 @@ function showMissionDetails(stationName, index, brandColor) {
         btnHtml = `<button class="action-button" style="border-color:${brandColor}; color:${brandColor}; width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" onclick="confirmAcceptMission('${stationName.replace(/'/g, "\\'")}', ${index})">AUTHORIZE CONTRACT</button>`;
     }
     
-    btnHtml += `<button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openStationView()">◀ BACK TO CONCOURSE</button>`;
+    btnHtml += `<button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="returnToConcourseFromMissions()">◀ BACK TO CONCOURSE</button>`;
     
-    document.getElementById('genericModalActions').innerHTML = btnHtml;
+    const actionsEl = document.getElementById('genericModalActions');
+    if (actionsEl) actionsEl.innerHTML = btnHtml;
 }
 
 function confirmAcceptMission(stationName, index) {
-    const mission = MISSIONS_DATABASE[stationName][index];
+    const mission = MISSIONS_DATABASE[stationName] ? MISSIONS_DATABASE[stationName][index] : null;
     if (!mission) return;
     
     playerActiveMission = JSON.parse(JSON.stringify(mission));
@@ -397,10 +552,9 @@ function confirmAcceptMission(stationName, index) {
     });
 
     if (typeof soundManager !== 'undefined') soundManager.playBuy();
-    showToast("CONTRACT ACCEPTED", "success");
+    if (typeof showToast === 'function') showToast("CONTRACT ACCEPTED", "success");
     logMessage(`<span style='color:var(--accent-color)'>[ CONTRACT AUTHORIZED ]</span> ${playerActiveMission.title}.`);
-    closeGenericModal();
-    openStationView();
+    returnToConcourseFromMissions();
     renderMissionTracker();
 }
 
@@ -433,18 +587,28 @@ function handleTurnInAcquire() {
     const objective = playerActiveMission.objectives[0];
     const progressKey = `acquire_0`;
     const objectiveProgress = playerActiveMission.progress[progressKey];
+    const itemName = (COMMODITIES[objective.itemID] && COMMODITIES[objective.itemID].name) ? COMMODITIES[objective.itemID].name : objective.itemID;
 
     if ((playerCargo[objective.itemID] || 0) >= objective.count) {
         playerCargo[objective.itemID] -= objective.count;
         if (playerCargo[objective.itemID] <= 0) delete playerCargo[objective.itemID]; 
         updateCurrentCargoLoad();
-        objectiveProgress.acquired = objective.count;
-        objectiveProgress.complete = true;
-        logMessage(`<span style='color:var(--success)'>Turned in ${objective.count}x ${COMMODITIES[objective.itemID].name} to ${playerActiveMission.giver}.</span>`);
+        if (objectiveProgress) {
+            objectiveProgress.acquired = objective.count;
+            objectiveProgress.complete = true;
+        }
+        logMessage(`<span style='color:var(--success)'>Turned in ${objective.count}x ${itemName} to ${playerActiveMission.giver}.</span>`);
         if (typeof showToast === 'function') showToast("RESOURCES DELIVERED", "success");
         checkMissionObjectiveCompletion();
+
+        // Automatically pay out the contract reward if we are already docked at the giver station!
+        const currentLocation = getCombinedLocationData(playerX, playerY);
+        if (playerActiveMission && playerActiveMission.isComplete && currentLocation && currentLocation.name === playerActiveMission.giver) {
+            grantMissionRewards();
+            return;
+        }
     } else {
-        logMessage(`You don't have enough ${COMMODITIES[objective.itemID].name}. Required: ${objective.count}, You have: ${playerCargo[objective.itemID] || 0}.`);
+        logMessage(`You don't have enough ${itemName}. Required: ${objective.count}, You have: ${playerCargo[objective.itemID] || 0}.`);
         if (typeof showToast === 'function') showToast("INSUFFICIENT RESOURCES", "error");
     }
 
@@ -468,6 +632,8 @@ function handleCompleteDelivery() {
         if (obj.type === "DELIVERY" || obj.type === "DELIVER") {
             const progressKey = `${obj.type.toLowerCase()}_${index}`;
             const objectiveProgress = playerActiveMission.progress[progressKey] || playerActiveMission.progress[`delivery_${index}`] || playerActiveMission.progress[`deliver_${index}`];
+            const itemName = (COMMODITIES[obj.itemID] && COMMODITIES[obj.itemID].name) ? COMMODITIES[obj.itemID].name : obj.itemID;
+
             if (objectiveProgress && !objectiveProgress.complete && currentLocation.name === obj.destinationName) {
                 if ((playerCargo[obj.itemID] || 0) >= obj.count) {
                     playerCargo[obj.itemID] -= obj.count;
@@ -475,11 +641,11 @@ function handleCompleteDelivery() {
                     updateCurrentCargoLoad();
                     objectiveProgress.delivered = obj.count;
                     objectiveProgress.complete = true;
-                    logMessage(`<span style='color:var(--success)'>Delivered ${obj.count}x ${COMMODITIES[obj.itemID].name} to ${obj.destinationName}.</span>`, true);
+                    logMessage(`<span style='color:var(--success)'>Delivered ${obj.count}x ${itemName} to ${obj.destinationName}.</span>`, true);
                     if (typeof showToast === 'function') showToast("CARGO DELIVERED", "success");
                     deliveryMade = true;
                 } else {
-                    logMessage(`You don't have enough ${COMMODITIES[obj.itemID].name}. Required: ${obj.count}, You have: ${playerCargo[obj.itemID] || 0}.`, true);
+                    logMessage(`You don't have enough ${itemName}. Required: ${obj.count}, You have: ${playerCargo[obj.itemID] || 0}.`, true);
                     if (typeof showToast === 'function') showToast("MISSING DELIVERY CARGO", "error");
                 }
             }
@@ -487,6 +653,13 @@ function handleCompleteDelivery() {
     });
     if (deliveryMade) {
         checkMissionObjectiveCompletion();
+
+        // If this is a one-way Smuggling Run (or giver === destination), immediately grant the payout!
+        if (playerActiveMission && playerActiveMission.isComplete &&
+            (currentLocation.name === playerActiveMission.giver || (playerActiveMission.giver === "Shadow Broker" && currentLocation.isBlackMarket))) {
+            grantMissionRewards();
+            return;
+        }
     }
     renderMissionTracker();
     renderUIStats();
@@ -517,7 +690,10 @@ function checkMissionObjectiveCompletion() {
         playerActiveMission.isComplete = true;
         logMessage(`<span style='color:var(--success); font-weight:bold;'>All objectives for '${playerActiveMission.title}' complete!</span>\nReturn to ${playerActiveMission.giver} to claim your reward.`, true);
         if (typeof showToast === 'function') showToast("CONTRACT OBJECTIVES COMPLETE", "success");
-        if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+        if (typeof soundManager !== 'undefined') {
+            if (typeof soundManager.playMissionComplete === 'function') soundManager.playMissionComplete();
+            else soundManager.playAbilityActivate();
+        }
     }
     
     return allObjectivesNowComplete;
@@ -539,7 +715,7 @@ function grantMissionRewards() {
     playerCredits += mission.rewards.credits;
     playerXP += mission.rewards.xp;
      
-    updatePlayerNotoriety(mission.rewards.notoriety);
+    updatePlayerNotoriety(mission.rewards.notoriety || 0);
      
     let standingMsg = "";
     const targetFaction = (mission.faction && mission.faction !== 'INDEPENDENT') ? mission.faction : (currentLocation.faction !== 'INDEPENDENT' ? currentLocation.faction : null);
@@ -551,10 +727,13 @@ function grantMissionRewards() {
     }
 
     playerCompletedMissions.add(mission.id);
+    if (typeof addMilestone === 'function') {
+        addMilestone(`Completed contract '${mission.title}' for ${mission.giver} (+${formatNumber(mission.rewards.credits)}c).`);
+    }
      
     let rewardMsg = `<span style='color:var(--gold-text); font-weight:bold;'>Mission '${mission.title}' Complete!</span>\nRewards:\n  +${formatNumber(mission.rewards.credits)} Credits\n  +${formatNumber(mission.rewards.xp)} XP`;
 
-    if (mission.rewards.notoriety !== 0) {
+    if (mission.rewards.notoriety) {
         rewardMsg += `\n  Notoriety ${mission.rewards.notoriety > 0 ? '+' : ''}${mission.rewards.notoriety}`;
     }
     rewardMsg += standingMsg;
@@ -611,7 +790,7 @@ function renderMissionTracker() {
         const itemName = COMMODITIES[objective.itemID] ? COMMODITIES[objective.itemID].name : "Cargo";
         objectiveText = `Deliver ${objective.count}x ${itemName} to ${objective.destinationName} (Hold: ${haveQty})`;
     } else if (objective.type === 'SURVEY' || objective.type === 'SCAN_OBJECT') {
-        objectiveText = `Survey Anomaly (?)`;
+        objectiveText = `Survey Anomaly (?) or Star (V/O)`;
     } else if (objective.type === 'ACQUIRE') {
         const currentAmt = playerCargo[objective.itemID] || 0;
         const itemName = COMMODITIES[objective.itemID] ? COMMODITIES[objective.itemID].name : "Unknown Item";
@@ -628,14 +807,15 @@ function renderMissionTracker() {
 
 function openBountyBoard() {
     const location = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : { name: "STARBASE", faction: "CONCORD" };
-    const stationName = location.name || "STARBASE";
-    const faction = location.faction || "CONCORD";
+    const stationName = (location && location.name) ? location.name : "STARBASE";
+    const faction = (location && location.faction) ? location.faction : "CONCORD";
     
     let brandColor = "var(--danger)";
 
     openGenericModal(`${stationName.toUpperCase()} : BOUNTY BOARD`);
     
     const container = document.getElementById('genericModalContent');
+    if (!container) return;
     container.style.cssText = "display: flex; flex-direction: column; height: 100%; overflow: hidden;";
     
     const availableBanners = ['assets/bounty_banner.png', 'assets/bounty_banner2.png'];
@@ -673,7 +853,7 @@ function openBountyBoard() {
                     </div>
                 </div>
                 <div class="trade-btn-group" id="genericModalActions" style="margin-top: 15px; flex-shrink: 0; padding-bottom: 5px;">
-                    <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openStationView()">◀ BACK TO CONCOURSE</button>
+                    <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="returnToConcourseFromMissions()">◀ BACK TO CONCOURSE</button>
                 </div>
             </div>
         </div>
@@ -706,10 +886,14 @@ function openBountyBoard() {
             if (bounty.faction === "KTHARR") facColor = "var(--success)";
             if (bounty.faction === "INDEPENDENT") facColor = "var(--warning)";
 
+            const shipDisplayName = (typeof PIRATE_SHIP_CLASSES !== 'undefined' && PIRATE_SHIP_CLASSES[bounty.shipClass])
+                ? PIRATE_SHIP_CLASSES[bounty.shipClass].name
+                : (bounty.shipClass || "Raider");
+
             row.innerHTML = `
                 <div>
                     <div style="color:${facColor}; font-weight:bold; font-size: 13px;">${bounty.targetName}</div>
-                    <div style="color:var(--item-desc-color); font-size: 10px; margin-top: 4px;">Threat: Class ${bounty.difficulty} (${bounty.shipClass})</div>
+                    <div style="color:var(--item-desc-color); font-size: 10px; margin-top: 4px;">Threat: Class ${bounty.difficulty} (${shipDisplayName})</div>
                 </div>
                 <div style="text-align:right;">
                     <span style="color:var(--gold-text, #FFD700); font-weight:bold;">${formatNumber(bounty.reward)}c</span>
@@ -726,28 +910,34 @@ function openBountyBoard() {
 function showBountyDetails(bounty, isActive) {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
+    if (!detailEl || !actionsEl || !bounty) return;
 
     let facColor = "var(--danger)";
     if (bounty.faction === "KTHARR") facColor = "var(--success)";
     if (bounty.faction === "INDEPENDENT") facColor = "var(--warning)";
 
-    const shipDisplayName = (typeof PIRATE_SHIP_CLASSES !== 'undefined' && PIRATE_SHIP_CLASSES[bounty.shipClass])
-        ? PIRATE_SHIP_CLASSES[bounty.shipClass].name
-        : bounty.shipClass;
+    const shipKey = bounty.shipClass || bounty.shipClassKey || "RAIDER";
+    const shipDisplayName = (typeof PIRATE_SHIP_CLASSES !== 'undefined' && PIRATE_SHIP_CLASSES[shipKey])
+        ? PIRATE_SHIP_CLASSES[shipKey].name
+        : shipKey;
+
+    const crimeText = bounty.crime || "High-Treason & Piracy";
+    const diffText = bounty.difficulty || "OMEGA";
+    const rewardVal = bounty.reward || 12000;
 
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 15px;">
             <div style="font-size:50px; margin-bottom:10px; filter: drop-shadow(0 0 15px ${facColor});">🎯</div>
-            <h3 style="color:${facColor}; margin:0;">${bounty.targetName.toUpperCase()}</h3>
-            <div style="color:var(--item-desc-color); font-size:12px; margin-bottom:15px; border-bottom: 1px solid #333; padding-bottom: 10px;">WANTED FOR: ${bounty.crime.toUpperCase()}</div>
+            <h3 style="color:${facColor}; margin:0;">${(bounty.targetName || "Target").toUpperCase()}</h3>
+            <div style="color:var(--item-desc-color); font-size:12px; margin-bottom:15px; border-bottom: 1px solid #333; padding-bottom: 10px;">WANTED FOR: ${crimeText.toUpperCase()}</div>
             
             <div style="background:rgba(0,0,0,0.3); border:1px solid #333; padding:10px; border-radius:4px; text-align:left;">
-                <div style="margin-bottom:8px; display:flex; justify-content:space-between;"><span style="color:#888;">Threat Level:</span> <span style="color:var(--warning); font-weight:bold;">Class ${bounty.difficulty}</span></div>
+                <div style="margin-bottom:8px; display:flex; justify-content:space-between;"><span style="color:#888;">Threat Level:</span> <span style="color:var(--warning); font-weight:bold;">Class ${diffText}</span></div>
                 <div style="margin-bottom:8px; display:flex; justify-content:space-between;"><span style="color:#888;">Vessel Type:</span> <span style="color:var(--text-color);">${shipDisplayName}</span></div>
-                <div style="margin-bottom:8px; display:flex; justify-content:space-between;"><span style="color:#888;">Alliance:</span> <span style="color:${facColor};">${bounty.faction}</span></div>
+                <div style="margin-bottom:8px; display:flex; justify-content:space-between;"><span style="color:#888;">Alliance:</span> <span style="color:${facColor};">${bounty.faction || "OUTLAW"}</span></div>
                 <div style="margin-bottom:8px; display:flex; justify-content:space-between;"><span style="color:#888;">Last Seen:</span> <span style="color:var(--accent-color);">Coords [${bounty.x}, ${-bounty.y}]</span></div>
                 
-                <div style="margin-top:12px; border-top:1px dashed #444; padding-top:10px; display:flex; justify-content:space-between;"><span style="color:#888;">Bounty Payout:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(bounty.reward)}c</span></div>
+                <div style="margin-top:12px; border-top:1px dashed #444; padding-top:10px; display:flex; justify-content:space-between;"><span style="color:#888;">Bounty Payout:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(rewardVal)}c</span></div>
             </div>
         </div>
     `;
@@ -755,12 +945,12 @@ function showBountyDetails(bounty, isActive) {
     if (isActive) {
         actionsEl.innerHTML = `
             <button class="action-button danger-btn" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" onclick="abandonBounty()">ABANDON CONTRACT</button>
-            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openStationView()">◀ BACK TO CONCOURSE</button>
+            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="returnToConcourseFromMissions()">◀ BACK TO CONCOURSE</button>
         `;
     } else {
         actionsEl.innerHTML = `
             <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color:var(--danger); color:var(--danger); margin-bottom: 10px;" onclick="acceptBounty('${bounty.id}')">ACCEPT CONTRACT</button>
-            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openStationView()">◀ BACK TO CONCOURSE</button>
+            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="returnToConcourseFromMissions()">◀ BACK TO CONCOURSE</button>
         `;
     }
 }
@@ -768,13 +958,43 @@ function showBountyDetails(bounty, isActive) {
 function spawnBountyEntityOnMap(bounty) {
     if (!bounty || typeof activeEnemies === 'undefined') return;
 
-    // Normalize legacy invalid shipClass keys (e.g., "SCOUT" -> "RAIDER")
-    let validClassKey = bounty.shipClass || "RAIDER";
+    // BUG FIX: Check if this tracked bounty is a Legendary Boss from LEGENDARY_BOUNTIES
+    const rawBossId = bounty.bossId || (bounty.id ? String(bounty.id).replace(/_\d+$/, '') : null);
+    const legendaryDef = (typeof LEGENDARY_BOUNTIES !== 'undefined' && rawBossId && LEGENDARY_BOUNTIES[rawBossId])
+        ? LEGENDARY_BOUNTIES[rawBossId]
+        : null;
+
+    if (legendaryDef) {
+        activeEnemies = activeEnemies.filter(e => e.id !== bounty.id);
+        activeEnemies.push({
+            id: bounty.id,
+            bossId: legendaryDef.id,
+            x: bounty.x,
+            y: bounty.y,
+            type: 'BOSS',
+            char: '☠️',
+            color: legendaryDef.color || 'var(--danger)',
+            shipClassKey: legendaryDef.shipClassKey,
+            shipClass: legendaryDef.shipClassKey,
+            isBoss: true,
+            isLegendary: true,
+            isBountyTarget: true,
+            name: legendaryDef.title,
+            exclusiveDrop: legendaryDef.exclusiveDrop,
+            difficultyMultiplier: 1.5,
+            reward: legendaryDef.reward
+        });
+        return;
+    }
+
+    // Standard Bounty Target
+    let validClassKey = bounty.shipClass || bounty.shipClassKey || "RAIDER";
     if (typeof PIRATE_SHIP_CLASSES !== 'undefined' && !PIRATE_SHIP_CLASSES[validClassKey]) {
-        validClassKey = bounty.difficulty > 5 ? "STRIKER" : "RAIDER";
+        validClassKey = (bounty.difficulty || 1) > 5 ? "STRIKER" : "RAIDER";
         bounty.shipClass = validClassKey;
     }
 
+    const diff = bounty.difficulty || 1;
     activeEnemies = activeEnemies.filter(e => e.id !== bounty.id);
     activeEnemies.push({
         id: bounty.id,
@@ -785,11 +1005,11 @@ function spawnBountyEntityOnMap(bounty) {
         shipClassKey: validClassKey,
         faction: bounty.faction || "ECLIPSE",
         isBountyTarget: true, 
-        level: bounty.difficulty,
-        hp: bounty.difficulty * 50,
-        maxHp: bounty.difficulty * 50,
-        shields: bounty.difficulty * 25,
-        maxShields: bounty.difficulty * 25,
+        level: diff,
+        hp: diff * 50,
+        maxHp: diff * 50,
+        shields: diff * 25,
+        maxShields: diff * 25,
         char: 'V', 
         color: '#FF4444' 
     });
@@ -825,32 +1045,47 @@ function abandonBounty() {
 }
 
 function processBountyVictory(defeatedEnemy) {
-    if (playerActiveBounty && defeatedEnemy && defeatedEnemy.isBountyTarget && defeatedEnemy.id === playerActiveBounty.id) {
+    if (!playerActiveBounty || !defeatedEnemy) return;
+
+    const isMatchingTarget = (
+        defeatedEnemy.id === playerActiveBounty.id ||
+        (defeatedEnemy.isLegendary && playerActiveBounty.targetName === defeatedEnemy.name)
+    );
+
+    if (!isMatchingTarget) return;
+
+    // BUG FIX: If defeatedEnemy is a Legendary Boss, combat.js already paid currentCombatContext.bountyReward.
+    // Only add playerActiveBounty.reward if this is a standard bounty with a defined numeric reward!
+    if (!defeatedEnemy.isLegendary && typeof playerActiveBounty.reward === 'number' && playerActiveBounty.reward > 0) {
         if (typeof playerCredits !== 'undefined') {
             playerCredits += playerActiveBounty.reward;
         }
-        
         const xpGain = (defeatedEnemy.level || playerActiveBounty.difficulty || 1) * 25;
         if (typeof playerXP !== 'undefined') {
             playerXP += xpGain;
         }
-        
         logMessage(`<span style="color:var(--success); font-weight:bold;">BOUNTY COMPLETE:</span> Target [${playerActiveBounty.targetName}] eliminated. Transferred ${formatNumber(playerActiveBounty.reward)}c to your account.`);
         if (typeof showToast === 'function') showToast(`BOUNTY COMPLETE: +${formatNumber(playerActiveBounty.reward)}c`, "success");
-        if (typeof soundManager !== 'undefined' && typeof soundManager.playBuy === 'function') soundManager.playBuy(); 
-        
-        currentStationBounties = currentStationBounties.filter(b => b.id !== playerActiveBounty.id);
-        playerActiveBounty = null;
+        if (typeof soundManager !== 'undefined' && typeof soundManager.playBuy === 'function') soundManager.playBuy();
     }
+
+    if (typeof addMilestone === 'function') {
+        addMilestone(`Eliminated wanted bounty target: ${playerActiveBounty.targetName}.`);
+    }
+
+    if (Array.isArray(currentStationBounties)) {
+        currentStationBounties = currentStationBounties.filter(b => b.id !== playerActiveBounty.id);
+    }
+    playerActiveBounty = null;
 }
 
 function createStationBountyTargets() {
     currentStationBounties = [];
     const numBounties = Math.floor(Math.random() * 3) + 2; // 2 to 4 bounties per station
     
-    const firstNames = ["'Mad Dog'", "Viper", "'Iron'", "Jax", "Silas", "Kaelen", "'Ghost'", "Rook", "Vane", "Kira"];
-    const lastNames = ["Vance", "Karn", "Trex", "the Butcher", "Valerius", "Thorne", "Graves", "Black", "Kryik"];
-    const crimeList = ["Smuggling", "Piracy", "Assassination", "Data Theft", "Illegal Cybernetics", "Shipjacking"];
+    const firstNames = ["'Mad Dog'", "Viper", "'Iron'", "Jax", "Silas", "Kaelen", "'Ghost'", "Rook", "Vane", "Kira", "'Void-Eye'", "Soren", "Nyx", "'shiv'"];
+    const lastNames = ["Vance", "Karn", "Trex", "the Ravager", "Valerius", "Morrow", "Graves", "Black", "Kryik", "Drax", "Vex"];
+    const crimeList = ["Smuggling", "Piracy", "Assassination", "Data Theft", "Illegal Cybernetics", "Shipjacking", "Blockade Running", "Beacon Sabotage"];
     
     for (let i = 0; i < numBounties; i++) {
         const angle = Math.random() * Math.PI * 2;
@@ -859,16 +1094,23 @@ function createStationBountyTargets() {
         const targetX = Math.floor(playerX + Math.cos(angle) * distance);
         const targetY = Math.floor(playerY + Math.sin(angle) * distance);
         
-        let difficultyLevel = playerLevel;
-        if (Math.random() > 0.7) difficultyLevel += 2; 
+        let difficultyLevel = typeof playerLevel !== 'undefined' ? playerLevel : 1;
+        if (Math.random() > 0.65) difficultyLevel += Math.floor(Math.random() * 2) + 1; 
         
         const factionList = ["ECLIPSE", "ECLIPSE", "KTHARR", "INDEPENDENT"];
         const targetFaction = factionList[Math.floor(Math.random() * factionList.length)];
         
         let shipClass = "RAIDER";
+        const hasExpandedShips = typeof PIRATE_SHIP_CLASSES !== 'undefined';
+
         if (targetFaction === "ECLIPSE" || targetFaction === "INDEPENDENT") {
-            if (difficultyLevel > 6) shipClass = "BRUISER";
-            else if (difficultyLevel > 3) shipClass = "STRIKER";
+            if (difficultyLevel >= 8 && hasExpandedShips && PIRATE_SHIP_CLASSES.PIRATE_DREADNOUGHT) {
+                shipClass = "PIRATE_DREADNOUGHT";
+            } else if (difficultyLevel >= 6) {
+                shipClass = (hasExpandedShips && PIRATE_SHIP_CLASSES.PIRATE_GUNSHIP && Math.random() < 0.5) ? "PIRATE_GUNSHIP" : "BRUISER";
+            } else if (difficultyLevel >= 3) {
+                shipClass = (hasExpandedShips && PIRATE_SHIP_CLASSES.ECLIPSE_ASSASSIN && Math.random() < 0.4) ? "ECLIPSE_ASSASSIN" : "STRIKER";
+            }
         } else if (targetFaction === "KTHARR") {
             shipClass = difficultyLevel > 5 ? "KTHARR_DESTROYER" : "KTHARR_SCOUT";
         }
@@ -894,11 +1136,12 @@ function createStationBountyTargets() {
 window.generateBountyTargets = createStationBountyTargets;
 
 function selectRandomDestination(currentStationName) {
+    if (typeof LOCATIONS_DATA === 'undefined') return null;
     const allLocationKeys = Object.keys(LOCATIONS_DATA);
      
     const possibleDestinations = allLocationKeys.filter(key => {
         const loc = LOCATIONS_DATA[key];
-        const hasTradeDemand = loc.buys && loc.buys.length > 0;
+        const hasTradeDemand = loc && loc.buys && loc.buys.length > 0;
         return key !== currentStationName && key !== "Planet Xerxes" && hasTradeDemand;
     });
 
@@ -915,11 +1158,27 @@ function selectRandomDestination(currentStationName) {
 }
 
 function selectRandomCommodity(locationName) {
+    if (typeof LOCATIONS_DATA === 'undefined') return null;
     const location = LOCATIONS_DATA[locationName];
     if (!location || !location.buys || location.buys.length === 0) return null;
 
     const commodity = location.buys[Math.floor(Math.random() * location.buys.length)];
     return commodity.id || commodity; 
+}
+
+// Helper to mark an active SURVEY mission complete from any astrometric/anomaly scan
+function _completeActiveSurveyMission() {
+    syncActiveMissionProgress();
+    if (typeof playerActiveMission === 'undefined' || !playerActiveMission || playerActiveMission.type !== "SURVEY" || playerActiveMission.isComplete) {
+        return;
+    }
+    const progress = playerActiveMission.progress.survey_0 || playerActiveMission.progress.scan_object_0;
+    if (progress && !progress.complete) {
+        progress.scanned = true;
+        progress.complete = true;
+        checkMissionObjectiveCompletion();
+        renderMissionTracker();
+    }
 }
 
 // ==========================================
@@ -955,14 +1214,16 @@ if (typeof GameBus !== 'undefined') {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-    // 1. Override script.js's duplicate generateBountyTargets with our valid ship-class version
+    _ensureExpandedMissionTemplates();
+
+    // 1. Override duplicate generateBountyTargets with our valid ship-class version
     window.generateBountyTargets = createStationBountyTargets;
 
     // 2. Prevent Bounty Targets from triggering Pirate Extortion or Eclipse Cartel Truces
     if (typeof window.initiatePirateExtortion === 'function' && !window._missionsExtortionPatched) {
         const origExtortion = window.initiatePirateExtortion;
         window.initiatePirateExtortion = function(enemy) {
-            if (enemy && enemy.isBountyTarget) {
+            if (enemy && (enemy.isBountyTarget || enemy.isLegendary)) {
                 logMessage(`<span style='color:var(--danger); font-weight:bold;'>[ BOUNTY INTERCEPTED ]</span> Target <b>${enemy.name}</b> locked in sights! Engaging weapons!`);
                 if (typeof startCombat === 'function') startCombat(enemy);
                 return;
@@ -975,8 +1236,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (typeof window.startCombat === 'function' && !window._missionsCombatTrucePatched) {
         const origStartCombat = window.startCombat;
         window.startCombat = function(specificEnemyEntity = null) {
-            // Temporarily mask Eclipse standing if fighting an Eclipse Bounty Target so the truce doesn't cancel the fight!
-            const isBounty = specificEnemyEntity && specificEnemyEntity.isBountyTarget;
+            const isBounty = specificEnemyEntity && (specificEnemyEntity.isBountyTarget || specificEnemyEntity.isLegendary);
             const savedEclipseRep = (isBounty && typeof playerFactionStanding !== 'undefined') ? playerFactionStanding['ECLIPSE'] : null;
 
             if (isBounty && savedEclipseRep !== null && savedEclipseRep >= 50) {
@@ -1003,6 +1263,25 @@ window.addEventListener('DOMContentLoaded', () => {
             syncActiveMissionProgress();
         };
         window._missionsVictoryPatched = true;
+    }
+
+    // 4. Hook evaluateStar and captureDeepSkyImage so SURVEY contracts also complete on Stellar / Observatory scans!
+    if (typeof window.evaluateStar === 'function' && !window._missionsEvalStarPatched) {
+        const origEvaluateStar = window.evaluateStar;
+        window.evaluateStar = function(starData, starId) {
+            origEvaluateStar.apply(this, arguments);
+            _completeActiveSurveyMission();
+        };
+        window._missionsEvalStarPatched = true;
+    }
+
+    if (typeof window.captureDeepSkyImage === 'function' && !window._missionsDeepSkyPatched) {
+        const origCaptureDeepSky = window.captureDeepSkyImage;
+        window.captureDeepSkyImage = function() {
+            origCaptureDeepSky.apply(this, arguments);
+            _completeActiveSurveyMission();
+        };
+        window._missionsDeepSkyPatched = true;
     }
 });
 
