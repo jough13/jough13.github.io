@@ -265,7 +265,6 @@ const COMMODITIES = {
             const gateName = prompt("Designate Stargate:", "Alpha Gate");
             if (!gateName) return false; 
 
-            // 👇 BUG FIX: Inject explicit x and y coordinates into the persistent state
             updateWorldState(playerX, playerY, {
                 x: playerX, y: playerY,
                 char: 'Ω', 
@@ -281,9 +280,12 @@ const COMMODITIES = {
             if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
             if (typeof render === 'function') render();
             
-            // 👇 BUG FIX: Close the Cargo UI and trigger interaction immediately
-            if (typeof closeGenericModal === 'function') closeGenericModal();
-            if (typeof handleInteraction === 'function') handleInteraction();
+            // 👇 BUG FIX: Schedule the UI transition to happen AFTER ui.js finishes consuming the item!
+            setTimeout(() => {
+                if (typeof closeGenericModal === 'function') closeGenericModal();
+                if (typeof handleInteraction === 'function') handleInteraction();
+            }, 50);
+            
             return true;
         },
         loreKey: "PHENOMENON_WORMHOLE"
@@ -302,7 +304,6 @@ const COMMODITIES = {
             const stationName = prompt("Enter a name for your new Waystation:", "Outpost " + Math.floor(Math.random()*1000));
             if (!stationName) return false; 
 
-            // 👇 BUG FIX: Inject explicit x and y coordinates into the persistent state
             updateWorldState(playerX, playerY, {
                 x: playerX, y: playerY,
                 char: 'h', type: 'location', name: stationName, faction: 'INDEPENDENT',
@@ -315,9 +316,12 @@ const COMMODITIES = {
             if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
             if (typeof render === 'function') render();
             
-            // 👇 BUG FIX: Close the Cargo UI and trigger interaction immediately
-            if (typeof closeGenericModal === 'function') closeGenericModal();
-            if (typeof handleInteraction === 'function') handleInteraction();
+            // 👇 BUG FIX: Schedule the UI transition to happen AFTER ui.js finishes consuming the item!
+            setTimeout(() => {
+                if (typeof closeGenericModal === 'function') closeGenericModal();
+                if (typeof handleInteraction === 'function') handleInteraction();
+            }, 50);
+            
             return true;
         },
         loreKey: "LOCATION_OUTPOST"
@@ -451,6 +455,58 @@ const COMMODITIES = {
         illegal: true, 
         description: "A ceremonial K'tharr weapon forged from fallen stars. Stealing one is considered a holy act of war by the Hegemony.",
         loreKey: "COMMODITY_KTHARR_ANCESTRAL_BLADE"
+    },
+
+    // ==========================================
+    // --- ASTROMETRICS & DATA ---
+    // ==========================================
+
+    DATA_PULSAR: { 
+        name: "Pulsar Timing Data", 
+        basePrice: 2500, 
+        icon: "💫", 
+        illegal: false, 
+        description: "Precise millisecond pulsar telemetry." 
+    },
+    DATA_MAGNETAR: { 
+        name: "Magnetar Harmonics", 
+        basePrice: 4000, 
+        icon: "🧲", 
+        illegal: false, 
+        description: "Raw magnetic field fluctuation data." 
+    },
+    DATA_SINGULARITY: { 
+        name: "Singularity Telemetry", 
+        basePrice: 8500, 
+        icon: "⚫", 
+        illegal: false, 
+        description: "Gravitational lensing spectroscopy." 
+    },
+    DATA_QUASAR: { 
+        name: "Quasar Spectrography", 
+        basePrice: 12000, 
+        icon: "🎇", 
+        illegal: false, 
+        description: "Incredibly rare relativistic jet measurements." 
+    },
+    DATA_SUPERNOVA: { 
+        name: "Supernova Isotope Data", 
+        basePrice: 6000, 
+        icon: "💥", 
+        illegal: false, 
+        description: "Measurements of heavy element nucleosynthesis." 
+    },
+    TELEMETRY_PROBE: { 
+        name: "Autonomous Telemetry Probe", 
+        basePrice: 1500, 
+        icon: "🛰️", 
+        illegal: false, 
+        description: "Deploy in deep space to passively gather valuable astrometric data over time.",
+        onUse: () => {
+            // 👇 BUG FIX: Return false so ui.js doesn't decrement it a second time (causing NaN)
+            if (typeof deployProbe === 'function') { deployProbe(); return false; }
+            return false;
+        }
     },
 
     // ==========================================
