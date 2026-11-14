@@ -6999,7 +6999,6 @@ function resolvePhenomenon(type) {
     if (type === 'PULSAR') {
         if (Math.random() < 0.6) {
             playerShields -= 25;
-            // FIX: Let GameBus handle hull spillover damage!
             if (playerShields < 0) { 
                 const spill = Math.abs(playerShields);
                 playerShields = 0; 
@@ -7007,10 +7006,16 @@ function resolvePhenomenon(type) {
             }
             resultHtml += `<span style="color:var(--danger)">RADIATION SURGE!</span> Stripped <span style="color:var(--danger)">25 Shields</span>.<br><br>`;
         }
-        playerCargo['DATA_PULSAR'] = (playerCargo['DATA_PULSAR'] || 0) + 1;
         playerXP += 100;
-        resultHtml += `<span style="color:var(--success)">DATA ACQUIRED.</span> Gained <span style="color:var(--gold-text)">1x Pulsar Timing Data</span> and <span style="color:var(--success)">+100 XP</span>!`;
-    } 
+        
+        // 👇 BUG FIX: Check cargo space
+        if (currentCargoLoad + 1 <= PLAYER_CARGO_CAPACITY) {
+            playerCargo['DATA_PULSAR'] = (playerCargo['DATA_PULSAR'] || 0) + 1;
+            resultHtml += `<span style="color:var(--success)">DATA ACQUIRED.</span> Gained <span style="color:var(--gold-text)">1x Pulsar Timing Data</span> and <span style="color:var(--success)">+100 XP</span>!`;
+        } else {
+            resultHtml += `<span style="color:var(--warning)">DATA ACQUIRED.</span> Cargo hold full! Data discarded. Gained <span style="color:var(--success)">+100 XP</span>!`;
+        }
+    }
     else if (type === 'MAGNETAR') {
         const dmg = 15 + Math.floor(Math.random() * 20);
         // FIX: Removed playerHull -= dmg;
@@ -7390,8 +7395,22 @@ function renderVaultRoom() {
         `;
         
         // Grant Massive Rewards
-        playerCargo['PRECURSOR_ARTIFACT'] = (playerCargo['PRECURSOR_ARTIFACT'] || 0) + 1;
-        if (Math.random() > 0.4) playerCargo['VOID_ENGINE_CORE'] = (playerCargo['VOID_ENGINE_CORE'] || 0) + 1;
+        // Only grant the massive artifacts if there is cargo space!
+        let spaceLeft = PLAYER_CARGO_CAPACITY - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
+        let lootedArt = false;
+        let lootedCore = false;
+
+        if (spaceLeft >= 1) {
+            playerCargo['PRECURSOR_ARTIFACT'] = (playerCargo['PRECURSOR_ARTIFACT'] || 0) + 1;
+            spaceLeft--;
+            lootedArt = true;
+        }
+        
+        if (Math.random() > 0.4 && spaceLeft >= 1) {
+            playerCargo['VOID_ENGINE_CORE'] = (playerCargo['VOID_ENGINE_CORE'] || 0) + 1;
+            lootedCore = true;
+        }
+        
         playerXP += 1500;
         
         if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
