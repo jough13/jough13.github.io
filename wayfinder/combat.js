@@ -2091,10 +2091,18 @@ function handleSkirmishAction(index, action) {
     }
     else if (action === 'SCAVENGE_VOID_CACH') {
         // VOID DIVER PERK OPTION
-        playerCargo['VOID_CRYSTALS'] = (playerCargo['VOID_CRYSTALS'] || 0) + 3; // Huge loot!
-        logMsg = `<span style="color:var(--success); font-weight:bold;">[ SCAVENGE ]</span> Perceptions shifted. Squeezed past space and reactor core simultaneously. Sliced out 3x VOID CRYSTALS! Disengaging.`;
+        // 👇 BUG FIX: Check cargo capacity
+        const spaceLeft = PLAYER_CARGO_CAPACITY - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
+        const actualQty = Math.min(3, spaceLeft);
+        
+        if (actualQty > 0) {
+            playerCargo['VOID_CRYSTALS'] = (playerCargo['VOID_CRYSTALS'] || 0) + actualQty; 
+            logMsg = `<span style="color:var(--success); font-weight:bold;">[ SCAVENGE ]</span> Perceptions shifted. Sliced out ${actualQty}x VOID CRYSTALS!`;
+        } else {
+            logMsg = `<span style="color:var(--danger); font-weight:bold;">[ SCAVENGE ]</span> Cargo hold full! Could not retrieve VOID CRYSTALS.`;
+        }
         if (typeof soundManager !== 'undefined') soundManager.playGain();
-        closeAndCleanSkirmish(index, logMsg); // Perk path allows clean exit
+        closeAndCleanSkirmish(index, logMsg); 
     }
     else if (action === 'SCAVENGE_TRACTOR_LOOSE') {
         const scrap = (2 + Math.floor(Math.random() * 5)) * sk.chaosLevel; 
@@ -2119,11 +2127,21 @@ function handleSkirmishAction(index, action) {
     }
     else if (action === 'SCAVENGE_SCAN_DATA') {
         const data = (1 + Math.floor(Math.random() * 2)) * sk.chaosLevel; // chaos mult!
-        playerCargo['ENCRYPTED_DATA'] = (playerCargo['ENCRYPTED_DATA'] || 0) + Math.floor(data);
+        
+        // 👇 BUG FIX: Check cargo capacity
+        const spaceLeft = PLAYER_CARGO_CAPACITY - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
+        const actualQty = Math.min(data, spaceLeft);
+        
+        if (actualQty > 0) {
+            playerCargo['ENCRYPTED_DATA'] = (playerCargo['ENCRYPTED_DATA'] || 0) + Math.floor(actualQty);
+            logMsg = `<span style="color:var(--success); font-weight:bold;">[ SCAVENGE ]</span> Download successful! Salvaged ${Math.floor(actualQty)}x Encrypted Data Caches. (+8 Salvage, +4 Risk, +5 Notoriety)`;
+        } else {
+            logMsg = `<span style="color:var(--danger); font-weight:bold;">[ SCAVENGE ]</span> Download successful, but cargo hold is full! Data discarded. (+8 Salvage, +4 Risk, +5 Notoriety)`;
+        }
+        
         if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(5); // Notoriety per data scan
         sk.salvagePoints += 8; // building salvage
         sk.investedRisk += 4; // building risk
-        logMsg = `<span style="color:var(--success); font-weight:bold;">[ SCAVENGE ]</span> Download successful! Salvaged ${Math.floor(data)}x Encrypted Data Caches. (+8 Salvage, +4 Risk, +5 Notoriety)`;
         if (typeof soundManager !== 'undefined') soundManager.playGain();
         if (logMsg) logMessage(logMsg);
         openSkirmishUI(sk, index);
@@ -2138,13 +2156,22 @@ function handleSkirmishAction(index, action) {
         closeAndCleanSkirmish(index, logMsg);
     }
     else if (action === 'SCAVENGE_RETREAT') {
-        // SCAVENGE LOOT FINALIZATION (salvage points converts to Tech Parts and Credits)
+        // SCAVENGE LOOT FINALIZATION 
         const bonusCredits = (1500 * sk.salvagePoints) * (1 + (sk.chaosLevel / 10)); // chaos mult!
         playerCredits += Math.floor(bonusCredits);
-        const finalTechParts = Math.floor(sk.salvagePoints * 1.5);
-        playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + finalTechParts;
         
-        logMsg = `<span style="color:var(--gold-text); font-weight:bold;">[ SCAVENGE ]</span> Evasive maneuvers successful! Slipped away with ${finalTechParts}x Tech Parts and collected ${formatNumber(Math.floor(bonusCredits))}c salvage payout!`;
+        // 👇 BUG FIX: Check cargo capacity for the final Tech Parts drop
+        const finalTechParts = Math.floor(sk.salvagePoints * 1.5);
+        const spaceLeft = PLAYER_CARGO_CAPACITY - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
+        const actualQty = Math.min(finalTechParts, spaceLeft);
+        
+        if (actualQty > 0) {
+            playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + actualQty;
+            logMsg = `<span style="color:var(--gold-text); font-weight:bold;">[ SCAVENGE ]</span> Evasive maneuvers successful! Slipped away with ${actualQty}x Tech Parts and collected ${formatNumber(Math.floor(bonusCredits))}c salvage payout!`;
+        } else {
+            logMsg = `<span style="color:var(--gold-text); font-weight:bold;">[ SCAVENGE ]</span> Evasive maneuvers successful! Cargo full, but collected ${formatNumber(Math.floor(bonusCredits))}c salvage payout!`;
+        }
+        
         if (typeof soundManager !== 'undefined') soundManager.playBuy();
         closeAndCleanSkirmish(index, logMsg);
     }
