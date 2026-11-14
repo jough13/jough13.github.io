@@ -4,10 +4,17 @@ class SoundManager {
     constructor() {
         this.ctx = null;
         this.masterGain = null;
+        this.sfxGain = null;
+        this.ambientGain = null;
         this.compressor = null;
         this.noiseBuffer = null;
-        this.enabled = false; // Start muted until user interaction
+
+        this.enabled = false; // Start muted until user preference is applied
         this.initialized = false;
+
+        // Volume settings (persisted in localStorage)
+        this.masterVolume = 0.30;
+        this.musicVolume = 0.30;
 
         // HTML5 Audio Object for Ambient Track
         this.bgMusic = null;
@@ -28,6 +35,14 @@ class SoundManager {
 
             this.ctx = new AudioContext();
 
+            // Load saved volume levels if present
+            try {
+                const savedMaster = parseFloat(localStorage.getItem('wayfinder_master_vol'));
+                const savedMusic = parseFloat(localStorage.getItem('wayfinder_music_vol'));
+                if (!isNaN(savedMaster)) this.masterVolume = Math.max(0, Math.min(1, savedMaster));
+                if (!isNaN(savedMusic)) this.musicVolume = Math.max(0, Math.min(1, savedMusic));
+            } catch (e) {}
+
             // Dynamics compressor prevents harsh clipping when multiple SFX overlap
             this.compressor = this.ctx.createDynamicsCompressor();
             this.compressor.threshold.setValueAtTime(-18, this.ctx.currentTime);
@@ -37,12 +52,20 @@ class SoundManager {
             this.compressor.release.setValueAtTime(0.15, this.ctx.currentTime);
 
             this.masterGain = this.ctx.createGain();
-            this.masterGain.gain.value = 0.3; // Default master volume (30%)
+            this.masterGain.gain.value = this.masterVolume;
 
+            this.sfxGain = this.ctx.createGain();
+            this.sfxGain.gain.value = 1.0;
+
+            this.ambientGain = this.ctx.createGain();
+            this.ambientGain.gain.value = 1.0;
+
+            this.sfxGain.connect(this.masterGain);
+            this.ambientGain.connect(this.masterGain);
             this.masterGain.connect(this.compressor);
             this.compressor.connect(this.ctx.destination);
 
-            // Pre-compute a 2-second white noise buffer once to avoid main-thread GC lag during combat
+            // Pre-compute a 2-second white/pink noise buffer once to avoid main-thread GC lag during combat
             const bufferSize = this.ctx.sampleRate * 2;
             this.noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
             const data = this.noiseBuffer.getChannelData(0);
@@ -57,30 +80,89 @@ class SoundManager {
         }
     }
 
-    // Safely ensures the audio context is running before attempting to play a synth sound
+    // Safely ensures the audio context is running and background music is active after a user gesture
     _ensureContextRunning() {
-        if (this.ctx && this.ctx.state === 'suspended' && this.enabled) {
+        if (!this.enabled) return;
+        if (!this.initialized) this.init();
+
+        if (this.ctx && this.ctx.state === 'suspended') {
             this.ctx.resume().catch(() => {});
+        }
+
+        // If browser blocked initial autoplay on boot, start the music now that the user interacted
+        if (this.bgMusic && !this.bgMusicFailed && this.bgMusic.paused && !document.hidden) {
+            this.bgMusic.play().catch(() => {});
+        } else if (this.bgMusicFailed && !this.ambientNodes && !document.hidden) {
+            this.startProceduralDrone();
+        }
+    }
+
+    setMasterVolume(val) {
+        this.masterVolume = Math.max(0, Math.min(1, Number(val) || 0));
+        if (this.masterGain && this.ctx) {
+            this.masterGain.gain.setTargetAtTime(this.masterVolume, this.ctx.currentTime, 0.05);
+        }
+        try {
+            localStorage.setItem('wayfinder_master_vol', String(this.masterVolume));
+        } catch (e) {}
+    }
+
+    setMusicVolume(val) {
+        this.musicVolume = Math.max(0, Math.min(1, Number(val) || 0));
+        if (this.bgMusic) {
+            this.bgMusic.volume = this.musicVolume;
+        }
+        if (this.ambientGain && this.ctx) {
+            this.ambientGain.gain.setTargetAtTime(this.musicVolume / 0.30, this.ctx.currentTime, 0.1);
+        }
+        try {
+            localStorage.setItem('wayfinder_music_vol', String(this.musicVolume));
+        } catch (e) {}
+    }
+
+    // Subtly ducks ambient music during Silent Running or heavy combat
+    updateAdaptiveMix() {
+        if (!this.enabled) return;
+        const isStealthed = typeof isSilentRunning !== 'undefined' && isSilentRunning;
+        const inCombat = typeof currentGameState !== 'undefined' && currentGameState === 'combat';
+
+        const targetMusicVol = isStealthed
+            ? this.musicVolume * 0.45
+            : (inCombat ? this.musicVolume * 0.75 : this.musicVolume);
+
+        if (this.bgMusic && !this.bgMusicFailed) {
+            this.bgMusic.volume = Math.max(0, Math.min(1, targetMusicVol));
+        }
+
+        if (this.ambientNodes && this.ambientNodes.filter && this.ctx) {
+            const targetCutoff = isStealthed ? 110 : (inCombat ? 280 : 200);
+            this.ambientNodes.filter.frequency.setTargetAtTime(targetCutoff, this.ctx.currentTime, 0.25);
         }
     }
 
     initBackgroundMusic() {
-        if (this.bgMusic) return; // Prevent creating multiple tracks
+        if (this.bgMusic) {
+            if (this.enabled && !this.bgMusicFailed && this.bgMusic.paused) {
+                this.bgMusic.play().catch(() => {});
+            }
+            return;
+        }
 
         try {
             this.bgMusic = new Audio('assets/Orbiting_A_Sleeping_Star.mp3');
             this.bgMusic.loop = true;
-            this.bgMusic.volume = 0.3; // 30% volume sits nicely behind SFX
+            this.bgMusic.volume = this.musicVolume;
 
-            // If the MP3 asset is missing, fall back to a procedural Web Audio space drone
-            this.bgMusic.addEventListener('error', () => {
+            // If the MP3 asset is missing, fall back cleanly to the procedural Web Audio space drone
+            this.bgMusic.addEventListener('error', (e) => {
+                if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
                 this.bgMusicFailed = true;
                 if (this.enabled) this.startProceduralDrone();
             });
 
             if (this.enabled) {
-                this.bgMusic.play().catch(err => {
-                    console.warn("Browser blocked autoplay. Music will start on first click.", err);
+                this.bgMusic.play().catch(() => {
+                    // Autoplay blocked until first user gesture; _ensureContextRunning() will start it seamlessly
                 });
             }
         } catch (err) {
@@ -90,12 +172,19 @@ class SoundManager {
     }
 
     startProceduralDrone() {
-        if (!this.enabled || !this.ctx || this.ambientNodes) return;
-        this._ensureContextRunning();
+        if (!this.enabled) return;
+        if (!this.initialized) this.init();
+        if (!this.ctx || this.ambientNodes) return;
+
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+        }
         
         try {
+            const now = this.ctx.currentTime;
             const osc1 = this.ctx.createOscillator();
             const osc2 = this.ctx.createOscillator();
+            const subOsc = this.ctx.createOscillator();
             const filter = this.ctx.createBiquadFilter();
             const padGain = this.ctx.createGain();
 
@@ -105,20 +194,26 @@ class SoundManager {
 
             osc1.type = 'sawtooth';
             osc2.type = 'triangle';
-            osc1.frequency.setValueAtTime(55.0, this.ctx.currentTime); // Deep A1 drone
-            osc2.frequency.setValueAtTime(82.41, this.ctx.currentTime); // E2 fifth harmony
-            osc2.detune.setValueAtTime(6, this.ctx.currentTime); // Warm chorus detune
+            subOsc.type = 'sine';
+
+            osc1.frequency.setValueAtTime(55.0, now);   // Deep A1 drone
+            osc2.frequency.setValueAtTime(82.41, now);  // E2 fifth harmony
+            osc2.detune.setValueAtTime(6, now);         // Warm chorus detune
+            subOsc.frequency.setValueAtTime(27.5, now); // Sub-bass A0 foundation
 
             // Filter setup
             filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(200, this.ctx.currentTime);
+            filter.frequency.setValueAtTime(200, now);
+            filter.Q.setValueAtTime(1.5, now);
 
             // LFO Setup: Cycles every 8 seconds (0.125 Hz)
             lfo.type = 'sine';
-            lfo.frequency.setValueAtTime(0.125, this.ctx.currentTime);
-            lfoGain.gain.setValueAtTime(150, this.ctx.currentTime); // Sweeps filter by +/- 150hz
+            lfo.frequency.setValueAtTime(0.125, now);
+            lfoGain.gain.setValueAtTime(130, now); // Sweeps filter by +/- 130Hz
 
-            padGain.gain.setValueAtTime(0.06, this.ctx.currentTime);
+            // Smooth fade-in to avoid any initial pop
+            padGain.gain.setValueAtTime(0.001, now);
+            padGain.gain.exponentialRampToValueAtTime(0.06, now + 1.5);
 
             // Connections
             lfo.connect(lfoGain);
@@ -126,14 +221,16 @@ class SoundManager {
 
             osc1.connect(filter);
             osc2.connect(filter);
+            subOsc.connect(filter);
             filter.connect(padGain);
-            padGain.connect(this.masterGain);
+            padGain.connect(this.ambientGain || this.masterGain);
 
-            lfo.start();
-            osc1.start();
-            osc2.start();
+            lfo.start(now);
+            osc1.start(now);
+            osc2.start(now);
+            subOsc.start(now);
             
-            this.ambientNodes = { osc1, osc2, filter, padGain, lfo, lfoGain };
+            this.ambientNodes = { osc1, osc2, subOsc, filter, padGain, lfo, lfoGain };
         } catch (e) {}
     }
 
@@ -142,12 +239,14 @@ class SoundManager {
         try {
             this.ambientNodes.osc1.stop();
             this.ambientNodes.osc2.stop();
+            if (this.ambientNodes.subOsc) this.ambientNodes.subOsc.stop();
             this.ambientNodes.lfo.stop();
             this.ambientNodes.padGain.disconnect();
             
             // Clean up to prevent memory leaks
             this.ambientNodes.osc1.disconnect();
             this.ambientNodes.osc2.disconnect();
+            if (this.ambientNodes.subOsc) this.ambientNodes.subOsc.disconnect();
             this.ambientNodes.filter.disconnect();
             this.ambientNodes.lfo.disconnect();
             this.ambientNodes.lfoGain.disconnect();
@@ -167,16 +266,17 @@ class SoundManager {
         }
 
         if (this.enabled) {
-            this._ensureContextRunning();
+            if (this.ctx && this.ctx.state === 'suspended') {
+                this.ctx.resume().catch(() => {});
+            }
 
             if (this.bgMusic && !this.bgMusicFailed) {
-                this.bgMusic.play().catch(e => console.warn("Awaiting user interaction to play audio:", e));
+                this.bgMusic.play().catch(() => {});
             } else if (this.bgMusicFailed) {
                 this.startProceduralDrone();
             } else {
                 this.initBackgroundMusic();
             }
-            console.log("Audio Enabled - Music Playing");
         } else {
             if (this.ctx && this.ctx.state === 'running') {
                 this.ctx.suspend().catch(() => {});
@@ -185,7 +285,6 @@ class SoundManager {
                 this.bgMusic.pause();
             }
             this.stopProceduralDrone();
-            console.log("Audio Suspended");
         }
 
         // Keep System Menu sound button label in sync
@@ -215,37 +314,44 @@ class SoundManager {
     // --- SYNTH GENERATORS (SFX) ---
     // ==========================================
 
-    playTone(freq, type, duration, vol = 1, slideTo = null) {
-        if (!this.enabled || !this.ctx) return;
+    playTone(freq, type, duration, vol = 1, slideTo = null, delayMs = 0) {
+        if (!this.enabled) return;
+        if (!this.initialized) this.init();
+        if (!this.ctx) return;
         this._ensureContextRunning();
 
         try {
             // Safeguard: If passed seconds instead of milliseconds (e.g., 0.1, 0.5), auto-convert
-            if (duration < 10) {
-                duration *= 1000;
+            let durMs = Number(duration) || 100;
+            if (durMs > 0 && durMs < 10) {
+                durMs *= 1000;
             }
 
-            const durSec = Math.max(0.01, duration / 1000);
-            const safeFreq = Math.max(20, Number(freq) || 440);
-            const safeVol = Math.max(0.0001, (Number(vol) || 0.2) * 0.5);
-            const now = this.ctx.currentTime;
+            const durSec = Math.max(0.015, durMs / 1000);
+            const delaySec = Math.max(0, (Number(delayMs) || 0) / 1000);
+            const safeFreq = Math.max(20, Math.min(16000, Number(freq) || 440));
+            const safeVol = Math.max(0.0001, Math.min(1.0, (Number(vol) || 0.2) * 0.5));
+            const startTime = this.ctx.currentTime + delaySec;
+            const stopTime = startTime + durSec;
 
             const osc = this.ctx.createOscillator();
             const gain = this.ctx.createGain();
 
             osc.type = type || 'sine';
-            osc.frequency.setValueAtTime(safeFreq, now);
+            osc.frequency.setValueAtTime(safeFreq, startTime);
 
             if (slideTo !== null && slideTo !== undefined) {
-                const safeSlide = Math.max(10, Number(slideTo) || 100);
-                osc.frequency.exponentialRampToValueAtTime(safeSlide, now + durSec);
+                const safeSlide = Math.max(15, Math.min(16000, Number(slideTo) || 100));
+                osc.frequency.exponentialRampToValueAtTime(safeSlide, stopTime);
             }
 
-            gain.gain.setValueAtTime(safeVol, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + durSec);
+            // Micro-attack envelope (3ms) eliminates speaker clicks at note start
+            gain.gain.setValueAtTime(0.0001, startTime);
+            gain.gain.linearRampToValueAtTime(safeVol, startTime + Math.min(0.004, durSec * 0.2));
+            gain.gain.exponentialRampToValueAtTime(0.0001, stopTime);
 
             osc.connect(gain);
-            gain.connect(this.masterGain);
+            gain.connect(this.sfxGain || this.masterGain);
 
             osc.onended = () => {
                 try {
@@ -254,40 +360,44 @@ class SoundManager {
                 } catch (e) {}
             };
 
-            osc.start(now);
-            osc.stop(now + durSec);
+            osc.start(startTime);
+            osc.stop(stopTime + 0.005);
         } catch (err) {
             // Silently ignore Web Audio timing edge cases
         }
     }
 
-    playNoise(duration, vol = 1, cutoffFreq = 800) {
-        if (!this.enabled || !this.ctx || !this.noiseBuffer) return;
+    playNoise(duration, vol = 1, cutoffFreq = 800, delayMs = 0, filterType = 'lowpass') {
+        if (!this.enabled) return;
+        if (!this.initialized) this.init();
+        if (!this.ctx || !this.noiseBuffer) return;
         this._ensureContextRunning();
 
         try {
             const durSec = Math.min(2.0, Math.max(0.02, Number(duration) || 0.2));
-            const safeVol = Math.max(0.0001, Number(vol) || 0.5);
-            const now = this.ctx.currentTime;
+            const delaySec = Math.max(0, (Number(delayMs) || 0) / 1000);
+            const safeVol = Math.max(0.0001, Math.min(1.0, Number(vol) || 0.5));
+            const startTime = this.ctx.currentTime + delaySec;
+            const stopTime = startTime + durSec;
 
             const noise = this.ctx.createBufferSource();
             noise.buffer = this.noiseBuffer;
 
-            // Randomize start offset inside the 2s cached buffer so every explosion sounds organic
+            // Randomize start offset inside the 2s cached buffer so every explosion/thruster sounds organic
             const maxOffset = Math.max(0, this.noiseBuffer.duration - durSec - 0.01);
             const randomOffset = Math.random() * maxOffset;
 
             const filter = this.ctx.createBiquadFilter();
-            filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(cutoffFreq, now);
+            filter.type = filterType || 'lowpass';
+            filter.frequency.setValueAtTime(Math.max(40, cutoffFreq), startTime);
 
             const gain = this.ctx.createGain();
-            gain.gain.setValueAtTime(safeVol, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + durSec);
+            gain.gain.setValueAtTime(safeVol, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, stopTime);
 
             noise.connect(filter);
             filter.connect(gain);
-            gain.connect(this.masterGain);
+            gain.connect(this.sfxGain || this.masterGain);
 
             noise.onended = () => {
                 try {
@@ -297,8 +407,8 @@ class SoundManager {
                 } catch (e) {}
             };
 
-            noise.start(now, randomOffset, durSec);
-            noise.stop(now + durSec);
+            noise.start(startTime, randomOffset, durSec);
+            noise.stop(stopTime + 0.005);
         } catch (err) {}
     }
 
@@ -307,13 +417,13 @@ class SoundManager {
     // ==========================================
 
     playUIHover() {
-        if (!this._canPlay('hover', 35)) return;
-        this.playTone(600, 'sine', 80, 0.08);
+        if (!this._canPlay('hover', 40)) return;
+        this.playTone(620, 'sine', 65, 0.07, 660);
     }
 
     playUIClick() {
         if (!this._canPlay('click', 25)) return;
-        this.playTone(800, 'sine', 90, 0.18);
+        this.playTone(820, 'sine', 80, 0.16, 920);
     }
 
     playUIRefresh() {
@@ -322,108 +432,134 @@ class SoundManager {
     }
 
     playTyping() {
-        if (!this._canPlay('type', 20)) return;
-        this.playTone(900 + Math.random() * 300, 'triangle', 35, 0.06);
+        if (!this._canPlay('type', 22)) return;
+        this.playTone(900 + Math.random() * 320, 'triangle', 32, 0.05);
     }
 
     playError() {
         if (!this._canPlay('error', 80)) return;
-        this.playTone(150, 'sawtooth', 300, 0.3, 100);
+        this.playTone(160, 'sawtooth', 140, 0.28, 115, 0);
+        this.playTone(115, 'sawtooth', 220, 0.28, 85, 120);
     }
 
     playAlarm() {
-        // High priority repeating alarm, limit to once every 2 seconds
-        if (!this._canPlay('alarm', 2000)) return;
-        this.playTone(600, 'square', 400, 0.1, 500);
-        setTimeout(() => this.playTone(800, 'square', 400, 0.1, 700), 500);
+        // High priority repeating klaxon, rate-limited to once every 2.5 seconds
+        if (!this._canPlay('alarm', 2500)) return;
+        this.playTone(620, 'square', 360, 0.10, 500, 0);
+        this.playTone(820, 'square', 360, 0.10, 700, 420);
     }
 
     playBuy() {
-        this.playTone(400, 'sine', 100, 0.2, 600);
-        setTimeout(() => this.playTone(800, 'sine', 200, 0.2), 100);
+        if (!this._canPlay('buy', 50)) return;
+        this.playTone(440, 'sine', 100, 0.20, 660, 0);
+        this.playTone(880, 'sine', 200, 0.20, 920, 95);
     }
 
     playMissionComplete() {
-        if (!this._canPlay('missionComplete', 1000)) return;
-        this.playTone(440, 'sine', 150, 0.2);
-        setTimeout(() => this.playTone(554.37, 'sine', 150, 0.2), 150); // C#
-        setTimeout(() => this.playTone(659.25, 'sine', 150, 0.2), 300); // E
-        setTimeout(() => this.playTone(880, 'sine', 400, 0.2), 450);    // High A
+        if (!this._canPlay('missionComplete', 800)) return;
+        this.playTone(440, 'triangle', 150, 0.22, null, 0);      // A4
+        this.playTone(554.37, 'triangle', 150, 0.22, null, 140); // C#5
+        this.playTone(659.25, 'triangle', 150, 0.22, null, 280); // E5
+        this.playTone(880, 'triangle', 420, 0.26, 890, 420);     // A5
     }
 
     playGain() {
-        this.playTone(300, 'sine', 150, 0.12, 400);
-        setTimeout(() => this.playTone(500, 'sine', 150, 0.12, 600), 100);
-        setTimeout(() => this.playTone(700, 'sine', 300, 0.14, 800), 200);
+        if (!this._canPlay('gain', 60)) return;
+        this.playTone(330, 'sine', 140, 0.14, 440, 0);
+        this.playTone(554.37, 'sine', 140, 0.14, 659.25, 95);
+        this.playTone(740, 'sine', 280, 0.16, 880, 190);
     }
 
     playLevelUp() {
-        const notes = [440, 554.37, 659.25, 880]; // A Major arpeggio
+        if (!this._canPlay('levelUp', 500)) return;
+        const notes = [440, 554.37, 659.25, 880, 1108.73]; // A Major 9th arpeggio
         notes.forEach((freq, idx) => {
-            setTimeout(() => this.playTone(freq, 'triangle', 220, 0.2, freq * 1.02), idx * 90);
+            this.playTone(freq, 'triangle', 240, 0.22, freq * 1.015, idx * 85);
         });
     }
 
     playLaser() {
-        this.playTone(800, 'sawtooth', 200, 0.2, 200);
+        if (!this._canPlay('laser', 45)) return;
+        // Dual-layer sci-fi pulse laser
+        this.playTone(880, 'sawtooth', 190, 0.20, 180, 0);
+        this.playTone(1320, 'square', 140, 0.08, 240, 0);
     }
 
     playCritical() {
-        this.playTone(1200, 'square', 120, 0.25, 300);
-        setTimeout(() => this.playTone(900, 'sawtooth', 220, 0.25, 150), 80);
+        if (!this._canPlay('crit', 60)) return;
+        this.playTone(1350, 'square', 120, 0.25, 320, 0);
+        this.playTone(920, 'sawtooth', 240, 0.25, 140, 75);
+        this.playNoise(0.18, 0.25, 1400, 0);
     }
 
     playExplosion() {
-        this.playNoise(0.5, 0.5, 800);
-        this.playTone(100, 'square', 400, 0.4, 15);
+        if (!this._canPlay('explosion', 70)) return;
+        this.playNoise(0.55, 0.50, 820, 0);
+        this.playTone(110, 'square', 420, 0.40, 18, 0);
+        this.playTone(65, 'sine', 500, 0.45, 15, 20);
     }
 
     playShieldHit() {
         if (!this._canPlay('shieldHit', 60)) return;
-        this.playTone(1500, 'sawtooth', 100, 0.3, 500);
+        this.playTone(1500, 'sawtooth', 110, 0.26, 480, 0);
+        this.playTone(950, 'sine', 160, 0.18, 1350, 35);
     }
 
     playHullHit() {
         if (!this._canPlay('hullHit', 60)) return;
-        this.playNoise(0.2, 0.4, 650);
-        this.playTone(200, 'square', 200, 0.4, 50);
+        this.playNoise(0.22, 0.42, 650, 0);
+        this.playTone(210, 'square', 210, 0.38, 45, 0);
     }
 
     playRepair() {
-        this.playTone(350, 'sine', 120, 0.15, 520);
-        setTimeout(() => this.playTone(520, 'sine', 180, 0.15, 700), 110);
+        if (!this._canPlay('repair', 120)) return;
+        this.playTone(350, 'sine', 120, 0.16, 520, 0);
+        this.playTone(520, 'sine', 180, 0.16, 720, 105);
     }
 
     playThruster() {
         if (!this._canPlay('thruster', 90)) return;
-        this.playNoise(0.08, 0.08, 320);
+        const isStealthed = typeof isSilentRunning !== 'undefined' && isSilentRunning;
+        // Quieter, lower-frequency thruster wash when running in Silent Running mode
+        this.playNoise(0.08, isStealthed ? 0.035 : 0.075, isStealthed ? 180 : 320, 0);
     }
 
     playScan() {
-        this.playTone(2000, 'sine', 500, 0.2, 1800);
+        if (!this._canPlay('scan', 120)) return;
+        this.playTone(2000, 'sine', 450, 0.18, 1750, 0);
+        this.playTone(1000, 'triangle', 450, 0.08, 1400, 50);
     }
 
     playHail() {
-        this.playTone(680, 'sine', 90, 0.15);
-        setTimeout(() => this.playTone(880, 'sine', 140, 0.15), 110);
+        if (!this._canPlay('hail', 150)) return;
+        this.playTone(680, 'sine', 90, 0.15, null, 0);
+        this.playTone(880, 'sine', 150, 0.15, null, 105);
     }
 
     playMining() {
-        this.playTone(1200 + Math.random() * 400, 'sine', 300, 0.2);
+        if (!this._canPlay('mining', 80)) return;
+        const baseFreq = 1150 + Math.random() * 400;
+        this.playTone(baseFreq, 'sine', 280, 0.20, baseFreq * 0.85, 0);
+        this.playNoise(0.12, 0.12, 1200, 40);
     }
 
     playWarp() {
-        this.playTone(200, 'square', 1500, 0.2, 2000);
+        if (!this._canPlay('warp', 250)) return;
+        this.playTone(180, 'sawtooth', 1400, 0.20, 2200, 0);
+        this.playTone(90, 'sine', 1400, 0.25, 880, 0);
+        this.playNoise(0.6, 0.18, 900, 150);
     }
 
     playAbilityActivate() {
-        this.playTone(600, 'sine', 400, 0.2, 1200);
+        if (!this._canPlay('ability', 100)) return;
+        this.playTone(580, 'sine', 380, 0.20, 1220, 0);
+        this.playTone(870, 'triangle', 320, 0.12, 1640, 60);
     }
 
     playWarning() {
         if (!this._canPlay('warning', 400)) return;
-        this.playTone(400, 'sawtooth', 400, 0.3);
-        setTimeout(() => this.playTone(400, 'sawtooth', 400, 0.3), 500);
+        this.playTone(420, 'sawtooth', 360, 0.28, 390, 0);
+        this.playTone(420, 'sawtooth', 360, 0.28, 390, 440);
     }
 }
 
@@ -452,16 +588,28 @@ window.soundManager = soundManager;
         });
 
         GameBus.on('TICK_PROCESSED', (tick) => {
+            soundManager.updateAdaptiveMix();
             if (tick && tick.isMovement && !tick.interrupt) {
                 soundManager.playThruster();
             }
         });
         
-        // 🚨 ADDED: Dynamic Low Vitals Alarm
+        // Dynamic Low Vitals Alarm (Only during active flight or combat, never on Title/Game Over/Station menus)
         GameBus.on('UI_REFRESH_REQUESTED', () => {
+            soundManager.updateAdaptiveMix();
+
+            if (typeof currentGameState !== 'undefined' &&
+                currentGameState !== 'galactic_map' &&
+                currentGameState !== 'combat') {
+                return;
+            }
+
+            const stationModal = document.getElementById('stationOverlay');
+            if (stationModal && stationModal.style.display === 'flex') return;
+
             if (typeof playerHull !== 'undefined' && typeof MAX_PLAYER_HULL !== 'undefined') {
                 if (playerHull > 0 && playerHull < (MAX_PLAYER_HULL * 0.25)) {
-                    soundManager.playAlarm(); // Has internal 2-second rate limiting
+                    soundManager.playAlarm();
                 }
             }
         });
@@ -485,20 +633,36 @@ window.soundManager = soundManager;
         }
     });
 
-    // 3. Sync Mute Button Text, Set Initial State, & Add Subtle Hover/Typing SFX on DOM Load
+    // 3. One-Time User Gesture Autoplay Unlocker
+    // Ensures background music and Web Audio resume on the very first click, tap, or keypress
+    const unlockAudioOnGesture = () => {
+        if (soundManager.enabled) {
+            soundManager._ensureContextRunning();
+        }
+    };
+    ['pointerdown', 'keydown', 'touchstart'].forEach(evtName => {
+        document.addEventListener(evtName, unlockAudioOnGesture, { passive: true });
+    });
+
+    // 4. Sync Mute Button Text, Set Initial State, & Add De-Bounced Hover/Typing SFX on DOM Load
     window.addEventListener('DOMContentLoaded', () => {
-        // 👇 BUG FIX: Properly initialize audio state on load (Default to TRUE if no save exists)
         const savedPref = localStorage.getItem('wayfinder_audio_pref');
         const wantsAudio = savedPref === null ? true : (savedPref === 'true');
         
-        // This sets the internal boolean and updates the button label automatically!
+        // Sets the internal boolean and updates the button label automatically
         soundManager.setMuteState(wantsAudio);
 
-        // Delegated hover sound for interactive buttons and rows
+        // Track last hovered interactive element so moving across child spans doesn't re-trigger hover SFX
+        let lastHoveredTarget = null;
         document.addEventListener('mouseover', (e) => {
-            if (!soundManager.enabled) return;
-            const target = e.target.closest('button, .station-action-btn, .trade-item-row, .perk-card, .codex-cat-btn, .codex-entry-btn');
-            if (target && !target.disabled) {
+            if (!soundManager.enabled || !e.target || typeof e.target.closest !== 'function') return;
+            const target = e.target.closest('button, .station-action-btn, .trade-item-row, .perk-card, .codex-cat-btn, .codex-entry-btn, .save-card-content');
+            if (!target) {
+                lastHoveredTarget = null;
+                return;
+            }
+            if (target !== lastHoveredTarget && !target.disabled) {
+                lastHoveredTarget = target;
                 soundManager.playUIHover();
             }
         });
