@@ -2407,7 +2407,8 @@ function renderGalacticMap() {
                     break;
                 case NEBULA_CHAR_VAL: ctx.fillStyle = isLightMode ? '#8822BB' : '#DD99FF'; break;
                 case DERELICT_CHAR_VAL: 
-                    ctx.fillStyle = (tileData && tileData.studied) ? '#555555' : (isLightMode ? '#336699' : '#88AACC'); 
+                    // 👇 BUG FIX: Changed .studied to .looted so it only turns grey when fully stripped of physical salvage!
+                    ctx.fillStyle = (tileData && tileData.looted) ? '#555555' : (isLightMode ? '#336699' : '#88AACC'); 
                     break;
                 case ANOMALY_CHAR_VAL: ctx.fillStyle = isLightMode ? '#CC00CC' : '#FF33FF'; break;
                 case WORMHOLE_CHAR_VAL: ctx.fillStyle = isLightMode ? '#CC8800' : '#FFB800'; break;
@@ -3677,18 +3678,15 @@ function handleInteraction() {
                 unlockLoreEntry("XENO_ANOMALIES");
                 break;
             case DERELICT_CHAR_VAL:
-                if (tileObject && tileObject.studied) {
-                    // It's stripped! Set the classic text log message.
+                // 👇 BUG FIX: Changed .studied to .looted so scanning the databanks doesn't prematurely kill the wreck!
+                if (tileObject && tileObject.looted) {
                     bM = "Scanners show this derelict has already been stripped of useful salvage.";
                     availableActions.push({ label: 'Inspect Wreckage', key: 'e', onclick: openDerelictView });
                 } else {
-                    // Fresh derelict! 
                     if (typeof unlockLoreEntry === 'function') unlockLoreEntry("XENO_DERELICTS");
                     availableActions.push({ label: 'Board Derelict', key: 'e', onclick: openDerelictView });
                 }
                 
-                // We use setTimeout to wait 10 milliseconds. This lets the game finish 
-                // drawing the map and the UI first, so our button doesn't get instantly erased!
                 setTimeout(() => {
                     if (typeof renderContextualActions === 'function') {
                         renderContextualActions(availableActions);
