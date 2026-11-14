@@ -156,8 +156,9 @@ let sensorPulseActive = false;
 let sensorPulseRadius = 0;
 const MAX_PULSE_RADIUS = 150; 
 
-let autoSaveInterval = null;
-const AUTOSAVE_DELAY = 60000; 
+// 👇 BUG FIX: Natively attaching to window prevents interval leaks when save slots are swapped!
+window.autoSaveInterval = null;
+const AUTOSAVE_DELAY = 60000;
 
 // --- NOTORIETY CONFIGURATION ---
 const NOTORIETY_TITLES = [
