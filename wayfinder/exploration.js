@@ -772,35 +772,34 @@ function scanPlanetForLife() {
 
 }
 
+function performGeoSurvey() {
+    // 1. Validation
+    if (currentGameState !== GAME_STATES.PLANET_VIEW) return;
+    if ((playerCargo.MINING_DRONE || 0) < 1) {
+        logMessage("Launch failed: No Survey Drones in cargo.");
+        return;
+    }
+     
+    // 2. Consume Drone
+    playerCargo.MINING_DRONE = (playerCargo.MINING_DRONE || 0) - 1;
+    // Safety cleanup (optional but good practice)
+    if (playerCargo.MINING_DRONE <= 0) delete playerCargo.MINING_DRONE;
+    updateCurrentCargoLoad();
 
- function performGeoSurvey() {
-     // 1. Validation
-     if (currentGameState !== GAME_STATES.PLANET_VIEW) return;
-     if ((playerCargo.MINING_DRONE || 0) < 1) {
-         logMessage("Launch failed: No Survey Drones in cargo.");
-         return;
-     }
+    // 3. Calculate Reward
+    // Surveying always yields data, and sometimes finds raw resources too.
+    const xpGain = 45;
+    playerXP += xpGain;
      
-     // 2. Consume Drone
-     playerCargo.MINING_DRONE = (playerCargo.MINING_DRONE || 0) - 1;
-     // Safety cleanup (optional but good practice)
-     if (playerCargo.MINING_DRONE <= 0) delete playerCargo.MINING_DRONE;
-     updateCurrentCargoLoad();
-
-     // 3. Calculate Reward
-     // Surveying always yields data, and sometimes finds raw resources too.
-     const xpGain = 45;
-     playerXP += xpGain;
+    let surveyMsg = "Drone deployed. Telemetry received.\n";
+    surveyMsg += `<span style='color:#00FF00'>+${xpGain} XP.</span>\n`;
      
-     let surveyMsg = "Drone deployed. Telemetry received.\n";
-     surveyMsg += `<span style='color:#00FF00'>+${xpGain} XP.</span>\n`;
-     
-     // Reward 1: Planetary Data (The main goal)
-     if (currentCargoLoad + 1 <= PLAYER_CARGO_CAPACITY) {
-         playerCargo.PLANETARY_DATA = (playerCargo.PLANETARY_DATA || 0) + 1;
-         surveyMsg += "Acquired: 1x Planetary Data cartridge.\n";
-         updateCurrentCargoLoad();
-     } else {
+    // Reward 1: Planetary Data (The main goal)
+    if (currentCargoLoad + 1 <= PLAYER_CARGO_CAPACITY) {
+        playerCargo.PLANETARY_DATA = (playerCargo.PLANETARY_DATA || 0) + 1;
+        surveyMsg += "Acquired: 1x Planetary Data cartridge.\n";
+        updateCurrentCargoLoad();
+    } else {
          surveyMsg += "Sensors recorded data, but cargo hold is full! Data disk ejected.\n";
      }
 
@@ -1966,8 +1965,9 @@ function deployProbe() {
         return;
     }
     
+    // 👇 BUG FIX: Check against 'location' (the actual chunkManager type for planets/stations)
     const loc = chunkManager.getTile(playerX, playerY);
-    if (loc && (loc.type === 'station' || loc.type === 'planet')) {
+    if (loc && loc.type === 'location') {
         if (typeof showToast === 'function') showToast("Interference too high. Deploy in Deep Space.", "warning");
         return;
     }
