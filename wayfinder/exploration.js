@@ -1965,7 +1965,7 @@ function deployProbe() {
         return;
     }
     
-    // 👇 BUG FIX: Check against 'location' (the actual chunkManager type for planets/stations)
+    // Check against 'location' (the actual chunkManager type for planets/stations)
     const loc = chunkManager.getTile(playerX, playerY);
     if (loc && loc.type === 'location') {
         if (typeof showToast === 'function') showToast("Interference too high. Deploy in Deep Space.", "warning");
@@ -2166,19 +2166,36 @@ function resolveStrangeSignal(choice) {
     if (choice === 'DOWNLOAD') {
         const xp = 100 + Math.floor(Math.random() * 50);
         if (typeof playerXP !== 'undefined') playerXP += xp;
-        playerCargo['ENCRYPTED_DATA'] = (playerCargo['ENCRYPTED_DATA'] || 0) + 1;
-        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
         
-        resultHtml = `<span style="color:var(--success); font-weight:bold;">DATA ACQUIRED.</span><br>You downloaded the sequence. Added <span style="color:var(--accent-color)">1x Encrypted Data</span> to cargo. (+${xp} XP)`;
+        // 👇 BUG FIX: Check cargo
+        if (currentCargoLoad + 1 <= PLAYER_CARGO_CAPACITY) {
+            playerCargo['ENCRYPTED_DATA'] = (playerCargo['ENCRYPTED_DATA'] || 0) + 1;
+            resultHtml = `<span style="color:var(--success); font-weight:bold;">DATA ACQUIRED.</span><br>You downloaded the sequence. Added <span style="color:var(--accent-color)">1x Encrypted Data</span> to cargo. (+${xp} XP)`;
+        } else {
+            resultHtml = `<span style="color:var(--success); font-weight:bold;">DATA ACQUIRED.</span><br>Cargo hold full! Data discarded. (+${xp} XP)`;
+        }
+        
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
         if (typeof soundManager !== 'undefined') soundManager.playScan();
     } else if (choice === 'SALVAGE') {
         if (Math.random() < 0.6) {
-            const tech = 5 + Math.floor(Math.random() * 5);
-            playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + tech;
-            playerCargo['AI_CORE'] = (playerCargo['AI_CORE'] || 0) + 1; // Extremely rare!
+            // 👇 BUG FIX: Check cargo space for Tech Parts and AI Core
+            let spaceLeft = PLAYER_CARGO_CAPACITY - currentCargoLoad;
+            let techAmt = Math.min(spaceLeft, 5 + Math.floor(Math.random() * 5));
+            let gotCore = false;
+
+            if (techAmt > 0) {
+                playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + techAmt;
+                spaceLeft -= techAmt;
+            }
+            if (spaceLeft >= 1) {
+                playerCargo['AI_CORE'] = (playerCargo['AI_CORE'] || 0) + 1; 
+                gotCore = true;
+            }
+
             if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
             
-            resultHtml = `<span style="color:var(--gold-text); font-weight:bold;">CRITICAL SALVAGE!</span><br>You crack the casing and find an intact <span style="color:var(--warning)">AI Core</span> along with ${tech}x Tech Parts!`;
+            resultHtml = `<span style="color:var(--gold-text); font-weight:bold;">CRITICAL SALVAGE!</span><br>You crack the casing and find ${gotCore ? `an intact <span style="color:var(--warning)">AI Core</span> and ` : ''}${techAmt}x Tech Parts!`;
             if (typeof soundManager !== 'undefined') soundManager.playGain();
         } else {
             const dmg = 25;
@@ -2245,12 +2262,21 @@ function resolveUSSEncounter() {
     else if (roll < 0.50) {
         // 25% Salvage
         const salvageAmt = (typeof playerPerks !== 'undefined' && playerPerks.has('SCAVENGER_PROTOCOL')) ? 10 : 5;
-        logMessage(`<span style='color:var(--success); font-weight:bold;'>[ USS CLASSIFIED ] Intact cargo pod drifting in the void! (+${salvageAmt} Tech Parts)</span>`);
-        playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + salvageAmt;
-        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-        if (typeof showToast === 'function') showToast("SALVAGED TECH PARTS", "success");
-        if (typeof soundManager !== 'undefined') soundManager.playGain();
-    } 
+        
+        // 👇 BUG FIX: Check cargo space
+        const spaceLeft = PLAYER_CARGO_CAPACITY - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
+        const actualQty = Math.min(salvageAmt, spaceLeft);
+        
+        if (actualQty > 0) {
+            logMessage(`<span style='color:var(--success); font-weight:bold;'>[ USS CLASSIFIED ] Intact cargo pod drifting in the void! (+${actualQty} Tech Parts)</span>`);
+            playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + actualQty;
+            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+            if (typeof showToast === 'function') showToast("SALVAGED TECH PARTS", "success");
+            if (typeof soundManager !== 'undefined') soundManager.playGain();
+        } else {
+            logMessage(`<span style='color:var(--warning); font-weight:bold;'>[ USS CLASSIFIED ] Intact cargo pod found, but cargo hold is full! Left behind.</span>`);
+        }
+    }
     else if (roll < 0.75) {
         // 25% Derelict Ship
         logMessage("<span style='color:var(--warning); font-weight:bold;'>[ USS CLASSIFIED ] A derelict Concord patrol craft.</span>");
