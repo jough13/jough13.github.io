@@ -7505,13 +7505,10 @@ function submitVaultCipher() {
         // Clear the input so they can guess again quickly
         inputEl.value = "";
         
+        // 👇 FIX: GameBus already handles the death trigger synchronously!
         if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 0, reason: "Vault Defenses" });
         if (typeof renderUIStats === 'function') renderUIStats();
         
-        if (playerHull <= 0) {
-            closeGenericModal();
-            if (typeof triggerGameOver === 'function') triggerGameOver("Disintegrated by Precursor Defenses");
-        }
     }
 }
 
