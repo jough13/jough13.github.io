@@ -284,9 +284,12 @@ function generateProceduralModule(templateType = "RANDOM") {
 
 window.generateProceduralModule = generateProceduralModule;
 
-// Run database initialization immediately if ready, and again on DOMContentLoaded
-_initializeOutfittingDatabases();
-window.addEventListener('DOMContentLoaded', _initializeOutfittingDatabases);
+// Run database initialization in the correct boot order
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _initializeOutfittingDatabases);
+} else {
+    _initializeOutfittingDatabases();
+}
 
 // ==========================================
 // --- SHIPYARD UI & PURCHASING LOGIC ---
