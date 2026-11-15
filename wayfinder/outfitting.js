@@ -209,19 +209,21 @@ function _syncComponentsToCommodities() {
                 weight: 1,
                 isComponent: true,
                 slot: comp.slot,
-                description: `${comp.description} [Ship Module - Install at an Engineering Bay or activate from Cargo while docked].`,
-                onUse: () => {
-                    const loc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
-                    const isDocked = loc && loc.type === 'location' && (loc.isMajorHub || loc.char === OUTPOST_CHAR_VAL || loc.isPlayerOwned);
-                    if (!isDocked) {
-                        if (typeof showToast === 'function') showToast("DOCK AT A STATION TO INSTALL MODULES", "warning");
-                        return false;
-                    }
-                    confirmBuyComponent(compId, true);
-                    return false; // confirmBuyComponent already deducts the item from playerCargo!
-                }
+                description: `${comp.description} [Ship Module - Install at an Engineering Bay or activate from Cargo while docked].`
             };
         }
+        
+        // 👇 FIX: ALWAYS re-attach the function so it survives JSON serialization / game loads!
+        COMMODITIES[compId].onUse = () => {
+            const loc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+            const isDocked = loc && loc.type === 'location' && (loc.isMajorHub || loc.char === OUTPOST_CHAR_VAL || loc.isPlayerOwned);
+            if (!isDocked) {
+                if (typeof showToast === 'function') showToast("DOCK AT A STATION TO INSTALL MODULES", "warning");
+                return false;
+            }
+            confirmBuyComponent(compId, true);
+            return false; 
+        };
     }
 }
 
