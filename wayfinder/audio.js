@@ -195,7 +195,6 @@ class SoundManager {
 
         if (this.bgMusic && !this.bgMusicFailed) {
             this.bgMusic.volume = Math.max(0, Math.min(1, targetMusicVol));
-        } this.bgMusic.volume = Math.max(0, Math.min(1, targetMusicVol));
         }
 
         if (this.ambientNodes && this.ambientNodes.filter && this.ctx) {
