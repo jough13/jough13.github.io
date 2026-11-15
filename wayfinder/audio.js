@@ -15,16 +15,59 @@ class SoundManager {
         this.masterVolume = 0.30;
         this.musicVolume = 0.30;
 
-        // --- SUBSPACE RADIO STATIONS ---
-        // Edit filenames or station names here anytime!
+        // --- SUBSPACE RADIO STATIONS (Multi-Track Playlist Architecture) ---
+        // Add as many tracks as you want to any station's `tracks` array!
         this.radioStations = [
-            { freq: "101.5 FM", name: "DEEP VOID AMBIENT", title: "Orbiting A Sleeping Star", src: "assets/Orbiting_A_Sleeping_Star.mp3" },
-            { freq: "104.9 FM", name: "XERXES UNDERGROUND", title: "Cold Iron Gravity", src: "assets/Cold_Iron_Gravity.mp3" },
-            { freq: "112.7 FM", name: "PULSAR ARCADE FM", title: "Sector Nine Arrival", src: "assets/Sector_Nine_Arrival.mp3" },
-            { freq: "88.0 AM",  name: "SUBSPACE CARRIER WAVE", title: "Procedural Hull Drone", src: "DRONE" },
-            { freq: "OFF",      name: "COMMS RADIO OFFLINE", title: "Receiver Muted", src: null }
+            {
+                freq: "101.5 FM",
+                name: "DEEP VOID AMBIENT",
+                type: "MUSIC",
+                trackIndex: 0,
+                tracks: [
+                    { title: "Orbiting A Sleeping Star", src: "assets/Orbiting_A_Sleeping_Star.mp3" },
+                    { title: "Weightless Horizon", src: "assets/Weightless_Horizon.mp3" }
+                ]
+            },
+            {
+                freq: "104.9 FM",
+                name: "XERXES UNDERGROUND",
+                type: "MUSIC",
+                trackIndex: 0,
+                tracks: [
+                    { title: "Cold Iron Gravity", src: "assets/Cold_Iron_Gravity.mp3" }
+                ]
+            },
+            {
+                freq: "112.7 FM",
+                name: "PULSAR ARCADE FM",
+                type: "MUSIC",
+                trackIndex: 0,
+                tracks: [
+                    { title: "Sector Nine Arrival", src: "assets/Sector_Nine_Arrival.mp3" }
+                ]
+            },
+            {
+                freq: "1620 AM",
+                name: "CONCORD NEWS NETWORK",
+                type: "NEWS",
+                title: "Live Sector Telemetry & Market Feed"
+            },
+            {
+                freq: "88.0 AM",
+                name: "SUBSPACE CARRIER WAVE",
+                type: "DRONE",
+                title: "Procedural Hull Drone"
+            },
+            {
+                freq: "OFF",
+                name: "COMMS RADIO OFFLINE",
+                type: "OFF",
+                title: "Receiver Muted"
+            }
         ];
         this.currentStationIndex = 0;
+        this.newsTimer = null;
+        this.newsInitialTimeout = null;
 
         this.bgMusic = null;
         this.bgMusicFailed = false;
@@ -80,6 +123,7 @@ class SoundManager {
             }
 
             this.initialized = true;
+            console.log("Audio System Initialized");
         } catch (err) {
             console.warn("Web Audio API could not be initialized:", err);
         }
@@ -94,14 +138,16 @@ class SoundManager {
         }
 
         const st = this.radioStations[this.currentStationIndex];
-        if (!st || !st.src) return;
+        if (!st || st.type === "OFF") return;
 
-        if (st.src === "DRONE") {
+        if (st.type === "DRONE" || st.type === "NEWS") {
             if (!this.ambientNodes && !document.hidden) this.startProceduralDrone();
-        } else if (this.bgMusic && !this.bgMusicFailed && this.bgMusic.paused && !document.hidden) {
-            this.bgMusic.play().catch(() => {});
-        } else if (this.bgMusicFailed && !this.ambientNodes && !document.hidden) {
-            this.startProceduralDrone();
+        } else if (st.type === "MUSIC") {
+            if (this.bgMusic && !this.bgMusicFailed && this.bgMusic.paused && !document.hidden) {
+                this.bgMusic.play().catch(() => {});
+            } else if (this.bgMusicFailed && !this.ambientNodes && !document.hidden) {
+                this.startProceduralDrone();
+            }
         }
     }
 
@@ -141,14 +187,17 @@ class SoundManager {
         }
     }
 
-    // --- GTA RADIO TUNER ---
+    // ==========================================
+    // --- SUBSPACE RADIO TUNER & PLAYLISTS ---
+    // ==========================================
+
     initBackgroundMusic() {
         this.playCurrentStation(false);
     }
 
     playRadioTuningEffect() {
         if (!this.enabled) return;
-        // Static burst + frequency sweep just like tuning a car stereo
+        // Static burst + frequency sweep just like tuning a stereo dial
         this.playNoise(0.14, 0.22, 1800, 0, 'bandpass');
         this.playTone(1400, 'sine', 55, 0.08, 620, 20);
         this.playTone(620, 'sine', 65, 0.08, 1180, 75);
@@ -158,66 +207,100 @@ class SoundManager {
         const station = this.radioStations[this.currentStationIndex];
         if (!station) return;
 
-        // Stop any active track or synth drone first
+        // Cleanly stop any active MP3, procedural drone, or news timer
         if (this.bgMusic) {
             this.bgMusic.pause();
         }
         this.stopProceduralDrone();
+        if (this.newsInitialTimeout) {
+            clearTimeout(this.newsInitialTimeout);
+            this.newsInitialTimeout = null;
+        }
+        if (this.newsTimer) {
+            clearInterval(this.newsTimer);
+            this.newsTimer = null;
+        }
         this.bgMusicFailed = false;
 
-        // Sync UI Button label if it exists
+        // Determine current track title and file path if it's a playlist station
+        let currentTrackTitle = station.title || "";
+        let currentTrackSrc = null;
+
+        if (station.type === "MUSIC" && station.tracks && station.tracks.length > 0) {
+            station.trackIndex = (station.trackIndex || 0) % station.tracks.length;
+            const trackObj = station.tracks[station.trackIndex];
+            currentTrackTitle = trackObj.title;
+            currentTrackSrc = trackObj.src;
+        }
+
+        // Sync System Menu button text using safe Unicode escape for the radio icon
         const radioBtn = document.getElementById('radioStationButton');
         if (radioBtn) {
-            radioBtn.textContent = `📻 Radio: ${station.freq}`;
+            radioBtn.textContent = `\uD83D\uDCFB Radio: ${station.freq}`;
         }
 
         if (showNotification) {
             this.playRadioTuningEffect();
             if (typeof showToast === 'function') {
-                showToast(`📻 [${station.freq}] ${station.name}<br><span style="font-size:11px; opacity:0.85;">♪ ${station.title}</span>`, "info");
+                showToast(`\uD83D\uDCFB [${station.freq}] ${station.name}<br><span style="font-size:11px; opacity:0.85;">\u266A ${currentTrackTitle}</span>`, "info");
             }
             if (typeof logMessage === 'function' && typeof currentGameState !== 'undefined' && currentGameState !== 'title_screen') {
-                logMessage(`<span style="color:var(--accent-color)">[ SUBSPACE RADIO ]</span> Tuned to <b>${station.freq} - ${station.name}</b> (${station.title})`);
+                logMessage(`<span style="color:var(--accent-color)">[ SUBSPACE RADIO ]</span> Tuned to <b>${station.freq} - ${station.name}</b> (${currentTrackTitle})`);
             }
         }
 
-        if (!this.enabled || !station.src) return;
+        if (!this.enabled || station.type === "OFF") return;
 
-        if (station.src === "DRONE") {
+        if (station.type === "DRONE") {
             this.startProceduralDrone();
             return;
         }
 
-        try {
-            if (!this.bgMusic) {
-                this.bgMusic = new Audio();
-                // Auto-advance to the next MP3 track when a song finishes!
-                this.bgMusic.addEventListener('ended', () => {
-                    this.autoAdvanceTrack();
-                });
-                this.bgMusic.addEventListener('error', (e) => {
-                    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-                    this.bgMusicFailed = true;
-                    if (this.enabled) this.startProceduralDrone();
-                });
+        if (station.type === "NEWS") {
+            this.startProceduralDrone();
+            this.startNewsBroadcast();
+            return;
+        }
+
+        if (station.type === "MUSIC" && currentTrackSrc) {
+            try {
+                if (!this.bgMusic) {
+                    this.bgMusic = new Audio();
+                    this.bgMusic.addEventListener('ended', () => {
+                        this.autoAdvanceTrack();
+                    });
+                    this.bgMusic.addEventListener('error', (e) => {
+                        if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+                        this.bgMusicFailed = true;
+                        if (this.enabled) this.startProceduralDrone();
+                    });
+                }
+
+                this.bgMusic.src = currentTrackSrc;
+                this.bgMusic.loop = false;
+                this.bgMusic.volume = this.musicVolume;
+                this.updateAdaptiveMix();
+
+                this.bgMusic.play().catch(() => {});
+            } catch (err) {
+                this.bgMusicFailed = true;
+                if (this.enabled) this.startProceduralDrone();
             }
-
-            this.bgMusic.src = station.src;
-            this.bgMusic.loop = false;
-            this.bgMusic.volume = this.musicVolume;
-            this.updateAdaptiveMix();
-
-            this.bgMusic.play().catch(() => {});
-        } catch (err) {
-            this.bgMusicFailed = true;
-            if (this.enabled) this.startProceduralDrone();
         }
     }
 
-    nextRadioStation() {
+    // Cycles stations on 'R', or skips tracks within the current playlist on 'Shift + R'
+    nextRadioStation(skipTrackOnly = false) {
         if (!this.initialized) this.init();
-        // If audio was muted, turning the radio dial unmutes it automatically
         if (!this.enabled) this.setMuteState(true);
+
+        const station = this.radioStations[this.currentStationIndex];
+
+        if (skipTrackOnly && station && station.type === "MUSIC" && station.tracks && station.tracks.length > 1) {
+            station.trackIndex = ((station.trackIndex || 0) + 1) % station.tracks.length;
+            this.playCurrentStation(true);
+            return;
+        }
 
         this.currentStationIndex = (this.currentStationIndex + 1) % this.radioStations.length;
         try {
@@ -228,15 +311,56 @@ class SoundManager {
     }
 
     autoAdvanceTrack() {
-        // Cycles strictly through the MP3 stations when a song ends naturally
-        const mp3Count = this.radioStations.filter(s => s.src && s.src !== "DRONE").length;
-        if (mp3Count > 0) {
-            this.currentStationIndex = (this.currentStationIndex + 1) % mp3Count;
-            try {
-                localStorage.setItem('wayfinder_radio_station', String(this.currentStationIndex));
-            } catch (e) {}
-            this.playCurrentStation(true);
-        }
+        const station = this.radioStations[this.currentStationIndex];
+        if (!station || station.type !== "MUSIC" || !station.tracks || station.tracks.length === 0) return;
+
+        // Advance to the next track in the current station's playlist
+        const hadMultipleTracks = station.tracks.length > 1;
+        station.trackIndex = ((station.trackIndex || 0) + 1) % station.tracks.length;
+        this.playCurrentStation(hadMultipleTracks);
+    }
+
+    // Procedural News & Telemetry Bulletins for 1620 AM
+    startNewsBroadcast() {
+        const triggerBulletin = () => {
+            if (!this.enabled || document.hidden) return;
+            const st = this.radioStations[this.currentStationIndex];
+            if (!st || st.type !== "NEWS") return;
+            if (typeof currentGameState === 'undefined' || currentGameState !== 'galactic_map') return;
+
+            // Teletype news jingle
+            this.playTone(880, 'sine', 60, 0.08, null, 0);
+            this.playTone(1320, 'sine', 60, 0.08, null, 80);
+            this.playTone(1760, 'sine', 120, 0.08, null, 160);
+
+            let headlines = [
+                `"Concord Nav-Com reminds all pilots: keep your transponders active in Core Sectors."`,
+                `"Fuel Rats Collective reports record rescues this cycle. Remember to tip your tug pilot!"`,
+                `"Astrometric Advisory: High gravimetric shear detected near deep-space singularities."`,
+                `"Aegis Command warns independent haulers to avoid unmarked syndicate wagering buoys."`
+            ];
+
+            if (typeof activeMarketTrend !== 'undefined' && activeMarketTrend && typeof COMMODITIES !== 'undefined') {
+                const item = COMMODITIES[activeMarketTrend.item]?.name || activeMarketTrend.item;
+                const status = activeMarketTrend.isBoom ? "CRITICAL SHORTAGE" : "MARKET SURPLUS";
+                headlines.push(`"MARKET TICKER: ${status} of ${item} reported at ${activeMarketTrend.station}."`);
+            }
+            if (typeof playerActiveBounty !== 'undefined' && playerActiveBounty) {
+                headlines.push(`"SEC-COM BOLO: High-value target ${playerActiveBounty.targetName} last tracked near [${playerActiveBounty.x}, ${-playerActiveBounty.y}]."`);
+            }
+            if (typeof playerNotoriety !== 'undefined' && playerNotoriety > 15) {
+                const shipTitle = (typeof playerShip !== 'undefined' && playerShip.name) ? playerShip.name : 'an unidentified vessel';
+                headlines.push(`"SECURITY ALERT: Aegis patrols are actively hunting outlaw Captain ${typeof playerName !== 'undefined' ? playerName : ''} aboard ${shipTitle}..."`);
+            }
+
+            const msg = headlines[Math.floor(Math.random() * headlines.length)];
+            if (typeof logMessage === 'function') {
+                logMessage(`<span style="color:var(--gold-text)">[ 1620 AM NEWS ]</span> <i>${msg}</i>`);
+            }
+        };
+
+        this.newsInitialTimeout = setTimeout(triggerBulletin, 4000);
+        this.newsTimer = setInterval(triggerBulletin, 45000);
     }
 
     startProceduralDrone() {
@@ -333,6 +457,14 @@ class SoundManager {
             }
             if (this.bgMusic) this.bgMusic.pause();
             this.stopProceduralDrone();
+            if (this.newsInitialTimeout) {
+                clearTimeout(this.newsInitialTimeout);
+                this.newsInitialTimeout = null;
+            }
+            if (this.newsTimer) {
+                clearInterval(this.newsTimer);
+                this.newsTimer = null;
+            }
         }
 
         const soundBtn = document.getElementById('soundButton');
@@ -620,12 +752,12 @@ window.soundManager = soundManager;
             radioBtn.id = 'radioStationButton';
             radioBtn.className = 'sys-btn';
             const st = soundManager.radioStations[soundManager.currentStationIndex];
-            radioBtn.textContent = `📻 Radio: ${st ? st.freq : '101.5 FM'}`;
-            radioBtn.onclick = () => soundManager.nextRadioStation();
+            radioBtn.textContent = `\uD83D\uDCFB Radio: ${st ? st.freq : '101.5 FM'}`;
+            radioBtn.onclick = (e) => soundManager.nextRadioStation(Boolean(e && e.shiftKey));
             soundBtn.parentNode.insertBefore(radioBtn, soundBtn);
         }
 
-        // 2. Patch openHelpMenu() so 'R : Cycle Subspace Radio' automatically appears in the Command Reference
+        // 2. Patch openHelpMenu() so 'R / SHIFT+R' automatically appears in the Command Reference
         if (typeof window.openHelpMenu === 'function' && !window._radioHelpPatched) {
             const origHelp = window.openHelpMenu;
             window.openHelpMenu = function() {
@@ -634,7 +766,7 @@ window.soundManager = soundManager;
                 if (listEl) {
                     listEl.innerHTML += `
                         <div style="padding: 0 10px 10px 10px; font-size: 13px; color: var(--text-color); line-height: 2.0;">
-                            <span style="color:var(--gold-text); font-weight:bold;">R</span> : Cycle Subspace Radio Station
+                            <span style="color:var(--gold-text); font-weight:bold;">R / SHIFT+R</span> : Cycle Radio Station / Skip Track
                         </div>
                     `;
                 }
@@ -665,7 +797,7 @@ window.soundManager = soundManager;
                 return;
             }
 
-            // Press 'R' in normal flight to cycle the Subspace Radio!
+            // Press 'R' in normal flight to cycle the Subspace Radio (or 'Shift + R' to skip tracks)!
             // Automatically yields if you are in Combat (where R = Run) or docked with a damaged hull (where R = Repair)
             if (!e.repeat && (e.key === 'r' || e.key === 'R')) {
                 if (typeof currentGameState !== 'undefined' && currentGameState === 'galactic_map') {
@@ -677,7 +809,7 @@ window.soundManager = soundManager;
                         return; // Let 'R' repair the ship when docked
                     }
 
-                    soundManager.nextRadioStation();
+                    soundManager.nextRadioStation(e.shiftKey);
                 }
             }
         });
