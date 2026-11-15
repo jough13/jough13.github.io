@@ -286,14 +286,23 @@ window.hasPlayerPerk = hasPlayerPerk;
         let textReward = "Data recovered.";
 
         if (itemId === 'ENCRYPTED_ENGRAM') {
+            // 👇 FIX: Synchronized the 4-item loot table from the Cryptarch (trade.js)
+            const spaceLeft = (typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50) - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
+            
             const rewards = [
                 { xp: 150, text: "FRAGMENT RECOVERED: 'The ruler of the sunless world is the DARKNESS.'" },
                 { xp: 300, text: "NAV-DATA: 'Sector [39, 17] - Precursor activity detected.'" },
-                { xp: 500, text: "JACKPOT: Precursor architectural schematics recovered." }
+                { xp: 500, itemDrop: "VOID_CRYSTALS", qty: 2, text: "JACKPOT: Precursor crystalline matrix stabilized into 2x Void Crystals!" },
+                { xp: 400, itemDrop: "PRECURSOR_STAR_MAP_FRAGMENT", qty: 1, text: "ASTRONOMICAL CACHE: Recovered 1x Star Map Fragment!" }
             ];
             const r = rewards[Math.floor(Math.random() * rewards.length)];
             xpReward = r.xp;
             textReward = r.text;
+            
+            if (r.itemDrop && spaceLeft >= (r.qty || 1) && typeof COMMODITIES !== 'undefined' && COMMODITIES[r.itemDrop]) {
+                playerCargo[r.itemDrop] = (playerCargo[r.itemDrop] || 0) + (r.qty || 1);
+                if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+            }
         } else if (itemId === 'ENCRYPTED_DATA') {
             xpReward = 250;
             creditReward = 500 + Math.floor(Math.random() * 500);
@@ -417,18 +426,14 @@ window.hasPlayerPerk = hasPlayerPerk;
                 const secY = Math.floor(playerY / SECTOR_SIZE);
                 const secKey = `${secX},${secY}`;
 
-                // Sync any existing visitedSectors into our tracking Set
-                if (typeof visitedSectors !== 'undefined' && visitedSectors.forEach) {
-                    visitedSectors.forEach(k => _awardedCartographerSectors.add(k));
-                }
-
                 if (hasPlayerPerk('STELLAR_CARTOGRAPHER')) {
                     if (typeof playerXP !== 'undefined') {
                         playerXP += 2;
                     }
-                    // Because perks.js loads before script.js, this listener runs right before updateSectorState() adds secKey to visitedSectors
-                    if (!_awardedCartographerSectors.has(secKey) && (secX !== 0 || secY !== 0)) {
-                        _awardedCartographerSectors.add(secKey);
+                    
+                    // Check visitedSectors directly! Since perks.js ticks before script.js, 
+                    // the sector isn't logged yet, allowing us to safely award the bonus without memory leaks.
+                    if (typeof visitedSectors !== 'undefined' && !visitedSectors.has(secKey) && (secX !== 0 || secY !== 0)) {
                         playerXP += 50;
                         if (typeof logMessage === 'function') {
                             logMessage("<span style='color:var(--accent-color)'>[ STELLAR CARTOGRAPHER ] New sector astrometrics cataloged. +50 Bonus XP!</span>");
@@ -437,8 +442,6 @@ window.hasPlayerPerk = hasPlayerPerk;
                     if (typeof checkLevelUp === 'function' && typeof xpToNextLevel !== 'undefined' && playerXP >= xpToNextLevel) {
                         checkLevelUp();
                     }
-                } else {
-                    _awardedCartographerSectors.add(secKey);
                 }
             }
 
