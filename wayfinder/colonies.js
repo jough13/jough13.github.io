@@ -780,6 +780,22 @@ function demolishBuilding(colonyId, buildingId) {
 
     const bData = COLONY_BUILDINGS[buildingId];
     
+    // 👇 FIX: Prevent scraping housing if it would drop capacity below current population
+    if (bData.effects && bData.effects.popCap) {
+        let currentMaxPop = 0;
+        for (const [bId, count] of Object.entries(colony.buildings)) {
+            if (COLONY_BUILDINGS[bId] && COLONY_BUILDINGS[bId].effects.popCap) {
+                currentMaxPop += COLONY_BUILDINGS[bId].effects.popCap * count;
+            }
+        }
+        const newMaxPop = currentMaxPop - bData.effects.popCap;
+        if (colony.population > newMaxPop) {
+            if (typeof showToast === 'function') showToast("CANNOT EVICT COLONISTS", "error");
+            logMessage(`<span style='color:var(--danger)'>Cannot demolish ${bData.name}: New capacity (${formatNumber(newMaxPop)}) is lower than current population (${formatNumber(Math.floor(colony.population))}).</span>`);
+            return;
+        }
+    }
+    
     let maxStorage = 1000 + ((colony.buildings['STORAGE_SILOS'] || 0) * 2500);
     let currentStorage = Object.values(colony.storage).reduce((a,b) => a + b, 0);
     let refundVolume = Object.values(bData.cost).reduce((a,b) => a + b, 0);
