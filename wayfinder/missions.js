@@ -958,7 +958,14 @@ function showBountyDetails(bounty, isActive) {
 function spawnBountyEntityOnMap(bounty) {
     if (!bounty || typeof activeEnemies === 'undefined') return;
 
-    // BUG FIX: Check if this tracked bounty is a Legendary Boss from LEGENDARY_BOUNTIES
+    // Offset the bounty if it tries to spawn directly on top of the player
+    // This prevents the infinite combat loop if the player just escaped this exact bounty!
+    if (typeof playerX !== 'undefined' && bounty.x === playerX && bounty.y === playerY) {
+        bounty.x += (Math.random() < 0.5 ? -4 : 4);
+        bounty.y += (Math.random() < 0.5 ? -4 : 4);
+    }
+
+    // Check if this tracked bounty is a Legendary Boss from LEGENDARY_BOUNTIES
     const rawBossId = bounty.bossId || (bounty.id ? String(bounty.id).replace(/_\d+$/, '') : null);
     const legendaryDef = (typeof LEGENDARY_BOUNTIES !== 'undefined' && rawBossId && LEGENDARY_BOUNTIES[rawBossId])
         ? LEGENDARY_BOUNTIES[rawBossId]
