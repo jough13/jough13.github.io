@@ -262,6 +262,16 @@ function renderPlanetView() {
     // Clean HTML Structure
     let html = `
         <div class="planet-view-content">
+            <!-- 👇 FIX: Injected Planet Header so it renders natively without relying on biomes.js patches -->
+            <div class="planet-header">
+                <img src="${planet.biome.image}" alt="${planet.biome.name}" class="planet-large-img" onerror="this.onerror=null; this.src='assets/barren_rock.png';">
+                <h2 class="planet-title">${currentSystemData.name.toUpperCase()} : ${planet.name.toUpperCase()}</h2>
+                <div style="font-size:11px; letter-spacing:2px; margin-bottom:10px; color:var(--accent-color);">
+                    CLASS: ${planet.biome.name.toUpperCase()}
+                </div>
+                <p class="planet-desc">"${planet.biome.description}"</p>
+            </div>
+            
             <div class="planet-actions-grid">
                 <button class="action-button" onclick="minePlanet()" ${mineButtonState}>${mineLabel}</button>
                 <button class="action-button" onclick="scanPlanetForLife()" ${scanButtonState}>${scanLabel}</button>
