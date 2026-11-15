@@ -29,6 +29,15 @@ class SoundManager {
                 ]
             },
             {
+                freq: "99.3 FM",
+                name: "CONCORD CLASSICAL SYMPHONY",
+                type: "MUSIC",
+                trackIndex: 0,
+                tracks: [
+                    { title: "Approaching The Highport", src: "assets/Approaching_The_Highport.mp3" }
+                ]
+            },
+            {
                 freq: "104.9 FM",
                 name: "XERXES UNDERGROUND",
                 type: "MUSIC",
