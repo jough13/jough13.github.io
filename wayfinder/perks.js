@@ -782,7 +782,10 @@ window.hasPlayerPerk = hasPlayerPerk;
             const origBrokerPrice = window.getShadowBrokerUnitPrice;
             window.getShadowBrokerUnitPrice = function(itemId) {
                 const base = origBrokerPrice.apply(this, arguments);
-                return hasPlayerPerk('BLACK_MARKET_BARON') ? Math.floor(base * 1.25) : base;
+                const loc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+                const soldLocally = loc && loc.sells && loc.sells.some(s => (s.id === itemId) || (s === itemId));
+                // Disable Baron multiplier for local goods to stop infinite arbitrage
+                return (hasPlayerPerk('BLACK_MARKET_BARON') && !soldLocally) ? Math.floor(base * 1.25) : base;
             };
             window._perksBrokerPriceHooked = true;
         }
@@ -791,8 +794,14 @@ window.hasPlayerPerk = hasPlayerPerk;
             const origBrokerTrade = window.processShadowBrokerTrade;
             window.processShadowBrokerTrade = function(itemId) {
                 const prevCredits = typeof playerCredits !== 'undefined' ? playerCredits : 0;
+                
+                const loc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+                const soldLocally = itemId !== 'ALL' && loc && loc.sells && loc.sells.some(s => (s.id === itemId) || (s === itemId));
+                
                 origBrokerTrade.apply(this, arguments);
-                if (hasPlayerPerk('BLACK_MARKET_BARON') && playerCredits > prevCredits && typeof playerFactionStanding !== 'undefined') {
+                
+                // Deny the Eclipse Rep bonus if they are just fencing local store goods
+                if (hasPlayerPerk('BLACK_MARKET_BARON') && playerCredits > prevCredits && typeof playerFactionStanding !== 'undefined' && !soldLocally) {
                     playerFactionStanding['ECLIPSE'] = (playerFactionStanding['ECLIPSE'] || 0) + 2;
                     if (typeof logMessage === 'function') {
                         logMessage("<span style='color:#9933FF'>[ SYNDICATE KINGPIN ] +25% Black Market bonus applied (+2 Eclipse Cartel Rep).</span>");
