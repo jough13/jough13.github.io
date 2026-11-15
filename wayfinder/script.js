@@ -5566,6 +5566,25 @@ function loadGameData(jsonString) {
     try {
         const savedState = JSON.parse(jsonString);
 
+        // Purge current session memory before unpacking the save file!
+        // This prevents entities and lore from the aborted session leaking into the loaded game.
+        if (typeof activeEnemies !== 'undefined') activeEnemies = [];
+        if (typeof EntityManager !== 'undefined') EntityManager.clear();
+        if (typeof activePlayerDrones !== 'undefined') activePlayerDrones = [];
+        if (typeof activeDistressCalls !== 'undefined') activeDistressCalls = [];
+        if (typeof window.activeSkirmishes !== 'undefined') window.activeSkirmishes = [];
+        
+        // Reset stealth and heat
+        isSilentRunning = false;
+        stealthHeat = 0;
+        
+        // Lock all lore entries (the save file will re-unlock them below)
+        if (typeof LORE_DATABASE !== 'undefined') {
+            Object.keys(LORE_DATABASE).forEach(k => {
+                if (LORE_DATABASE[k]) LORE_DATABASE[k].unlocked = false;
+            });
+        }
+        
         currentCampaignId = savedState.campaignId || ("cmp_" + Date.now()); 
         
         if (savedState.version !== GAME_VERSION) {
