@@ -942,7 +942,7 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                         passiveCredits: 0, passiveXP: 0,
                         crimeReduction: 0, popGrowthMult: 1.0, foodEfficiency: 1.0, omniProd: 1.0,
                         miningBoost: 1.0, resourceMult: 1.0, autoTrade: false,
-                        consume: { "WATER": 0, "FOOD_SUPPLIES": 0, "REFINED_ALLOY": 0, "MINERALS": 0, "TECH_PARTS": 0, "MEDICAL_SUPPLIES": 0 }
+                        consume: {} // 👇 FIX: Start empty, we will segment it by production type
                     };
 
                     // Aggregate all building effects!
@@ -951,7 +951,6 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                         if (bData && count > 0) {
                             stats.upkeep += (bData.upkeep || 0) * count;
                             
-                            // Re-added the missing safety check here!
                             if (bData.effects) {
                                 for (const [effect, val] of Object.entries(bData.effects)) {
                                     if (effect === 'taxMult') stats.taxMult += (val * count);
@@ -962,8 +961,19 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                                     else if (effect === 'resourceMult') stats.resourceMult *= Math.pow(val, count);
                                     else if (effect === 'autoTrade') stats.autoTrade = val; 
                                     else if (effect === 'consume') {
+                                        // 👇 FIX: Segment consumption by what the building produces!
+                                        let prodType = 'general';
+                                        if (bData.effects.foodProd) prodType = 'food';
+                                        else if (bData.effects.techProd) prodType = 'tech';
+                                        else if (bData.effects.weaponProd) prodType = 'weapons';
+                                        else if (bData.effects.troopProd) prodType = 'troops';
+                                        else if (bData.effects.mechProd) prodType = 'mechs';
+                                        else if (bData.effects.stimProd) prodType = 'stims';
+                                        else if (bData.effects.luxuryProd) prodType = 'luxury';
+
+                                        if (!stats.consume[prodType]) stats.consume[prodType] = {};
                                         for (const [cId, cVal] of Object.entries(val)) {
-                                            stats.consume[cId] = (stats.consume[cId] || 0) + (cVal * count);
+                                            stats.consume[prodType][cId] = (stats.consume[prodType][cId] || 0) + (cVal * count);
                                         }
                                     } else {
                                         stats[effect] += (val * count);
@@ -1034,9 +1044,9 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                     // B. Refined Materials (Requires Inputs)
                     if (!isStorageFull) {
                         let fProd = Math.floor(stats.foodProd * eff * stats.omniProd);
-                        let waterNeed = Math.floor(stats.consume['WATER'] * eff);
+                        let waterNeed = Math.floor((stats.consume.food?.WATER || 0) * eff); // 👇 FIX: Targeted consumption
                         if ((colony.storage['WATER'] || 0) >= waterNeed) {
-                            colony.storage['WATER'] -= waterNeed;
+                            if (waterNeed > 0) colony.storage['WATER'] -= waterNeed;
                         } else {
                             fProd = Math.floor(fProd / 2); 
                             colony.storage['WATER'] = 0;
@@ -1045,17 +1055,80 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                         colony.storage['FOOD_SUPPLIES'] = (colony.storage['FOOD_SUPPLIES'] || 0) + fProd;
                         currentStorage += fProd;
 
-                        // 👇 BUG FIX: Removed double-dipping Mineral deductions from Alloy production
                         let aProd = Math.floor(stats.alloyProd * eff * stats.omniProd);
                         if (currentStorage + aProd > stats.storageCap) aProd = Math.max(0, stats.storageCap - currentStorage);
                         colony.storage['REFINED_ALLOY'] = (colony.storage['REFINED_ALLOY'] || 0) + aProd;
                         currentStorage += aProd;
 
-                        // 👇 BUG FIX: Removed double-dipping Alloy deductions from Tech Part production
                         let tProd = Math.floor(stats.techProd * eff * stats.omniProd);
+                        let alloyNeedTech = Math.floor((stats.consume.tech?.REFINED_ALLOY || 0) * eff); // 👇 FIX: Targeted consumption
+                        if ((colony.storage['REFINED_ALLOY'] || 0) >= alloyNeedTech) {
+                            if (alloyNeedTech > 0) colony.storage['REFINED_ALLOY'] -= alloyNeedTech;
+                        } else {
+                            // Calculate how much tech came specifically from factories, and subtract it
+                            let factoryTech = 0;
+                            if (colony.buildings['AUTOMATED_FACTORY']) {
+                                factoryTech = Math.floor((COLONY_BUILDINGS['AUTOMATED_FACTORY'].effects.techProd * colony.buildings['AUTOMATED_FACTORY']) * eff * stats.omniProd);
+                            }
+                            tProd = Math.max(0, tProd - factoryTech);
+                        }
                         if (currentStorage + tProd > stats.storageCap) tProd = Math.max(0, stats.storageCap - currentStorage);
                         colony.storage['TECH_PARTS'] = (colony.storage['TECH_PARTS'] || 0) + tProd;
                         currentStorage += tProd;
+                    }
+
+                    // C. Advanced Logistics (Consumes specific multi-inputs)
+                    if (!isStorageFull && eff > 0) {
+                        let wProd = Math.floor(stats.weaponProd * eff * stats.omniProd);
+                        let wAlloy = Math.floor((stats.consume.weapons?.REFINED_ALLOY || 0) * eff);
+                        let wMin = Math.floor((stats.consume.weapons?.MINERALS || 0) * eff);
+                        if (wProd > 0 && (colony.storage['REFINED_ALLOY']||0) >= wAlloy && (colony.storage['MINERALS']||0) >= wMin) {
+                            if (wAlloy > 0) colony.storage['REFINED_ALLOY'] -= wAlloy; 
+                            if (wMin > 0) colony.storage['MINERALS'] -= wMin;
+                            colony.storage['WEAPONS'] = (colony.storage['WEAPONS'] || 0) + wProd;
+                        }
+                        
+                        let trProd = Math.floor(stats.troopProd * eff * stats.omniProd);
+                        let trFood = Math.floor((stats.consume.troops?.FOOD_SUPPLIES || 0) * eff);
+                        let trAlloy = Math.floor((stats.consume.troops?.REFINED_ALLOY || 0) * eff);
+                        if (trProd > 0 && (colony.storage['REFINED_ALLOY']||0) >= trAlloy && (colony.storage['FOOD_SUPPLIES']||0) >= trFood) {
+                            if (trAlloy > 0) colony.storage['REFINED_ALLOY'] -= trAlloy; 
+                            if (trFood > 0) colony.storage['FOOD_SUPPLIES'] -= trFood;
+                            colony.storage['MERCENARY_PLATOON'] = (colony.storage['MERCENARY_PLATOON'] || 0) + trProd;
+                        }
+                        
+                        let meProd = Math.floor(stats.mechProd * eff * stats.omniProd);
+                        let meAlloy = Math.floor((stats.consume.mechs?.REFINED_ALLOY || 0) * eff);
+                        let meTech = Math.floor((stats.consume.mechs?.TECH_PARTS || 0) * eff);
+                        if (meProd > 0 && (colony.storage['REFINED_ALLOY']||0) >= meAlloy && (colony.storage['TECH_PARTS']||0) >= meTech) {
+                            if (meAlloy > 0) colony.storage['REFINED_ALLOY'] -= meAlloy; 
+                            if (meTech > 0) colony.storage['TECH_PARTS'] -= meTech;
+                            colony.storage['ASSAULT_MECH'] = (colony.storage['ASSAULT_MECH'] || 0) + meProd;
+                        }
+                        
+                        let stProd = Math.floor(stats.stimProd * eff * stats.omniProd);
+                        let stMed = Math.floor((stats.consume.stims?.MEDICAL_SUPPLIES || 0) * eff);
+                        let stMin = Math.floor((stats.consume.stims?.MINERALS || 0) * eff);
+                        if (stProd > 0 && (colony.storage['MEDICAL_SUPPLIES']||0) >= stMed && (colony.storage['MINERALS']||0) >= stMin) {
+                            if (stMed > 0) colony.storage['MEDICAL_SUPPLIES'] -= stMed; 
+                            if (stMin > 0) colony.storage['MINERALS'] -= stMin;
+                            colony.storage['PROHIBITED_STIMS'] = (colony.storage['PROHIBITED_STIMS'] || 0) + stProd;
+                        }
+                        
+                        let vProd = Math.floor(stats.voidProd * eff * stats.omniProd);
+                        if (vProd > 0) colony.storage['VOID_CRYSTALS'] = (colony.storage['VOID_CRYSTALS'] || 0) + vProd;
+                        
+                        let mdProd = Math.floor(stats.medProd * eff * stats.omniProd);
+                        if (mdProd > 0) colony.storage['MEDICAL_SUPPLIES'] = (colony.storage['MEDICAL_SUPPLIES'] || 0) + mdProd;
+                        
+                        let luxProd = Math.floor(stats.luxuryProd * eff * stats.omniProd);
+                        let luxWat = Math.floor((stats.consume.luxury?.WATER || 0) * eff);
+                        let luxMin = Math.floor((stats.consume.luxury?.MINERALS || 0) * eff);
+                        if (luxProd > 0 && (colony.storage['WATER']||0) >= luxWat && (colony.storage['MINERALS']||0) >= luxMin) {
+                            if (luxWat > 0) colony.storage['WATER'] -= luxWat; 
+                            if (luxMin > 0) colony.storage['MINERALS'] -= luxMin;
+                            colony.storage['LUXURY_GOODS'] = (colony.storage['LUXURY_GOODS'] || 0) + luxProd;
+                        }
                     }
 
                     // C. Advanced Logistics (Consumes specific multi-inputs)
