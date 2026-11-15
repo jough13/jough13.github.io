@@ -228,7 +228,7 @@ window.PLANET_BIOMES = PLANET_BIOMES;
 // ==========================================
 
 (function initBiomeMechanics() {
-    window.addEventListener('DOMContentLoaded', () => {
+    function attachBiomeHooks() {
 
         // 1. PERSIST ORBITAL MINING DEPLETION
         if (typeof window.startOrbitalMining === 'function' && !window._biomeOrbitalPatched) {
@@ -296,7 +296,7 @@ window.PLANET_BIOMES = PLANET_BIOMES;
             window._biomeMinePlanetPatched = true;
         }
 
-        // 4. ENHANCE renderPlanetView (Header Info, Depleted Buttons & Colony ID Fix)
+        // 4. ENHANCE renderPlanetView (Depleted Buttons & Colony ID Fix)
         if (typeof window.renderPlanetView === 'function' && !window._biomeRenderPlanetPatched) {
             const origRenderPlanet = window.renderPlanetView;
             window.renderPlanetView = function() {
@@ -318,27 +318,7 @@ window.PLANET_BIOMES = PLANET_BIOMES;
                 const planet = currentSystemData.planets[selectedPlanetIndex];
                 if (!planet) return;
 
-                // A. Inject Planet Header Banner above the action grid if missing
-                const contentBox = planetView.querySelector('.planet-view-content');
-                if (contentBox && !contentBox.querySelector('.planet-header')) {
-                    const hazardText = planet.biome.hazard && planet.biome.hazard !== 'NONE'
-                        ? `<span style="color:var(--danger); font-weight:bold;">⚠️ HAZARD: ${planet.biome.hazard}</span>`
-                        : `<span style="color:var(--success);">ENVIRONMENT: STABLE</span>`;
-
-                    const headerDiv = document.createElement('div');
-                    headerDiv.className = 'planet-header';
-                    headerDiv.innerHTML = `
-                        <img src="${planet.biome.image}" alt="${planet.biome.name}" class="planet-large-img" onerror="this.onerror=null; this.src='assets/barren_rock.png';">
-                        <h2 class="planet-title">${currentSystemData.name.toUpperCase()} : ${planet.name.toUpperCase()}</h2>
-                        <div style="font-size:11px; letter-spacing:2px; margin-bottom:10px; color:var(--accent-color);">
-                            CLASS: ${planet.biome.name.toUpperCase()} &nbsp;|&nbsp; ${hazardText}
-                        </div>
-                        <p class="planet-desc">"${planet.biome.description}"</p>
-                    `;
-                    contentBox.insertBefore(headerDiv, contentBox.firstChild);
-                }
-
-                // B. Update Mine & Scan Buttons if already depleted this visit
+                // A. Update Mine & Scan Buttons if already depleted this visit
                 const buttons = planetView.querySelectorAll('button.action-button');
                 buttons.forEach(btn => {
                     const onClickAttr = btn.getAttribute('onclick') || '';
@@ -350,7 +330,7 @@ window.PLANET_BIOMES = PLANET_BIOMES;
                         btn.disabled = true;
                         btn.textContent = 'Bio-Scan Complete';
                     }
-                    // C. Fix Colony ID lookup mismatch between exploration.js and colonies.js
+                    // B. Fix Colony ID lookup mismatch between exploration.js and colonies.js
                     if (onClickAttr.includes('surveyForColony') || btn.textContent.includes('Establish Colony') || onClickAttr.includes('openColonyManagement')) {
                         const actualColId = `${currentSystemData.x}_${currentSystemData.y}_p${selectedPlanetIndex}`;
                         const colonyHere = typeof playerColonies !== 'undefined' ? playerColonies[actualColId] : null;
@@ -559,7 +539,125 @@ window.PLANET_BIOMES = PLANET_BIOMES;
             if (typeof checkLevelUp === 'function') checkLevelUp();
             if (typeof autoSaveGame === 'function') autoSaveGame();
         };
-    });
+        
+        // 7. OVERRIDE RENDER PLANET VIEW NATIVELY
+        window.renderPlanetView = function() {
+            const planetView = document.getElementById('planetView');
+            if (!planetView || !currentSystemData || !currentSystemData.planets) return;
+            
+            const planet = currentSystemData.planets[selectedPlanetIndex];
+            if (!planet) return;
+            
+            const sysKey = `${currentSystemData.x},${currentSystemData.y}_p${selectedPlanetIndex}`;
+            const savedState = (typeof worldStateDeltas !== 'undefined' && worldStateDeltas[sysKey]) ? worldStateDeltas[sysKey] : {};
+
+            if (savedState.mined) planet.minedThisVisit = true;
+            if (savedState.scanned) planet.scannedThisVisit = true;
+            if (savedState.explored) planet.exploredThisVisit = true;
+            if (savedState.hacked) planet.hackedThisVisit = true;
+
+            // Logic checks for standard buttons
+            const bioResources = planet.biome.resources.filter(r => typeof BIOLOGICAL_RESOURCES !== 'undefined' && BIOLOGICAL_RESOURCES.has(r));
+            const mineralResources = planet.biome.resources.filter(r => typeof BIOLOGICAL_RESOURCES !== 'undefined' && !BIOLOGICAL_RESOURCES.has(r));
+
+            const canMine = planet.biome.landable && mineralResources.length > 0 && !planet.minedThisVisit;
+            const mineButtonState = canMine ? '' : 'disabled';
+            const mineLabel = planet.minedThisVisit ? 'Minerals Depleted' : (canMine ? 'Mine Minerals' : 'No Minerals Detected');
+
+            const canScan = planet.biome.landable && bioResources.length > 0 && !planet.scannedThisVisit;
+            const scanButtonState = canScan ? '' : 'disabled';
+            const scanLabel = planet.scannedThisVisit ? 'Bio-Scan Complete' : (canScan ? 'Scan Lifeforms' : 'No Bio-Signs');
+
+            const hasDrone = (playerCargo && playerCargo.MINING_DRONE > 0);
+            const surveyButtonState = hasDrone ? '' : 'disabled';
+            const surveyLabel = hasDrone ? 'Launch Geo-Survey' : 'Geo-Survey <br><span style="font-size:10px; opacity:0.7">(Requires Drone)</span>';
+             
+            const canExplore = planet.biome.landable && !planet.exploredThisVisit;
+            const exploreButtonState = canExplore ? '' : 'disabled';
+            const exploreLabel = canExplore ? 'Surface Expedition' : 'Region Explored';
+
+            // --- DYNAMIC COLONY BUTTON LOGIC ---
+            let colonyButtonHtml = '';
+            const colId = `${currentSystemData.x}_${currentSystemData.y}_p${selectedPlanetIndex}`; 
+            const colonyHere = typeof playerColonies !== 'undefined' ? playerColonies[colId] : null;
+            const isColonyHere = colonyHere && colonyHere.established;
+
+            if (isColonyHere) {
+                colonyButtonHtml = `
+                    <button class="action-button" onclick="openColonyManagement('${colId}')" style="border-color: var(--success); color: var(--success); box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);">
+                        🏢 MANAGE COLONY
+                    </button>`;
+            } else if (typeof playerHasColonyCharter !== 'undefined' && playerHasColonyCharter && !isColonyHere) {
+                if (planet.biome.landable) {
+                    const biomeKey = planet.biome.id || Object.keys(PLANET_BIOMES).find(key => PLANET_BIOMES[key].name === planet.biome.name) || 'BARREN_ROCK';
+                    colonyButtonHtml = `
+                        <button class="action-button" onclick="surveyForColony('${planet.name}', '${biomeKey}', ${currentSystemData.x}, ${currentSystemData.y})" style="border-color: var(--gold-text); color: var(--gold-text);">
+                            🚩 ESTABLISH COLONY
+                        </button>`;
+                } else {
+                     colonyButtonHtml = `
+                        <button class="action-button" disabled>
+                            Hostile Environment<br><span style="font-size:10px; opacity:0.7">Cannot Settle Here</span>
+                        </button>`;
+                }
+            } else {
+                colonyButtonHtml = `
+                    <button class="action-button" disabled>
+                        Establish Colony<br><span style="font-size:10px; opacity:0.7">Requires Pioneer Charter</span>
+                    </button>`;
+            }
+
+            // --- SPECIAL WORLD INTERACTIONS ---
+            let specialActionHtml = '';
+            if (planet.biome.name === "Machine World" || planet.biome.id === 'MACHINE_WORLD') {
+                const canHack = !planet.hackedThisVisit;
+                specialActionHtml = `
+                    <button class="action-button" onclick="hackMachineWorld()" style="border-color: #00E0E0; color: #00E0E0; box-shadow: 0 0 15px rgba(0,224,224,0.3);" ${!canHack ? 'disabled' : ''}>
+                        ${canHack ? '💻 INTERFACE WITH CORE NETWORK' : 'CORE LOCKED OUT'}
+                    </button>
+                `;
+            }
+            
+            const hazardText = planet.biome.hazard && planet.biome.hazard !== 'NONE'
+                ? `<span style="color:var(--danger); font-weight:bold;">⚠️ HAZARD: ${planet.biome.hazard}</span>`
+                : `<span style="color:var(--success);">ENVIRONMENT: STABLE</span>`;
+
+            // Clean HTML Structure (Natively injecting the .planet-header)
+            let html = `
+                <div class="planet-view-content">
+                    
+                    <div class="planet-header">
+                        <img src="${planet.biome.image}" alt="${planet.biome.name}" class="planet-large-img" onerror="this.onerror=null; this.src='assets/barren_rock.png';">
+                        <h2 class="planet-title">${currentSystemData.name.toUpperCase()} : ${planet.name.toUpperCase()}</h2>
+                        <div style="font-size:11px; letter-spacing:2px; margin-bottom:10px; color:var(--accent-color);">
+                            CLASS: ${planet.biome.name.toUpperCase()} &nbsp;|&nbsp; ${hazardText}
+                        </div>
+                        <p class="planet-desc">"${planet.biome.description}"</p>
+                    </div>
+                    
+                    <div class="planet-actions-grid">
+                        <button class="action-button" onclick="minePlanet()" ${mineButtonState}>${mineLabel}</button>
+                        <button class="action-button" onclick="scanPlanetForLife()" ${scanButtonState}>${scanLabel}</button>
+                        <button class="action-button" onclick="performGeoSurvey()" ${surveyButtonState}>${surveyLabel}</button>
+                        <button class="action-button" onclick="startSurfaceExpedition()" style="border-color:#9933FF; color:#DDA0DD; box-shadow: 0 0 10px rgba(153,51,255,0.2);" ${exploreButtonState}>🏔️ ${exploreLabel}</button>
+                        ${colonyButtonHtml}
+                        ${specialActionHtml}
+                        <button class="action-button full-width-btn" onclick="returnToOrbit()">&lt;&lt; Return to Orbit</button>
+                    </div>
+                </div>
+            `;
+
+            planetView.innerHTML = html;
+            if (typeof renderUIStats === 'function') renderUIStats();
+        };
+    }
+
+    // Attach in the correct load-order (Safely evaluating document readiness)
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachBiomeHooks);
+    } else {
+        attachBiomeHooks();
+    }
 })();
 
 // --- END OF FILE biomes.js ---
