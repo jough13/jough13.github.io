@@ -987,7 +987,7 @@ window.ENCOUNTER_DATABASE = ENCOUNTER_DATABASE;
             window._loreEncounterTriggerPatched = true;
         }
 
-        // B. Patch resolveUniversalEncounter to handle fatal hull damage, warp/gain SFX, and Wayfinder activation
+        // B. Patch resolveUniversalEncounter to handle Wayfinder activation
         if (typeof window.resolveUniversalEncounter === 'function' && !window._loreResolveEncounterPatched) {
             const origResolveEncounter = window.resolveUniversalEncounter;
             window.resolveUniversalEncounter = function(encounterId, choiceIndex) {
@@ -998,27 +998,9 @@ window.ENCOUNTER_DATABASE = ENCOUNTER_DATABASE;
 
                 if (!choice) return;
 
-                // Play warp or gain sounds not handled by mechanics.js
-                if (choice.sound && typeof soundManager !== 'undefined') {
-                    if (choice.sound === 'warp' && typeof soundManager.playWarp === 'function') soundManager.playWarp();
-                    if (choice.sound === 'gain' && typeof soundManager.playGain === 'function') soundManager.playGain();
-                }
-
+                // 👇 FIX: Removed redundant sound and hull damage checks here.
                 // Trigger Wayfinder Nexus coordinates if Wayfinder Core was rewarded
                 activateWayfinderNexusIfNeeded();
-
-                // Fix mechanics.js raw hull subtraction lacking damage FX and death check
-                if (choice.costs && choice.costs.hull && choice.costs.hull > 0) {
-                    if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
-                    if (typeof soundManager !== 'undefined' && typeof soundManager.playHullHit === 'function') soundManager.playHullHit();
-                    if (typeof playerHull !== 'undefined' && playerHull <= 0) {
-                        window.activeHostileEncounter = false;
-                        if (typeof closeGenericModal === 'function') closeGenericModal();
-                        if (typeof triggerGameOver === 'function') {
-                            triggerGameOver(`Destroyed during ${encounter ? encounter.title : 'Deep Space Encounter'}`);
-                        }
-                    }
-                }
             };
             window._loreResolveEncounterPatched = true;
         }
