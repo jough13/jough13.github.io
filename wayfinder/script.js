@@ -3849,6 +3849,9 @@ function advanceGameTime(timeAmount) {
 }
 
 function checkLevelUp() {
+    // 👇 FIX: Guard against double-fires overwriting the previousGameState with 'level_up'
+    if (currentGameState === GAME_STATES.LEVEL_UP) return true;
+
     // 1. Check Threshold
     if (playerXP < xpToNextLevel) return false;
 
@@ -5219,9 +5222,10 @@ function initializeDOMElements() {
     // 5. Save on Window Close
     window.addEventListener('beforeunload', () => {
         if (typeof currentGameState !== 'undefined' && 
-            currentGameState !== 'title_screen' && 
-            currentGameState !== 'GAME_OVER') { 
-            performSave('AUTO'); // Safely pass the correct string
+            currentGameState !== GAME_STATES.TITLE_SCREEN && 
+            currentGameState !== GAME_STATES.GAME_OVER &&
+            typeof playerHull !== 'undefined' && playerHull > 0) { 
+            performSave('AUTO'); 
         }
     });
 
