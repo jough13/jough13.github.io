@@ -1295,6 +1295,28 @@ function evaluateStar(starData, starId) {
         discoveredLocations.add(scanKey);
         playerXP += 25;
         xpMessage = `<div style="color:var(--success); font-weight:bold; margin: 10px 0; font-size: 11px;">+25 XP (FIRST-SCAN BONUS)</div>`;
+        
+        // 👇 FIX: Engram Drop logic moved here so both the Hotkey (V) and UI Button can trigger it!
+        const hasVoidDiver = typeof playerPerks !== 'undefined' && 
+            ((playerPerks.has && playerPerks.has('VOID_DIVER')) || 
+             (playerPerks.includes && playerPerks.includes('VOID_DIVER')));
+
+        const engramChance = hasVoidDiver ? 0.25 : 0.10;
+        
+        if (Math.random() < engramChance) {
+            // Check Cargo Capacity before dropping!
+            const spaceLeft = PLAYER_CARGO_CAPACITY - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
+            if (spaceLeft >= 1) {
+                playerCargo['ENCRYPTED_ENGRAM'] = (playerCargo['ENCRYPTED_ENGRAM'] || 0) + 1;
+                if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                logMessage("<span style='color:#DDA0DD'>[ SENSORS ] Anomaly detected in the stellar corona. Tractor beam recovered 1x Encrypted Engram!</span>");
+                if (typeof soundManager !== 'undefined') soundManager.playGain();
+                xpMessage += `<div style="color:#DDA0DD; font-weight:bold; margin-bottom: 10px; font-size: 11px;">+1 ENCRYPTED ENGRAM</div>`;
+            } else {
+                logMessage("<span style='color:var(--warning)'>[ SENSORS ] Engram detected in the stellar corona, but cargo hold is full!</span>");
+            }
+        }
+
         if (typeof checkLevelUp === 'function') checkLevelUp();
         if (typeof showToast === 'function') showToast("STELLAR DATA RECORDED", "success");
         if (typeof soundManager !== 'undefined') soundManager.playScan();
@@ -1366,9 +1388,11 @@ function generateStellarReport(starData, starId) {
     let hasCrystals = false;
     
     planets.forEach(p => {
-        if (['TERRAN', 'OCEANIC', 'TOXIC'].includes(p.biome.id)) hasHabitable = true; // [FIX]
-        if (['GAS_GIANT', 'ICE_GIANT'].includes(p.biome.id)) hasGasGiant = true; // [FIX]
-        if (p.biome.id === 'CRYSTAL') hasCrystals = true; // [FIX]
+        // 👇 FIX: Safely check for biome ID, falling back to our injected biomeKey
+        const bId = p.biome.id || p.biomeKey;
+        if (['TERRAN', 'OCEANIC', 'TOXIC'].includes(bId)) hasHabitable = true; 
+        if (['GAS_GIANT', 'ICE_GIANT'].includes(bId)) hasGasGiant = true; 
+        if (bId === 'CRYSTAL') hasCrystals = true; 
     });
 
     // 3. Generate Astrochemistry (Based on Star Class)
