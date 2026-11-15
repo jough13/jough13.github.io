@@ -814,11 +814,6 @@ function handleCombatAction(action) {
     }
 
     playerIsEvading = false;
-    
-    // Only wipe the charge if a valid turn actually progressed!
-    if (enemyCanAct && action !== 'charge') {
-        playerIsChargingAttack = false; 
-    }
 
     // --- 4. DEFEAT CHECK ---
     if (playerHull <= 0) {
@@ -1612,7 +1607,18 @@ function finalizeRaid(choice) {
             outpostTier: 2, 
             isBlackMarket: true, 
             treasury: 0, 
-            scanFlavor: "A seized pirate fortress turned player-owned shadow port."
+            scanFlavor: "A seized pirate fortress turned player-owned shadow port.",
+            // 👇 FIX: Inject proper Market Inventories so openTradeModal() doesn't fail!
+            sells: [
+                { id: "PROHIBITED_STIMS", priceMod: 0.9, stock: 15 },
+                { id: "SENSOR_DECOY", priceMod: 1.0, stock: 5 },
+                { id: "MERCENARY_PLATOON", priceMod: 1.1, stock: 3 }
+            ],
+            buys: [
+                { id: "TECH_PARTS", priceMod: 1.2, stock: 50 },
+                { id: "STOLEN_CONCORD_MEDALS", priceMod: 1.5, stock: 20 },
+                { id: "GOLD", priceMod: 1.1, stock: 30 }
+            ]
         });
         // Massive Notoriety hit for claiming a pirate base!
         if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(15);
