@@ -337,8 +337,8 @@ const DEFAULT_ENCOUNTER_DATABASE = {
 // Merge with any existing global ENCOUNTER_DATABASE without overwriting external definitions
 window.ENCOUNTER_DATABASE = Object.assign(
     {},
-    DEFAULT_ENCOUNTER_DATABASE,
-    typeof ENCOUNTER_DATABASE !== 'undefined' ? ENCOUNTER_DATABASE : {}
+    typeof ENCOUNTER_DATABASE !== 'undefined' ? ENCOUNTER_DATABASE : {},
+    DEFAULT_ENCOUNTER_DATABASE // 👇 FIX: Moved to the bottom so it overrides lore.js!
 );
 
 // ==========================================
