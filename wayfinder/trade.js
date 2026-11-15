@@ -993,8 +993,9 @@ function getShadowBrokerUnitPrice(itemId) {
     
     // Prevent Same-Station Black Market Arbitrage
     if (soldLocally) {
-        const localSellPrice = calculateItemPrice(item, false, loc);
-        return Math.floor(Math.min(item.basePrice * 0.75, localSellPrice * 0.8));
+        // Calculate the player's actual local buy price to guarantee a loss on an instant flip!
+        const localBuyPrice = calculateItemPrice(item, true, loc);
+        return Math.max(1, Math.floor(localBuyPrice * 0.85));
     }
     
     return Math.floor(item.basePrice * 3);
