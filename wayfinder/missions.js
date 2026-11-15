@@ -184,6 +184,9 @@ function generateMissionsForStation(stationName) {
                         break;
                     }
 
+                    // Pass `true` so level 1 delivery contracts only request cheap, legal goods!
+                    const deliveryItem = selectRandomCommodity(destination.name, true);
+
                     const deliveryItem = selectRandomCommodity(destination.name);
                     if (!deliveryItem || !COMMODITIES[deliveryItem]) {
                         success = false;
@@ -219,7 +222,8 @@ function generateMissionsForStation(stationName) {
                         const illicitPool = ['PROHIBITED_STIMS', 'STARDUST_EXOTICA', 'SENTIENT_MYCELIUM', 'ARTIFACT_SHARDS', 'OBSIDIAN_TEAR_PLATING', 'FORBIDDEN_TEXTS'].filter(id => COMMODITIES[id]);
                         acquireItem = illicitPool[Math.floor(Math.random() * illicitPool.length)];
                     } else {
-                        acquireItem = selectRandomCommodity(stationName);
+                        // Pass `false` so Acquire can still request rare/expensive items
+                        acquireItem = selectRandomCommodity(stationName, false);
                     }
 
                     if (!acquireItem || !COMMODITIES[acquireItem]) {
@@ -1164,13 +1168,25 @@ function selectRandomDestination(currentStationName) {
     };
 }
 
-function selectRandomCommodity(locationName) {
+function selectRandomCommodity(locationName, onlyLegal = false) {
     if (typeof LOCATIONS_DATA === 'undefined') return null;
     const location = LOCATIONS_DATA[locationName];
     if (!location || !location.buys || location.buys.length === 0) return null;
 
-    const commodity = location.buys[Math.floor(Math.random() * location.buys.length)];
-    return commodity.id || commodity; 
+    // Strictly filter out quest items, components, and optionally illegal/expensive goods
+    const excluded = new Set(['WAYFINDER_CORE', 'COLONY_CHARTER', 'STATION_CORE', 'WORMHOLE_STABILIZER', 'HOT_CARGO', 'PREFAB_COLONY_CORE']);
+    
+    let pool = location.buys.map(b => b.id || b).filter(id => {
+        const c = typeof COMMODITIES !== 'undefined' ? COMMODITIES[id] : null;
+        if (!c || excluded.has(id) || c.isComponent || c.isTroop) return false;
+        if (onlyLegal && (c.illegal || c.basePrice > 400)) return false;
+        return true;
+    });
+    
+    // Fallback just in case the station has literally nothing else
+    if (pool.length === 0) pool = ['MINERALS', 'FOOD_SUPPLIES', 'TECH_PARTS'];
+    
+    return pool[Math.floor(Math.random() * pool.length)];
 }
 
 // Helper to mark an active SURVEY mission complete from any astrometric/anomaly scan
