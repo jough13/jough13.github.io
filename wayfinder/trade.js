@@ -730,8 +730,10 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
         } else if (qtyToTrade === 10) {
             qtyToTrade = Math.min(10, affordable, space, availableStock);
         } else {
-            qtyToTrade = Math.min(qtyToTrade, availableStock);
+            // Added `space` to the min calculation so buying 1 troop respects the barracks limit!
+            qtyToTrade = Math.min(qtyToTrade, space, availableStock);
         }
+
 
         if (qtyToTrade <= 0) {
             if (availableStock <= 0) {
