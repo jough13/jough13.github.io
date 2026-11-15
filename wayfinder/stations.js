@@ -514,8 +514,15 @@ function performCustomsScan() {
         playerCredits = Math.max(0, playerCredits - fine);
         if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
         
+        // If a smuggling mission was active, it is now failed!
+        if (typeof playerActiveMission !== 'undefined' && playerActiveMission && playerActiveMission.id && playerActiveMission.id.startsWith("SMUGGLE_") && !playerCargo['HOT_CARGO']) {
+            logMessage("<span style='color:var(--danger); font-weight:bold;'>[ CONTRACT FAILED ] The Tracked Contraband was seized by Concord Customs. The Cartel will not be pleased.</span>");
+            playerActiveMission = null;
+            if (typeof renderMissionTracker === 'function') renderMissionTracker();
+        }
+        
         // Huge Notoriety Hit (You are now a criminal)
-        if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(5); 
+        if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(5);
 
         // Alert Modal
         if (typeof showConfirmationModal === 'function') {
