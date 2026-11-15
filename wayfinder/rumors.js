@@ -47,6 +47,8 @@ const RUMORS = [
     "Dread Pirate Voss—they call him 'The Butcher'—was spotted prowling the outer sectors. SEC-COM has a 15,000c bounty on his hull, and rumor says his ship mounts a prototype Singularity Cannon that fires micro-black holes.",
     "Bought one of those Automated Mining Drones. Best investment I ever made. I just sit back, sip Frothy Moon Ale, and let the little guy chew on asteroids. Just don't jump across the sector while it's deployed, or it'll run out of fuel trying to catch you.",
     "They say if you combine Quantum Lenses, Phase-Shifted Alloy, and Tech Parts at your ship's Engineering Workbench (U), you can fabricate a Wormhole Stabilizer. Deploy it in empty space and you've got a permanent Stargate with zero structural jump risk.",
+    "If you're governing a frontier colony, keep a close eye on your Warehouse capacity. Once your storage hits 100%, your mines and factories grind to a halt until you build Reinforced Silos or haul the surplus to market.",
+    "Thinking of upgrading your colony to a Tier 4 Sector Capital? You'll need 30,000 citizens and an Orbital Space Elevator first, plus a stockpile of AI Cores. Once you hit Capital status, you can build an Interstellar Exchange that automatically liquidates excess goods for pure credits.",
 
     // ==========================================
     // --- STEALTH, NAVIGATION & SENSORS ---
@@ -56,6 +58,8 @@ const RUMORS = [
     "If you've got 5 spare fuel, hit [P] to fire an Active Sensor Ping. It'll light up any Derelicts, Wormholes, or hidden Cartel strongholds within 5 klicks—or 10 klicks if you've installed the Long-Range Sensors perk.",
     "Have you calibrated your Deep Space Astrometric Observatory (O) yet? If you mount a NexStar-4SE Optical Array in your scanner slot, you can double your optical telemetry range and resolve free Planetary Data cartridges from long-exposure sector plates!",
     "Keep your eyes peeled for high-velocity icy comets streaking across the sector map. If you can plot an intercept vector and fly right through their tail, your scoops will harvest pure Hydrogen-3 and even Void Crystals.",
+    "Don't let a micro-singularity catch you off guard. If you stray within 3 klicks of a Black Hole without a Precursor Nav-Core or the Void Diver perk, its gravity well will drag your ship toward the event horizon.",
+    "Bored on a long supercruise haul? Press [R] to cycle your Subspace Radio receiver—or [Shift + R] to skip tracks. 1620 AM broadcasts live Concord News bulletins, market shortages, and active bounty coordinates.",
 
     // ==========================================
     // --- COMBAT, BOARDING & WARZONES ---
@@ -66,6 +70,7 @@ const RUMORS = [
     "The Cartel builds their planetary strongholds tough. If you're going to raid one, keep at least 25 Fuel in your tanks for an Orbital Bombardment, and bring a Goliath Assault Mech if you want +50% fire support for your Marines.",
     "When Concord and Cartel fleets clash in an Active Sector Warzone, don't just fly past. You can link comms with either commander to coordinate strikes, or drift into the wreckage field to scavenge Void Crystals and Tech Parts while they're busy shooting each other.",
     "Ever notice the Manufacturer tags on your ship components? If you equip at least three modules from the same faction—like Concord, K'tharr, Eclipse, or Frontier—your ship's computer unlocks a powerful Set Synergy bonus.",
+    "When you wipe out the garrison at a hidden Cartel Outpost, you don't have to raze it. You can claim the stronghold for yourself and turn it into a personal Shadow Port—though Concord SEC-COM will slap a massive bounty on your head.",
 
     // ==========================================
     // --- MINING, CRAFTING & PLANETARY EVA ---
@@ -75,6 +80,8 @@ const RUMORS = [
     "You don't need a starbase to patch your ship or refine ore. Press [U] anywhere in space to open your Engineering Workbench. You can smelt Minerals into Refined Alloy, synthesize Nano-Repair Kits, or permanently reinforce your hull plating and shield capacitors.",
     "If you ever find a legendary Machine World, don't bother with a standard mining laser. Interface directly with the planetary Core Network—especially if you have the Cyber Slicer perk—to siphon thousands of credits and intact AI Cores.",
     "Watch out for Death Worlds on the outer rim. The apex predators there will chew through a rover hull in seconds, though black-market brokers pay a fortune for the Illegal Organs and Genetic Samples you can harvest from the surface.",
+    "Some derelicts have uncracked Crystalline Geodes tucked in their cargo lockers. Activate them from your Cargo Manifest (I) and your mining laser will split them open for Gold, Platinum Ore, or even Void Crystals.",
+    "Got spare Tech Parts and Refined Alloy burning a hole in your hold? Take them to the R&D Calibration Bench inside any Engineering Bay. For 2,500c, the machinists will fabricate a custom-tuned prototype module with multi-stat bonuses.",
 
     // ==========================================
     // --- CRYPTARCH, FORGER & BLACK MARKET ---
@@ -83,7 +90,11 @@ const RUMORS = [
     "Looking to fence 'Hot Cargo'? The moment you accept a smuggling run from the Shadow Broker, Aegis Pursuit Craft will lock onto its beacon. Engage Silent Running (Q) to mask your signature on the way to the drop-off.",
     "If you find yourself holding contraband when a Concord Patrol pulls you over, pray you have the 'Silver Tongue' perk or a Smuggler crewmate to cut the bribe in half—or pop a Sensor Decoy from your hold before you dock.",
     "Picked up too much Concord Notoriety? Find 'The Forger' at an outlaw port. He can slice into SEC-COM relays to wipe your warrants for cheaper than official fines, plant forged diplomatic credentials for +15 Concord Rep, or scramble your transponder to shake pursuers.",
-    "Out in deep space, keep an eye out for automated Syndicate Wagering Relays ($), drifting Cryo-Escape Pods (P), and Precursor Monoliths (Ψ). Just watch your step around old Terran War Space Mines (M)—unless you have a Cyber Slicer to defuse them!"
+    "Out in deep space, keep an eye out for automated Syndicate Wagering Relays ($), drifting Cryo-Escape Pods (P), and Precursor Monoliths (Ψ). Just watch your step around old Terran War Space Mines (M)—unless you have a Cyber Slicer to defuse them!",
+    "If you collect three Precursor Star Map Fragments, don't sell them piecemeal! Activate them inside your Cargo Hold (I) and their holographic matrices will fuse into an intact Wayfinder Core.",
+    "Decrypting engrams sometimes reveals coordinates to Sector [39, 17]. Word in the cantinas is that a ring of Precursor pylons called the 'Sanctuary of the Void' floats out there, waiting to synchronize with a ship's nav-computer.",
+    "Astronomers at Frothy Moon Outpost [58, -8] brew the best dark synth-ale in the quadrant. Bring them Planetary Data or Nav-Charts from the deep black and they'll pay a 40% to 50% premium on the spot.",
+    "If your fuel gauge is perpetually in the red, plot a course due north to Port Nomad [15, 210]. It's the primary dispatch sanctuary of the Fuel Rats Collective—they refine Tritium into Fuel Cells at half the galactic base price."
 ];
 
 // --- PERFORMANCE & SAFETY OPTIMIZATION ---
@@ -98,30 +109,157 @@ if (typeof GameRegistry !== 'undefined') {
 }
 
 // ==========================================
+// --- STATION-SPECIFIC LOCAL CHATTER ---
+// ==========================================
+
+const STATION_RUMORS = {
+    "Starbase Alpha": [
+        "Starbase Alpha's customs grid is running at peak sensitivity today. If you're carrying Prohibited Stims or Artifact Shards without an Eclipse shielded bay, don't press your luck.",
+        "Quartermasters on Deck 4 are buying up Refined Alloy and Minerals for the border fleet expansion. Good steady credits if you're working the local asteroid belts."
+    ],
+    "The Rusty Anchor": [
+        "Keep your hand on your sidearm in here. Half the captains at the bar have active SEC-COM warrants, and the other half are Shadow Network brokers looking for a courier.",
+        "The Anchor's illicit chem-stills are churning out Prohibited Stims around the clock, provided someone keeps smuggling Medical Supplies past the Concord patrols."
+    ],
+    "Aegis Dyson Sphere": [
+        "Look out the observation dome when you undock—the Dyson Sphere's solar collectors harvest enough output from that captured G-type star to power ten thousand worlds.",
+        "The Aegis megastructure is practically giving away bulk Food, Water, and Minerals, and their science directorate pays top credit for Quantum Fluid and AI Cores."
+    ],
+    "Planet Xerxes": [
+        "The Spire beneath this city isn't Cartel architecture—it's Precursor. Crack the first encryption layer at the terminal, and the Shadow Network brokers will open their vaults to you.",
+        "Every Cryptarch on Xerxes swears by the Spire's subspace resonance. Decrypt an Engram or Ancient Archive while docked here and the neural feedback doubles your experience yield."
+    ],
+    "Karak-Tor": [
+        "Hear that low rumble through the deck plates? Those are the atmospheric magma forges of Karak-Tor. Bring the smiths Refined Alloy or Food Supplies and they'll pay in blood-iron and gold.",
+        "If you reach 30 Standing with the K'tharr Ascendancy, the shipyard masters here will let you commission a Blood-Barge—350 base hull and a forward ramming spike."
+    ],
+    "Fortress Drakon": [
+        "Fortress Drakon guards the eastern approaches into K'tharr space. Return a lost K'tharr Ancestral Blade to the warlords here and they'll pay over double its base value.",
+        "The arena bookies in the Proving Grounds are taking wagers up to 500c per match. Just watch the odds on the Captured Xenomorph."
+    ],
+    "Station Umbra": [
+        "Station Umbra drifts so far out in the western rim that Concord long-range telemetry can't even resolve its hull. If you have 30 Eclipse Rep, ask the shipyard about the Night-Runner stealth hull.",
+        "The engineers in Umbra's lower bays compress salvaged Tech Parts into sensor-absorbent Obsidian Tear Plating. Essential material if you're outfitting a smuggling rig."
+    ],
+    "Port Erebus": [
+        "Port Erebus is tucked inside a sensor-baffled dust cloud. The Forger in the back alley can scrub your Concord warrants or plant counterfeit diplomatic credentials if the heat gets too high.",
+        "Syndicate bio-techs here ferment Sentient Mycelium into combat stims. They're always buying Luxury Goods, Gold, and Stolen Concord Medals."
+    ],
+    "Cygnus Prime": [
+        "The University of Cygnus Prime has open research grants for Pulsar Timing Data, Magnetar Harmonics, Singularity Telemetry, and Quasar Spectrography—paying up to 200% of galactic base value!",
+        "Need a Precursor Cipher or a Telemetry Probe? The university quartermaster stocks both at an academic discount."
+    ],
+    "Ceti Alpha Shipyards": [
+        "Dread Pirate Voss nearly burned Ceti Alpha Shipyards to slag during the last Cartel raid. Now the drydocks are heavily fortified and paying 150% for raw Platinum Ore and Rare Metals.",
+        "Ceti Alpha's assembly lines turn raw Platinum Ore into Tech Parts and Nano-Repair Kits cheaper than almost anywhere else in Concord space."
+    ],
+    "Helios Refinery": [
+        "Xy-Corp runs Helios Refinery on a strict 'Progress Through Profit' quota. It's the best place in the sector to pick up cheap Minerals, Refined Alloy, and Atmo-Processors for a new colony.",
+        "Because Helios is an industrial smelting platform, they have zero agricultural domes—bring them Water and Food Supplies for an easy 40% to 50% markup."
+    ],
+    "Frothy Moon Outpost": [
+        "Welcome to Frothy Moon Outpost! Grab a pint of dark synth-ale and check out the 8-inch and NexStar optical telescopes on the lunar observation ridge.",
+        "The stargazers here pool their credits to buy Planetary Data and Nav-Charts at a hefty premium, and a mug of Frothy Moon Ale only runs you a fraction of core-world prices."
+    ],
+    "Port Nomad": [
+        "Port Nomad's promethium cracking towers refine Hydrogen-3 into Fuel Cells at 50% of standard market price. Every long-range explorer tops off their tanks here.",
+        "If you build up 10 Reputation with the Fuel Rats Collective by tipping their rescue tugs, their shipwrights will let you commission a high-visibility Salvage & Refuel Tug."
+    ],
+    "The Archivist's Vault": [
+        "Keep your voice down—the Archivist's AI mainframe monitors every comm channel in this hull graveyard. It trades in Encrypted Engrams, Ancient Archives, and even intact Wayfinder Cores.",
+        "If you've pulled Quasar or Singularity telemetry from deep space—or salvaged Star Map Fragments—the Archivist pays higher bounties than almost any broker in the galaxy."
+    ]
+};
+Object.freeze(STATION_RUMORS);
+
+// ==========================================
 // --- SMART RUMOR DECK & LIVE INTEL ENGINE ---
 // ==========================================
 
 const RumorManager = {
     _deck: [],
     _lastRumor: null,
+    _recentHistory: [],
+    _maxHistory: 8,
+    _stationIntelAwarded: new Set(),
 
-    // Mapping keywords in rumors to Codex Lore IDs so hearing a rumor can unlock background lore
+    // Comprehensive keyword -> Codex Lore ID mapping (covers 36 entries in lore.js)
     _loreHooks: [
         { match: "Voidfang", loreKey: "FACTION_ECLIPSE" },
+        { match: "Shadow Network", loreKey: "FACTION_SHADOW_NETWORK" },
+        { match: "smuggling", loreKey: "FACTION_ECLIPSE_SMUGGLING" },
+        { match: "Obsidian Directorate", loreKey: "FACTION_OBSIDIAN_DIRECTORATE" },
+        { match: "Children of the Void", loreKey: "FACTION_CHILDREN_OF_THE_VOID" },
+        { match: "Void Vultures", loreKey: "FACTION_PIRATES_VOID_VULTURES" },
+        { match: "Xy-Corp", loreKey: "FACTION_XYCORP" },
+        { match: "Fuel Rats", loreKey: "FACTION_FUEL_RATS" },
         { match: "K'tharr", loreKey: "FACTION_KTHARR" },
         { match: "Void Crystals", loreKey: "PHENOMENON_VOID_CRYSTALS" },
         { match: "Sentient Mycelium", loreKey: "LEGEND_SENTIENT_MYCELIUM_NETWORK" },
+        { match: "Void Kraken", loreKey: "LEGEND_VOID_KRAKEN" },
         { match: "Phase-Shifted Alloy", loreKey: "TECH_PHASE_SHIFT_ALLOY" },
+        { match: "Wormhole Stabilizer", loreKey: "TECH_STARGATE_NETWORK" },
+        { match: "Stargate", loreKey: "TECH_STARGATE_NETWORK" },
         { match: "Wormholes", loreKey: "PHENOMENON_WORMHOLE" },
-        { match: "Stargate", loreKey: "PHENOMENON_WORMHOLE" },
-        { match: "Fuel Rats", loreKey: "FACTION_FUEL_RATS" },
+        { match: "Black Hole", loreKey: "PHENOMENON_BLACK_HOLE" },
+        { match: "singularity", loreKey: "PHENOMENON_BLACK_HOLE" },
+        { match: "Irradiated Wasteland", loreKey: "PHENOMENON_IRRADIATED" },
         { match: "Encrypted Engram", loreKey: "COMMODITY_ENCRYPTED_ENGRAM" },
         { match: "Settlement Charters", loreKey: "TECH_COLONY_CHARTER" },
         { match: "Machine World", loreKey: "XENO_MACHINE_WORLD" },
-        { match: "Irradiated Wasteland", loreKey: "PHENOMENON_IRRADIATED" }
+        { match: "Tomb World", loreKey: "XENO_TOMB_WORLDS" },
+        { match: "The Spire", loreKey: "XENO_THE_SPIRE" },
+        { match: "Planet Xerxes", loreKey: "LOCATION_PLANET_XERXES" },
+        { match: "Wayfinder Core", loreKey: "COMMODITY_WAYFINDER_CORE" },
+        { match: "First Nexus", loreKey: "MYSTERY_FIRST_NEXUS" },
+        { match: "Star Map Fragment", loreKey: "COMMODITY_PRECURSOR_STAR_MAP_FRAGMENT" },
+        { match: "Ancestral Blade", loreKey: "COMMODITY_KTHARR_ANCESTRAL_BLADE" },
+        { match: "Stardust Exotica", loreKey: "COMMODITY_STARDUST_EXOTICA" },
+        { match: "Quantum Fluid", loreKey: "COMMODITY_QUANTUM_FLUID" },
+        { match: "Unshackled AI", loreKey: "TECH_UNSHACKLED_AI" },
+        { match: "Kepler Nebula", loreKey: "REGION_KEPLER_NEBULA" },
+        { match: "Silentium Expanse", loreKey: "REGION_SILENTIUM_EXPANSE" },
+        { match: "Cygnus Prime", loreKey: "LOCATION_CYGNUS_PRIME" },
+        { match: "Frothy Moon", loreKey: "LOCATION_FROTHY_MOON_OUTPOST" },
+        { match: "Port Nomad", loreKey: "LOCATION_PORT_NOMAD" },
+        { match: "The Archivist", loreKey: "LOCATION_THE_ARCHIVIST'S_VAULT" },
+        { match: "Karak-Tor", loreKey: "LOCATION_KARAK_TOR" },
+        { match: "Station Umbra", loreKey: "LOCATION_STATION_UMBRA" },
+        { match: "Rusty Anchor", loreKey: "LOCATION_THE_RUSTY_ANCHOR" },
+        { match: "Helios Refinery", loreKey: "LOCATION_HELIOS_REFINERY" },
+        { match: "Dyson Sphere", loreKey: "LOCATION_AEGIS_DYSON_SPHERE" }
     ],
 
-    // Generates a live, context-aware rumor from active game state (Economy, Bounties, War Fronts)
+    _recordHistory: function(text) {
+        this._lastRumor = text;
+        this._recentHistory.push(text);
+        if (this._recentHistory.length > this._maxHistory) {
+            this._recentHistory.shift();
+        }
+    },
+
+    // Classifies any rumor string into a thematic UI badge, icon, and color
+    getRumorMeta: function(text) {
+        const lower = String(text || "").toLowerCase();
+        if (lower.includes("shortage") || lower.includes("surplus") || lower.includes("market") || lower.includes("price") || lower.includes("paying")) {
+            return { category: "MARKET INTEL", icon: "📈", color: "var(--gold-text)" };
+        }
+        if (lower.includes("bounty") || lower.includes("hunting") || lower.includes("sec-com") || lower.includes("voss") || lower.includes("thorne")) {
+            return { category: "BOUNTY TRACKER", icon: "🎯", color: "var(--danger)" };
+        }
+        if (lower.includes("colony") || lower.includes("charter") || lower.includes("silos") || lower.includes("famine") || lower.includes("tax vault")) {
+            return { category: "COLONY DISPATCH", icon: "🏛️", color: "var(--success)" };
+        }
+        if (lower.includes("precursor") || lower.includes("wayfinder") || lower.includes("engram") || lower.includes("nexus") || lower.includes("monolith") || lower.includes("sanctuary")) {
+            return { category: "XENO-ARCHIVE", icon: "💠", color: "#DDA0DD" };
+        }
+        if (lower.includes("hit [") || lower.includes("press [") || lower.includes("targeting computer") || lower.includes("workbench") || lower.includes("synergy")) {
+            return { category: "PILOT TACTICS", icon: "🧭", color: "var(--accent-color)" };
+        }
+        return { category: "SECTOR CHATTER", icon: "🗣️", color: "var(--warning)" };
+    },
+
+    // Generates a live, context-aware rumor from active game state (Economy, Bounties, Colonies, Probes, Landmarks)
     getLiveStateRumor: function() {
         const dynamicPool = [];
 
@@ -163,17 +301,99 @@ const RumorManager = {
             }
         }
 
-        if (dynamicPool.length === 0) return null;
-        return dynamicPool[Math.floor(Math.random() * dynamicPool.length)];
+        // 5. Player Colony Status & Crisis Alerts
+        if (typeof playerColonies !== 'undefined') {
+            const cols = Object.values(playerColonies).filter(c => c && c.established);
+            cols.forEach(col => {
+                if ((col.storage['FOOD_SUPPLIES'] || 0) <= 0) {
+                    dynamicPool.push(`"Heard a distress relay from your settlement at ${col.name} [${col.x}, ${-col.y}]—their Food Supplies are completely depleted! Get a relief shipment or Hydroponics Farm online before famine sets in."`);
+                } else if (col.treasury >= 2500) {
+                    dynamicPool.push(`"Merchant captains say the tax vault at your ${col.name} settlement [${col.x}, ${-col.y}] is sitting on ${col.treasury}c in collected tariffs. Might be worth a trip to withdraw your funds."`);
+                } else if ((col.defense || 0) < 20 && col.population >= 150) {
+                    dynamicPool.push(`"Word is Cartel raiders are eyeing your colony at ${col.name} [${col.x}, ${-col.y}]. With a Defense Rating of only ${col.defense || 0}, you should build Automated Turrets or a Defense Battery soon."`);
+                }
+            });
+        }
+
+        // 6. Player Waystation Toll Alerts
+        if (typeof worldStateDeltas !== 'undefined') {
+            for (const key in worldStateDeltas) {
+                const d = worldStateDeltas[key];
+                if (d && d.isPlayerOwned && d.isTinyOutpost && (d.treasury || 0) >= 500) {
+                    const [wx, wy] = key.split('_')[0].split(',').map(Number);
+                    if (!isNaN(wx) && !isNaN(wy)) {
+                        dynamicPool.push(`"Independent haulers passing through [${wx}, ${-wy}] say your waystation, ${d.name || 'Outpost'}, has accumulated ${d.treasury}c in transit tolls ready for pickup."`);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 7. Deployed Telemetry Probe Harvest Alerts
+        if (typeof window.activeProbes !== 'undefined' && Array.isArray(window.activeProbes) && typeof currentGameDate !== 'undefined') {
+            const readyProbe = window.activeProbes.find(p => p && Math.floor((currentGameDate - p.deployedAt) / 10) >= 2);
+            if (readyProbe) {
+                const count = Math.floor((currentGameDate - readyProbe.deployedAt) / 10);
+                dynamicPool.push(`"Your autonomous Telemetry Probe at [${readyProbe.x}, ${-readyProbe.y}] is pinging a full memory buffer—it's recorded ${count} astrometric data drives so far."`);
+            }
+        }
+
+        // 8. Local Station Specific Chatter
+        if (typeof chunkManager !== 'undefined' && typeof playerX !== 'undefined' && typeof playerY !== 'undefined') {
+            const localTile = chunkManager.getTile(playerX, playerY);
+            if (localTile && localTile.name && STATION_RUMORS[localTile.name]) {
+                STATION_RUMORS[localTile.name].forEach(r => dynamicPool.push(`"${r}"`));
+            }
+        }
+
+        // 9. Undiscovered Landmark Breadcrumb
+        if (typeof LOCATIONS_DATA !== 'undefined' && typeof discoveredLocations !== 'undefined' && discoveredLocations.has) {
+            const undiscovered = Object.keys(LOCATIONS_DATA).filter(name => {
+                const loc = LOCATIONS_DATA[name];
+                return loc && loc.coords && !discoveredLocations.has(name);
+            });
+            if (undiscovered.length > 0) {
+                const pick = undiscovered[Math.floor(Math.random() * undiscovered.length)];
+                const c = LOCATIONS_DATA[pick].coords;
+                dynamicPool.push(`"Looking for uncharted ports? Long-range couriers talk about '${pick}' out at coordinates [${c.x}, ${-c.y}]. Might be worth plotting a course."`);
+            }
+        }
+
+        const freshPool = dynamicPool.filter(r => !this._recentHistory.includes(r));
+        const poolToUse = freshPool.length > 0 ? freshPool : dynamicPool;
+        if (poolToUse.length === 0) return null;
+        return poolToUse[Math.floor(Math.random() * poolToUse.length)];
     },
 
-    // Draws a non-repeating rumor (25% chance for live galactic intel if available)
+    // Unlocked lore helper: scans a rumor for all matching hooks and unlocks the first locked entry found
+    _unlockMatchingLore: function(text) {
+        if (typeof unlockLoreEntry !== 'function') return null;
+        const lowerText = String(text || "").toLowerCase();
+
+        for (let i = 0; i < this._loreHooks.length; i++) {
+            const hook = this._loreHooks[i];
+            if (lowerText.includes(hook.match.toLowerCase())) {
+                const loreObj = (typeof LORE_DATABASE !== 'undefined') ? LORE_DATABASE[hook.loreKey] : null;
+                // Only stop at this hook if it actually unlocks a previously locked entry!
+                if (loreObj && !loreObj.unlocked) {
+                    unlockLoreEntry(hook.loreKey);
+                    return loreObj.title;
+                } else if (!loreObj) {
+                    unlockLoreEntry(hook.loreKey);
+                }
+            }
+        }
+        return null;
+    },
+
+    // Draws a non-repeating rumor (35% chance for live galactic/station intel if available)
     getNextRumor: function(unlockLore = true) {
-        if (Math.random() < 0.25) {
+        if (Math.random() < 0.35) {
             const liveRumor = this.getLiveStateRumor();
             if (liveRumor && liveRumor !== this._lastRumor) {
-                this._lastRumor = liveRumor;
-                return liveRumor;
+                this._recordHistory(liveRumor);
+                if (unlockLore) this._unlockMatchingLore(liveRumor);
+                return liveRumor.replace(/^"|"$/g, '');
             }
         }
 
@@ -188,19 +408,20 @@ const RumorManager = {
             }
         }
 
-        const nextIdx = this._deck.pop();
-        const chosen = RUMORS[nextIdx] || RUMORS[0];
-        this._lastRumor = chosen;
+        let nextIdx = this._deck.pop();
+        let chosen = RUMORS[nextIdx] || RUMORS[0];
 
-        // Optionally unlock related Codex Lore silently or with notification if the rumor mentions it
-        if (unlockLore && typeof unlockLoreEntry === 'function') {
-            for (let i = 0; i < this._loreHooks.length; i++) {
-                const hook = this._loreHooks[i];
-                if (chosen.includes(hook.match)) {
-                    unlockLoreEntry(hook.loreKey);
-                    break;
-                }
-            }
+        // Avoid immediate back-to-back repeat on deck reshuffle
+        if (chosen === this._lastRumor && this._deck.length > 0) {
+            const altIdx = this._deck.pop();
+            this._deck.unshift(nextIdx);
+            chosen = RUMORS[altIdx] || chosen;
+        }
+
+        this._recordHistory(chosen);
+
+        if (unlockLore) {
+            this._unlockMatchingLore(chosen);
         }
 
         return chosen;
@@ -209,5 +430,94 @@ const RumorManager = {
 
 window.RumorManager = RumorManager;
 window.getSmartRumor = () => RumorManager.getNextRumor(true);
+
+// ==========================================
+// --- SELF-CONTAINED CANTINA & NPC HOOKS ---
+// ==========================================
+
+(function initRumorsModuleHooks() {
+    function attachRumorHooks() {
+        // 1. Upgrade listenToRumors() in stations.js so Cantina eavesdropping uses RumorManager
+        window.listenToRumors = function() {
+            const detailEl = document.getElementById('genericDetailContent');
+            if (typeof soundManager !== 'undefined' && typeof soundManager.playUIHover === 'function') {
+                soundManager.playUIHover();
+            }
+
+            const rumorText = RumorManager.getNextRumor(true);
+            const meta = RumorManager.getRumorMeta(rumorText);
+
+            // Grant a small +10 XP intelligence bonus once per station visit
+            let xpBadgeHtml = "";
+            const loc = (typeof chunkManager !== 'undefined' && typeof playerX !== 'undefined') ? chunkManager.getTile(playerX, playerY) : null;
+            const visitKey = `${loc && loc.name ? loc.name : 'PORT'}_${Math.floor(typeof currentGameDate !== 'undefined' ? currentGameDate : 0)}`;
+            if (!RumorManager._stationIntelAwarded.has(visitKey) && typeof playerXP !== 'undefined') {
+                RumorManager._stationIntelAwarded.add(visitKey);
+                playerXP += 10;
+                xpBadgeHtml = `<div style="margin-top:10px; font-size:11px; color:var(--success); font-weight:bold;">+10 XP (Sector Intelligence Gathered)</div>`;
+                if (typeof renderUIStats === 'function') renderUIStats();
+                if (typeof checkLevelUp === 'function') checkLevelUp();
+            }
+
+            if (detailEl) {
+                detailEl.innerHTML = `
+                    <div style="text-align:center; padding: 15px 10px; animation: fadeIn 0.25s ease-out;">
+                        <div style="font-size:44px; margin-bottom:8px; filter: drop-shadow(0 0 12px ${meta.color});">${meta.icon}</div>
+                        <div style="display:inline-block; font-size:10px; color:${meta.color}; border:1px solid ${meta.color}; padding:2px 8px; border-radius:3px; letter-spacing:2px; margin-bottom:10px; font-weight:bold;">
+                            ${meta.category}
+                        </div>
+                        <h3 style="color:var(--accent-color); margin: 0 0 12px 0; font-size:18px;">OVERHEARD IN THE BOOTH</h3>
+                        
+                        <div style="text-align:left; background: var(--bg-color); border: 1px dashed var(--border-color); border-left: 3px solid ${meta.color}; padding: 16px; border-radius: 4px;">
+                            <p style="font-size:12px; color:var(--item-desc-color); margin:0 0 10px 0;">
+                                You tune your audio implants to isolate a conversation across the cantina floor:
+                            </p>
+                            <p style="font-size:13px; color:var(--text-color); font-style:italic; margin:0; line-height:1.6;">
+                                "...${rumorText}"
+                            </p>
+                        </div>
+                        ${xpBadgeHtml}
+                        <button class="action-button" style="margin-top:15px; padding:8px 12px; font-size:11px; border-color:${meta.color}; color:${meta.color};" onclick="listenToRumors()">
+                            👂 EAVESDROP ON ANOTHER TABLE
+                        </button>
+                    </div>
+                `;
+            }
+        };
+
+        // 2. Enrich ambient NPC ship hails in script.js so space traffic shares varied lore chatter
+        if (typeof NPC_SHIP_TYPES !== 'undefined' && Array.isArray(NPC_SHIP_TYPES) && !window._rumorsNpcHailsExpanded) {
+            const extraCivHails = [
+                "Heard Frothy Moon Outpost [58, -8] just tapped a new batch of dark synth-ale.",
+                "Stay clear of the western rim unless you enjoy paying tolls to the Eclipse Cartel.",
+                "Port Nomad [15, 210] is selling Fuel Cells at half price if your tanks are running low."
+            ];
+            const extraMinerHails = [
+                "Wait for the mining laser to hit the green fault line, or the rock will blow back in your face!",
+                "Pulled a Crystalline Geode out of an asteroid today—cracked it open in my hold for pure Platinum Ore.",
+                "Helios Refinery [-55, -110] is buying up raw ore and selling cheap Refined Alloy."
+            ];
+            const extraConcordHails = [
+                "SEC-COM reminder: Dread Pirate Voss and Renegade Commander Thorne are wanted dead or alive.",
+                "All vessels: report any sightings of Precursor anomalies to the University of Cygnus Prime [85, 65].",
+                "Keep your transponder unspoofed and your hold clean of contraband, Captain."
+            ];
+
+            NPC_SHIP_TYPES.forEach(t => {
+                if (!t || !Array.isArray(t.hails)) return;
+                if (t.id === "CIVILIAN_HAULER") t.hails.push(...extraCivHails);
+                else if (t.id === "INDEPENDENT_MINER") t.hails.push(...extraMinerHails);
+                else if (t.id === "CONCORD_PATROL") t.hails.push(...extraConcordHails);
+            });
+            window._rumorsNpcHailsExpanded = true;
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachRumorHooks);
+    } else {
+        attachRumorHooks();
+    }
+})();
 
 // --- END OF FILE rumors.js ---
