@@ -957,8 +957,7 @@ window.ENCOUNTER_DATABASE = ENCOUNTER_DATABASE;
         });
     }
 
-    // 2. Hook DOMContentLoaded to Patch Encounters, Combat & Planetary Lore
-    window.addEventListener('DOMContentLoaded', () => {
+    function attachLoreHooks() {
         // Refresh dynamic descriptions from COMMODITIES and LOCATIONS_DATA
         if (typeof LOCATIONS_DATA !== 'undefined') {
             if (LOCATIONS_DATA["Starbase Alpha"]) LORE_DATABASE.LOCATION_STARBASE_ALPHA.text = LOCATIONS_DATA["Starbase Alpha"].scanFlavor;
@@ -998,7 +997,6 @@ window.ENCOUNTER_DATABASE = ENCOUNTER_DATABASE;
 
                 if (!choice) return;
 
-                // 👇 FIX: Removed redundant sound and hull damage checks here.
                 // Trigger Wayfinder Nexus coordinates if Wayfinder Core was rewarded
                 activateWayfinderNexusIfNeeded();
             };
@@ -1046,7 +1044,13 @@ window.ENCOUNTER_DATABASE = ENCOUNTER_DATABASE;
             };
             window._lorePlanetViewPatched = true;
         }
-    });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachLoreHooks);
+    } else {
+        attachLoreHooks();
+    }
 })();
 
 // --- END OF FILE lore.js ---
