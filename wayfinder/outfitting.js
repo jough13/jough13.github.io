@@ -184,9 +184,8 @@ function _initializeOutfittingDatabases() {
     };
 
     for (const id in expansionComponents) {
-        if (!COMPONENTS_DATABASE[id]) {
-            COMPONENTS_DATABASE[id] = expansionComponents[id];
-        }
+        // 👇 FIX: Removed the !COMPONENTS_DATABASE[id] guard so these polished versions take priority!
+        COMPONENTS_DATABASE[id] = expansionComponents[id];
     }
 
     // Sync components into COMMODITIES so stowed modules in playerCargo render properly in Cargo UI & Trade
@@ -1091,7 +1090,10 @@ function confirmBuyComponent(compId, isOwned = false) {
         currentComp &&
         currentCompId !== 'UTIL_NONE' &&
         currentComp.cost < 999999 &&
-        (isOwned ? (currentComp.cost > 0 || currentComp.manufacturer === 'UNKNOWN') : (currentComp.cost === 0 && currentComp.manufacturer === 'UNKNOWN'))
+        // 👇 FIX: Specifically check if the equipped ID starts with 'PROC_' to safely stow it!
+        (isOwned 
+            ? (currentComp.cost > 0 || currentComp.manufacturer === 'UNKNOWN') 
+            : (currentCompId.startsWith('PROC_') || (currentComp.cost === 0 && currentComp.manufacturer === 'UNKNOWN')))
     );
     const loadDelta = (isOwned ? -1 : 0) + (willStowOld ? 1 : 0);
     const projectedLoad = (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0) + loadDelta;
