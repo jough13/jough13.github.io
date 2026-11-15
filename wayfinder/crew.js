@@ -488,7 +488,8 @@ function processMercenaryDrawbacks() {
             
             if (crewMember.drawback.type === "STEAL_CARGO") {
                 if (typeof playerCargo !== 'undefined') {
-                    const cargoIds = Object.keys(playerCargo).filter(id => playerCargo[id] > 0);
+                    // Exclude HOT_CARGO so smugglers don't soft-lock the smuggling mission!
+                    const cargoIds = Object.keys(playerCargo).filter(id => playerCargo[id] > 0 && id !== 'HOT_CARGO');
                     if (cargoIds.length > 0) {
                         const stolenId = cargoIds[Math.floor(Math.random() * cargoIds.length)];
                         
