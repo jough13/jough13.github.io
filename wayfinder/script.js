@@ -3187,13 +3187,25 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                     if (!isNaN(sx) && !isNaN(sy)) {
                         for (let i = activeEnemies.length - 1; i >= 0; i--) {
                             const enemy = activeEnemies[i];
+                            
+                            // 👇 FIX: Don't shoot probes, and don't snipe legendary quest bosses from across the map!
+                            if (enemy.isProbe || enemy.isLegendary || enemy.isBoss) continue;
+
                             const dist = Math.max(Math.abs(enemy.x - sx), Math.abs(enemy.y - sy));
-                            if (dist <= 5 && !enemy.isProbe) {
+                            if (dist <= 5) {
                                 const dmg = 25;
-                                if (enemy.shields && enemy.shields > 0) enemy.shields -= dmg; else enemy.hp -= dmg; 
+                                
+                                // 👇 FIX: Initialize HP for standard pirates spawned by combat.js
+                                enemy.hp = enemy.hp || 50; 
+                                
+                                if (enemy.shields && enemy.shields > 0) enemy.shields -= dmg; 
+                                else enemy.hp -= dmg; 
+                                
                                 if (typeof spawnParticles === 'function') spawnParticles(enemy.x, enemy.y, 'explosion');
-                                if ((enemy.hp && enemy.hp <= 0) || (enemy.hull && enemy.hull <= 0)) {
-                                    logMessage(`<span style='color:var(--success); font-weight:bold;'>[ STATION DEFENSE ]</span> ${tile.name} automated turrets destroyed a hostile ${enemy.name}!`);
+                                
+                                // 👇 FIX: Safe evaluation (evaluates exactly against 0 rather than relying on truthiness)
+                                if (enemy.hp <= 0 || (enemy.hull !== undefined && enemy.hull <= 0)) {
+                                    logMessage(`<span style='color:var(--success); font-weight:bold;'>[ STATION DEFENSE ]</span> ${tile.name} automated turrets destroyed a hostile ${enemy.name || 'vessel'}!`);
                                     activeEnemies.splice(i, 1);
                                 } else if (Math.random() < 0.20) {
                                     logMessage(`<span style='color:var(--warning)'>[ STATION DEFENSE ]</span> ${tile.name} is firing on hostiles in Sector [${sx}, ${-sy}]!`);
