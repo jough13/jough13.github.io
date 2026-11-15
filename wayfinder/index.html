@@ -185,7 +185,7 @@
         });
 
         window.addEventListener('error', function(event) {
-            if (event.target && (event.target.tagName === 'IMG' || event.target.tagName === 'SCRIPT' || event.target.tagName === 'AUDIO' || event.target.tagName === 'LINK')) {
+            if (event.target && (event.target.tagName === 'SCRIPT' || event.target.tagName === 'LINK')) {
                 const resourceType = event.target.tagName;
                 const resourceUrl = event.target.src || event.target.href;
                 const fileName = resourceUrl ? resourceUrl.split('/').pop() : 'Unknown';
@@ -196,6 +196,9 @@
                     `Attempted URL: ${resourceUrl}`, 
                     `The browser could not fetch this resource. Check if the file exists and if the spelling matches exactly.`
                 );
+            } else if (event.target && (event.target.tagName === 'IMG' || event.target.tagName === 'AUDIO')) {
+                // Do not crash the game for missing images/audio, let the inline onerror fallbacks handle it
+                console.warn(`Optional media asset missing: ${event.target.src || 'unknown'}`);
             }
         }, true);
     </script>
