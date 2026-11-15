@@ -343,7 +343,11 @@ function listenToRumors() {
     if (typeof soundManager !== 'undefined' && soundManager.playUIHover) soundManager.playUIHover();
 
     let randomRumor = "The void is quiet today.";
-    if (typeof RUMORS !== 'undefined' && RUMORS.length > 0) {
+    
+    // Use the Smart Rumor Manager if available to get live intel and Lore unlocks
+    if (typeof window.getSmartRumor === 'function') {
+        randomRumor = window.getSmartRumor();
+    } else if (typeof RUMORS !== 'undefined' && RUMORS.length > 0) {
         randomRumor = RUMORS[Math.floor(Math.random() * RUMORS.length)];
     }
     
