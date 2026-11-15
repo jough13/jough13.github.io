@@ -165,6 +165,10 @@ class SoundManager {
         if (this.masterGain && this.ctx) {
             this.masterGain.gain.setTargetAtTime(this.masterVolume, this.ctx.currentTime, 0.05);
         }
+        
+        // Force the MP3 player to adapt instantly when the master volume slider moves
+        this.updateAdaptiveMix();
+        
         try { localStorage.setItem('wayfinder_master_vol', String(this.masterVolume)); } catch (e) {}
     }
 
@@ -182,12 +186,16 @@ class SoundManager {
         const isStealthed = typeof isSilentRunning !== 'undefined' && isSilentRunning;
         const inCombat = typeof currentGameState !== 'undefined' && currentGameState === 'combat';
 
-        const targetMusicVol = isStealthed
+        let targetMusicVol = isStealthed
             ? this.musicVolume * 0.45
             : (inCombat ? this.musicVolume * 0.75 : this.musicVolume);
 
+        // Multiply by the master volume (normalized against the 0.30 default base)
+        targetMusicVol = targetMusicVol * (this.masterVolume / 0.30);
+
         if (this.bgMusic && !this.bgMusicFailed) {
             this.bgMusic.volume = Math.max(0, Math.min(1, targetMusicVol));
+        } this.bgMusic.volume = Math.max(0, Math.min(1, targetMusicVol));
         }
 
         if (this.ambientNodes && this.ambientNodes.filter && this.ctx) {
