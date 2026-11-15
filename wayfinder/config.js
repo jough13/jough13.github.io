@@ -736,7 +736,7 @@ window.captureDeepSkyImage = captureDeepSkyImage;
 // --- SELF-CONTAINED ENGINE BRIDGES ---
 // ==========================================
 
-window.addEventListener('DOMContentLoaded', () => {
+function attachConfigHooks() {
     // 1. Expose const databases to window and refresh lore.js fallback strings
     if (typeof COMMODITIES !== 'undefined') window.COMMODITIES = COMMODITIES;
     if (typeof LOCATIONS_DATA !== 'undefined') window.LOCATIONS_DATA = LOCATIONS_DATA;
@@ -784,7 +784,6 @@ window.addEventListener('DOMContentLoaded', () => {
                     const currentTile = chunkData[y][x];
                     
                     // Only roll on unmodified empty space tiles
-                    // Support both primitive strings and object formats natively
                     if (currentTile !== EMPTY_SPACE_CHAR_VAL && (!currentTile || currentTile.char !== EMPTY_SPACE_CHAR_VAL)) continue;
 
                     const worldX = chunkX * this.CHUNK_SIZE + x;
@@ -795,54 +794,49 @@ window.addEventListener('DOMContentLoaded', () => {
                     if (distFromSpawn < 30) continue;
 
                     const deltaKey = `${worldX},${worldY}`;
-                    // Important fix: Deep merge prevents overriding existing structures!
                     if (typeof worldStateDeltas !== 'undefined' && worldStateDeltas[deltaKey] && worldStateDeltas[deltaKey].char) continue;
 
                     const tileSeed = (typeof WORLD_SEED !== 'undefined' ? WORLD_SEED : 1337) ^ (worldX * 73856093) ^ (worldY * 19349663);
                     const roll = typeof seededRandom === 'function' ? seededRandom(tileSeed + 17) : Math.random();
 
-                    // Progressive Probability Ladder
                     let currentThreshold = typeof BLACK_HOLE_SPAWN_CHANCE !== 'undefined' ? BLACK_HOLE_SPAWN_CHANCE : 0.00035;
 
                     if (roll < currentThreshold) {
                         chunkData[y][x] = { char: BLACK_HOLE_CHAR_VAL, type: 'black_hole', name: 'Micro-Singularity' };
                     } 
-                    
                     currentThreshold += 0.00025;
                     if (roll >= currentThreshold - 0.00025 && roll < currentThreshold) {
                         chunkData[y][x] = { char: ESCAPE_POD_CHAR_VAL, displayChar: ESCAPE_POD_CHAR_VAL, customColor: '#00FFAA', type: 'custom_pod' };
                     } 
-                    
                     currentThreshold += 0.00015;
                     if (roll >= currentThreshold - 0.00015 && roll < currentThreshold) {
                         chunkData[y][x] = { char: RELAY_CASINO_CHAR_VAL, displayChar: RELAY_CASINO_CHAR_VAL, customColor: '#FFD700', type: 'custom_relay' };
                     } 
-                    
                     currentThreshold += 0.00010;
                     if (roll >= currentThreshold - 0.00010 && roll < currentThreshold) {
                         chunkData[y][x] = { char: MONOLITH_CHAR_VAL, displayChar: MONOLITH_CHAR_VAL, customColor: '#9933FF', type: 'custom_monolith' };
                     }
-
-                    // --- 🚨 NEW CUSTOM TILES INJECTED HERE ---
                     currentThreshold += 0.00020;
                     if (roll >= currentThreshold - 0.00020 && roll < currentThreshold) {
                         chunkData[y][x] = { char: CARGO_CACHE_CHAR_VAL, displayChar: CARGO_CACHE_CHAR_VAL, customColor: '#AAAAAA', type: 'custom_cargo' };
                     }
-
                     currentThreshold += 0.00015;
                     if (roll >= currentThreshold - 0.00015 && roll < currentThreshold) {
                         chunkData[y][x] = { char: SPACE_MINE_CHAR_VAL, displayChar: SPACE_MINE_CHAR_VAL, customColor: '#FF5555', type: 'custom_mine' };
                     }
-
                     currentThreshold += 0.00015;
                     if (roll >= currentThreshold - 0.00015 && roll < currentThreshold) {
                         chunkData[y][x] = { char: NAV_BUOY_CHAR_VAL, displayChar: NAV_BUOY_CHAR_VAL, customColor: '#00AAFF', type: 'custom_nav' };
+                    }
+
+                    // 👇 FIX: Merge any existing interaction deltas onto the newly spawned custom tile!
+                    if (typeof worldStateDeltas !== 'undefined' && worldStateDeltas[deltaKey] && typeof chunkData[y][x] === 'object') {
+                        Object.assign(chunkData[y][x], worldStateDeltas[deltaKey]);
                     }
                 }
             }
             return chunkData;
         };
-        // Clear any pre-generated initial chunks so the new spawns take effect on New/Loaded games
         chunkManager.loadedChunks = {};
         chunkManager.lastChunkKey = null;
         chunkManager.lastChunkRef = null;
@@ -870,6 +864,12 @@ window.addEventListener('DOMContentLoaded', () => {
         };
         window._configInputPatched = true;
     }
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attachConfigHooks);
+} else {
+    attachConfigHooks();
+}
 
 // --- END OF FILE config.js ---
