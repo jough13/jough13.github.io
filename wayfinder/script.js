@@ -4601,30 +4601,11 @@ function handleCombatInput(key) {
             if (tileChar === STAR_CHAR_VAL) {
                 const starData = generateStarData(playerX, playerY);
                 const starId = `${playerX}_${playerY}`;
-                const scanKey = `STAR_SCAN_${starId}`;
-                
-                // Capture the scan status BEFORE evaluateStar() adds it to the list!
-                const isFirstScan = typeof discoveredLocations !== 'undefined' && !discoveredLocations.has(scanKey);
                 
                 if (typeof soundManager !== 'undefined') soundManager.playUIHover();
+                
+                // 👇 FIX: evaluateStar now completely handles all first-scan logic natively
                 evaluateStar(starData, starId);
-
-                // Only trigger engrams on the first scan
-                if (isFirstScan) {
-                    // 🚨 Safely check for VOID_DIVER whether it's a Set or an Array
-                    const hasVoidDiver = typeof playerPerks !== 'undefined' && 
-                        ((playerPerks.has && playerPerks.has('VOID_DIVER')) || 
-                         (playerPerks.includes && playerPerks.includes('VOID_DIVER')));
-
-                    const engramChance = hasVoidDiver ? 0.25 : 0.10;
-                    
-                    if (Math.random() < engramChance) {
-                        playerCargo['ENCRYPTED_ENGRAM'] = (playerCargo['ENCRYPTED_ENGRAM'] || 0) + 1;
-                        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                        logMessage("<span style='color:#DDA0DD'>[ SENSORS ] Anomaly detected in the stellar corona. Tractor beam recovered 1x Encrypted Engram!</span>");
-                        if (typeof soundManager !== 'undefined') soundManager.playGain();
-                    }
-                }
             } else {
                 logMessage("Deep scanners read nothing but the void.");
             }
