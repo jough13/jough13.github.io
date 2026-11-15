@@ -12,6 +12,7 @@ const LOCATIONS_DATA = {
             x: MAP_WIDTH - 7
         },
         type: STARBASE_CHAR_VAL,
+        char: STARBASE_CHAR_VAL,
         isMajorHub: true,
         faction: "CONCORD",
         sells: [
@@ -67,6 +68,7 @@ const LOCATIONS_DATA = {
             x: MAP_WIDTH - 15
         },
         type: STARBASE_CHAR_VAL,
+        char: STARBASE_CHAR_VAL,
         displayChar: "§",
         customColor: "#9C27B0", // Shadow Network purple
         isMajorHub: true, 
@@ -75,6 +77,7 @@ const LOCATIONS_DATA = {
         sells: [
             { id: "DISCOUNT_CYBERSERVOS", priceMod: 0.7, stock: 25 }, 
             { id: "PROHIBITED_STIMS", priceMod: 0.9, stock: 12 },
+            { id: "SENSOR_DECOY", priceMod: 0.95, stock: 8 },
             { id: "FROTHY_MOON_ALE", priceMod: 1.0, stock: 30 },
             { id: "UNSHACKLED_AI", priceMod: 1.5, stock: 1 } 
         ],
@@ -82,7 +85,8 @@ const LOCATIONS_DATA = {
             { id: "MEDICAL_SUPPLIES", priceMod: 2.0, stock: 50 }, 
             { id: "TECH_PARTS", priceMod: 1.5, stock: 30 },
             { id: "STOLEN_CONCORD_MEDALS", priceMod: 2.2, stock: 20 },
-            { id: "ILLEGAL_ORGANS", priceMod: 1.8, stock: 10 }
+            { id: "ILLEGAL_ORGANS", priceMod: 1.8, stock: 10 },
+            { id: "STARDUST_EXOTICA", priceMod: 1.4, stock: 15 }
         ],
         factory: {
             consumes: "MEDICAL_SUPPLIES",
@@ -96,7 +100,8 @@ const LOCATIONS_DATA = {
     "Aegis Dyson Sphere": {
         name: "Aegis Dyson Sphere",
         coords: { y: 7, x: 7 },
-        type: PLANET_CHAR_VAL, 
+        type: PLANET_CHAR_VAL,
+        char: PLANET_CHAR_VAL,
         faction: "CONCORD",
         isMajorHub: true,
         sells: [
@@ -107,14 +112,16 @@ const LOCATIONS_DATA = {
             { id: "REFINED_ALLOY", priceMod: 0.9, stock: 80 },
             { id: "ATMOSPHERIC_PROCESSORS", priceMod: 0.9, stock: 40 },
             { id: "COMBAT_DRONE_MK1", priceMod: 1.0, stock: 8 },
-            { id: "LUXURY_GOODS", priceMod: 1.0, stock: 50 }
+            { id: "LUXURY_GOODS", priceMod: 1.0, stock: 50 },
+            { id: "MERCENARY_PLATOON", priceMod: 1.1, stock: 5 }
         ],
         buys: [
             { id: "RARE_METALS", priceMod: 1.3, stock: 50 }, 
             { id: "VOID_CRYSTALS", priceMod: 1.5, stock: 15 },
             { id: "HYDROGEN_3", priceMod: 1.2, stock: 30 },
             { id: "QUANTUM_FLUID", priceMod: 1.4, stock: 25 },
-            { id: "AI_CORE", priceMod: 1.3, stock: 10 }
+            { id: "AI_CORE", priceMod: 1.3, stock: 10 },
+            { id: "QUANTUM_LENS", priceMod: 1.4, stock: 15 }
         ],
         factory: {
             consumes: "RARE_METALS",
@@ -132,7 +139,76 @@ const LOCATIONS_DATA = {
         char: 'I', // Used as the key in TILE_INTERACTIONS
         displayChar: 'Ψ',
         customColor: "#9933FF",
-        scanFlavor: "An ancient, monolithic spire floating in deep space. Its geometric trenches pulse with residual Precursor energy."
+        scanFlavor: "An ancient, monolithic spire floating in deep space. Its geometric trenches pulse with residual Precursor energy.",
+        onInteract: function(tileObj) {
+            if (typeof TILE_INTERACTIONS !== 'undefined' && TILE_INTERACTIONS['I']) {
+                const def = TILE_INTERACTIONS['I'];
+                if (def.log) logMessage(def.log);
+                const acts = typeof def.actions === 'function' ? def.actions(tileObj) : (def.actions || []);
+                if (typeof renderContextualActions === 'function') renderContextualActions(acts);
+                return;
+            }
+            logMessage("<span style='color:#9933FF'>The Obsidian Obelisk hums with dormant Precursor energy.</span>");
+        }
+    },
+
+    "Sanctuary of the Void": {
+        name: "Sanctuary of the Void",
+        coords: { x: 39, y: -17 }, // Matches the Encrypted Engram hint: Sector [39, 17]!
+        type: 'location',
+        char: 'Ψ',
+        displayChar: 'Ψ',
+        customColor: "#00E0E0",
+        scanFlavor: "Sanctuary of the Void: A ring of crystalline Precursor pylons at coordinates [39, 17], resonating with subspace telemetry from the ancient hyperlane network.",
+        onInteract: function(tileObj) {
+            if (typeof unlockLoreEntry === 'function') {
+                unlockLoreEntry("XENO_PRECURSORS");
+                unlockLoreEntry("LOCATION_SANCTUARY_OF_THE_VOID");
+            }
+            if (tileObj && tileObj.studied) {
+                logMessage("<span style='color:var(--accent-color)'>[ SANCTUARY OF THE VOID ]</span> The Precursor pylons hum quietly, recharging your shields. Their star-charts have already been downloaded.");
+                if (typeof MAX_SHIELDS !== 'undefined') playerShields = MAX_SHIELDS;
+                if (typeof renderContextualActions === 'function') {
+                    renderContextualActions([
+                        { label: 'Meditate in the Harmonics (+Shields)', key: 'e', onclick: () => { playerShields = MAX_SHIELDS; logMessage("Your shields are fully harmonized."); if (typeof renderUIStats === 'function') renderUIStats(); } }
+                    ]);
+                }
+                return;
+            }
+
+            logMessage("<span style='color:#00E0E0; font-weight:bold;'>[ PRECURSOR CONDUIT LOCATED ]</span> You followed the Encrypted Engram coordinates to [39, 17]! Holographic star-paths flood your cockpit.");
+            if (typeof renderContextualActions === 'function') {
+                renderContextualActions([
+                    {
+                        label: 'Synchronize Nav-Computer',
+                        key: 'e',
+                        onclick: () => {
+                            const xp = 350;
+                            playerXP += xp;
+                            playerShields = typeof MAX_SHIELDS !== 'undefined' ? MAX_SHIELDS : 100;
+                            let lootText = "";
+                            const spaceLeft = (typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50) - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
+                            if (spaceLeft >= 1) {
+                                playerCargo['PRECURSOR_STAR_MAP_FRAGMENT'] = (playerCargo['PRECURSOR_STAR_MAP_FRAGMENT'] || 0) + 1;
+                                if (spaceLeft >= 2) playerCargo['PRECURSOR_NAV_CORE'] = (playerCargo['PRECURSOR_NAV_CORE'] || 0) + 1;
+                                if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                                lootText = " Materialized <b>1x Star Map Fragment</b> & <b>1x Precursor Nav-Core</b>!";
+                            }
+                            if (typeof updateWorldState === 'function') {
+                                updateWorldState(playerX, playerY, { studied: true, isUnique: true, lastInteraction: typeof currentGameDate !== 'undefined' ? currentGameDate : 0 });
+                            } else if (tileObj) {
+                                tileObj.studied = true;
+                            }
+                            logMessage(`<span style='color:var(--success)'>[ CONDUIT SYNCHRONIZED ]</span> Downloaded ancient hyperlane telemetry (+${xp} XP).${lootText}`);
+                            if (typeof soundManager !== 'undefined') soundManager.playGain();
+                            if (typeof showToast === 'function') showToast("PRECURSOR CACHE UNLOCKED", "success");
+                            if (typeof checkLevelUp === 'function') checkLevelUp();
+                            if (typeof handleInteraction === 'function') handleInteraction();
+                        }
+                    }
+                ]);
+            }
+        }
     },
 
     "Planet Xerxes": {
@@ -142,6 +218,7 @@ const LOCATIONS_DATA = {
             x: MAP_WIDTH - 5
         },
         type: PLANET_CHAR_VAL,
+        char: PLANET_CHAR_VAL,
         faction: "INDEPENDENT",
         isBlackMarket: true, 
         sells: [
@@ -149,13 +226,16 @@ const LOCATIONS_DATA = {
             { id: "OBSIDIAN_TEAR_PLATING", priceMod: 1.1, stock: 5 },
             { id: "LIVING_HULL_TISSUE", priceMod: 0.9, stock: 3 },
             { id: "STARDUST_EXOTICA", priceMod: 1.0, stock: 8 },
-            { id: "PRECURSOR_CIPHER", priceMod: 1.2, stock: 3 }
+            { id: "PRECURSOR_CIPHER", priceMod: 1.2, stock: 5 },
+            { id: "SENSOR_DECOY", priceMod: 0.9, stock: 10 },
+            { id: "WAYFINDER_CORE", priceMod: 1.0, stock: 1 }
         ],
         buys: [
             { id: "PRECURSOR_NAV_CORE", priceMod: 2.5, stock: 5 }, 
             { id: "SENTIENT_MYCELIUM", priceMod: 1.8, stock: 15 },
             { id: "VOID_CRYSTALS", priceMod: 1.7, stock: 20 },
-            { id: "ANCIENT_RELICS", priceMod: 2.0, stock: 10 }
+            { id: "ANCIENT_RELICS", priceMod: 2.0, stock: 10 },
+            { id: "PRECURSOR_ARTIFACT", priceMod: 1.8, stock: 5 }
         ],
         scanFlavor: "Planet Xerxes: Extreme environment, corrosive atmosphere, and crushing gravity. High Xenon Gas and heavy metal concentrations make it valuable, but deadly. Rumored pirate haven and site of ancient K'tharr ruins."
     },
@@ -171,6 +251,7 @@ const LOCATIONS_DATA = {
             x: 420
         },
         type: PLANET_CHAR_VAL,
+        char: PLANET_CHAR_VAL,
         faction: "KTHARR",
         isMajorHub: true,
         sells: [
@@ -178,7 +259,9 @@ const LOCATIONS_DATA = {
             { id: "KTHARR_SPICES", priceMod: 0.7, stock: 40 },
             { id: "MINERALS", priceMod: 0.9, stock: 150 },
             { id: "WEAPONS", priceMod: 0.8, stock: 60 },
-            { id: "LIVING_HULL_TISSUE", priceMod: 1.1, stock: 10 }
+            { id: "LIVING_HULL_TISSUE", priceMod: 1.1, stock: 10 },
+            { id: "MERCENARY_PLATOON", priceMod: 0.9, stock: 12 },
+            { id: "ASSAULT_MECH", priceMod: 1.0, stock: 4 }
         ],
         buys: [
             { id: "FOOD_SUPPLIES", priceMod: 1.8, stock: 200 }, 
@@ -196,6 +279,42 @@ const LOCATIONS_DATA = {
         scanFlavor: "Karak-Tor: A brutal, volcanic world claimed by the K'tharr Hegemony. Massive atmospheric forges burn day and night. Scanners detect intense localized energy spikes—likely the infamous Proving Grounds."
     },
 
+    "Fortress Drakon": {
+        name: "Fortress Drakon",
+        coords: {
+            y: -75,
+            x: 195
+        },
+        type: STARBASE_CHAR_VAL,
+        char: STARBASE_CHAR_VAL,
+        displayChar: "#",
+        customColor: "#4CAF50",
+        faction: "KTHARR",
+        isMajorHub: true,
+        sells: [
+            { id: "WEAPONS", priceMod: 0.85, stock: 80 },
+            { id: "KTHARR_SPICES", priceMod: 0.8, stock: 35 },
+            { id: "MERCENARY_PLATOON", priceMod: 1.0, stock: 8 },
+            { id: "ASSAULT_MECH", priceMod: 1.1, stock: 2 },
+            { id: "NANO_REPAIR_KIT", priceMod: 1.0, stock: 20 },
+            { id: "FUEL_CELLS", priceMod: 1.0, stock: 120 }
+        ],
+        buys: [
+            { id: "REFINED_ALLOY", priceMod: 1.5, stock: 60 },
+            { id: "FOOD_SUPPLIES", priceMod: 1.6, stock: 100 },
+            { id: "MEDICAL_SUPPLIES", priceMod: 1.5, stock: 50 },
+            { id: "KTHARR_ANCESTRAL_BLADE", priceMod: 2.2, stock: 10 },
+            { id: "RARE_METALS", priceMod: 1.4, stock: 40 }
+        ],
+        factory: {
+            consumes: "RARE_METALS",
+            produces: "WEAPONS",
+            consumeQty: 3,
+            produceQty: 2
+        },
+        scanFlavor: "Fortress Drakon: The primary K'tharr Ascendancy border bastion guarding the eastern approaches. Warlords gather here to outfit assault fleets and reward outlanders bold enough to return lost Ancestral Blades."
+    },
+
     "Station Umbra": {
         name: "Station Umbra",
         coords: {
@@ -203,6 +322,7 @@ const LOCATIONS_DATA = {
             x: -450 // Deep into the lawless outer rim
         },
         type: STARBASE_CHAR_VAL,
+        char: STARBASE_CHAR_VAL,
         faction: "ECLIPSE",
         isMajorHub: true,
         isBlackMarket: true, 
@@ -213,8 +333,7 @@ const LOCATIONS_DATA = {
             { id: "PROHIBITED_STIMS", priceMod: 0.8, stock: 20 },
             { id: "STARDUST_EXOTICA", priceMod: 0.9, stock: 10 },
             { id: "OBSIDIAN_TEAR_PLATING", priceMod: 1.0, stock: 6 },
-            
-            // Station Umbra now legally sells Cartel Troops!
+            { id: "SENSOR_DECOY", priceMod: 0.85, stock: 12 },
             { id: "MERCENARY_PLATOON", priceMod: 1.0, stock: 10 },
             { id: "ASSAULT_MECH", priceMod: 1.2, stock: 2 }
         ],
@@ -234,6 +353,43 @@ const LOCATIONS_DATA = {
         scanFlavor: "Station Umbra: A heavily cloaked Eclipse Cartel listening post on the galactic rim. You are receiving encrypted hails offering high payouts for stolen goods and access to shadow brokers. Keep your shields up."
     },
 
+    "Port Erebus": {
+        name: "Port Erebus",
+        coords: {
+            y: 80,
+            x: -175
+        },
+        type: STARBASE_CHAR_VAL,
+        char: STARBASE_CHAR_VAL,
+        displayChar: "§",
+        customColor: "#9933FF",
+        faction: "ECLIPSE",
+        isMajorHub: true,
+        isBlackMarket: true,
+        sells: [
+            { id: "PROHIBITED_STIMS", priceMod: 0.85, stock: 18 },
+            { id: "SENSOR_DECOY", priceMod: 0.9, stock: 10 },
+            { id: "STARDUST_EXOTICA", priceMod: 0.95, stock: 8 },
+            { id: "SENTIENT_MYCELIUM", priceMod: 0.9, stock: 12 },
+            { id: "MERCENARY_PLATOON", priceMod: 1.0, stock: 6 },
+            { id: "FUEL_CELLS", priceMod: 1.1, stock: 80 }
+        ],
+        buys: [
+            { id: "LUXURY_GOODS", priceMod: 1.6, stock: 40 },
+            { id: "GOLD", priceMod: 1.5, stock: 50 },
+            { id: "STOLEN_CONCORD_MEDALS", priceMod: 2.5, stock: 30 },
+            { id: "ILLEGAL_ORGANS", priceMod: 2.0, stock: 15 },
+            { id: "ANCIENT_WINE", priceMod: 1.7, stock: 20 }
+        ],
+        factory: {
+            consumes: "SENTIENT_MYCELIUM",
+            produces: "PROHIBITED_STIMS",
+            consumeQty: 2,
+            produceQty: 2
+        },
+        scanFlavor: "Port Erebus: A neon-drenched Eclipse Cartel smuggling port tucked inside a sensor-baffled dust cloud. Outlaws, identity forgers, and blockade runners dock here to fence contraband out of SEC-COM's sight."
+    },
+
     "Cygnus Prime": {
         name: "Cygnus Prime",
         coords: {
@@ -241,6 +397,7 @@ const LOCATIONS_DATA = {
             x: 85
         },
         type: STARBASE_CHAR_VAL,
+        char: STARBASE_CHAR_VAL,
         faction: "CONCORD",
         isMajorHub: true,
         sells: [
@@ -256,7 +413,13 @@ const LOCATIONS_DATA = {
             { id: "PRECURSOR_DATACUBE", priceMod: 3.0, stock: 10 },
             { id: "ARTIFACT_SHARDS", priceMod: 1.8, stock: 25 },
             { id: "GENETIC_SAMPLES", priceMod: 1.7, stock: 30 },
-            { id: "VOID_CRYSTALS", priceMod: 1.8, stock: 15 }
+            { id: "VOID_CRYSTALS", priceMod: 1.8, stock: 15 },
+            // High academic payouts for Deep Space Astrometry Data!
+            { id: "DATA_PULSAR", priceMod: 1.6, stock: 15 },
+            { id: "DATA_MAGNETAR", priceMod: 1.7, stock: 12 },
+            { id: "DATA_SINGULARITY", priceMod: 1.8, stock: 8 },
+            { id: "DATA_QUASAR", priceMod: 2.0, stock: 5 },
+            { id: "DATA_SUPERNOVA", priceMod: 1.7, stock: 10 }
         ],
         factory: {
             consumes: "VOID_CRYSTALS",
@@ -264,7 +427,42 @@ const LOCATIONS_DATA = {
             consumeQty: 2,
             produceQty: 1
         },
-        scanFlavor: "University of Cygnus Prime: The premier astrophysical and xeno-archaeological research complex in Concord space. Academic grants fund top-credit bounties for planetary telemetry and intact Precursor Datacubes."
+        scanFlavor: "University of Cygnus Prime: The premier astrophysical and xeno-archaeological research complex in Concord space. Academic grants fund top-credit bounties for planetary telemetry, pulsar/quasar spectroscopy, and intact Precursor Datacubes."
+    },
+
+    "Ceti Alpha Shipyards": {
+        name: "Ceti Alpha Shipyards",
+        coords: {
+            y: -130,
+            x: -90
+        },
+        type: STARBASE_CHAR_VAL,
+        char: STARBASE_CHAR_VAL,
+        faction: "CONCORD",
+        isMajorHub: true,
+        sells: [
+            { id: "TECH_PARTS", priceMod: 0.8, stock: 120 },
+            { id: "REFINED_ALLOY", priceMod: 0.85, stock: 90 },
+            { id: "DROID_SERVOS", priceMod: 0.8, stock: 80 },
+            { id: "NANO_REPAIR_KIT", priceMod: 0.85, stock: 30 },
+            { id: "COMBAT_DRONE_MK1", priceMod: 0.9, stock: 12 },
+            { id: "MINING_DRONE_MK2", priceMod: 0.9, stock: 10 },
+            { id: "STATION_CORE", priceMod: 0.95, stock: 2 }
+        ],
+        buys: [
+            { id: "PLATINUM_ORE", priceMod: 1.5, stock: 80 },
+            { id: "RARE_METALS", priceMod: 1.5, stock: 80 },
+            { id: "MINERALS", priceMod: 1.3, stock: 200 },
+            { id: "HYDROGEN_3", priceMod: 1.6, stock: 50 },
+            { id: "AI_CORE", priceMod: 1.5, stock: 15 }
+        ],
+        factory: {
+            consumes: "PLATINUM_ORE",
+            produces: "TECH_PARTS",
+            consumeQty: 3,
+            produceQty: 4
+        },
+        scanFlavor: "Ceti Alpha Shipyards: Rebuilt after Dread Pirate Voss's infamous raid, these heavily fortified orbital drydocks assemble Aegis patrol cruisers and pay top credit for raw platinum and rare metals."
     },
 
     "Helios Refinery": {
@@ -274,6 +472,7 @@ const LOCATIONS_DATA = {
             x: -55
         },
         type: OUTPOST_CHAR_VAL,
+        char: OUTPOST_CHAR_VAL,
         faction: "CONCORD",
         isMajorHub: true,
         sells: [
@@ -306,6 +505,7 @@ const LOCATIONS_DATA = {
             x: MAP_WIDTH + 18
         },
         type: OUTPOST_CHAR_VAL,
+        char: OUTPOST_CHAR_VAL,
         displayChar: "H",
         customColor: "#FFAA00",
         faction: "INDEPENDENT",
@@ -339,6 +539,7 @@ const LOCATIONS_DATA = {
             x: 15
         },
         type: OUTPOST_CHAR_VAL,
+        char: OUTPOST_CHAR_VAL,
         displayChar: "H",
         customColor: "#FFAA00",
         faction: "INDEPENDENT",
@@ -372,6 +573,7 @@ const LOCATIONS_DATA = {
             x: -240
         },
         type: OUTPOST_CHAR_VAL,
+        char: OUTPOST_CHAR_VAL,
         displayChar: "H",
         customColor: "#00E0E0",
         faction: "INDEPENDENT",
@@ -382,19 +584,26 @@ const LOCATIONS_DATA = {
             { id: "XENO_ANTIQUES", priceMod: 0.9, stock: 10 },
             { id: "ENCRYPTED_ENGRAM", priceMod: 1.0, stock: 8 },
             { id: "PRECURSOR_CIPHER", priceMod: 0.9, stock: 6 },
-            { id: "ANCIENT_ARCHIVE", priceMod: 1.1, stock: 3 }
+            { id: "ANCIENT_ARCHIVE", priceMod: 1.1, stock: 3 },
+            { id: "WAYFINDER_CORE", priceMod: 1.0, stock: 1 }
         ],
         buys: [
             { id: "PLANETARY_DATA", priceMod: 1.8, stock: 50 },
             { id: "PRECURSOR_DATACUBE", priceMod: 2.8, stock: 10 },
             { id: "PRECURSOR_STAR_MAP_FRAGMENT", priceMod: 3.5, stock: 10 },
-            { id: "AI_CORE", priceMod: 1.7, stock: 15 }
+            { id: "AI_CORE", priceMod: 1.7, stock: 15 },
+            { id: "PRECURSOR_ARTIFACT", priceMod: 2.2, stock: 5 },
+            { id: "DATA_SINGULARITY", priceMod: 2.0, stock: 10 },
+            { id: "DATA_QUASAR", priceMod: 2.2, stock: 8 }
         ],
         scanFlavor: "The Archivist's Vault: Hidden deep within a graveyard of shattered pre-Concord hulls. Run by an ancient, reclusive AI broker that trades in forbidden histories, encrypted engrams, and Precursor relics."
     }
 };
 
 window.LOCATIONS_DATA = LOCATIONS_DATA;
+if (typeof GameRegistry !== 'undefined') {
+    GameRegistry.locations = LOCATIONS_DATA;
+}
 
 // ==========================================
 // --- SELF-CONTAINED LOCATION PATCHES ---
@@ -408,9 +617,9 @@ window.LOCATIONS_DATA = LOCATIONS_DATA;
         if (!COMMODITIES.LUXURY_GOODS) {
             COMMODITIES.LUXURY_GOODS = {
                 name: "Luxury Goods",
-                basePrice: 220,
+                basePrice: 350,
                 icon: "💎",
-                description: "Fine silks, holographic art, and off-world delicacies prized by high-tier settlements and core executives."
+                description: "High-end textiles, holovids, and artisanal crafts produced by advanced colonies."
             };
         }
         if (!COMMODITIES.HAB_MODULE) {
@@ -441,35 +650,39 @@ window.LOCATIONS_DATA = LOCATIONS_DATA;
 
     ensureLocationCommodities();
 
-    window.addEventListener('DOMContentLoaded', () => {
-        ensureLocationCommodities();
+    // 2. Register Codex Lore Entries for All Static Locations
+    function syncLocationLoreEntries() {
+        if (typeof LORE_DATABASE === 'undefined') return;
 
-        // 2. Unlock Lore Entries for Newly Added Locations When Discovered
-        if (typeof LORE_DATABASE !== 'undefined') {
-            if (!LORE_DATABASE.LOCATION_CYGNUS_PRIME) {
-                LORE_DATABASE.LOCATION_CYGNUS_PRIME = {
-                    title: "University of Cygnus Prime",
+        for (const locKey in LOCATIONS_DATA) {
+            const loc = LOCATIONS_DATA[locKey];
+            if (!loc || !loc.name || !loc.scanFlavor) continue;
+
+            const normalizedKey = `LOCATION_${loc.name.replace(/[\s-]+/g, '_').toUpperCase()}`;
+            const strippedKey = normalizedKey.replace(/'/g, '');
+
+            if (!LORE_DATABASE[normalizedKey]) {
+                LORE_DATABASE[normalizedKey] = {
+                    title: loc.name,
                     category: "Locations",
-                    text: LOCATIONS_DATA["Cygnus Prime"].scanFlavor,
+                    text: typeof loc.scanFlavor === 'string' ? loc.scanFlavor : "A notable deep-space landmark.",
                     unlocked: false
                 };
             }
-            if (!LORE_DATABASE.LOCATION_HELIOS_REFINERY) {
-                LORE_DATABASE.LOCATION_HELIOS_REFINERY = {
-                    title: "Helios Corporate Refinery",
-                    category: "Locations",
-                    text: LOCATIONS_DATA["Helios Refinery"].scanFlavor,
-                    unlocked: false
-                };
+            if (strippedKey !== normalizedKey && !LORE_DATABASE[strippedKey]) {
+                LORE_DATABASE[strippedKey] = LORE_DATABASE[normalizedKey];
             }
-            if (!LORE_DATABASE.LOCATION_PORT_NOMAD) {
-                LORE_DATABASE.LOCATION_PORT_NOMAD = {
-                    title: "Port Nomad",
-                    category: "Locations",
-                    text: LOCATIONS_DATA["Port Nomad"].scanFlavor,
-                    unlocked: false
-                };
-            }
+        }
+    }
+
+    // Attach hooks on document DOMContentLoaded so they execute BEFORE script.js's auto-login listener!
+    function attachLocationPatches() {
+        ensureLocationCommodities();
+        syncLocationLoreEntries();
+
+        // Reset cached total lore count so Codex percentage includes new locations accurately
+        if (typeof window.cachedTotalLore !== 'undefined') {
+            window.cachedTotalLore = null;
         }
 
         // 3. Persist worldStateDeltas on Static Locations in chunkManager
@@ -493,7 +706,7 @@ window.LOCATIONS_DATA = LOCATIONS_DATA;
                 }
                 return chunkData;
             };
-            chunkManager. initializeStaticLocations();
+            chunkManager.initializeStaticLocations();
             chunkManager.loadedChunks = {};
             chunkManager.lastChunkKey = null;
             chunkManager.lastChunkRef = null;
@@ -534,82 +747,87 @@ window.LOCATIONS_DATA = LOCATIONS_DATA;
 
                 origOpenStation.apply(this, arguments);
 
-                // Inject Active Mission Turn-In / Delivery Buttons into the Station Concourse & Bottom HUD
+                // Inject Active Mission Turn-In / Delivery Buttons into the Station Concourse
                 if (!location || typeof playerActiveMission === 'undefined' || !playerActiveMission) return;
 
                 const menuGrid = document.getElementById('dynamicStationMenu');
+                if (!menuGrid) return;
+
+                // Remove any previously injected mission buttons to prevent duplicates
+                menuGrid.querySelectorAll('[data-mission-btn="true"]').forEach(el => el.remove());
+
                 const obj = playerActiveMission.objectives && playerActiveMission.objectives[0] ? playerActiveMission.objectives[0] : null;
 
                 // A. Delivery Objective at Destination Station
                 if (!playerActiveMission.isComplete && playerActiveMission.type === "DELIVERY" && obj && location.name === obj.destinationName) {
-                    if (menuGrid) {
-                        const delivBtn = document.createElement('button');
-                        delivBtn.className = 'station-action-btn';
-                        delivBtn.style.cssText = 'border: 1px solid var(--gold-text); border-left: 4px solid var(--gold-text); background: rgba(255, 215, 0, 0.08); grid-column: span 2;';
-                        delivBtn.innerHTML = `
-                            <div class="btn-icon">📦</div>
-                            <div>
-                                <div class="btn-label" style="color:var(--gold-text);">Complete Contract Delivery</div>
-                                <span class="btn-sub" style="color:var(--text-color);">Deliver ${obj.count}x ${COMMODITIES[obj.itemID] ? COMMODITIES[obj.itemID].name : obj.itemID}</span>
-                            </div>
-                        `;
-                        delivBtn.onclick = () => {
-                            if (typeof handleCompleteDelivery === 'function') handleCompleteDelivery();
+                    const delivBtn = document.createElement('button');
+                    delivBtn.className = 'station-action-btn';
+                    delivBtn.setAttribute('data-mission-btn', 'true');
+                    delivBtn.style.cssText = 'border: 1px solid var(--gold-text); border-left: 4px solid var(--gold-text); background: rgba(255, 215, 0, 0.08); grid-column: span 2;';
+                    delivBtn.innerHTML = `
+                        <div class="btn-icon">📦</div>
+                        <div>
+                            <div class="btn-label" style="color:var(--gold-text);">Complete Contract Delivery</div>
+                            <span class="btn-sub" style="color:var(--text-color);">Deliver ${obj.count}x ${COMMODITIES[obj.itemID] ? COMMODITIES[obj.itemID].name : obj.itemID}</span>
+                        </div>
+                    `;
+                    delivBtn.onclick = () => {
+                        if (typeof handleCompleteDelivery === 'function') handleCompleteDelivery();
+                        if (typeof currentGameState !== 'undefined' && currentGameState !== 'level_up') {
                             window.openStationView();
-                        };
-                        menuGrid.prepend(delivBtn);
-                    }
+                        }
+                    };
+                    menuGrid.prepend(delivBtn);
                 }
 
                 // B. Acquire Objective at Giver Station
                 if (!playerActiveMission.isComplete && playerActiveMission.type === "ACQUIRE" && obj && location.name === playerActiveMission.giver) {
-                    if (menuGrid) {
-                        const acqBtn = document.createElement('button');
-                        acqBtn.className = 'station-action-btn';
-                        acqBtn.style.cssText = 'border: 1px solid var(--gold-text); border-left: 4px solid var(--gold-text); background: rgba(255, 215, 0, 0.08); grid-column: span 2;';
-                        acqBtn.innerHTML = `
-                            <div class="btn-icon">💎</div>
-                            <div>
-                                <div class="btn-label" style="color:var(--gold-text);">Turn In Contract Resources</div>
-                                <span class="btn-sub" style="color:var(--text-color);">Deliver ${obj.count}x ${COMMODITIES[obj.itemID] ? COMMODITIES[obj.itemID].name : obj.itemID}</span>
-                            </div>
-                        `;
-                        acqBtn.onclick = () => {
-                            if (typeof handleTurnInAcquire === 'function') handleTurnInAcquire();
+                    const acqBtn = document.createElement('button');
+                    acqBtn.className = 'station-action-btn';
+                    acqBtn.setAttribute('data-mission-btn', 'true');
+                    acqBtn.style.cssText = 'border: 1px solid var(--gold-text); border-left: 4px solid var(--gold-text); background: rgba(255, 215, 0, 0.08); grid-column: span 2;';
+                    acqBtn.innerHTML = `
+                        <div class="btn-icon">💎</div>
+                        <div>
+                            <div class="btn-label" style="color:var(--gold-text);">Turn In Contract Resources</div>
+                            <span class="btn-sub" style="color:var(--text-color);">Deliver ${obj.count}x ${COMMODITIES[obj.itemID] ? COMMODITIES[obj.itemID].name : obj.itemID}</span>
+                        </div>
+                    `;
+                    acqBtn.onclick = () => {
+                        if (typeof handleTurnInAcquire === 'function') handleTurnInAcquire();
+                        if (typeof currentGameState !== 'undefined' && currentGameState !== 'level_up') {
                             window.openStationView();
-                        };
-                        menuGrid.prepend(acqBtn);
-                    }
+                        }
+                    };
+                    menuGrid.prepend(acqBtn);
                 }
 
                 // C. Completed Contract Reward Claim at Giver Station (or Shadow Broker at Black Markets)
                 const isGiverHere = (location.name === playerActiveMission.giver) ||
                                     (playerActiveMission.giver === "Shadow Broker" && location.isBlackMarket);
 
-                if (playerActiveMission.isComplete && isGiverHere) {
-                    if (menuGrid) {
-                        const rewardBtn = document.createElement('button');
-                        rewardBtn.className = 'station-action-btn';
-                        rewardBtn.style.cssText = 'border: 1px solid var(--success); border-left: 4px solid var(--success); background: rgba(0, 255, 0, 0.08); grid-column: span 2;';
-                        rewardBtn.innerHTML = `
-                            <div class="btn-icon">🏆</div>
-                            <div>
-                                <div class="btn-label" style="color:var(--success);">Claim Contract Reward (${formatNumber(playerActiveMission.rewards.credits)}c)</div>
-                                <span class="btn-sub" style="color:var(--text-color);">${playerActiveMission.title}</span>
-                            </div>
-                        `;
-                        rewardBtn.onclick = () => {
-                            // Support Shadow Broker smuggling payouts at any Black Market
-                            if (playerActiveMission.giver === "Shadow Broker" && location.isBlackMarket) {
-                                playerActiveMission.giver = location.name;
-                            }
-                            if (typeof grantMissionRewards === 'function') grantMissionRewards();
-                            if (typeof currentGameState !== 'undefined' && currentGameState !== 'level_up') {
-                                window.openStationView();
-                            }
-                        };
-                        menuGrid.prepend(rewardBtn);
-                    }
+                if (playerActiveMission && playerActiveMission.isComplete && isGiverHere) {
+                    const rewardBtn = document.createElement('button');
+                    rewardBtn.className = 'station-action-btn';
+                    rewardBtn.setAttribute('data-mission-btn', 'true');
+                    rewardBtn.style.cssText = 'border: 1px solid var(--success); border-left: 4px solid var(--success); background: rgba(0, 255, 0, 0.08); grid-column: span 2;';
+                    rewardBtn.innerHTML = `
+                        <div class="btn-icon">🏆</div>
+                        <div>
+                            <div class="btn-label" style="color:var(--success);">Claim Contract Reward (${formatNumber(playerActiveMission.rewards.credits)}c)</div>
+                            <span class="btn-sub" style="color:var(--text-color);">${playerActiveMission.title}</span>
+                        </div>
+                    `;
+                    rewardBtn.onclick = () => {
+                        if (playerActiveMission.giver === "Shadow Broker" && location.isBlackMarket) {
+                            playerActiveMission.giver = location.name;
+                        }
+                        if (typeof grantMissionRewards === 'function') grantMissionRewards();
+                        if (typeof currentGameState !== 'undefined' && currentGameState !== 'level_up') {
+                            window.openStationView();
+                        }
+                    };
+                    menuGrid.prepend(rewardBtn);
                 }
             };
             window._locStationPatched = true;
@@ -647,7 +865,13 @@ window.LOCATIONS_DATA = LOCATIONS_DATA;
             };
             window._locDestPatched = true;
         }
-    });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachLocationPatches);
+    } else {
+        attachLocationPatches();
+    }
 })();
 
 // --- END OF FILE locations.js ---
