@@ -3094,6 +3094,14 @@ GameBus.on('TICK_PROCESSED', (tick) => {
 
     if (typeof updateEnemies === "function") updateEnemies();
 
+    // If updateEnemies triggered combat or extortion, halt the tick immediately!
+    // This prevents Step 6 (handleInteraction) from firing on top of the combat screen.
+    if ((typeof currentGameState !== 'undefined' && currentGameState === 'combat') || 
+        (typeof pendingExtortionEnemy !== 'undefined' && pendingExtortionEnemy)) {
+        tick.interrupt = true;
+        return;
+    }
+
     if (typeof updatePlayerDrones === "function") updatePlayerDrones();
 
     // COMET CHASING (Reduced from 1% to 0.1%)
@@ -4604,7 +4612,6 @@ function handleCombatInput(key) {
                 
                 if (typeof soundManager !== 'undefined') soundManager.playUIHover();
                 
-                // 👇 FIX: evaluateStar now completely handles all first-scan logic natively
                 evaluateStar(starData, starId);
             } else {
                 logMessage("Deep scanners read nothing but the void.");
