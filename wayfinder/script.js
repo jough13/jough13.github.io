@@ -673,6 +673,13 @@ function animateParticles() {
              return; 
          }
 
+         // 👇 FIX: Scrub any procedural outposts leaking over from previously loaded saves/seeds!
+         for (const key in LOCATIONS_DATA) {
+             if (LOCATIONS_DATA[key].isProcedural) {
+                 delete LOCATIONS_DATA[key];
+             }
+         }
+
          for (const name in LOCATIONS_DATA) {
              const location = LOCATIONS_DATA[name];
              
@@ -826,9 +833,10 @@ function animateParticles() {
                                 faction: "INDEPENDENT",
                                 sells: tile.sells, // Reference the same trade data
                                 buys: tile.buys,
-                                scanFlavor: tile.scanFlavor
+                                scanFlavor: tile.scanFlavor,
+                                isProcedural: true // 👇 FIX: Tag as procedural so it can be scrubbed on new game/seed!
                             };
-                        this.staticLocations.set(locationKey, tile);
+                            this.staticLocations.set(locationKey, tile);
                         }
 
                     } else if (seededRandom(tileSeed + 8) < ANOMALY_SPAWN_CHANCE) {
@@ -1745,6 +1753,7 @@ function checkCodexCompletion(categoryToCheck, isSilent = false) {
             planets.push({
              name: `Planet ${i + 1}`, 
              biome: PLANET_BIOMES[biomeKey],
+             biomeKey: biomeKey, // 👈 FIX: Expose biomeKey directly
              id: `${systemKey}-${i}`,
              // Apply saved flags
              minedThisVisit: savedState.mined || false,
@@ -2049,7 +2058,8 @@ function renderSystemMap() {
                 <span>//</span>
                 <span>Bodies: ${currentSystemData.planets.length}</span>
                 <span>//</span>
-                <span>Dominion: ${getFactionAt(currentSystemData.x * SECTOR_SIZE, currentSystemData.y * SECTOR_SIZE)}</span>
+                <!-- 👇 FIX: Pass the raw coordinates, not multiplied by SECTOR_SIZE! -->
+                <span>Dominion: ${getFactionAt(currentSystemData.x, currentSystemData.y)}</span>
             </div>
             <div class="sys-flavor-text">"${flavorText}"</div>
         </div>
@@ -3026,6 +3036,9 @@ GameBus.on('TICK_PROCESSED', (tick) => {
     if (typeof activeEnemies !== 'undefined') {
         const enemyAtLoc = activeEnemies.find(e => e.x === playerX && e.y === playerY);
         if (enemyAtLoc) {
+            // 👇 FIX: Prevent instantaneous self-recovery of probes if the player triggers a Wait tick
+            if (enemyAtLoc.isProbe && !isMovement) return; 
+
             if (typeof triggerHaptic === 'function') triggerHaptic(200);
             
             // Do NOT delete Probes immediately! 
