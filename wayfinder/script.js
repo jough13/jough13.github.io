@@ -232,6 +232,14 @@ function dumpAllContraband() {
         if (typeof soundManager !== 'undefined') soundManager.playHullHit(); // Airlock thud
         showToast("CONTRABAND JETTISONED", "warning");
         logMessage("<span style='color:var(--warning)'>You flush all illegal cargo out the airlock before the patrol can scan you.</span>");
+        
+        // If a smuggling mission was active, it is now failed!
+        if (typeof playerActiveMission !== 'undefined' && playerActiveMission && playerActiveMission.id && playerActiveMission.id.startsWith("SMUGGLE_")) {
+            logMessage("<span style='color:var(--danger); font-weight:bold;'>[ CONTRACT FAILED ] You jettisoned the Tracked Contraband. The Cartel will not be pleased.</span>");
+            playerActiveMission = null;
+            if (typeof renderMissionTracker === 'function') renderMissionTracker();
+        }
+
         closeGenericModal();
         renderUIStats();
     } else {
