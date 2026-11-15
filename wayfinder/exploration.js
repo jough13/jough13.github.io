@@ -1039,10 +1039,7 @@ function attemptExtraction() {
         if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
         if (typeof advanceGameTime === 'function') advanceGameTime(0.1); // Time passes even if you fail!
         
-        // Check if the explosion killed them
-        if (playerHull <= 0) {
-            setTimeout(() => { if (typeof triggerGameOver === 'function') triggerGameOver("Destroyed by a mining accident"); }, 1500);
-        }
+        // 👇 FIX: Removed the redundant if (playerHull <= 0) setTimeout triggerGameOver check here!
     }
 
     actionsEl.innerHTML = `
