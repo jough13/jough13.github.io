@@ -27,7 +27,7 @@ const PLANET_BIOMES = {
         colonyBonusDesc: "+25% Mineral & Water extraction",
         description: "An arid crust honeycombed with massive subterranean limestone caverns, geothermal aquifers, and crystal geodes.",
         resources: ['MINERALS', 'WATER', 'MINERAL_GEODE'],
-        image: 'assets/barren_rock.png',
+        image: 'assets/karst_cavern.png',
         expeditionFlavor: "Rappelling into a cathedral-sized sinkhole, your survey team maps a labyrinth of geode-lined caverns.",
         expeditionData: {
             baseXp: 95,
@@ -95,7 +95,7 @@ const PLANET_BIOMES = {
         colonyBonusDesc: "+25% Solar & Water efficiency",
         description: "Tidally locked to its parent star. One hemisphere is baked in perpetual noon, the other frozen in eternal night, separated by a narrow habitable twilight ring.",
         resources: ['WATER', 'FOOD_SUPPLIES', 'RARE_METALS'],
-        image: 'assets/glacial_world.png',
+        image: 'assets/tidal_locked.png',
         expeditionFlavor: "Driving along the permanent sunset ridge where warm dayside winds collide with nightside glaciers, you harvest rare condensates.",
         expeditionData: {
             baseXp: 110,
@@ -140,7 +140,7 @@ const PLANET_BIOMES = {
         colonyBonusDesc: "Rich chemical & medical synthesis",
         description: "A steaming cauldron of yellow sulfur lakes, geysers, and extremophile bacterial mats.",
         resources: ['QUANTUM_FLUID', 'MEDICAL_SUPPLIES', 'GENETIC_SAMPLES'],
-        image: 'assets/toxic_jungle.png',
+        image: 'assets/sulfuric_mire.png',
         expeditionFlavor: "Hover-skiffs skimming across boiling sulfuric lagoons, your team syphons high-purity catalytic gels.",
         expeditionData: {
             baseXp: 120,
@@ -228,7 +228,7 @@ const PLANET_BIOMES = {
         colonyBonusDesc: "Paradise biome, high morale & bio-yields",
         description: "A serene twilight garden world where every forest, reef, and meadow glows with cold, bioluminescent symphony.",
         resources: ['FOOD_SUPPLIES', 'MEDICAL_SUPPLIES', 'GENETIC_SAMPLES', 'WATER'],
-        image: 'assets/terran_world.png',
+        image: 'assets/bioluminescent_world.png',
         expeditionFlavor: "Wandering beneath glowing cyan canopy trees, your away team collects rare regenerative flora and pure spring water.",
         expeditionData: {
             baseXp: 175,
@@ -262,7 +262,7 @@ const PLANET_BIOMES = {
         colonyBonusDesc: "Rich military salvage & alloy slag",
         description: "A world vitrified into black trinitite glass during an ancient fleet war. Shattered dreadnought ribs still jut from the plains.",
         resources: ['TECH_PARTS', 'REFINED_ALLOY', 'OBSIDIAN_TEAR_PLATING'],
-        image: 'assets/wasteland.png',
+        image: 'glass_wasteland.png',
         expeditionFlavor: "Cutting into the half-buried spine of a pre-Concord warship, your team salvages intact armor plating and military electronics.",
         expeditionData: {
             baseXp: 195,
@@ -297,7 +297,7 @@ const PLANET_BIOMES = {
         colonyBonusDesc: "Peak Precursor data & research output",
         description: "A hollow, artificial planetoid constructed by the Architects to store holographic star-charts and engrammatic histories.",
         resources: ['PRECURSOR_DATACUBE', 'ENCRYPTED_ENGRAM', 'ARTIFACT_SHARDS', 'PRECURSOR_STAR_MAP_FRAGMENT'],
-        image: 'assets/tomb_world.png',
+        image: 'assets/archive_world.png',
         expeditionFlavor: "Stepping onto a continent of glowing crystalline memory banks, your crew downloads terabytes of Precursor telemetry.",
         expeditionData: {
             baseXp: 280,
