@@ -673,6 +673,10 @@ function handleCombatAction(action) {
         if (typeof soundManager !== 'undefined') setTimeout(() => soundManager.playLaser(), 300);
     }
 
+        if (action !== 'charge') {
+        playerIsChargingAttack = false;
+    }
+
     // --- 2. VICTORY CHECK ---
     if (currentCombatContext.pirateHull <= 0) {
         logMessage(combatLog); 
@@ -1319,7 +1323,8 @@ function executeBoardingAction(action) {
 
 // Simple helper to remove an enemy after combat
 function removeEnemyAt(x, y) {
-    activeEnemies = activeEnemies.filter(e => e.x !== x || e.y !== y);
+    // Preserve deployed probes (so Truces or kills don't delete them!)
+    activeEnemies = activeEnemies.filter(e => e.isProbe || e.x !== x || e.y !== y);
 }
 
 // ==========================================
