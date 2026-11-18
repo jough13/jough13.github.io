@@ -3380,7 +3380,8 @@ function handleInteraction() {
         if (currentFaction === 'CONCORD') shipKey = "CONCORD_PATROL";
         
         const factionName = FACTIONS[currentFaction] ? FACTIONS[currentFaction].name : currentFaction;
-        logMessage(`WARNING: Entered hostile ${factionName} space! Interceptors launching!`, "color:#FF5555");
+        // Wrap in span
+        logMessage(`<span style='color:#FF5555'>WARNING: Entered hostile ${factionName} space! Interceptors launching!</span>`);
         startCombat({ shipClassKey: shipKey }); 
         return;
     }
