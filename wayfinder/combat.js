@@ -326,7 +326,8 @@ function handleCombatAction(action) {
             }
 
             if (playerShip.ammo[weaponId] <= 0) {
-                logMessage("⚠️ WEAPON ERROR: AMMUNITION DEPLETED!", "color:#FF5555");
+                // Wrap in span instead of passing CSS as second arg
+                logMessage("<span style='color:#FF5555'>⚠️ WEAPON ERROR: AMMUNITION DEPLETED!</span>");
                 if (typeof soundManager !== 'undefined') soundManager.playError();
                 return; // Stop the attack
             }
