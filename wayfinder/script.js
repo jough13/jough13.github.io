@@ -7126,9 +7126,9 @@ function resolvePhenomenon(type) {
         }
     }
 
+    // Just exit silently. GameBus took care of the Game Over UI.
     if (playerHull <= 0) {
         closeGenericModal();
-        if (typeof triggerGameOver === 'function') triggerGameOver("Crushed by stellar forces.");
         return;
     }
 
