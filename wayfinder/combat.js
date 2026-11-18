@@ -817,8 +817,8 @@ function handleCombatAction(action) {
 
     // --- 4. DEFEAT CHECK ---
     if (playerHull <= 0) {
-        if (typeof triggerGameOver === 'function') triggerGameOver("Destruction in Combat");
-        return;
+        // GameBus handled the death UI. Just return to stop processing!
+        return; 
     }
 
     // --- 5. PREPARE NEXT TURN ---
@@ -2068,22 +2068,24 @@ function handleSkirmishAction(index, action) {
             const reward = (3500 + Math.floor(Math.random() * 2000)) * (1 + (sk.chaosLevel / 10)); // chaotic mult
             playerCredits += reward;
             
-            // 👇 BUG FIX: Check cargo capacity
+            // Set base message first, then append cargo result
+            logMsg = `<span style="color:var(--success); font-weight:bold;">[ SCAVENGE ]</span> Vault bypassed successfully! Picked up heavy salvage!`;
+            
             if (currentCargoLoad + 1 <= PLAYER_CARGO_CAPACITY) {
                 playerCargo['VOID_CRYSTALS'] = (playerCargo['VOID_CRYSTALS'] || 0) + 1;
                 if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                logMsg += ` Salvaged 1x VOID CRYSTAL!`;
             } else {
                 logMsg += `<br><span style="color:var(--danger)">Cargo full! Left Void Crystal behind.</span>`;
             }
             
             sk.salvagePoints += 20; // Massive salvage buildup!
-            logMsg = `<span style="color:var(--success); font-weight:bold;">[ SCAVENGE ]</span> Vault bypassed successfully! Salvaged a VOID CRYSTAL and picked up heavy salvage!`;
             if (typeof soundManager !== 'undefined') soundManager.playGain();
         } else {
             // Built-up risk converts to immediate critical damage!
             const finalDmg = (35 + sk.investedRisk) * 2; 
             
-            // 👇 BUG FIX: Route to GameBus
+            // Route to GameBus
             if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: finalDmg, reason: "Warzone Reactor Eruption" });
             
             logMsg = `<span style="color:var(--danger); font-weight:bold;">[ SCAVENGE ]</span> Eruption! Built-up stray fire and reactor ignited simultaneously! Took ${finalDmg} damage!`;
