@@ -760,6 +760,7 @@ function renderCargoList() {
         row.className = 'trade-item-row';
         row.style.cursor = 'pointer';
         row.style.cssText = "padding: 12px 10px; border-bottom: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;";
+        row.dataset.itemKey = item.key; //
         
         if (item.illegal) row.style.borderLeft = '3px solid var(--danger)';
         if (window.activeCargoItem === item.key) row.style.background = 'rgba(0, 224, 224, 0.1)';
@@ -797,8 +798,8 @@ function selectCargoItem(key) {
     if (listEl) {
         Array.from(listEl.children).forEach(child => {
             if (child.classList.contains('trade-item-row')) {
-                const itemName = (typeof COMMODITIES !== 'undefined' && COMMODITIES[key]) ? COMMODITIES[key].name : key.replace(/_/g, ' ');
-                if (child.textContent.includes(itemName)) {
+                // Match on exact dataset key, not textContent substrings!
+                if (child.dataset.itemKey === key) {
                     child.style.background = 'rgba(0, 224, 224, 0.1)';
                 } else {
                     child.style.background = 'transparent';
