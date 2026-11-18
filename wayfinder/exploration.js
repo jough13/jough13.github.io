@@ -1362,8 +1362,10 @@ function evaluateStar(starData, starId) {
                 <p style="color:var(--item-desc-color); font-style:italic; margin:0; line-height:1.4; font-size: 12px;">"${starData.desc}"</p>
             </div>
 
-            <!-- NEW: Inject the detailed report -->
-            ${stellarReportHTML}
+            <!-- Inject the detailed report -->
+            <div style="width: 100%; text-align: left;">
+                ${stellarReportHTML}
+            </div>
         </div>
     `;
 
