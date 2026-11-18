@@ -400,12 +400,13 @@ const TILE_INTERACTIONS = {
         ]
     },
 
-    // 👇 BUG FIX: Added the specific static "Alien Obelisk" from locations.js
+    // Added the specific static "Alien Obelisk" from locations.js
     'I': {
         log: "", // Let the logic handle the log dynamically
         actions: (tileObj) => {
             if (tileObj && tileObj.studied) {
-                logMessage("The obelisk is dark and silent. Its energy is spent.", "color:var(--item-desc-color)");
+                // Wrap in span
+                logMessage("<span style='color:var(--item-desc-color)'>The obelisk is dark and silent. Its energy is spent.</span>");
                 return [
                     { label: 'Inspect Runes', key: 'e', onclick: () => logMessage("Cold geometric trenches run deep into the stone. Whatever intelligence dwelled within has departed.") }
                 ];
