@@ -117,7 +117,8 @@ class SoundManager {
             this.sfxGain.gain.value = 1.0;
 
             this.ambientGain = this.ctx.createGain();
-            this.ambientGain.gain.value = 1.0;
+            // Bind initial procedural drone volume to the saved slider state
+            this.ambientGain.gain.value = this.musicVolume / 0.30;
 
             this.sfxGain.connect(this.masterGain);
             this.ambientGain.connect(this.masterGain);
@@ -174,7 +175,9 @@ class SoundManager {
 
     setMusicVolume(val) {
         this.musicVolume = Math.max(0, Math.min(1, Number(val) || 0));
-        if (this.bgMusic) this.bgMusic.volume = this.musicVolume;
+        // Let the adaptive mix handle the actual bgMusic.volume math!
+        this.updateAdaptiveMix(); 
+        
         if (this.ambientGain && this.ctx) {
             this.ambientGain.gain.setTargetAtTime(this.musicVolume / 0.30, this.ctx.currentTime, 0.1);
         }
