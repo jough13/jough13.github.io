@@ -5784,9 +5784,16 @@ function loadGameData(jsonString) {
         }
 
         // --- 9. RESUME GAME ---
-        logMessage("Game Loaded Successfully.");
+        
+        // Clear ALL contexts to prevent soft-locks on auto-login
         currentTradeContext = null;
         currentCombatContext = null;
+        currentOutfitContext = null;
+        currentMissionContext = null;
+        currentEncounterContext = null;
+        currentShipyardContext = null;
+        window.activeHostileEncounter = false;
+        
         changeGameState(GAME_STATES.GALACTIC_MAP);
         handleInteraction();
         if (typeof renderMissionTracker === 'function') renderMissionTracker();
