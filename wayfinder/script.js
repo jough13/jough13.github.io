@@ -6517,7 +6517,13 @@ function checkSpireAnswer() {
         if (typeof soundManager !== 'undefined') soundManager.playError();
         if (typeof triggerHaptic === "function") triggerHaptic(300);
         
-        playerHull -= 15;
+        // Route to GameBus so audio/haptics fire properly
+        if (typeof GameBus !== 'undefined') {
+            GameBus.emit('HULL_DAMAGED', { amount: 15, reason: "Xerxes Spire Defenses" });
+        } else {
+            playerHull -= 15;
+        }
+        
         updateModalInfoBar('xerxesInfoBar');
         
         // Visual Red Flash on the Terminal
@@ -7546,17 +7552,20 @@ function submitVaultCipher() {
         if (typeof soundManager !== 'undefined') soundManager.playError();
         if (typeof triggerHaptic === 'function') triggerHaptic(300);
         
-        playerHull -= room.penalty;
         feedbackEl.style.color = "var(--danger)";
         feedbackEl.innerHTML = `[ INCORRECT ] LETHAL DEFENSES ACTIVATED. HULL INTEGRITY -${room.penalty}`;
         
         // Clear the input so they can guess again quickly
         inputEl.value = "";
         
-        // 👇 FIX: GameBus already handles the death trigger synchronously!
-        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 0, reason: "Vault Defenses" });
-        if (typeof renderUIStats === 'function') renderUIStats();
+        // Pass the damage payload to GameBus!
+        if (typeof GameBus !== 'undefined') {
+            GameBus.emit('HULL_DAMAGED', { amount: room.penalty, reason: "Vault Defenses" });
+        } else {
+            playerHull -= room.penalty;
+        }
         
+        if (typeof renderUIStats === 'function') renderUIStats();
     }
 }
 
