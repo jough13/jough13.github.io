@@ -893,8 +893,17 @@ function renderComponentComparison(compId, slot, isEquipped = false, isOwned = f
 
     const mfg = selectedComp.manufacturer || "Standard";
     
-    // Cap trade-in at 0 if the item is a Legendary Boss Drop (Cost >= 999999)
-    const tradeInValue = (isEquipped || (currentComp.cost && currentComp.cost >= 999999)) 
+    // 👇 BUG FIX: Pre-calculate stow logic to prevent UI showing a false refund
+    const willStowOld = Boolean(
+        currentComp &&
+        currentCompId !== 'UTIL_NONE' &&
+        currentComp.cost < 999999 &&
+        (isOwned ? (currentComp.cost > 0 || currentComp.manufacturer === 'UNKNOWN') 
+                 : (currentCompId.startsWith('PROC_') || (currentComp.cost === 0 && currentComp.manufacturer === 'UNKNOWN')))
+    );
+
+    // Cap trade-in at 0 if the item is a Legendary Boss Drop, OR if it's being stowed!
+    const tradeInValue = (isEquipped || willStowOld || (currentComp.cost && currentComp.cost >= 999999)) 
         ? 0 
         : Math.floor((currentComp.cost || 0) * 0.5);
         
@@ -1076,8 +1085,18 @@ function confirmBuyComponent(compId, isOwned = false) {
     const currentCompId = playerShip.components[newComp.slot];
     const currentComp = COMPONENTS_DATABASE[currentCompId];
     
-    // Prevent half-million credit exploits on Boss Drops (cost >= 999999)
-    const tradeInValue = (currentComp && currentComp.cost < 999999) ? Math.floor(currentComp.cost * 0.5) : 0;
+    // Determine if we are keeping the item BEFORE calculating cost
+    const willStowOld = Boolean(
+        currentComp &&
+        currentCompId !== 'UTIL_NONE' &&
+        currentComp.cost < 999999 &&
+        (isOwned 
+            ? (currentComp.cost > 0 || currentComp.manufacturer === 'UNKNOWN') 
+            : (currentCompId.startsWith('PROC_') || (currentComp.cost === 0 && currentComp.manufacturer === 'UNKNOWN')))
+    );
+
+    // Prevent half-million credit exploits on Boss Drops, and block trade-in value if stowing!
+    const tradeInValue = (currentComp && currentComp.cost < 999999 && !willStowOld) ? Math.floor(currentComp.cost * 0.5) : 0;
     const netCost = isOwned ? 0 : newComp.cost - tradeInValue;
 
     // Simulate new cargo capacity to prevent over-encumbrance exploit!
