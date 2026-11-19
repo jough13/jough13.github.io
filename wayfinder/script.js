@@ -2983,7 +2983,7 @@ GameBus.on('TICK_PROCESSED', (tick) => {
         }
     }
 
-    // 3. GRAVITY WELLS (BLACK HOLES) (Left intact - environmental hazard)
+    // 3. GRAVITY WELLS (BLACK HOLES)
     if (isMovement) {
         let pulledByBlackHole = false;
         for (let dy = -3; dy <= 3; dy++) {
@@ -2991,6 +2991,10 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                 if (dx === 0 && dy === 0) continue;
                 const tile = chunkManager.getTile(playerX + dx, playerY + dy);
                 if (getTileChar(tile) === BLACK_HOLE_CHAR_VAL) {
+                    
+                    // Safely unlock lore upon getting pulled, not just dying!
+                    if (typeof unlockLoreEntry === 'function') unlockLoreEntry("PHENOMENON_BLACK_HOLE");
+
                     const hasNavCore = playerCargo['PRECURSOR_NAV_CORE'] > 0;
                     const hasVoidDiver = typeof playerPerks !== 'undefined' && playerPerks.has('VOID_DIVER');
                     if (hasNavCore || hasVoidDiver) {
