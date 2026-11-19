@@ -1,889 +1,1067 @@
-// --- START OF FILE perks.js ---
+// --- START OF FILE biomes.js ---
 
-const PERKS_DATABASE = {
-    // ==========================================
-    // --- INDUSTRIAL ---
-    // ==========================================
-    DEEP_CORE_MINING: {
-        id: "DEEP_CORE_MINING",
-        name: "Deep Core Mining",
-        description: "Asteroid mining yields +3 additional resources per attempt.",
-        icon: "⛏️",
-        category: "Industrial"
-    },
-    EFFICIENT_THRUSTERS: {
-        id: "EFFICIENT_THRUSTERS",
-        name: "Fusion Injectors",
-        description: "Movement fuel cost reduced by 20%.",
-        icon: "🚀",
-        category: "Industrial"
-    },
-    DIMENSIONAL_POCKETS: {
-        id: "DIMENSIONAL_POCKETS",
-        name: "Subspace Cargo Webbing",
-        description: "Optimizes structural bulkheads, permanently granting +25 Cargo Capacity and +40 Max Fuel.",
-        icon: "🧰",
-        category: "Industrial"
-    },
-    DRONE_COMMANDER: {
-        id: "DRONE_COMMANDER",
-        name: "Drone Telemetry Link",
-        description: "Automated Mining Drones and Combat Swarm Drones have a 50% chance to be recalled to your hold instead of being consumed.",
-        icon: "🛸",
-        category: "Industrial"
-    },
-    
-    // ==========================================
-    // --- COMBAT ---
-    // ==========================================
-    WEAPON_OVERCLOCK: {
-        id: "WEAPON_OVERCLOCK",
-        name: "Weapon Overclock",
-        description: "All ship weapons deal +15% damage.",
-        icon: "⚔️",
-        category: "Combat"
-    },
-    SHIELD_HARMONICS: {
-        id: "SHIELD_HARMONICS",
-        name: "Shield Harmonics",
-        description: "Shields regenerate +50% faster outside of combat and resist Nebula Ion Storms.",
-        icon: "🛡️",
-        category: "Combat"
-    },
-    OVERCHARGED_CAPACITORS: {
-        id: "OVERCHARGED_CAPACITORS",
-        name: "Overcharged Capacitors",
-        description: "Redirects auxiliary reactor output to defensive grids, granting +30 Max Shields and +8% Evasion.",
-        icon: "⚡",
-        category: "Combat"
-    },
-    TACTICAL_OVERDRIVE: {
-        id: "TACTICAL_OVERDRIVE",
-        name: "Tactical Overdrive",
-        description: "Grants +10% Weapon Accuracy and causes ship special abilities to recharge twice as fast in combat.",
-        icon: "🎯",
-        category: "Combat"
-    },
-    ORDNANCE_FABRICATOR: {
-        id: "ORDNANCE_FABRICATOR",
-        name: "Auto-Munitions Forge",
-        description: "Onboard micro-lathes passively fabricate +1 weapon ammunition every 10 movement steps and grant +4 Base Damage.",
-        icon: "🧨",
-        category: "Combat"
-    },
-    
-    // ==========================================
-    // --- TRADE & SOCIAL ---
-    // ==========================================
-    SILVER_TONGUE: {
-        id: "SILVER_TONGUE",
-        name: "Silver Tongue",
-        description: "Buy items for 10% less, sell for 10% more, and unlock 50% Security Office warrant bribes.",
-        icon: "💰",
-        category: "Trade"
-    },
-    SCAVENGER_PROTOCOL: {
-        id: "SCAVENGER_PROTOCOL",
-        name: "Scavenger Protocol",
-        description: "Derelicts, Anomalies, Signal Sources, and Outpost Raids yield double credits and salvage.",
-        icon: "📦",
-        category: "Trade"
-    },
-    COLONY_ARCHITECT: {
-        id: "COLONY_ARCHITECT",
-        name: "Pioneer Architect",
-        description: "Doubles colony building construction speed and increases colony tax revenue by +15% per Stardate.",
-        icon: "🏛️",
-        category: "Trade"
-    },
-    BLACK_MARKET_BARON: {
-        id: "BLACK_MARKET_BARON",
-        name: "Syndicate Kingpin",
-        description: "Shadow Brokers pay +25% more for contraband and grant +2 Eclipse Cartel reputation whenever you fence illegal goods.",
-        icon: "👑",
-        category: "Trade"
-    },
-    SMOOTH_TALKER: {
-        id: "SMOOTH_TALKER",
-        name: "Smooth Talker",
-        description: "You know exactly what to say to Concord Customs. If caught with contraband, your credit fine is reduced by 50%.",
-        icon: "🗣️",
-        category: "Social"
-    },
-    SHADOW_TRANSPONDER: {
-        id: "SHADOW_TRANSPONDER",
-        name: "Ghost Transponder",
-        description: "Spoofs your hull registry. Reduces radar signature by 35% during Customs scans and decays Notoriety twice as fast.",
-        icon: "🕶️",
-        category: "Social"
-    },
-    SMUGGLERS_LUCK: {
-        id: "SMUGGLERS_LUCK",
-        name: "Smuggler's Luck",
-        description: "Concord Customs scans have a flat 25% chance to 'glitch' and find nothing, even if contraband is exposed.",
-        icon: "🎲",
-        category: "Social"
-    },
+// ==========================================
+// --- PLANET BIOMES DATABASE ---
+// ==========================================
 
-    // ==========================================
-    // --- EXPLORATION & SCIENCE ---
-    // ==========================================
-    XENO_BIOLOGIST: {
-        id: "XENO_BIOLOGIST",
-        name: "Xeno-Biologist",
-        description: "Planetary biological scans and bio-world surface expeditions award double XP.",
-        icon: "🧬",
-        category: "Science"
+const PLANET_BIOMES = {
+    BARREN_ROCK: {
+        id: "BARREN_ROCK",
+        name: "Barren Rock",
+        landable: true,
+        weight: 90, // Very Common
+        hazard: "NONE",
+        colonyBonusDesc: "Standard baseline output",
+        description: "A lifeless, crater-scarred rock rich in common silicate and iron ores.",
+        resources: ['MINERALS'],
+        image: 'assets/barren_rock.png',
+        expeditionFlavor: "Your rover traverses miles of silent, dust-choked craters and exposed basalt ridges.",
+        expeditionData: { baseXp: 80 }
     },
-    LONG_RANGE_SENSORS: {
-        id: "LONG_RANGE_SENSORS",
-        name: "Telemetry Array",
-        description: "80% faster mining/scooping, 10-tile Sensor Pings (P), unlocks NPC Cargo Scans, Tractor Beam combat salvage, and USS alerts.",
-        icon: "📡",
-        category: "Science"
+    KARST_CAVERN: {
+        id: "KARST_CAVERN",
+        name: "Subterranean Karst World",
+        landable: true,
+        weight: 35, // Common
+        hazard: "TECTONIC TREMORS",
+        colonyBonusDesc: "+25% Mineral & Water extraction",
+        description: "An arid crust honeycombed with massive subterranean limestone caverns, geothermal aquifers, and crystal geodes.",
+        resources: ['MINERALS', 'WATER', 'MINERAL_GEODE'],
+        image: 'assets/karst_cavern.png',
+        expeditionFlavor: "Rappelling into a cathedral-sized sinkhole, your survey team maps a labyrinth of geode-lined caverns.",
+        expeditionData: {
+            baseXp: 95,
+            guaranteedLoot: [{ id: 'MINERAL_GEODE', min: 1, max: 3 }, { id: 'MINERALS', min: 4, max: 8 }]
+        }
     },
-    ASTROMETRIC_SAVANT: {
-        id: "ASTROMETRIC_SAVANT",
-        name: "Astrometric Savant",
-        description: "Deep-Sky Observatory plates (O) award double XP and have a 50% chance to resolve a bonus Planetary Data cartridge.",
-        icon: "🔭",
-        category: "Science"
+    GAS_GIANT: {
+        id: "GAS_GIANT",
+        name: "Gas Giant",
+        landable: false,
+        weight: 60, // Common
+        hazard: "CRUSHING GRAVITY",
+        colonyBonusDesc: "Uninhabitable (Orbital Skimming Only)",
+        description: "A swirling colossus of metallic hydrogen, helium bands, and hyper-velocity cyclonic storms.",
+        resources: ['HYDROGEN_3'],
+        image: 'assets/gas_giant.png',
+        expeditionFlavor: "Skimming the upper stratosphere for heavy hydrogen isotopes.",
+        expeditionData: { baseXp: 85 }
     },
-    CYBER_SLICER: {
-        id: "CYBER_SLICER",
-        name: "Cyber Slicer",
-        description: "Decrypt Encrypted Engrams, Data Caches, and Ancient Archives for free at Cryptarchs or directly from your Cargo Hold (I).",
-        icon: "💻",
-        category: "Exploration"
+    ICE_GIANT: {
+        id: "ICE_GIANT",
+        name: "Ice Giant",
+        landable: false,
+        weight: 50, // Common
+        hazard: "CRYO-STORMS",
+        colonyBonusDesc: "Uninhabitable (Orbital Skimming Only)",
+        description: "A colossal world of supercritical water, ammonia, and frozen methane clouds.",
+        resources: ['HYDROGEN_3', 'WATER', 'QUANTUM_FLUID'],
+        image: 'assets/ice_giant.png',
+        expeditionFlavor: "Dropping cryogenic collection scoops into the upper methane cloud deck.",
+        expeditionData: { baseXp: 90 }
     },
-    VOID_DIVER: {
-        id: "VOID_DIVER",
-        name: "Void Diver",
-        description: "25% Engram chance on Stellar Deep Scans (V), immunity to Black Hole pull (slingshot boost), and safe Warzone crystal harvesting.",
-        icon: "🌌",
-        category: "Exploration"
+    DESERT: {
+        id: "DESERT",
+        name: "Arid Dune World",
+        landable: true,
+        weight: 30, // Common-Uncommon
+        hazard: "SILICA STORMS",
+        colonyBonusDesc: "-50% Water output, rich spice veins",
+        description: "Endless seas of wind-carved quartz dunes hiding ancient dry seabeds and spice-rich fissures.",
+        resources: ['MINERALS', 'GOLD', 'KTHARR_SPICES'],
+        image: 'assets/desert_world.png',
+        expeditionFlavor: "Fighting through a howling electrostatic sandstorm, your team locates a sheltered canyon vein.",
+        expeditionData: { baseXp: 90 }
     },
-    STELLAR_CARTOGRAPHER: {
-        id: "STELLAR_CARTOGRAPHER",
-        name: "Stellar Cartographer",
-        description: "Passively records astrometric telemetry while flying (+2 XP per move) and grants +50 bonus XP when discovering new sectors.",
-        icon: "🗺️",
-        category: "Exploration"
+    GLACIAL: {
+        id: "GLACIAL",
+        name: "Cryo-Glacial World",
+        landable: true,
+        weight: 25, // Uncommon
+        hazard: "EXTREME COLD",
+        colonyBonusDesc: "+50% Water condenser output",
+        description: "A frozen world locked in a permanent ice age. Sub-glacial pockets hold ultra-pure water and super-cooled fluids.",
+        resources: ['WATER', 'MINERALS', 'QUANTUM_FLUID'],
+        image: 'assets/glacial_world.png',
+        expeditionFlavor: "Descending into a glowing blue glacial crevasse, you tap into a pressurized sub-surface thermal vent.",
+        expeditionData: { baseXp: 95 }
     },
-    HYPER_LANE_MAPPER: {
-        id: "HYPER_LANE_MAPPER",
-        name: "Hyper-Lane Mapper",
-        description: "Wormhole jumps cost 50% less fuel and never cause structural hull damage.",
-        icon: "🌀",
-        category: "Exploration"
+    TIDAL_LOCKED: {
+        id: "TIDAL_LOCKED",
+        name: "Terminator Twilight World",
+        landable: true,
+        weight: 18, // Uncommon
+        hazard: "KATABATIC GALES",
+        colonyBonusDesc: "+25% Solar & Water efficiency",
+        description: "Tidally locked to its parent star. One hemisphere is baked in perpetual noon, the other frozen in eternal night, separated by a narrow habitable twilight ring.",
+        resources: ['WATER', 'FOOD_SUPPLIES', 'RARE_METALS'],
+        image: 'assets/tidal_locked.png',
+        expeditionFlavor: "Driving along the permanent sunset ridge where warm dayside winds collide with nightside glaciers, you harvest rare condensates.",
+        expeditionData: {
+            baseXp: 110,
+            hazard: { chance: 0.20, type: "WIND", damage: 8, msg: "⚠️ KATABATIC GALE: Hurricane-force terminator winds battered your landing struts." }
+        }
     },
-    QUANTUM_NAVIGATOR: {
-        id: "QUANTUM_NAVIGATOR",
-        name: "Corona Skimmer",
-        description: "Fuel scooping yields +25% extra hydrogen and flushes 2 Stealth Heat. Silent Running (Q) generates 30% less heat.",
-        icon: "☀️",
-        category: "Exploration"
+    VOLCANIC: {
+        id: "VOLCANIC",
+        name: "Volcanic World",
+        landable: true,
+        weight: 20, // Uncommon
+        hazard: "EXTREME HEAT",
+        colonyBonusDesc: "+50% Alloy smelting output",
+        description: "A molten hellscape of tectonic rivers and ash clouds, rich in heavy platinum-group metals.",
+        resources: ['RARE_METALS', 'PLATINUM_ORE', 'MINERALS'],
+        image: 'assets/volcanic_world.png',
+        expeditionFlavor: "Heat shields straining against the magma plumes, your survey team extracts samples from a cooling lava tube.",
+        expeditionData: { 
+            baseXp: 100,
+            hazard: { chance: 0.30, type: "HEAT", damage: 12, msg: "⚠️ THERMAL SPIKE: Magma proximity scorched the hull." }
+        }
     },
-
-    // ==========================================
-    // --- SURVIVAL ---
-    // ==========================================
-    HEALTH_PHYSICIST: {
-        id: "HEALTH_PHYSICIST",
-        name: "Health Physicist",
-        description: "Your background in radiological affairs allows you to perfectly calibrate your ship's shielding. Zero hull or fuel loss from O/B-class stars, Irradiated Worlds, and Radiation Belts.",
-        icon: "☢️",
-        category: "Survival"
+    TOXIC: {
+        id: "TOXIC",
+        name: "Toxic Jungle",
+        landable: true,
+        weight: 15, // Uncommon
+        hazard: "CORROSIVE SPORES",
+        colonyBonusDesc: "High bio-yields, corrosive atmosphere",
+        description: "A sweltering greenhouse world teeming with aggressive, hyper-evolved alien flora.",
+        resources: ['GENETIC_SAMPLES', 'KTHARR_SPICES', 'SENTIENT_MYCELIUM'],
+        image: 'assets/toxic_jungle.png',
+        expeditionFlavor: "Hacking through bioluminescent vines and acid-spitting flora, you catalog a pristine xeno-botanical grove.",
+        expeditionData: { baseXp: 110, loreKey: 'LEGEND_SENTIENT_MYCELIUM_NETWORK' }
     },
-    SCRAP_WELDER: {
-        id: "SCRAP_WELDER",
-        name: "Scrap Welder",
-        description: "You've learned to efficiently patch your hull using raw ore. Successfully mining an asteroid instantly restores 5 Hull Integrity.",
-        icon: "🔧",
-        category: "Survival"
+    SULFURIC_MIRE: {
+        id: "SULFURIC_MIRE",
+        name: "Sulfuric Acid Mire",
+        landable: true,
+        weight: 12, // Uncommon-Rare
+        hazard: "ACIDIC VAPORS",
+        colonyBonusDesc: "Rich chemical & medical synthesis",
+        description: "A steaming cauldron of yellow sulfur lakes, geysers, and extremophile bacterial mats.",
+        resources: ['QUANTUM_FLUID', 'MEDICAL_SUPPLIES', 'GENETIC_SAMPLES'],
+        image: 'assets/sulfuric_mire.png',
+        expeditionFlavor: "Hover-skiffs skimming across boiling sulfuric lagoons, your team syphons high-purity catalytic gels.",
+        expeditionData: {
+            baseXp: 120,
+            hazard: { chance: 0.25, type: "ACID", damage: 10, msg: "⚠️ CORROSIVE FOG: Acidic condensation pitted your outer hull." }
+        }
     },
-    NANO_HULL_WEAVE: {
-        id: "NANO_HULL_WEAVE",
-        name: "Nano-Reactive Hull",
-        description: "Integrates self-healing smart-matter into your bulkhead, granting +35 Max Hull and regenerating 1 Hull every 5 moves.",
-        icon: "🩹",
-        category: "Survival"
+    OCEANIC: {
+        id: "OCEANIC",
+        name: "Oceanic World",
+        landable: true,
+        weight: 10, // Rare
+        hazard: "TIDAL SURGES",
+        colonyBonusDesc: "+50% Water & Hydroponics output",
+        description: "A pelagic world covered in deep, turbulent oceans dotted with volcanic archipelagos and kelp forests.",
+        resources: ['WATER', 'FOOD_SUPPLIES', 'GENETIC_SAMPLES', 'HYDROGEN_3'],
+        image: 'assets/ocean_world.png',
+        expeditionFlavor: "Touching down on a narrow basalt atoll, you deploy submersible drones into a thriving abyssal trench.",
+        expeditionData: { baseXp: 115 }
     },
-    EMERGENCY_BULKHEADS: {
-        id: "EMERGENCY_BULKHEADS",
-        name: "Reinforced Bulkheads",
-        description: "Internal honeycombed tritanium ribs grant +20 Max Hull and reduce all incoming hull damage by 15%.",
-        icon: "🛡️",
-        category: "Survival"
+    SHATTERED_CORE: {
+        id: "SHATTERED_CORE",
+        name: "Tectonic Core World",
+        landable: true,
+        weight: 8, // Rare
+        hazard: "GRAVIMETRIC SHEAR",
+        colonyBonusDesc: "Rich heavy metal & alloy veins",
+        description: "A planet partially ripped open by an ancient orbital impact, exposing its dense metallic planetary core.",
+        resources: ['PLATINUM_ORE', 'RARE_METALS', 'REFINED_ALLOY'],
+        image: 'assets/shattered_core.png',
+        expeditionFlavor: "Navigating zero-G debris ribbons hovering above the exposed planetary mantle, you cut free slabs of pure core alloy.",
+        expeditionData: { baseXp: 130 }
+    },
+    FERRIC_MOON: {
+        id: "FERRIC_MOON",
+        name: "Captured Ferric Core-Moon",
+        landable: true,
+        weight: 9, // Rare
+        hazard: "MAGNETIC EDDIES",
+        colonyBonusDesc: "High-density Platinum & Gold veins",
+        description: "The stripped metallic core of a proto-planet captured in a tight stellar orbit. Its magnetic field hums with raw ore.",
+        resources: ['GOLD', 'PLATINUM_ORE', 'RARE_METALS', 'MINERAL_GEODE'],
+        image: 'assets/ferric_moon.png',
+        expeditionFlavor: "Magnetic grapplers anchored to pure nickel-iron cliffs, your team extracts veins of native gold and platinum.",
+        expeditionData: {
+            baseXp: 125,
+            guaranteedLoot: [{ id: 'PLATINUM_ORE', min: 2, max: 4 }, { id: 'GOLD', min: 1, max: 3 }]
+        }
+    },
+    MYCELIAL: {
+        id: "MYCELIAL",
+        name: "Mycelial Spore World",
+        landable: true,
+        weight: 6, // Very Rare
+        hazard: "PSYCHOTROPIC FOG",
+        colonyBonusDesc: "Natural Mycelium & Medical synthesis",
+        description: "A twilight world carpeted in towering fungal spires linked by a planet-spanning neural root network.",
+        resources: ['SENTIENT_MYCELIUM', 'GENETIC_SAMPLES', 'MEDICAL_SUPPLIES'],
+        image: 'assets/mycelial_world.png',
+        expeditionFlavor: "The fungal canopy pulses in mathematical rhythm with your ship's engine as you harvest psychoactive spore clusters.",
+        expeditionData: { 
+            baseXp: 150, 
+            loreKey: 'LEGEND_SENTIENT_MYCELIUM_NETWORK',
+            guaranteedLoot: [{ id: 'SENTIENT_MYCELIUM', min: 2, max: 5 }]
+        }
+    },
+    TERRAN: {
+        id: "TERRAN",
+        name: "Terran World",
+        landable: true,
+        weight: 5, // Very Rare (Earth-like)
+        hazard: "NONE",
+        colonyBonusDesc: "Ideal habitability, high morale & growth",
+        description: "A garden world with liquid oceans, nitrogen-oxygen atmosphere, and thriving continental ecosystems.",
+        resources: ['FOOD_SUPPLIES', 'WATER', 'MINERALS', 'GENETIC_SAMPLES'],
+        image: 'assets/terran_world.png',
+        expeditionFlavor: "Cruising over temperate river valleys and lush forests, your team maps an ideal site for human habitation.",
+        expeditionData: { baseXp: 160 }
+    },
+    BIOLUMINESCENT: {
+        id: "BIOLUMINESCENT",
+        name: "Bioluminescent Eden",
+        landable: true,
+        weight: 4, // Very Rare
+        hazard: "NONE",
+        colonyBonusDesc: "Paradise biome, high morale & bio-yields",
+        description: "A serene twilight garden world where every forest, reef, and meadow glows with cold, bioluminescent symphony.",
+        resources: ['FOOD_SUPPLIES', 'MEDICAL_SUPPLIES', 'GENETIC_SAMPLES', 'WATER'],
+        image: 'assets/bioluminescent_world.png',
+        expeditionFlavor: "Wandering beneath glowing cyan canopy trees, your away team collects rare regenerative flora and pure spring water.",
+        expeditionData: {
+            baseXp: 175,
+            guaranteedLoot: [{ id: 'MEDICAL_SUPPLIES', min: 2, max: 5 }, { id: 'GENETIC_SAMPLES', min: 2, max: 4 }]
+        }
+    },
+    IRRADIATED: {
+        id: "IRRADIATED",
+        name: "Irradiated Wasteland",
+        landable: true,
+        weight: 4, // Very Rare
+        hazard: "SEVERE RADIATION",
+        colonyBonusDesc: "Extreme actinide & crystal yields",
+        description: "A dangerously radioactive rock. Surface gamma spectrometry readings are off the charts, indicating high concentrations of unstable Uranium isotopes.",
+        resources: ['RARE_METALS', 'VOID_CRYSTALS', 'PLATINUM_ORE'],
+        image: 'assets/wasteland.png',
+        expeditionFlavor: "Dosimeters clicking frantically, you brave the glassed craters of an ancient nuclear bombardment.",
+        expeditionData: { 
+            baseXp: 180, 
+            loreKey: 'PHENOMENON_IRRADIATED',
+            guaranteedLoot: [{ id: 'VOID_CRYSTALS', min: 1, max: 3 }],
+            hazard: { chance: 0.45, type: 'RADIATION', damage: 15, msg: '⚠️ RADIATION HAZARD: Surface gamma flux penetrated shielding.' }
+        }
+    },
+    GLASS_WASTELAND: {
+        id: "GLASS_WASTELAND",
+        name: "Orbital-Slagged Battlefield",
+        landable: true,
+        weight: 3, // Ultra Rare
+        hazard: "UNEXPLODED ORDNANCE",
+        colonyBonusDesc: "Rich military salvage & alloy slag",
+        description: "A world vitrified into black trinitite glass during an ancient fleet war. Shattered dreadnought ribs still jut from the plains.",
+        resources: ['TECH_PARTS', 'REFINED_ALLOY', 'OBSIDIAN_TEAR_PLATING'],
+        image: 'assets/glass_wasteland.png',
+        expeditionFlavor: "Cutting into the half-buried spine of a pre-Concord warship, your team salvages intact armor plating and military electronics.",
+        expeditionData: {
+            baseXp: 195,
+            loreKey: 'XENO_DERELICTS',
+            guaranteedLoot: [{ id: 'OBSIDIAN_TEAR_PLATING', min: 1, max: 2 }, { id: 'TECH_PARTS', min: 3, max: 6 }],
+            hazard: { chance: 0.35, type: 'RADIATION', damage: 14, msg: '⚠️ RESIDUAL FALLOUT: Disturbed slag pockets released a burst of hard gamma radiation.' }
+        }
+    },
+    TOMB_WORLD: {
+        id: "TOMB_WORLD",
+        name: "Precursor Tomb World",
+        landable: true,
+        weight: 3, // Ultra Rare
+        hazard: "AUTOMATED SENTINELS",
+        colonyBonusDesc: "Ancient Precursor relic excavations",
+        description: "A dead world covered in the weathered obsidian geometry of a vanished Precursor civilization.",
+        resources: ['ARTIFACT_SHARDS', 'TECH_PARTS', 'ANCIENT_RELICS'],
+        image: 'assets/tomb_world.png',
+        expeditionFlavor: "Beneath a collapsed monolith, your scanners pinpoint a sealed Precursor subterranean archive.",
+        expeditionData: { 
+            baseXp: 250, 
+            loreKey: 'XENO_PRECURSORS',
+            guaranteedLoot: [{ id: 'ANCIENT_RELICS', min: 1, max: 1 }, { id: 'ARTIFACT_SHARDS', min: 2, max: 5 }]
+        }
+    },
+    ARCHIVE_WORLD: {
+        id: "ARCHIVE_WORLD",
+        name: "Precursor Archive Sphere",
+        landable: true,
+        weight: 1, // Legendary
+        hazard: "QUANTUM WARDS",
+        colonyBonusDesc: "Peak Precursor data & research output",
+        description: "A hollow, artificial planetoid constructed by the Architects to store holographic star-charts and engrammatic histories.",
+        resources: ['PRECURSOR_DATACUBE', 'ENCRYPTED_ENGRAM', 'ARTIFACT_SHARDS', 'PRECURSOR_STAR_MAP_FRAGMENT'],
+        image: 'assets/archive_world.png',
+        expeditionFlavor: "Stepping onto a continent of glowing crystalline memory banks, your crew downloads terabytes of Precursor telemetry.",
+        expeditionData: {
+            baseXp: 280,
+            loreKey: 'PRECURSOR_ORIGINS',
+            guaranteedLoot: [{ id: 'ENCRYPTED_ENGRAM', min: 1, max: 2 }, { id: 'PRECURSOR_STAR_MAP_FRAGMENT', min: 1, max: 1 }]
+        }
+    },
+    CRYSTAL: {
+        id: "CRYSTAL",
+        name: "Crystalline Anomaly",
+        landable: true,
+        weight: 2, // Ultra Rare
+        hazard: "RESONANCE HARMONICS",
+        colonyBonusDesc: "High Void Crystal & Quantum Lens output",
+        description: "A rare world composed entirely of exotic, resonant silicon-void crystal lattices.",
+        resources: ['VOID_CRYSTALS', 'PHASE_SHIFTED_ALLOY', 'QUANTUM_LENS'],
+        image: 'assets/crystal_anomaly.png',
+        expeditionFlavor: "Laser cutters hum in harmonic sympathy with towering violet crystal spires that refract starlight into impossible angles.",
+        expeditionData: { 
+            baseXp: 200, 
+            loreKey: 'PHENOMENON_VOID_CRYSTALS',
+            guaranteedLoot: [{ id: 'VOID_CRYSTALS', min: 2, max: 4 }, { id: 'QUANTUM_LENS', min: 0, max: 1 }]
+        }
+    },
+    MACHINE_WORLD: {
+        id: "MACHINE_WORLD",
+        name: "Machine World",
+        landable: true,
+        weight: 1, // Legendary
+        hazard: "ROGUE ICE-WALLS",
+        colonyBonusDesc: "+50% Tech Parts manufacturing",
+        description: "A planet entirely encased in metallic structures, humming data-conduits, and sprawling orbital rings. No biological life detected.",
+        resources: ['TECH_PARTS', 'CYBERNETIC_IMPLANTS', 'AI_CORE'],
+        image: 'assets/machine_world.png',
+        expeditionFlavor: "Descending into a canyon-sized server trench, you tap directly into an ancient planetary data-conduit.",
+        expeditionData: { baseXp: 200, loreKey: 'XENO_MACHINE_WORLD' }
+    },
+    DEATH_WORLD: {
+        id: "DEATH_WORLD",
+        name: "Death World",
+        landable: true,
+        weight: 2, // Ultra Rare
+        hazard: "APEX PREDATORS",
+        colonyBonusDesc: "High-value xeno-biological harvest",
+        description: "A hyper-lethal paradise. The flora is venomous, the fauna is armored, and the weather is apocalyptic.",
+        resources: ['GENETIC_SAMPLES', 'ILLEGAL_ORGANS', 'MEDICAL_SUPPLIES'],
+        image: 'assets/death_world.png',
+        expeditionFlavor: "Your away team barely survives an ambush by cloaked, scythe-limbed apex predators.",
+        expeditionData: { 
+            baseXp: 220, 
+            guaranteedLoot: [{ id: 'ILLEGAL_ORGANS', min: 1, max: 2 }, { id: 'GENETIC_SAMPLES', min: 3, max: 6 }],
+            hazard: { chance: 0.60, type: 'COMBAT', damage: 20, msg: '⚠️ PREDATOR AMBUSH: The local fauna breached your rover hull!' }
+        }
     }
 };
 
-// --- PERFORMANCE OPTIMIZATION ---
-// Freezing the dictionary tells the V8 JavaScript engine that this object will never 
-// be modified at runtime, allowing it to optimize memory lookup speeds.
-Object.freeze(PERKS_DATABASE);
+// Normalize and freeze the database to optimize V8 memory lookups
+for (const bKey in PLANET_BIOMES) {
+    const b = PLANET_BIOMES[bKey];
+    if (b && !b.id) b.id = bKey;
+    if (b && Array.isArray(b.resources)) Object.freeze(b.resources);
+    Object.freeze(b);
+}
+Object.freeze(PLANET_BIOMES);
+window.PLANET_BIOMES = PLANET_BIOMES;
 
-// Expose globally for safe access across all modules
-window.PERKS_DATABASE = PERKS_DATABASE;
 if (typeof GameRegistry !== 'undefined') {
-    GameRegistry.perks = PERKS_DATABASE;
+    GameRegistry.biomes = PLANET_BIOMES;
 }
 
-// Universal helper to check if the player owns a perk (safe across Set and Array save formats)
-function hasPlayerPerk(perkId) {
+// ==========================================
+// --- BIOME UTILITY API ---
+// ==========================================
+
+const BiomeUtils = {
+    getBiome(idOrName) {
+        if (!idOrName) return PLANET_BIOMES.BARREN_ROCK;
+        if (PLANET_BIOMES[idOrName]) return PLANET_BIOMES[idOrName];
+        const foundKey = Object.keys(PLANET_BIOMES).find(k => PLANET_BIOMES[k].name === idOrName);
+        return foundKey ? PLANET_BIOMES[foundKey] : PLANET_BIOMES.BARREN_ROCK;
+    },
+    isHabitableBiome(id) {
+        return ['TERRAN', 'BIOLUMINESCENT', 'OCEANIC', 'TOXIC', 'MYCELIAL', 'TIDAL_LOCKED'].includes(id);
+    },
+    isGiantBiome(id) {
+        return ['GAS_GIANT', 'ICE_GIANT'].includes(id);
+    }
+};
+window.BiomeUtils = BiomeUtils;
+
+// Internal helper to check player perks safely across Set or Array formats
+function _biomeHasPerk(perkId) {
     if (typeof playerPerks === 'undefined' || !playerPerks) return false;
     if (typeof playerPerks.has === 'function') return playerPerks.has(perkId);
     if (Array.isArray(playerPerks)) return playerPerks.includes(perkId);
     return false;
 }
-window.hasPlayerPerk = hasPlayerPerk;
 
 // ==========================================
-// --- SELF-CONTAINED PERK & ITEM HOOKS ---
+// --- SPECIAL PLANETARY OPERATIONS ---
 // ==========================================
 
-(function initPerkSystems() {
-    // 1. FIELD DECRYPTION FOR ENCRYPTED ITEMS & PRECURSOR CIPHERS
-    function executeFieldDecryption(itemId, forcedCipher = false) {
-        if (typeof playerCargo === 'undefined') return false;
+// 1. Gas / Ice Giant Orbital Atmospheric Skimming (Triggered from System Map)
+function skimGasGiantAtmosphere(planetIndex) {
+    if (!currentSystemData || !currentSystemData.planets || !currentSystemData.planets[planetIndex]) return;
+    const planet = currentSystemData.planets[planetIndex];
+    const sysKey = `${currentSystemData.x},${currentSystemData.y}_p${planetIndex}`;
+    const savedState = (typeof worldStateDeltas !== 'undefined' && worldStateDeltas[sysKey]) ? worldStateDeltas[sysKey] : {};
 
-        const hasSlicer = hasPlayerPerk('CYBER_SLICER');
-        const hasCipher = (playerCargo['PRECURSOR_CIPHER'] || 0) > 0;
+    if (planet.skimmedThisVisit || savedState.skimmed) {
+        if (typeof showToast === 'function') showToast("UPPER ATMOSPHERE ALREADY SKIMMED", "info");
+        if (typeof logMessage === 'function') logMessage("Upper atmospheric isotope bands are turbulent and depleted for this visit.");
+        return;
+    }
 
-        if (!hasSlicer && !hasCipher && !forcedCipher) {
-            if (typeof showToast === 'function') showToast("Requires Cyber Slicer or Precursor Cipher", "error");
-            if (typeof soundManager !== 'undefined') soundManager.playError();
+    planet.skimmedThisVisit = true;
+    planet.scannedThisVisit = true;
+    if (typeof worldStateDeltas !== 'undefined') {
+        if (!worldStateDeltas[sysKey]) worldStateDeltas[sysKey] = {};
+        worldStateDeltas[sysKey].skimmed = true;
+        worldStateDeltas[sysKey].scanned = true;
+        worldStateDeltas[sysKey].lastInteraction = typeof currentGameDate !== 'undefined' ? currentGameDate : 0;
+    }
+
+    if (typeof advanceGameTime === 'function') advanceGameTime(0.15);
+
+    // Top off ship fuel + harvest Hydrogen-3 / Water / Quantum Fluid
+    const fuelGain = 45 + Math.floor(Math.random() * 35);
+    if (typeof playerFuel !== 'undefined' && typeof MAX_FUEL !== 'undefined') {
+        playerFuel = Math.min(MAX_FUEL, Math.round((playerFuel + fuelGain) * 10) / 10);
+    }
+
+    const spaceLeft = (typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50) - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
+    const h3Qty = Math.min(spaceLeft, 2 + Math.floor(Math.random() * 4));
+    let lootNotes = [`+${fuelGain} Fuel`];
+
+    if (h3Qty > 0 && typeof playerCargo !== 'undefined') {
+        playerCargo['HYDROGEN_3'] = (playerCargo['HYDROGEN_3'] || 0) + h3Qty;
+        lootNotes.push(`+${h3Qty}x Hydrogen-3`);
+        if (planet.biome.id === 'ICE_GIANT' && (spaceLeft - h3Qty) >= 2) {
+            playerCargo['WATER'] = (playerCargo['WATER'] || 0) + 2;
+            lootNotes.push(`+2x Purified Water`);
+        }
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+    }
+
+    const xpGain = 55;
+    if (typeof playerXP !== 'undefined') playerXP += xpGain;
+
+    if (typeof soundManager !== 'undefined') soundManager.playGain();
+    if (typeof showToast === 'function') showToast(`ATMO-SKIM: ${lootNotes.join(', ')}`, "success");
+    if (typeof logMessage === 'function') {
+        logMessage(`<span style="color:var(--accent-color); font-weight:bold;">[ ATMOSPHERIC SKIM ]</span> Dived into ${planet.name}'s upper cloud bands! Recovered ${lootNotes.join(', ')} (+${xpGain} XP).`);
+    }
+
+    if (typeof checkLevelUp === 'function') checkLevelUp();
+    if (typeof renderSystemMap === 'function' && currentGameState === GAME_STATES.SYSTEM_MAP) {
+        renderSystemMap();
+    }
+}
+window.skimGasGiantAtmosphere = skimGasGiantAtmosphere;
+
+// 2. Special Biome Surface Action Dispatcher (Tomb Worlds, Crystal Anomalies, Mycelial Worlds)
+function executeBiomeSpecialAction() {
+    if (!currentSystemData || !currentSystemData.planets) return;
+    const planet = currentSystemData.planets[selectedPlanetIndex];
+    if (!planet || planet.specialUsedThisVisit) return;
+
+    const bId = planet.biome.id || 'BARREN_ROCK';
+    const sysKey = `${currentSystemData.x},${currentSystemData.y}_p${selectedPlanetIndex}`;
+
+    planet.specialUsedThisVisit = true;
+    if (typeof worldStateDeltas !== 'undefined') {
+        if (!worldStateDeltas[sysKey]) worldStateDeltas[sysKey] = {};
+        worldStateDeltas[sysKey].specialUsed = true;
+        worldStateDeltas[sysKey].lastInteraction = typeof currentGameDate !== 'undefined' ? currentGameDate : 0;
+    }
+
+    if (typeof advanceGameTime === 'function') advanceGameTime(0.20);
+
+    // A. TOMB_WORLD or ARCHIVE_WORLD: Subterranean Precursor Excavation
+    if (bId === 'TOMB_WORLD' || bId === 'ARCHIVE_WORLD') {
+        if (typeof unlockLoreEntry === 'function') {
+            unlockLoreEntry('XENO_TOMB_WORLDS');
+            unlockLoreEntry('XENO_PRECURSORS');
+        }
+        // If enterPrecursorVault is available and player chooses, 40% chance to unseal a full Precursor Puzzle Vault!
+        if (typeof enterPrecursorVault === 'function' && Math.random() < 0.45) {
             if (typeof logMessage === 'function') {
-                logMessage("<span style='color:var(--danger)'>[ DECRYPTION FAILED ] Field decryption requires the Cyber Slicer perk or a Precursor Cipher in your hold.</span>");
+                logMessage("<span style='color:#9933FF; font-weight:bold;'>[ TOMB UNSEALED ]</span> Your excavation charges breached a subterranean Precursor Vault!");
             }
-            return false;
+            enterPrecursorVault();
+            return;
         }
 
-        // Consume Cipher if the player doesn't have Cyber Slicer (and wasn't already triggered via PRECURSOR_CIPHER.onUse)
-        if (!hasSlicer && !forcedCipher) {
-            playerCargo['PRECURSOR_CIPHER'] -= 1;
-            if (playerCargo['PRECURSOR_CIPHER'] <= 0) delete playerCargo['PRECURSOR_CIPHER'];
-            if (typeof logMessage === 'function') {
-                logMessage("<span style='color:var(--warning)'>[ FIELD DECRYPTION ] 1x Precursor Cipher consumed to collapse quantum encryption.</span>");
-            }
-        } else if (hasSlicer) {
-            if (typeof logMessage === 'function') {
-                logMessage("<span style='color:var(--accent-color)'>[ CYBER SLICER ] Bypassing Precursor encryption algorithms in the field...</span>");
-            }
+        const spaceLeft = (typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50) - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
+        const dropPool = ['PRECURSOR_DATACUBE', 'ENCRYPTED_ENGRAM', 'PRECURSOR_STAR_MAP_FRAGMENT', 'ANCIENT_RELICS'];
+        const picked = dropPool[Math.floor(Math.random() * dropPool.length)];
+        const xp = 220;
+        if (typeof playerXP !== 'undefined') playerXP += xp;
+
+        let lootText = "";
+        if (spaceLeft >= 1 && typeof COMMODITIES !== 'undefined' && COMMODITIES[picked]) {
+            playerCargo[picked] = (playerCargo[picked] || 0) + 1;
+            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+            lootText = ` Unearthed <b>1x ${COMMODITIES[picked].name}</b>!`;
         }
-
-        // Check if player is at Planet Xerxes for Spire Resonance (2x XP)
-        const loc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
-        const isAtXerxes = Boolean(
-            (document.getElementById('xerxesOverlay') && document.getElementById('xerxesOverlay').style.display === 'flex') ||
-            (loc && loc.name && loc.name.includes('Xerxes'))
-        );
-        const xpMultiplier = isAtXerxes ? 2 : 1;
-
-        // Calculate Rewards (matching Cryptarch payouts)
-        let xpReward = 150;
-        let creditReward = 0;
-        let textReward = "Data recovered.";
-
-        if (itemId === 'ENCRYPTED_ENGRAM') {
-            // 👇 FIX: Synchronized the 4-item loot table from the Cryptarch (trade.js)
-            const spaceLeft = (typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50) - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
-            
-            const rewards = [
-                { xp: 150, text: "FRAGMENT RECOVERED: 'The ruler of the sunless world is the DARKNESS.'" },
-                { xp: 300, text: "NAV-DATA: 'Sector [39, 17] - Precursor activity detected.'" },
-                { xp: 500, itemDrop: "VOID_CRYSTALS", qty: 2, text: "JACKPOT: Precursor crystalline matrix stabilized into 2x Void Crystals!" },
-                { xp: 400, itemDrop: "PRECURSOR_STAR_MAP_FRAGMENT", qty: 1, text: "ASTRONOMICAL CACHE: Recovered 1x Star Map Fragment!" }
-            ];
-            const r = rewards[Math.floor(Math.random() * rewards.length)];
-            xpReward = r.xp;
-            textReward = r.text;
-            
-            if (r.itemDrop && spaceLeft >= (r.qty || 1) && typeof COMMODITIES !== 'undefined' && COMMODITIES[r.itemDrop]) {
-                playerCargo[r.itemDrop] = (playerCargo[r.itemDrop] || 0) + (r.qty || 1);
-                if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-            }
-        } else if (itemId === 'ENCRYPTED_DATA') {
-            xpReward = 250;
-            creditReward = 500 + Math.floor(Math.random() * 500);
-            textReward = `Decrypted mercantile ledger (+${creditReward}c).`;
-        } else if (itemId === 'ANCIENT_ARCHIVE') {
-            xpReward = 500;
-            creditReward = 1000 + Math.floor(Math.random() * 1000);
-            textReward = `Holographic array unlocked! Forbidden history recovered (+${creditReward}c).`;
-            if (typeof unlockLoreEntry === 'function') unlockLoreEntry('XENO_PRECURSORS');
-        }
-
-        const finalXP = xpReward * xpMultiplier;
-
-        if (creditReward > 0 && typeof playerCredits !== 'undefined') {
-            playerCredits += creditReward;
-        }
-        if (typeof playerXP !== 'undefined') {
-            playerXP += finalXP;
-        }
-
-        if (isAtXerxes && typeof logMessage === 'function') {
-            logMessage(`<span style="color:#00E0E0">> SPIRE RESONANCE: Decryption output doubled! (+${finalXP} XP)</span>`);
-        }
+        if (typeof soundManager !== 'undefined') soundManager.playGain();
+        if (typeof showToast === 'function') showToast("SANCTUM EXCAVATED", "success");
         if (typeof logMessage === 'function') {
-            logMessage(`<span style="color:#DDA0DD">> FIELD DECRYPTION SUCCESS: ${textReward} (+${finalXP} XP)</span>`);
+            logMessage(`<span style="color:#DDA0DD; font-weight:bold;">[ TOMB EXCAVATION ]</span> Breached a sealed stasis crypt (+${xp} XP).${lootText}`);
         }
-        if (typeof showToast === 'function') {
-            showToast(`DECRYPTED: +${finalXP} XP${creditReward > 0 ? ` / +${creditReward}c` : ''}`, "success");
+    }
+    // B. CRYSTAL: Harmonic Lattice Attunement
+    else if (bId === 'CRYSTAL') {
+        if (typeof unlockLoreEntry === 'function') unlockLoreEntry('PHENOMENON_VOID_CRYSTALS');
+        if (typeof playerShields !== 'undefined' && typeof MAX_SHIELDS !== 'undefined') {
+            playerShields = Math.floor(MAX_SHIELDS * 1.5);
         }
-        if (typeof soundManager !== 'undefined') {
-            soundManager.playAbilityActivate();
+        if (typeof playerHull !== 'undefined' && typeof MAX_PLAYER_HULL !== 'undefined') {
+            playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 25);
         }
-
-        // Defer checkLevelUp slightly so ui.js finishes decrementing the item and refreshing cargo load first
-        setTimeout(() => {
-            if (typeof checkLevelUp === 'function') checkLevelUp();
-        }, 50);
-
-        return true; // Signals ui.js useCargoItem() to consume 1 unit of itemId
+        const spaceLeft = (typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50) - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
+        let lensMsg = "";
+        if (spaceLeft >= 1 && typeof COMMODITIES !== 'undefined') {
+            const drop = Math.random() < 0.5 ? 'QUANTUM_LENS' : 'VOID_CRYSTALS';
+            playerCargo[drop] = (playerCargo[drop] || 0) + 1;
+            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+            lensMsg = ` Focused laser harmonics cleaved <b>1x ${COMMODITIES[drop].name}</b>!`;
+        }
+        if (typeof playerXP !== 'undefined') playerXP += 180;
+        if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+        if (typeof showToast === 'function') showToast("SHIELDS OVERCHARGED (150%)", "success");
+        if (typeof logMessage === 'function') {
+            logMessage(`<span style="color:#FF33FF; font-weight:bold;">[ HARMONIC ATTUNEMENT ]</span> Planetary crystal spires supercharged your shields to 150%, patched +25 Hull, and granted +180 XP!${lensMsg}`);
+        }
+    }
+    // C. MYCELIAL: Spore Neural Communion
+    else if (bId === 'MYCELIAL') {
+        if (typeof unlockLoreEntry === 'function') unlockLoreEntry('LEGEND_SENTIENT_MYCELIUM_NETWORK');
+        const xp = 200;
+        if (typeof playerXP !== 'undefined') playerXP += xp;
+        const spaceLeft = (typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50) - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
+        if (spaceLeft >= 1) {
+            const addQty = Math.min(spaceLeft, 2);
+            playerCargo['SENTIENT_MYCELIUM'] = (playerCargo['SENTIENT_MYCELIUM'] || 0) + addQty;
+            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        }
+        if (typeof soundManager !== 'undefined') soundManager.playScan();
+        if (typeof showToast === 'function') showToast("SPORE VISION RECEIVED (+200 XP)", "success");
+        if (typeof logMessage === 'function') {
+            logMessage(`<span style="color:#00FFAA; font-weight:bold;">[ SPORE COMMUNION ]</span> The planet-spanning fungal intelligence shared visions of distant star-paths (+${xp} XP, +Sentient Mycelium)!`);
+        }
     }
 
-    function bindFieldDecryptionHandlers() {
-        if (typeof COMMODITIES === 'undefined') return;
+    if (typeof renderPlanetView === 'function') renderPlanetView();
+    if (typeof checkLevelUp === 'function') checkLevelUp();
+    if (typeof autoSaveGame === 'function') autoSaveGame();
+}
+window.executeBiomeSpecialAction = executeBiomeSpecialAction;
 
-        ['ENCRYPTED_ENGRAM', 'ENCRYPTED_DATA', 'ANCIENT_ARCHIVE'].forEach(itemId => {
-            if (COMMODITIES[itemId]) {
-                COMMODITIES[itemId].onUse = () => {
-                    const hasSlicer = hasPlayerPerk('CYBER_SLICER');
-                    const hasCipher = (playerCargo['PRECURSOR_CIPHER'] || 0) > 0;
-                    const loc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+// ==========================================
+// --- SELF-CONTAINED PLANETARY PATCHES ---
+// ==========================================
 
-                    // If player lacks field decryption tools but is docked at a hub with a Cryptarch, open the Cryptarch!
-                    if (!hasSlicer && !hasCipher && loc && loc.isMajorHub && loc.name !== 'The Rusty Anchor') {
-                        if (typeof visitCryptarch === 'function') {
-                            visitCryptarch();
-                            return false;
+(function initBiomeMechanics() {
+    function attachBiomeHooks() {
+
+        // 0. HYDRATE ALL SAVED FLAGS & BIOME KEYS ON STAR SYSTEM GENERATION
+        if (typeof window.generateStarSystem === 'function' && !window._biomeGenSystemPatched) {
+            const origGenSystem = window.generateStarSystem;
+            window.generateStarSystem = function(starX, starY) {
+                const sysData = origGenSystem.apply(this, arguments);
+                if (sysData && Array.isArray(sysData.planets)) {
+                    sysData.planets.forEach((p, idx) => {
+                        if (!p) return;
+                        if (p.biome && p.biome.id && !p.biomeKey) {
+                            p.biomeKey = p.biome.id;
                         }
-                    }
-                    return executeFieldDecryption(itemId, false);
-                };
-            }
-        });
-
-        if (COMMODITIES['PRECURSOR_CIPHER']) {
-            COMMODITIES['PRECURSOR_CIPHER'].onUse = () => {
-                const targetTypes = ['ENCRYPTED_ENGRAM', 'ENCRYPTED_DATA', 'ANCIENT_ARCHIVE'];
-                const targetId = targetTypes.find(id => (playerCargo[id] || 0) > 0);
-
-                if (!targetId) {
-                    if (typeof showToast === 'function') showToast("No Encrypted Items in Hold", "info");
-                    if (typeof soundManager !== 'undefined') soundManager.playError();
-                    return false;
-                }
-
-                const success = executeFieldDecryption(targetId, true);
-                if (success) {
-                    playerCargo[targetId] -= 1;
-                    if (playerCargo[targetId] <= 0) delete playerCargo[targetId];
-                    const hasSlicer = hasPlayerPerk('CYBER_SLICER');
-
-                    // BUG FIX: If Cyber Slicer saved the Cipher from being consumed, manually refresh the Cargo UI!
-                    if (hasSlicer) {
-                        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                        if (typeof renderUIStats === 'function') renderUIStats();
-                        const modal = document.getElementById('genericModalOverlay');
-                        if (modal && modal.style.display === 'flex' && typeof renderCargoList === 'function') {
-                            renderCargoList();
+                        const sysKey = `${starX},${starY}_p${idx}`;
+                        const saved = (typeof worldStateDeltas !== 'undefined' && worldStateDeltas[sysKey]) ? worldStateDeltas[sysKey] : {};
+                        if (saved.mined) p.minedThisVisit = true;
+                        if (saved.scanned) p.scannedThisVisit = true;
+                        if (saved.explored) p.exploredThisVisit = true;
+                        if (saved.hacked) p.hackedThisVisit = true;
+                        if (saved.specialUsed) p.specialUsedThisVisit = true;
+                        if (saved.skimmed) {
+                            p.skimmedThisVisit = true;
+                            p.scannedThisVisit = true;
                         }
-                        return false;
-                    }
-                    return true;
+                    });
                 }
-                return false;
+                return sysData;
             };
+            window._biomeGenSystemPatched = true;
         }
-    }
 
-    // Bind immediately for items in items.js
-    bindFieldDecryptionHandlers();
+        // 0.5 ENABLE GAS GIANT / ICE GIANT ORBITAL SKIMMING ON THE SYSTEM MAP
+        if (typeof window.renderSystemMap === 'function' && !window._biomeSysMapPatched) {
+            const origRenderSystemMap = window.renderSystemMap;
+            window.renderSystemMap = function() {
+                origRenderSystemMap.apply(this, arguments);
+                if (!currentSystemData || !Array.isArray(currentSystemData.planets)) return;
+                const systemView = document.getElementById('systemView');
+                if (!systemView) return;
 
-    // 2. GAMEBUS TICK & DAMAGE HOOKS FOR PASSIVE PERKS
-    let _awardedCartographerSectors = new Set();
-    let _lastColonyArchitectTick = {};
-    let _ordnanceMoveCounter = 0;
+                const planetCards = systemView.querySelectorAll('.system-planet-grid > div');
+                planetCards.forEach((card, idx) => {
+                    const planet = currentSystemData.planets[idx];
+                    if (!planet || !planet.biome) return;
+                    const sysKey = `${currentSystemData.x},${currentSystemData.y}_p${idx}`;
+                    const saved = (typeof worldStateDeltas !== 'undefined' && worldStateDeltas[sysKey]) ? worldStateDeltas[sysKey] : {};
+                    const isSkimmed = Boolean(planet.skimmedThisVisit || saved.skimmed);
 
-    if (typeof GameBus !== 'undefined') {
-        GameBus.on('TICK_PROCESSED', (tick) => {
-            if (!tick || tick.interrupt) return;
-            const { isMovement } = tick;
-
-            // A. NANO_HULL_WEAVE: +0.2 Hull per move (1 Hull every 5 moves)
-            if (isMovement && hasPlayerPerk('NANO_HULL_WEAVE')) {
-                if (typeof playerHull !== 'undefined' && typeof MAX_PLAYER_HULL !== 'undefined' && playerHull > 0 && playerHull < MAX_PLAYER_HULL) {
-                    playerHull = Math.min(MAX_PLAYER_HULL, Math.round((playerHull + 0.2) * 10) / 10);
-                }
-            }
-
-            // B. STELLAR_CARTOGRAPHER: +2 XP per move & +50 XP on genuinely new sector discovery
-            if (isMovement && typeof playerX !== 'undefined' && typeof playerY !== 'undefined' && typeof SECTOR_SIZE !== 'undefined') {
-                const secX = Math.floor(playerX / SECTOR_SIZE);
-                const secY = Math.floor(playerY / SECTOR_SIZE);
-                const secKey = `${secX},${secY}`;
-
-                if (hasPlayerPerk('STELLAR_CARTOGRAPHER')) {
-                    if (typeof playerXP !== 'undefined') {
-                        playerXP += 2;
-                    }
-                    
-                    // Check visitedSectors directly! Since perks.js ticks before script.js, 
-                    // the sector isn't logged yet, allowing us to safely award the bonus without memory leaks.
-                    if (typeof visitedSectors !== 'undefined' && !visitedSectors.has(secKey) && (secX !== 0 || secY !== 0)) {
-                        playerXP += 50;
-                        if (typeof logMessage === 'function') {
-                            logMessage("<span style='color:var(--accent-color)'>[ STELLAR CARTOGRAPHER ] New sector astrometrics cataloged. +50 Bonus XP!</span>");
-                        }
-                    }
-                    if (typeof checkLevelUp === 'function' && typeof xpToNextLevel !== 'undefined' && playerXP >= xpToNextLevel) {
-                        checkLevelUp();
-                    }
-                }
-            }
-
-            // C. ORDNANCE_FABRICATOR: Synthesize +1 weapon ammo every 10 movement steps
-            if (isMovement && hasPlayerPerk('ORDNANCE_FABRICATOR') && typeof playerShip !== 'undefined' && playerShip.components) {
-                _ordnanceMoveCounter++;
-                if (_ordnanceMoveCounter >= 10) {
-                    _ordnanceMoveCounter = 0;
-                    const weaponId = playerShip.components.weapon;
-                    const weaponDef = (typeof COMPONENTS_DATABASE !== 'undefined' && weaponId) ? COMPONENTS_DATABASE[weaponId] : null;
-                    if (weaponDef && weaponDef.stats && weaponDef.stats.maxAmmo) {
-                        const curAmmo = playerShip.ammo[weaponId] !== undefined ? playerShip.ammo[weaponId] : weaponDef.stats.maxAmmo;
-                        if (curAmmo < weaponDef.stats.maxAmmo) {
-                            playerShip.ammo[weaponId] = curAmmo + 1;
-                            if (typeof logMessage === 'function') {
-                                logMessage(`<span style='color:var(--success)'>[ AUTO-MUNITIONS ] Fabricated +1 ordnance round (${playerShip.ammo[weaponId]}/${weaponDef.stats.maxAmmo}).</span>`);
+                    if (!planet.biome.landable && BiomeUtils.isGiantBiome(planet.biome.id)) {
+                        const btn = card.querySelector('button.action-button');
+                        if (btn) {
+                            if (isSkimmed) {
+                                btn.disabled = true;
+                                btn.textContent = 'ATMO DEPLETED';
+                                btn.style.cssText = 'margin-top: 10px; border-color:#444; color:#666;';
+                            } else {
+                                btn.disabled = false;
+                                btn.textContent = 'ATMO-SKIM (H-3)';
+                                btn.style.cssText = 'margin-top: 10px; border-color:var(--accent-color); color:var(--accent-color);';
+                                btn.setAttribute('onclick', `event.stopPropagation(); skimGasGiantAtmosphere(${idx});`);
                             }
                         }
                     }
-                }
-            }
-
-            // D. QUANTUM_NAVIGATOR: 30% chance to prevent Stealth Heat buildup on movement
-            if (isMovement && hasPlayerPerk('QUANTUM_NAVIGATOR') && typeof isSilentRunning !== 'undefined' && isSilentRunning) {
-                if (typeof stealthHeat !== 'undefined' && stealthHeat > 0 && Math.random() < 0.30) {
-                    stealthHeat = Math.max(0, stealthHeat - 1);
-                }
-            }
-
-            // E. SHADOW_TRANSPONDER: Halves Notoriety decay interval (from 15.0 to 7.5 stardates)
-            if (hasPlayerPerk('SHADOW_TRANSPONDER') && typeof playerNotoriety !== 'undefined' && playerNotoriety > 0) {
-                if (window.lastNotorietyDecayTime && typeof currentGameDate !== 'undefined') {
-                    if (currentGameDate - window.lastNotorietyDecayTime >= 7.5) {
-                        if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(-1);
-                        window.lastNotorietyDecayTime = currentGameDate;
-                        if (playerNotoriety === 0 && typeof logMessage === 'function') {
-                            logMessage("<span style='color:var(--success)'>[ GHOST TRANSPONDER ] Transponder spoofing complete. Concord warrants purged.</span>");
-                        }
-                    }
-                }
-            }
-
-            // F. COLONY_ARCHITECT: +100% construction speed & +15% tax bonus per Stardate
-            if (hasPlayerPerk('COLONY_ARCHITECT') && typeof playerColonies !== 'undefined' && typeof currentGameDate !== 'undefined') {
-                Object.values(playerColonies).forEach(colony => {
-                    if (!colony || !colony.established) return;
-                    const colId = colony.id || `${colony.x}_${colony.y}`;
-                    if (_lastColonyArchitectTick[colId] === undefined || currentGameDate < _lastColonyArchitectTick[colId]) {
-                        _lastColonyArchitectTick[colId] = currentGameDate;
-                    }
-                    if (currentGameDate - _lastColonyArchitectTick[colId] >= 1.0) {
-                        _lastColonyArchitectTick[colId] = currentGameDate;
-
-                        // Extra +1 construction progress per Stardate (doubles build speed)
-                        if (colony.activeConstruction) {
-                            colony.activeConstruction.progress = Math.min(
-                                colony.activeConstruction.total,
-                                colony.activeConstruction.progress + 1
-                            );
-                        }
-
-                        // +15% bonus to positive tax revenue
-                        if (colony.population > 0 && colony.morale > 0) {
-                            const bonusTax = Math.max(5, Math.floor(colony.population * 0.075 * (colony.morale / 100)));
-                            colony.treasury = (colony.treasury || 0) + bonusTax;
-                        }
-                    }
                 });
-            }
-        });
-    }
-
-    // 3. HOOK ENGINE FUNCTIONS ON DOM LOAD (Using document so it runs before script.js auto-login!)
-    function attachPerkWrappers() {
-        bindFieldDecryptionHandlers();
-
-        // A. Wrap applyPlayerShipStats to inject passive stat perks without clamping current vitals
-        if (typeof window.applyPlayerShipStats === 'function' && !window._perksStatsHooked) {
-            const originalApplyStats = window.applyPlayerShipStats;
-            window.applyPlayerShipStats = function() {
-                const prevHull = typeof playerHull !== 'undefined' ? playerHull : 100;
-                const prevShields = typeof playerShields !== 'undefined' ? playerShields : 50;
-                const prevFuel = typeof playerFuel !== 'undefined' ? playerFuel : 220;
-
-                originalApplyStats.apply(this, arguments);
-
-                if (hasPlayerPerk('NANO_HULL_WEAVE') && typeof MAX_PLAYER_HULL !== 'undefined') {
-                    MAX_PLAYER_HULL += 35;
-                }
-                if (hasPlayerPerk('EMERGENCY_BULKHEADS') && typeof MAX_PLAYER_HULL !== 'undefined') {
-                    MAX_PLAYER_HULL += 20;
-                }
-                if (hasPlayerPerk('OVERCHARGED_CAPACITORS')) {
-                    if (typeof MAX_SHIELDS !== 'undefined') MAX_SHIELDS += 30;
-                    if (typeof PLAYER_EVASION !== 'undefined') PLAYER_EVASION += 0.08;
-                }
-                if (hasPlayerPerk('DIMENSIONAL_POCKETS')) {
-                    if (typeof PLAYER_CARGO_CAPACITY !== 'undefined') PLAYER_CARGO_CAPACITY += 25;
-                    if (typeof MAX_FUEL !== 'undefined') MAX_FUEL += 40;
-                }
-                if (hasPlayerPerk('TACTICAL_OVERDRIVE') && typeof PLAYER_HIT_CHANCE !== 'undefined') {
-                    PLAYER_HIT_CHANCE = Math.min(1.0, PLAYER_HIT_CHANCE + 0.10);
-                }
-                if (hasPlayerPerk('ORDNANCE_FABRICATOR') && typeof PLAYER_ATTACK_DAMAGE !== 'undefined') {
-                    PLAYER_ATTACK_DAMAGE += 4;
-                }
-                if (hasPlayerPerk('SHADOW_TRANSPONDER')) {
-                    window.PLAYER_SIGNATURE = Math.max(0.1, (window.PLAYER_SIGNATURE || 1.0) * 0.65);
-                }
-
-                // Restore vitals up to the newly boosted maximums
-                if (typeof playerHull !== 'undefined' && typeof MAX_PLAYER_HULL !== 'undefined') {
-                    playerHull = Math.min(prevHull, MAX_PLAYER_HULL);
-                }
-                if (typeof playerShields !== 'undefined' && typeof MAX_SHIELDS !== 'undefined') {
-                    playerShields = Math.min(prevShields, MAX_SHIELDS);
-                }
-                if (typeof playerFuel !== 'undefined' && typeof MAX_FUEL !== 'undefined') {
-                    playerFuel = Math.min(prevFuel, MAX_FUEL);
-                }
             };
-            window._perksStatsHooked = true;
-
-            // Immediately recalculate in case a save was already loaded
-            if (typeof playerShip !== 'undefined' && playerShip) {
-                window.applyPlayerShipStats();
-            }
+            window._biomeSysMapPatched = true;
         }
 
-        // B. Wrap GameBus.emit to apply EMERGENCY_BULKHEADS 15% hull damage reduction before script.js subtracts hull
-        if (typeof GameBus !== 'undefined' && typeof GameBus.emit === 'function' && !window._perksBusEmitHooked) {
-            const origEmit = GameBus.emit.bind(GameBus);
-            GameBus.emit = function(event, data) {
-                if (event === 'HULL_DAMAGED' && data && data.amount > 1 && hasPlayerPerk('EMERGENCY_BULKHEADS')) {
-                    data.amount = Math.max(1, Math.floor(data.amount * 0.85));
-                }
-                return origEmit(event, data);
-            };
-            window._perksBusEmitHooked = true;
-        }
-
-        // C. Wrap selectPerk so picking a stat-boosting perk immediately recalculates & tops off the bonus
-        if (typeof window.selectPerk === 'function' && !window._perksSelectHooked) {
-            const originalSelectPerk = window.selectPerk;
-            window.selectPerk = function(perkId) {
-                originalSelectPerk.apply(this, arguments);
-                if (typeof applyPlayerShipStats === 'function') applyPlayerShipStats();
-
-                if (perkId === 'NANO_HULL_WEAVE' && typeof playerHull !== 'undefined') {
-                    playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 35);
-                } else if (perkId === 'EMERGENCY_BULKHEADS' && typeof playerHull !== 'undefined') {
-                    playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 20);
-                } else if (perkId === 'OVERCHARGED_CAPACITORS' && typeof playerShields !== 'undefined') {
-                    playerShields = Math.min(MAX_SHIELDS, playerShields + 30);
-                } else if (perkId === 'DIMENSIONAL_POCKETS' && typeof playerFuel !== 'undefined') {
-                    playerFuel = Math.min(MAX_FUEL, playerFuel + 40);
-                }
-                if (typeof renderUIStats === 'function') renderUIStats();
-            };
-            window._perksSelectHooked = true;
-        }
-
-        // D. Wrap handleCombatAction so TACTICAL_OVERDRIVE ticks down ability cooldowns twice as fast
-        if (typeof window.handleCombatAction === 'function' && !window._perksCombatHooked) {
-            const originalHandleCombatAction = window.handleCombatAction;
-            window.handleCombatAction = function(action) {
-                // Track the cooldown before the action resolves
-                const prevCooldown = typeof playerAbilityCooldown !== 'undefined' ? playerAbilityCooldown : 0;
-                
-                originalHandleCombatAction.apply(this, arguments);
-                
-                if (hasPlayerPerk('TACTICAL_OVERDRIVE')) {
-                    if (typeof currentCombatContext !== 'undefined' && currentCombatContext && action !== 'ability') {
-                        // Only reduce if the original action successfully consumed a turn!
-                        if (typeof playerAbilityCooldown !== 'undefined' && playerAbilityCooldown < prevCooldown && playerAbilityCooldown > 0) {
-                            playerAbilityCooldown = Math.max(0, playerAbilityCooldown - 1);
-                            if (typeof renderCombatView === 'function') renderCombatView();
-                        }
-                    }
+        // 1. PERSIST ORBITAL MINING DEPLETION & UPGRADE ORBITAL SURFACE SCAN
+        if (typeof window.startOrbitalMining === 'function' && !window._biomeOrbitalPatched) {
+            const origOrbitalMining = window.startOrbitalMining;
+            window.startOrbitalMining = function() {
+                origOrbitalMining.apply(this, arguments);
+                const location = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+                if (location && location.miningDepleted && typeof updateWorldState === 'function') {
+                    updateWorldState(playerX, playerY, {
+                        miningDepleted: true,
+                        lastInteraction: typeof currentGameDate !== 'undefined' ? currentGameDate : 0
+                    });
                 }
             };
-            window._perksCombatHooked = true;
+            window._biomeOrbitalPatched = true;
         }
-        
-        // E. Wrap showWormholeDetails AND executeWormholeJump for HYPER_LANE_MAPPER
-        if (typeof window.showWormholeDetails === 'function' && !window._perksWormholeUIHooked) {
-            const originalShowWormholeDetails = window.showWormholeDetails;
-            window.showWormholeDetails = function(targetWh, distance) {
-                originalShowWormholeDetails.apply(this, arguments);
-                if (hasPlayerPerk('HYPER_LANE_MAPPER') && targetWh) {
-                    const baseFuelCost = Math.floor(15 + (distance * 0.05));
-                    const mappedFuelCost = Math.floor(baseFuelCost * 0.5);
-                    const canAfford = playerFuel >= mappedFuelCost;
-                    const detailEl = document.getElementById('genericDetailContent');
-                    const actionsEl = document.getElementById('genericModalActions');
 
-                    if (detailEl) {
-                        detailEl.innerHTML += `
-                            <div style="margin: 0 20px; padding: 8px 12px; background: rgba(0,255,100,0.08); border: 1px solid var(--success); border-radius: 4px; font-size: 11px; color: var(--success); text-align: left;">
-                                🌀 <b>HYPER-LANE MAPPER ACTIVE:</b> Jump fuel cost halved to <b>${mappedFuelCost} Units</b> and structural hull risk reduced to <b>0%</b>.
+        if (typeof window.conductSurfaceScan === 'function' && !window._biomeSurfaceScanPatched) {
+            window.conductSurfaceScan = function() {
+                const location = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+                if (!location) return;
+                if (typeof soundManager !== 'undefined') soundManager.playScan();
+
+                const biomeObj = BiomeUtils.getBiome(location.biome || 'BARREN_ROCK');
+                const resNames = (biomeObj.resources || []).map(r => (typeof COMMODITIES !== 'undefined' && COMMODITIES[r]) ? COMMODITIES[r].name : r).join(', ');
+                const hazColor = biomeObj.hazard && biomeObj.hazard !== 'NONE' ? 'var(--danger)' : 'var(--success)';
+                const oreStatus = location.miningDepleted
+                    ? "<span style='color:var(--danger); font-weight:bold;'>Depleted (Orbital veins stripped)</span>"
+                    : "<span style='color:var(--success); font-weight:bold;'>Rich lithosphere veins detected</span>";
+
+                const scanBox = document.getElementById('surfaceScanResultBox');
+                if (scanBox) {
+                    scanBox.innerHTML = `
+                        <div style="margin-top: 12px; padding: 12px; border-left: 3px solid var(--accent-color); background: rgba(0, 224, 224, 0.08); font-size: 12px; color: var(--text-color); animation: fadeIn 0.35s;">
+                            <div style="color: var(--accent-color); font-weight: bold; margin-bottom: 6px; letter-spacing:1px;">SPECTROMETRY TELEMETRY:</div>
+                            <div style="line-height:1.6;">
+                                • <b>Classification:</b> ${biomeObj.name}<br>
+                                • <b>Surface Hazard:</b> <span style="color:${hazColor}; font-weight:bold;">${biomeObj.hazard || 'NONE'}</span><br>
+                                • <b>Detected Signatures:</b> <span style="color:var(--gold-text);">${resNames || 'Silicates'}</span><br>
+                                • <b>Colony Suitability:</b> ${biomeObj.colonyBonusDesc || 'Standard'}<br>
+                                • <b>Orbital Survey:</b> ${oreStatus}
                             </div>
-                        `;
-                    }
-                    if (actionsEl) {
-                        if (canAfford) {
-                            actionsEl.innerHTML = `
-                                <button class="action-button" style="border-color:#FFB800; color:#FFB800; box-shadow: 0 0 15px rgba(255, 184, 0, 0.3);" onclick="executeWormholeJump(${targetWh.x}, ${targetWh.y}, ${mappedFuelCost}, 0)">
-                                    INITIATE STABILIZED JUMP (${mappedFuelCost} Fuel)
-                                </button>
-                                <button class="action-button" onclick="traverseWormhole()">CANCEL</button>
-                            `;
-                        } else {
-                            actionsEl.innerHTML = `
-                                <button class="action-button danger-btn" disabled>INSUFFICIENT FUEL (${mappedFuelCost} Required)</button>
-                                <button class="action-button" onclick="traverseWormhole()">BACK</button>
-                            `;
-                        }
-                    }
-                }
-            };
-            window._perksWormholeUIHooked = true;
-        }
-
-        if (typeof window.executeWormholeJump === 'function' && !window._perksWormholeHooked) {
-            const originalExecuteWormholeJump = window.executeWormholeJump;
-            window.executeWormholeJump = function(targetX, targetY, fuelCost, damageRisk) {
-                if (hasPlayerPerk('HYPER_LANE_MAPPER')) {
-                    damageRisk = 0; // Zero risk of hull damage!
-                }
-                originalExecuteWormholeJump.call(this, targetX, targetY, fuelCost, damageRisk);
-            };
-            window._perksWormholeHooked = true;
-        }
-        
-        // F. Wrap performCustomsScan to apply SMUGGLERS_LUCK bypass chance
-        if (typeof window.performCustomsScan === 'function' && !window._perksCustomsHooked) {
-            const originalPerformCustomsScan = window.performCustomsScan;
-            window.performCustomsScan = function() {
-                if (hasPlayerPerk('SMUGGLERS_LUCK')) {
-                    if (Math.random() < 0.25) {
-                        if (typeof logMessage === 'function') {
-                            logMessage("<span style='color:var(--success); font-weight:bold;'>[ SMUGGLER'S LUCK ] Concord Customs sensor grid experienced a 'random malfunction'. They found nothing.</span>");
-                        }
-                        return true;
-                    }
-                }
-                return originalPerformCustomsScan.apply(this, arguments);
-            };
-            window._perksCustomsHooked = true;
-        }
-
-        // G. Wrap captureDeepSkyImage (from config.js) for ASTROMETRIC_SAVANT
-        if (typeof window.captureDeepSkyImage === 'function' && !window._perksAstroHooked) {
-            const originalCaptureDeepSky = window.captureDeepSkyImage;
-            window.captureDeepSkyImage = function() {
-                const secKey = `ASTRO_PHOTO_${typeof currentSectorX !== 'undefined' ? currentSectorX : 0}_${typeof currentSectorY !== 'undefined' ? currentSectorY : 0}`;
-                const alreadyDone = typeof discoveredLocations !== 'undefined' && discoveredLocations.has && discoveredLocations.has(secKey);
-
-                originalCaptureDeepSky.apply(this, arguments);
-
-                if (!alreadyDone && hasPlayerPerk('ASTROMETRIC_SAVANT')) {
-                    const isNexStar = typeof playerShip !== 'undefined' && playerShip.components && playerShip.components.scanner === 'SCANNER_NEXSTAR_4SE';
-                    const bonusXP = isNexStar ? 120 : 50;
-                    playerXP += bonusXP;
-
-                    let extraMsg = `<span style="color:var(--accent-color)">[ ASTROMETRIC SAVANT ]</span> High-resolution interferometry yielded +${bonusXP} bonus XP!`;
-                    if (Math.random() < 0.50 && (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0) + 1 <= PLAYER_CARGO_CAPACITY) {
-                        playerCargo['PLANETARY_DATA'] = (playerCargo['PLANETARY_DATA'] || 0) + 1;
-                        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                        extraMsg += ` <span style="color:var(--gold-text)">Resolved +1x bonus Planetary Data cartridge!</span>`;
-                    }
-                    if (typeof logMessage === 'function') logMessage(extraMsg);
-                    if (typeof checkLevelUp === 'function') checkLevelUp();
-                }
-            };
-            window._perksAstroHooked = true;
-        }
-
-        // H. Wrap deployMiningDrone & deployCombatDrone for DRONE_COMMANDER (50% chance to preserve drone)
-        if (typeof window.deployMiningDrone === 'function' && !window._perksMiningDroneHooked) {
-            const origDeployMining = window.deployMiningDrone;
-            window.deployMiningDrone = function() {
-                const deployed = origDeployMining.apply(this, arguments);
-                if (deployed && hasPlayerPerk('DRONE_COMMANDER') && Math.random() < 0.50) {
-                    playerCargo['MINING_DRONE_MK2'] = (playerCargo['MINING_DRONE_MK2'] || 0) + 1;
-                    if (typeof logMessage === 'function') {
-                        logMessage("<span style='color:var(--accent-color)'>[ DRONE TELEMETRY LINK ] Autonomous recovery tether active! Mining Drone will be retained after deployment.</span>");
-                    }
-                }
-                return deployed;
-            };
-            window._perksMiningDroneHooked = true;
-        }
-
-        if (typeof window.deployCombatDrone === 'function' && !window._perksCombatDroneHooked) {
-            const origDeployCombat = window.deployCombatDrone;
-            window.deployCombatDrone = function() {
-                const deployed = origDeployCombat.apply(this, arguments);
-                if (deployed && hasPlayerPerk('DRONE_COMMANDER') && Math.random() < 0.50) {
-                    playerCargo['COMBAT_DRONE_MK1'] = (playerCargo['COMBAT_DRONE_MK1'] || 0) + 1;
-                    if (typeof logMessage === 'function') {
-                        logMessage("<span style='color:var(--accent-color)'>[ DRONE TELEMETRY LINK ] Spare drone core synchronized! Combat Drone preserved in bay.</span>");
-                    }
-                }
-                return deployed;
-            };
-            window._perksCombatDroneHooked = true;
-        }
-
-        // I. Wrap scoopHydrogen for QUANTUM_NAVIGATOR (+25% scoop yield & -2 stealth heat)
-        if (typeof window.scoopHydrogen === 'function' && !window._perksScoopHooked) {
-            const origScoop = window.scoopHydrogen;
-            window.scoopHydrogen = function() {
-                const prevFuel = typeof playerFuel !== 'undefined' ? playerFuel : 0;
-                origScoop.apply(this, arguments);
-                const gained = (typeof playerFuel !== 'undefined' ? playerFuel : 0) - prevFuel;
-                if (gained > 0 && hasPlayerPerk('QUANTUM_NAVIGATOR')) {
-                    const bonusFuel = Math.round(gained * 0.25 * 10) / 10;
-                    playerFuel = Math.min(MAX_FUEL, Math.round((playerFuel + bonusFuel) * 10) / 10);
-                    if (typeof stealthHeat !== 'undefined' && stealthHeat > 0) {
-                        stealthHeat = Math.max(0, stealthHeat - 2);
-                    }
-                    if (typeof logMessage === 'function') {
-                        logMessage(`<span style='color:var(--accent-color)'>[ CORONA SKIMMER ] Magnetic intake scoops condensed +${bonusFuel.toFixed(1)} bonus fuel and flushed heat sinks!</span>`);
-                    }
-                }
-            };
-            window._perksScoopHooked = true;
-        }
-
-        // J. Wrap Shadow Broker functions for BLACK_MARKET_BARON (+25% payout & +2 Eclipse Rep)
-        if (typeof window.getShadowBrokerUnitPrice === 'function' && !window._perksBrokerPriceHooked) {
-            const origBrokerPrice = window.getShadowBrokerUnitPrice;
-            window.getShadowBrokerUnitPrice = function(itemId) {
-                const base = origBrokerPrice.apply(this, arguments);
-                const loc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
-                const soldLocally = loc && loc.sells && loc.sells.some(s => (s.id === itemId) || (s === itemId));
-                // Disable Baron multiplier for local goods to stop infinite arbitrage
-                return (hasPlayerPerk('BLACK_MARKET_BARON') && !soldLocally) ? Math.floor(base * 1.25) : base;
-            };
-            window._perksBrokerPriceHooked = true;
-        }
-
-        if (typeof window.processShadowBrokerTrade === 'function' && !window._perksBrokerTradeHooked) {
-            const origBrokerTrade = window.processShadowBrokerTrade;
-            window.processShadowBrokerTrade = function(itemId) {
-                const prevCredits = typeof playerCredits !== 'undefined' ? playerCredits : 0;
-                const loc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
-                
-                // Properly evaluate if we are fencing non-local goods, even when fencing 'ALL'
-                let fencingForeignGoods = false;
-                if (itemId === 'ALL') {
-                    for (const id in playerCargo) {
-                        if (id === 'HOT_CARGO') continue;
-                        if (playerCargo[id] > 0 && COMMODITIES[id] && COMMODITIES[id].illegal) {
-                            const soldLocally = loc && loc.sells && loc.sells.some(s => (s.id === id) || (s === id));
-                            if (!soldLocally) { fencingForeignGoods = true; break; }
-                        }
-                    }
-                } else {
-                    const soldLocally = loc && loc.sells && loc.sells.some(s => (s.id === itemId) || (s === itemId));
-                    fencingForeignGoods = !soldLocally;
-                }
-                
-                origBrokerTrade.apply(this, arguments);
-                
-                // Deny the Eclipse Rep bonus if they are just fencing local store goods
-                if (hasPlayerPerk('BLACK_MARKET_BARON') && playerCredits > prevCredits && typeof playerFactionStanding !== 'undefined' && fencingForeignGoods) {
-                    playerFactionStanding['ECLIPSE'] = (playerFactionStanding['ECLIPSE'] || 0) + 2;
-                    if (typeof logMessage === 'function') {
-                        logMessage("<span style='color:#9933FF'>[ SYNDICATE KINGPIN ] +25% Black Market bonus applied (+2 Eclipse Cartel Rep).</span>");
-                    }
-                }
-            };
-            window._perksBrokerTradeHooked = true;
-        }
-
-        // K. Inject "⭐ Captain Perks" Tab into Commander Datapad (displayCommanderProfile in ui.js)
-        if (typeof window.displayCommanderProfile === 'function' && !window._perksProfileHooked) {
-            const origDisplayProfile = window.displayCommanderProfile;
-            window.displayCommanderProfile = function(tab = 'OVERVIEW') {
-                origDisplayProfile.call(this, tab);
-
-                const listEl = document.getElementById('genericModalList');
-                const detailEl = document.getElementById('genericDetailContent');
-                if (!listEl || !detailEl) return;
-
-                // Append the Captain Perks navigation row
-                const row = document.createElement('div');
-                row.className = 'trade-item-row';
-                row.style.cursor = 'pointer';
-                if (tab === 'PERKS') row.style.background = 'rgba(0, 224, 224, 0.1)';
-                row.innerHTML = `<span style="color:var(--text-color); font-weight:bold;">⭐ Captain Perks</span>`;
-                row.onclick = () => window.displayCommanderProfile('PERKS');
-                listEl.appendChild(row);
-
-                if (tab === 'PERKS') {
-                    const totalPerks = Object.keys(PERKS_DATABASE).length;
-                    const unlockedIds = Object.keys(PERKS_DATABASE).filter(id => hasPlayerPerk(id));
-
-                    let perksHtml = `
-                        <div style="padding: 15px;">
-                            <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:1px solid #333; padding-bottom:10px; margin-bottom:15px;">
-                                <h3 style="color:var(--gold-text); margin:0;">CAPTAIN AUGMENTATIONS</h3>
-                                <span style="font-size:10px; color:var(--accent-color); letter-spacing:1px;">${unlockedIds.length} / ${totalPerks} ACQUIRED</span>
-                            </div>
-                            <div style="display:flex; flex-direction:column; gap:10px; max-height: 380px; overflow-y: auto; padding-right: 5px;">
+                        </div>
                     `;
-
-                    if (unlockedIds.length === 0) {
-                        perksHtml += `<div style="text-align:center; padding: 30px; color:#666; font-style:italic;">No specialized captain perks unlocked yet. Gain XP and level up to choose augmentations.</div>`;
-                    } else {
-                        unlockedIds.forEach(id => {
-                            const p = PERKS_DATABASE[id];
-                            perksHtml += `
-                                <div style="background:rgba(0,0,0,0.35); border-left:3px solid var(--gold-text); padding:10px 12px; border-radius:0 4px 4px 0; display:flex; gap:12px; align-items:center;">
-                                    <div style="font-size:26px;">${p.icon}</div>
-                                    <div style="flex:1;">
-                                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                                            <span style="color:var(--item-name-color); font-weight:bold; font-size:13px;">${p.name}</span>
-                                            <span style="color:var(--accent-color); font-size:9px; text-transform:uppercase; letter-spacing:1px;">${p.category}</span>
-                                        </div>
-                                        <div style="color:var(--item-desc-color); font-size:11px; margin-top:4px; line-height:1.4;">${p.description}</div>
-                                    </div>
-                                </div>
-                            `;
-                        });
-                    }
-
-                    perksHtml += `</div></div>`;
-                    detailEl.innerHTML = perksHtml;
                 }
             };
-            window._perksProfileHooked = true;
+            window._biomeSurfaceScanPatched = true;
         }
+
+        // 2. PREVENT INFINITE BIO-SCAN EXPLOIT & PERSIST DELTAS
+        if (typeof window.scanPlanetForLife === 'function' && !window._biomeBioScanPatched) {
+            const origScanLife = window.scanPlanetForLife;
+            window.scanPlanetForLife = function() {
+                if (typeof currentGameState !== 'undefined' && currentGameState !== GAME_STATES.PLANET_VIEW) return;
+                if (!currentSystemData || !currentSystemData.planets) return;
+
+                const planet = currentSystemData.planets[selectedPlanetIndex];
+                if (!planet) return;
+
+                const sysKey = `${currentSystemData.x},${currentSystemData.y}_p${selectedPlanetIndex}`;
+                if (typeof worldStateDeltas !== 'undefined' && worldStateDeltas[sysKey] && worldStateDeltas[sysKey].scanned) {
+                    planet.scannedThisVisit = true;
+                }
+
+                if (planet.scannedThisVisit) {
+                    if (typeof logMessage === 'function') logMessage("Biological signatures in this landing zone have already been sampled.");
+                    if (typeof showToast === 'function') showToast("BIO-SCAN ALREADY COMPLETE", "info");
+                    if (typeof renderPlanetView === 'function') renderPlanetView();
+                    return;
+                }
+
+                origScanLife.apply(this, arguments);
+
+                if (planet.scannedThisVisit) {
+                    if (typeof soundManager !== 'undefined') soundManager.playScan();
+                    if (typeof showToast === 'function') showToast("BIO-SAMPLES COLLECTED", "success");
+                    if (typeof worldStateDeltas !== 'undefined') {
+                        if (!worldStateDeltas[sysKey]) worldStateDeltas[sysKey] = {};
+                        worldStateDeltas[sysKey].scanned = true;
+                        worldStateDeltas[sysKey].lastInteraction = typeof currentGameDate !== 'undefined' ? currentGameDate : 0;
+                    }
+                    if (typeof renderPlanetView === 'function') renderPlanetView();
+                }
+            };
+            window._biomeBioScanPatched = true;
+        }
+
+        // 3. REFRESH PLANET VIEW AFTER SURFACE MINING
+        if (typeof window.minePlanet === 'function' && !window._biomeMinePlanetPatched) {
+            const origMinePlanet = window.minePlanet;
+            window.minePlanet = function() {
+                origMinePlanet.apply(this, arguments);
+                if (typeof currentGameState !== 'undefined' && currentGameState === GAME_STATES.PLANET_VIEW && typeof renderPlanetView === 'function') {
+                    renderPlanetView();
+                }
+            };
+            window._biomeMinePlanetPatched = true;
+        }
+
+        // 4. DATA-DRIVEN SURFACE EXPEDITION ENGINE
+        window.startSurfaceExpedition = function() {
+            if (!currentSystemData || !currentSystemData.planets) return;
+            const planet = currentSystemData.planets[selectedPlanetIndex];
+            if (!planet || planet.exploredThisVisit) return;
+
+            const sysKey = `${currentSystemData.x},${currentSystemData.y}_p${selectedPlanetIndex}`;
+            planet.exploredThisVisit = true;
+            if (typeof worldStateDeltas !== 'undefined') {
+                if (!worldStateDeltas[sysKey]) worldStateDeltas[sysKey] = {};
+                worldStateDeltas[sysKey].explored = true;
+                worldStateDeltas[sysKey].lastInteraction = typeof currentGameDate !== 'undefined' ? currentGameDate : 0;
+            }
+
+            if (typeof advanceGameTime === 'function') advanceGameTime(0.25);
+            if (typeof soundManager !== 'undefined') soundManager.playScan();
+
+            const biome = planet.biome || PLANET_BIOMES.BARREN_ROCK;
+            const expData = biome.expeditionData || { baseXp: 80 };
+            const flavor = biome.expeditionFlavor || "Your away team conducts a thorough overland traverse of the landing zone.";
+
+            const hasScavenger = _biomeHasPerk('SCAVENGER_PROTOCOL') || (typeof hasCrewPerk === 'function' && hasCrewPerk('SCAVENGER_PROTOCOL'));
+            const hasBio = _biomeHasPerk('XENO_BIOLOGIST');
+            const hasHealthPhysicist = _biomeHasPerk('HEALTH_PHYSICIST') ||
+                                       (typeof playerShip !== 'undefined' && playerShip.components && playerShip.components.utility === 'UTIL_DOSIMETRY_ARRAY');
+
+            let xpGain = (expData.baseXp || 80) + Math.floor(Math.random() * 40);
+            if (hasBio && (BiomeUtils.isHabitableBiome(biome.id) || biome.id === 'DEATH_WORLD' || biome.id === 'SULFURIC_MIRE')) {
+                xpGain *= 2;
+            }
+
+            let creditFind = 0;
+            let lootItems = [];
+            let hazardMsg = "";
+
+            // 1. Lore Unlocks
+            if (expData.loreKey && typeof unlockLoreEntry === 'function') {
+                unlockLoreEntry(expData.loreKey);
+            }
+
+            // 2. Dynamic Hazard Resolution
+            if (expData.hazard && Math.random() < expData.hazard.chance) {
+                const haz = expData.hazard;
+                
+                if (haz.type === 'RADIATION' && hasHealthPhysicist) {
+                    hazardMsg = `<br><br><span style="color:var(--success)">☢️ DOSIMETRY SHIELDING: Zero radiation damage taken during surface EVA.</span>`;
+                } else {
+                    hazardMsg = `<br><br><span style="color:var(--danger)">${haz.msg} (-${haz.damage} Hull).</span>`;
+                    if (typeof GameBus !== 'undefined') {
+                        GameBus.emit('HULL_DAMAGED', { amount: haz.damage, reason: `Planetary Hazard (${biome.name})` });
+                    }
+                    if (typeof playerHull !== 'undefined' && playerHull <= 0) return;
+                }
+            }
+
+            // 3. Dynamic Loot Resolution
+            if (expData.guaranteedLoot) {
+                expData.guaranteedLoot.forEach(loot => {
+                    const qty = loot.min + Math.floor(Math.random() * (loot.max - loot.min + 1));
+                    if (qty > 0) lootItems.push({ id: loot.id, qty: qty * (hasScavenger ? 2 : 1) });
+                });
+            } else {
+                const pool = biome.resources && biome.resources.length > 0 ? biome.resources : ['MINERALS'];
+                const pickedId = pool[Math.floor(Math.random() * pool.length)];
+                const baseQty = 4 + Math.floor(Math.random() * 6);
+                lootItems.push({ id: pickedId, qty: baseQty * (hasScavenger ? 2 : 1) });
+                creditFind = (150 + Math.floor(Math.random() * 250)) * (hasScavenger ? 2 : 1);
+            }
+
+            // 4. Award Inventory & Credits
+            let rewardSummary = [];
+            if (creditFind > 0 && typeof playerCredits !== 'undefined') {
+                playerCredits += creditFind;
+                rewardSummary.push(`<span style="color:var(--gold-text)">+${formatNumber(creditFind)}c Salvage Cache</span>`);
+            }
+
+            lootItems.forEach(item => {
+                if (typeof COMMODITIES !== 'undefined' && COMMODITIES[item.id]) {
+                    const weight = COMMODITIES[item.id].weight !== undefined ? COMMODITIES[item.id].weight : 1;
+                    const spaceLeft = weight > 0
+                        ? Math.floor((PLAYER_CARGO_CAPACITY - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0)) / weight)
+                        : item.qty;
+                    const actualQty = Math.min(item.qty, Math.max(0, spaceLeft));
+                    
+                    if (actualQty > 0) {
+                        playerCargo[item.id] = (playerCargo[item.id] || 0) + actualQty;
+                        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                        rewardSummary.push(`<span style="color:var(--accent-color)">+${actualQty}x ${COMMODITIES[item.id].name}</span>`);
+                    } else if (item.qty > 0) {
+                        rewardSummary.push(`<span style="color:var(--danger)">${COMMODITIES[item.id].name} (Hold Full)</span>`);
+                    }
+                }
+            });
+
+            if (typeof playerXP !== 'undefined') {
+                playerXP += xpGain;
+                rewardSummary.push(`<span style="color:var(--success)">+${formatNumber(xpGain)} XP</span>`);
+            }
+
+            if (typeof logMessage === 'function') {
+                logMessage(`<span style="color:#DDA0DD">[ SURFACE EXPEDITION ]</span> ${flavor} Recovered: ${rewardSummary.join(', ')}.${hazardMsg}`);
+            }
+            if (typeof showToast === 'function') showToast("EXPEDITION COMPLETE", "success");
+
+            if (typeof renderPlanetView === 'function') renderPlanetView();
+            if (typeof checkLevelUp === 'function') checkLevelUp();
+            if (typeof autoSaveGame === 'function') autoSaveGame();
+        };
+
+        // 5. MACHINE WORLD CORE INTERFACE
+        window.hackMachineWorld = function() {
+            if (!currentSystemData || !currentSystemData.planets) return;
+            const planet = currentSystemData.planets[selectedPlanetIndex];
+            if (!planet || planet.hackedThisVisit) return;
+
+            const sysKey = `${currentSystemData.x},${currentSystemData.y}_p${selectedPlanetIndex}`;
+            planet.hackedThisVisit = true;
+            if (typeof worldStateDeltas !== 'undefined') {
+                if (!worldStateDeltas[sysKey]) worldStateDeltas[sysKey] = {};
+                worldStateDeltas[sysKey].hacked = true;
+                worldStateDeltas[sysKey].lastInteraction = typeof currentGameDate !== 'undefined' ? currentGameDate : 0;
+            }
+
+            if (typeof unlockLoreEntry === 'function') unlockLoreEntry('XENO_MACHINE_WORLD');
+            if (typeof advanceGameTime === 'function') advanceGameTime(0.20);
+
+            const hasSlicer = _biomeHasPerk('CYBER_SLICER') || (typeof hasCrewPerk === 'function' && hasCrewPerk('ASTROMETRICS'));
+            const successChance = hasSlicer ? 0.90 : 0.60;
+
+            if (Math.random() < successChance) {
+                const credits = 1500 + Math.floor(Math.random() * 1500);
+                const xp = 250;
+                if (typeof playerCredits !== 'undefined') playerCredits += credits;
+                if (typeof playerXP !== 'undefined') playerXP += xp;
+
+                let lootMsg = "";
+                if ((typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0) + 1 <= PLAYER_CARGO_CAPACITY) {
+                    const dropId = Math.random() < 0.5 ? 'AI_CORE' : 'ENCRYPTED_DATA';
+                    playerCargo[dropId] = (playerCargo[dropId] || 0) + 1;
+                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                    if (typeof COMMODITIES !== 'undefined' && COMMODITIES[dropId]) {
+                        lootMsg = ` Extracted <span style="color:var(--gold-text)">1x ${COMMODITIES[dropId].name}</span>!`;
+                    }
+                }
+
+                if (typeof soundManager !== 'undefined') soundManager.playGain();
+                if (typeof showToast === 'function') showToast("CORE BREACH SUCCESSFUL", "success");
+                if (typeof logMessage === 'function') {
+                    logMessage(`<span style="color:#00E0E0; font-weight:bold;">[ CORE NETWORK BREACHED ]</span> Siphoned ${formatNumber(credits)}c and +${xp} XP from the planetary nexus.${lootMsg}`);
+                }
+            } else {
+                const dmg = 25;
+                if (typeof logMessage === 'function') {
+                    logMessage(`<span style="color:var(--danger); font-weight:bold;">[ BLACK-ICE COUNTERMEASURE ]</span> Planetary firewall feedback surged through your umbilical! Hull took ${dmg} damage.`);
+                }
+                if (typeof showToast === 'function') showToast("FIREWALL FEEDBACK", "error");
+                if (typeof GameBus !== 'undefined') {
+                    GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Machine World Black-ICE Feedback" });
+                }
+                if (typeof playerHull !== 'undefined' && playerHull <= 0) return;
+            }
+
+            if (typeof renderPlanetView === 'function') renderPlanetView();
+            if (typeof checkLevelUp === 'function') checkLevelUp();
+            if (typeof autoSaveGame === 'function') autoSaveGame();
+        };
+        
+        // 6. UNIFIED NATIVE PLANET VIEW RENDERER
+        window.renderPlanetView = function() {
+            const planetView = document.getElementById('planetView');
+            if (!planetView || !currentSystemData || !currentSystemData.planets) return;
+            
+            const planet = currentSystemData.planets[selectedPlanetIndex];
+            if (!planet) return;
+            
+            const sysKey = `${currentSystemData.x},${currentSystemData.y}_p${selectedPlanetIndex}`;
+            const savedState = (typeof worldStateDeltas !== 'undefined' && worldStateDeltas[sysKey]) ? worldStateDeltas[sysKey] : {};
+
+            if (savedState.mined) planet.minedThisVisit = true;
+            if (savedState.scanned) planet.scannedThisVisit = true;
+            if (savedState.explored) planet.exploredThisVisit = true;
+            if (savedState.hacked) planet.hackedThisVisit = true;
+            if (savedState.specialUsed) planet.specialUsedThisVisit = true;
+
+            const bId = planet.biome.id || Object.keys(PLANET_BIOMES).find(key => PLANET_BIOMES[key].name === planet.biome.name) || 'BARREN_ROCK';
+
+            // Unlock biome-specific lore on landing
+            if (typeof unlockLoreEntry === 'function') {
+                if (bId === 'MACHINE_WORLD') unlockLoreEntry('XENO_MACHINE_WORLD');
+                else if (bId === 'IRRADIATED') unlockLoreEntry('PHENOMENON_IRRADIATED');
+                else if (bId === 'TOMB_WORLD' || bId === 'ARCHIVE_WORLD') unlockLoreEntry('XENO_TOMB_WORLDS');
+                else if (bId === 'MYCELIAL') unlockLoreEntry('LEGEND_SENTIENT_MYCELIUM_NETWORK');
+                else if (bId === 'CRYSTAL') unlockLoreEntry('PHENOMENON_VOID_CRYSTALS');
+            }
+
+            const bioResources = (planet.biome.resources || []).filter(r => typeof BIOLOGICAL_RESOURCES !== 'undefined' && BIOLOGICAL_RESOURCES.has(r));
+            const mineralResources = (planet.biome.resources || []).filter(r => typeof BIOLOGICAL_RESOURCES !== 'undefined' && !BIOLOGICAL_RESOURCES.has(r));
+
+            const canMine = planet.biome.landable && mineralResources.length > 0 && !planet.minedThisVisit;
+            const mineButtonState = canMine ? '' : 'disabled';
+            const mineLabel = planet.minedThisVisit ? '✓ Minerals Depleted' : (canMine ? '⛏️ Mine Minerals' : 'No Minerals Detected');
+
+            const canScan = planet.biome.landable && bioResources.length > 0 && !planet.scannedThisVisit;
+            const scanButtonState = canScan ? '' : 'disabled';
+            const scanLabel = planet.scannedThisVisit ? '✓ Bio-Scan Complete' : (canScan ? '🧬 Scan Lifeforms' : 'No Bio-Signs');
+
+            const droneCount = (typeof playerCargo !== 'undefined' && playerCargo.MINING_DRONE) ? playerCargo.MINING_DRONE : 0;
+            const hasDrone = droneCount > 0;
+            const surveyButtonState = hasDrone ? '' : 'disabled';
+            const surveyLabel = hasDrone ? `🛰️ Launch Geo-Survey (${droneCount})` : 'Geo-Survey <br><span style="font-size:10px; opacity:0.7">(Requires Survey Drone)</span>';
+             
+            const canExplore = planet.biome.landable && !planet.exploredThisVisit;
+            const exploreButtonState = canExplore ? '' : 'disabled';
+            const exploreLabel = canExplore ? '🏔️ Surface Expedition' : '✓ Region Explored';
+
+            // --- DYNAMIC COLONY BUTTON LOGIC (Fixes playerHasColonyCharter desync) ---
+            let colonyButtonHtml = '';
+            const colId = `${currentSystemData.x}_${currentSystemData.y}_p${selectedPlanetIndex}`; 
+            const colonyHere = typeof playerColonies !== 'undefined' ? playerColonies[colId] : null;
+            const isColonyHere = Boolean(colonyHere && colonyHere.established);
+            const hasCharterInCargo = typeof playerCargo !== 'undefined' && (playerCargo['COLONY_CHARTER'] || 0) > 0;
+
+            if (isColonyHere) {
+                colonyButtonHtml = `
+                    <button class="action-button" onclick="openColonyManagement('${colId}')" style="border-color: var(--success); color: var(--success); box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);">
+                        🏢 MANAGE COLONY (${colonyHere.name.toUpperCase()})
+                    </button>`;
+            } else if (hasCharterInCargo) {
+                if (planet.biome.landable) {
+                    colonyButtonHtml = `
+                        <button class="action-button" onclick="surveyForColony('${planet.name}', '${bId}', ${currentSystemData.x}, ${currentSystemData.y})" style="border-color: var(--gold-text); color: var(--gold-text); box-shadow: 0 0 10px rgba(255,215,0,0.2);">
+                            🚩 ESTABLISH COLONY
+                        </button>`;
+                } else {
+                    colonyButtonHtml = `
+                        <button class="action-button" disabled>
+                            Hostile Environment<br><span style="font-size:10px; opacity:0.7">Cannot Settle Here</span>
+                        </button>`;
+                }
+            } else {
+                colonyButtonHtml = `
+                    <button class="action-button" disabled>
+                        Establish Colony<br><span style="font-size:10px; opacity:0.7">Requires Pioneer Charter</span>
+                    </button>`;
+            }
+
+            // --- SPECIAL WORLD INTERACTIONS ---
+            let specialActionHtml = '';
+            if (bId === 'MACHINE_WORLD') {
+                const canHack = !planet.hackedThisVisit;
+                specialActionHtml = `
+                    <button class="action-button full-width-btn" onclick="hackMachineWorld()" style="border-color: #00E0E0; color: #00E0E0; box-shadow: 0 0 15px rgba(0,224,224,0.3);" ${!canHack ? 'disabled' : ''}>
+                        ${canHack ? '💻 INTERFACE WITH CORE NETWORK' : '✓ CORE LOCKED OUT'}
+                    </button>
+                `;
+            } else if (bId === 'TOMB_WORLD' || bId === 'ARCHIVE_WORLD') {
+                const canExcavate = !planet.specialUsedThisVisit;
+                specialActionHtml = `
+                    <button class="action-button full-width-btn" onclick="executeBiomeSpecialAction()" style="border-color: #DDA0DD; color: #DDA0DD; box-shadow: 0 0 15px rgba(153,51,255,0.3);" ${!canExcavate ? 'disabled' : ''}>
+                        ${canExcavate ? '🏛️ EXCAVATE PRECURSOR SANCTUM' : '✓ SANCTUM EXCAVATED'}
+                    </button>
+                `;
+            } else if (bId === 'CRYSTAL') {
+                const canAttune = !planet.specialUsedThisVisit;
+                specialActionHtml = `
+                    <button class="action-button full-width-btn" onclick="executeBiomeSpecialAction()" style="border-color: #FF33FF; color: #FF33FF; box-shadow: 0 0 15px rgba(255,51,255,0.3);" ${!canAttune ? 'disabled' : ''}>
+                        ${canAttune ? '🔮 ATTUNE HARMONIC LATTICE (+150% SHIELDS)' : '✓ HARMONICS DEPLETED'}
+                    </button>
+                `;
+            } else if (bId === 'MYCELIAL') {
+                const canCommune = !planet.specialUsedThisVisit;
+                specialActionHtml = `
+                    <button class="action-button full-width-btn" onclick="executeBiomeSpecialAction()" style="border-color: #00FFAA; color: #00FFAA; box-shadow: 0 0 15px rgba(0,255,170,0.3);" ${!canCommune ? 'disabled' : ''}>
+                        ${canCommune ? '🍄 COMMUNE WITH SPORE NETWORK' : '✓ SPORE LINK DORMANT'}
+                    </button>
+                `;
+            }
+            
+            const hazardText = planet.biome.hazard && planet.biome.hazard !== 'NONE'
+                ? `<span style="color:var(--danger); font-weight:bold;">⚠️ HAZARD: ${planet.biome.hazard}</span>`
+                : `<span style="color:var(--success);">ENVIRONMENT: STABLE</span>`;
+
+            // Resource Badges & Colony Trait Readout
+            const resourcePillsHtml = (planet.biome.resources || []).map(rId => {
+                const cDef = (typeof COMMODITIES !== 'undefined' && COMMODITIES[rId]) ? COMMODITIES[rId] : { name: rId, icon: '📦' };
+                const isBio = typeof BIOLOGICAL_RESOURCES !== 'undefined' && BIOLOGICAL_RESOURCES.has(rId);
+                const pillColor = isBio ? 'var(--success)' : 'var(--gold-text)';
+                return `<span style="display:inline-block; font-size:10px; color:${pillColor}; border:1px solid ${pillColor}; background:rgba(0,0,0,0.4); padding:2px 8px; border-radius:12px; margin:2px 4px;">${cDef.icon || ''} ${cDef.name}</span>`;
+            }).join('');
+
+            const colonyTraitHtml = planet.biome.colonyBonusDesc
+                ? `<div style="font-size:11px; color:var(--item-desc-color); margin-top:8px;">Colony Trait: <span style="color:var(--text-color); font-weight:bold;">${planet.biome.colonyBonusDesc}</span></div>`
+                : '';
+
+            let html = `
+                <div class="planet-view-content">
+                    
+                    <div class="planet-header">
+                        <img src="${planet.biome.image}" alt="${planet.biome.name}" class="planet-large-img" onerror="this.onerror=null; this.src='assets/barren_rock.png';">
+                        <h2 class="planet-title">${currentSystemData.name.toUpperCase()} : ${planet.name.toUpperCase()}</h2>
+                        <div style="font-size:11px; letter-spacing:2px; margin-bottom:10px; color:var(--accent-color);">
+                            CLASS: ${planet.biome.name.toUpperCase()} &nbsp;|&nbsp; ${hazardText}
+                        </div>
+                        <p class="planet-desc">"${planet.biome.description}"</p>
+                        <div style="margin-top:12px;">
+                            ${resourcePillsHtml}
+                        </div>
+                        ${colonyTraitHtml}
+                    </div>
+                    
+                    <div class="planet-actions-grid">
+                        <button class="action-button" onclick="minePlanet()" ${mineButtonState}>${mineLabel}</button>
+                        <button class="action-button" onclick="scanPlanetForLife()" ${scanButtonState}>${scanLabel}</button>
+                        <button class="action-button" onclick="performGeoSurvey()" ${surveyButtonState}>${surveyLabel}</button>
+                        <button class="action-button" onclick="startSurfaceExpedition()" style="border-color:#9933FF; color:#DDA0DD; box-shadow: 0 0 10px rgba(153,51,255,0.2);" ${exploreButtonState}>${exploreLabel}</button>
+                        ${colonyButtonHtml}
+                        ${specialActionHtml}
+                        <button class="action-button full-width-btn" onclick="returnToOrbit()">&lt;&lt; Return to Orbit</button>
+                    </div>
+                </div>
+            `;
+
+            planetView.innerHTML = html;
+            if (typeof renderUIStats === 'function') renderUIStats();
+        };
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', attachPerkWrappers);
+        document.addEventListener('DOMContentLoaded', attachBiomeHooks);
     } else {
-        attachPerkWrappers();
+        attachBiomeHooks();
     }
 })();
 
-// --- END OF FILE perks.js ---
+// --- END OF FILE biomes.js ---
