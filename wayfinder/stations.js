@@ -929,9 +929,9 @@ function executeWarlordChallenge() {
     
     // Create a custom Boss Entity overriding standard generation
     const warlord = {
-        shipClassKey: "KTHARR_DESTROYER",
+        shipClassKey: "KTHARR_WARLORD", 
         isBoss: true,
-        name: "Kaelen's Wrath (Warlord)"
+        name: "Kaeber's Wrath (Warlord)"
     };
     
     if (typeof startCombat === 'function') {
