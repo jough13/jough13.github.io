@@ -4,204 +4,407 @@
     <meta charset="UTF-8">
     <!-- BUG FIX: Added maximum-scale and user-scalable to prevent annoying double-tap zooming on mobile! -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Wayfinder: Echoes of the Void — A retro ASCII deep-space exploration, trade, colony, and tactical combat simulation.">
+    <meta name="theme-color" id="metaThemeColor" content="#050510">
     <title>Wayfinder: Echoes of the Void</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
+
+    <!-- PERFORMANCE: Preconnect to font origins before stylesheet request -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 
     <script>
-        // --- FLIGHT RECORDER v4.2 (The Diagnostician - Telemetry Only) ---
-        const consoleHistory = [];
-        const MAX_LOGS = 50;
+        // --- FLIGHT RECORDER v4.5 (The Diagnostician - Telemetry, Safe Escaping & Export API) ---
+        (function initFlightRecorder() {
+            const consoleHistory = [];
+            const MAX_LOGS = 60;
+            let lastCrashReport = "";
+            let isRenderingCrash = false;
 
-        // 1. Hijack standard console methods strictly for background telemetry
-        ['log', 'warn', 'error', 'info'].forEach(method => {
-            const original = console[method];
-            console[method] = function(...args) {
+            // Preserve global reference for backward compatibility
+            window.consoleHistory = consoleHistory;
 
-                const msg = args.map(a => {
-                    if (typeof a === 'object') {
-                        try { return JSON.stringify(a); } 
-                        catch (e) { return "[Complex Object/DOM Node]"; }
-                    }
-                    return String(a);
-                }).join(' ');
-                
-                // A. Keep the Diagnostician History for the Crash Screen
-                consoleHistory.push({ type: method, msg: msg });
-                if (consoleHistory.length > MAX_LOGS) consoleHistory.shift();
-                
-                // B. Call the original console method for the browser dev tools
-                original.apply(console, args);
-                
-                // C. Trigger the massive Red Crash Screen on actual code errors
-                if (method === 'error') {
-                    const stack = new Error().stack || "No stack trace";
-                    if (typeof showCriticalErrorScreen === 'function') {
-                        showCriticalErrorScreen("CONSOLE.ERROR TRIGGERED", msg, "Invoked via console", stack);
+            function escapeHtml(str) {
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function serializeArg(arg) {
+                if (arg instanceof Error) {
+                    return `${arg.name}: ${arg.message}${arg.stack ? '\n' + arg.stack : ''}`;
+                }
+                if (typeof arg === 'object' && arg !== null) {
+                    try {
+                        const seen = new WeakSet();
+                        return JSON.stringify(arg, (key, value) => {
+                            if (typeof value === 'object' && value !== null) {
+                                if (seen.has(value)) return '[Circular]';
+                                seen.add(value);
+                            }
+                            return value;
+                        });
+                    } catch (e) {
+                        return "[Complex Object/DOM Node]";
                     }
                 }
+                return String(arg);
+            }
+
+            const rawConsole = {};
+
+            // 1. Hijack standard console methods strictly for background telemetry
+            ['log', 'warn', 'error', 'info'].forEach(method => {
+                const original = console[method];
+                rawConsole[method] = original;
+                console[method] = function(...args) {
+                    const msg = args.map(serializeArg).join(' ');
+                    const stamp = new Date().toISOString().slice(11, 19);
+
+                    // A. Keep the Diagnostician History for the Crash Screen
+                    consoleHistory.push({ type: method, time: stamp, msg: msg });
+                    if (consoleHistory.length > MAX_LOGS) consoleHistory.shift();
+
+                    // B. Call the original console method for the browser dev tools
+                    if (typeof original === 'function') original.apply(console, args);
+
+                    // C. Trigger the massive Red Crash Screen on actual code errors
+                    if (method === 'error' && !isRenderingCrash) {
+                        const stack = new Error().stack || "No stack trace";
+                        if (typeof window.showCriticalErrorScreen === 'function') {
+                            window.showCriticalErrorScreen("CONSOLE.ERROR TRIGGERED", msg, "Invoked via console", stack);
+                        }
+                    }
+                };
+            });
+
+            // 2. The Master Render Function
+            function showCriticalErrorScreen(errorType, exactMessage, location, stack, diagnosticHTML = "") {
+                if (isRenderingCrash || document.getElementById('criticalSystemFailureScreen')) return;
+                isRenderingCrash = true;
+
+                const mountScreen = () => {
+                    if (document.getElementById('criticalSystemFailureScreen')) return;
+
+                    const safeType = escapeHtml(errorType || "Runtime Error");
+                    const safeMessage = escapeHtml(exactMessage || "Unknown system fault");
+                    const safeLocation = escapeHtml(location || "Unknown Location");
+                    const safeStack = escapeHtml(stack || "No stack trace available.");
+
+                    lastCrashReport = [
+                        "=== WAYFINDER FLIGHT RECORDER CRASH REPORT ===",
+                        `Timestamp: ${new Date().toISOString()}`,
+                        `Type: ${errorType}`,
+                        `Message: ${exactMessage}`,
+                        `Location: ${location}`,
+                        `UserAgent: ${navigator.userAgent}`,
+                        "",
+                        "--- STACK TRACE ---",
+                        stack || "None",
+                        "",
+                        "--- RECENT CONSOLE TELEMETRY ---",
+                        ...consoleHistory.map(l => `[${l.time}] [${l.type.toUpperCase()}] ${l.msg}`)
+                    ].join('\n');
+
+                    const div = document.createElement('div');
+                    div.id = 'criticalSystemFailureScreen';
+                    div.setAttribute('role', 'alertdialog');
+                    div.setAttribute('aria-modal', 'true');
+                    div.style.cssText = `
+                        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                        background: #000; color: #FF0000; z-index: 99999;
+                        padding: 32px; font-family: monospace; white-space: pre-wrap;
+                        border: 5px solid #FF0000; overflow: auto; box-sizing: border-box;
+                    `;
+
+                    const logsHtml = consoleHistory.map(log => {
+                        let color = '#888';
+                        if (log.type === 'warn') color = '#FFAA00';
+                        if (log.type === 'error') color = '#FF5555';
+                        return `<div style="color:${color}; margin-bottom:4px; word-break:break-word;">[${log.time}] [${log.type.toUpperCase()}] ${escapeHtml(log.msg)}</div>`;
+                    }).join('');
+
+                    div.innerHTML = `
+                        <h1 style="font-size:36px; margin:0 0 20px 0; animation: blink 1s infinite;">CRITICAL SYSTEM FAILURE</h1>
+
+                        <div style="background: rgba(255, 0, 0, 0.1); border: 1px solid #F00; padding: 20px; margin-bottom: 20px;">
+                            <h2 style="color:#FFF; margin: 0 0 10px 0; font-size: 22px;">[${safeType}]</h2>
+                            <h3 style="color:#FF5555; margin: 0 0 15px 0; font-size: 16px; word-break:break-word;">${safeMessage}</h3>
+                            <div style="background: #200; padding: 10px; border-left: 4px solid #F00;">
+                                <span style="color:#FFAA00; font-weight: bold;">LOCATION:</span>
+                                <span style="color:#FFF; font-size: 15px;">${safeLocation}</span>
+                            </div>
+                            ${diagnosticHTML}
+                        </div>
+
+                        <div style="border-top:1px solid #333; margin-top:20px; padding-top:20px; color:#AAA;">
+                            <strong style="color: #FFF;">RAW STACK TRACE:</strong><br>
+                            <div style="background:#111; padding:15px; margin-top:10px; border:1px solid #333; font-size:13px; line-height: 1.4; overflow-x:auto;">${safeStack}</div>
+                        </div>
+
+                        <div style="border-top:1px solid #333; margin-top:20px; padding-top:20px;">
+                            <strong style="color: #FFF;">RECENT CONSOLE TELEMETRY (${consoleHistory.length}):</strong><br>
+                            <div style="background:#111; padding:15px; margin-top:10px; border:1px solid #333; font-size:12px; line-height: 1.4; max-height: 240px; overflow-y:auto;">${logsHtml || '<span style="color:#555">No recent console activity.</span>'}</div>
+                        </div>
+
+                        <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:30px;">
+                            <button onclick="FlightRecorder.copyReport(this)" style="flex:1; min-width:160px; padding:14px; background:#112233; color:#00E0E0; border:1px solid #00E0E0; cursor:pointer; font-weight:bold; font-size:14px;">COPY DIAGNOSTIC REPORT</button>
+                            <button onclick="FlightRecorder.downloadReport()" style="flex:1; min-width:160px; padding:14px; background:#112211; color:#00FF88; border:1px solid #00FF88; cursor:pointer; font-weight:bold; font-size:14px;">DOWNLOAD LOG (.TXT)</button>
+                            <button onclick="FlightRecorder.dismiss()" style="flex:1; min-width:160px; padding:14px; background:#222; color:#CCC; border:1px solid #666; cursor:pointer; font-weight:bold; font-size:14px;">DISMISS OVERLAY</button>
+                            <button onclick="location.reload()" style="flex:1 1 100%; padding:18px; background:#300; color:#F00; border:1px solid #F00; cursor:pointer; font-weight:bold; font-size:18px;">ATTEMPT SYSTEM REBOOT</button>
+                        </div>
+                    `;
+
+                    if (document.body) {
+                        document.body.style.opacity = '1';
+                        document.body.style.visibility = 'visible';
+                        document.body.appendChild(div);
+                    } else {
+                        document.documentElement.appendChild(div);
+                    }
+                    isRenderingCrash = false;
+                };
+
+                if (document.body) {
+                    mountScreen();
+                } else {
+                    window.addEventListener('DOMContentLoaded', mountScreen, { once: true });
+                }
+            }
+
+            window.showCriticalErrorScreen = showCriticalErrorScreen;
+
+            // Public FlightRecorder API for debugging & future expansion
+            window.FlightRecorder = {
+                version: "4.5",
+                getLogs: () => consoleHistory.slice(),
+                clearLogs: () => { consoleHistory.length = 0; },
+                getReport: () => lastCrashReport,
+                copyReport: (btnEl) => {
+                    if (!lastCrashReport) return;
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(lastCrashReport).then(() => {
+                            if (btnEl) btnEl.textContent = "REPORT COPIED!";
+                        }).catch(() => {});
+                    }
+                },
+                downloadReport: () => {
+                    try {
+                        const blob = new Blob([lastCrashReport || "No crash report available."], { type: "text/plain;charset=utf-8" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `wayfinder_crash_${Date.now()}.txt`;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        URL.revokeObjectURL(url);
+                    } catch (e) {}
+                },
+                dismiss: () => {
+                    const el = document.getElementById('criticalSystemFailureScreen');
+                    if (el) el.remove();
+                    isRenderingCrash = false;
+                }
             };
-        });
 
-        // 2. The Master Render Function
-        function showCriticalErrorScreen(errorType, exactMessage, location, stack, diagnosticHTML = "") {
-            if (document.getElementById('criticalSystemFailureScreen')) return;
+            // 3. The Catchers
+            window.onerror = function(msg, url, lineNo, columnNo, error) {
+                const fileName = url ? url.split('/').pop() : 'Unknown File';
+                const loc = `${fileName} — Line: ${lineNo}, Column: ${columnNo}`;
 
-            const div = document.createElement('div');
-            div.id = 'criticalSystemFailureScreen';
-            div.style.cssText = `
-                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-                background: #000; color: #FF0000; z-index: 9999;
-                padding: 40px; font-family: monospace; white-space: pre-wrap;
-                border: 5px solid #FF0000; overflow: auto;
-            `;
-            
-            const logsHtml = consoleHistory.map(log => {
-                let color = '#888';
-                if (log.type === 'warn') color = '#FFAA00';
-                if (log.type === 'error') color = '#FF5555';
-                return `<div style="color:${color}; margin-bottom:4px;">[${log.type.toUpperCase()}] ${log.msg}</div>`;
-            }).join('');
+                const errorType = error && error.name ? error.name : (String(msg).includes("SyntaxError") ? "SyntaxError" : "Runtime Error");
+                const exactMessage = error && error.message ? error.message : String(msg);
+                const stackTrace = (error && error.stack) ? error.stack : `Parse/Syntax Error Data:\n${msg}`;
 
-            div.innerHTML = `
-                <h1 style="font-size:40px; margin-bottom:20px; animation: blink 1s infinite;">CRITICAL SYSTEM FAILURE</h1>
-                
-                <div style="background: rgba(255, 0, 0, 0.1); border: 1px solid #F00; padding: 20px; margin-bottom: 20px;">
-                    <h2 style="color:#FFF; margin: 0 0 10px 0; font-size: 24px;">[${errorType}]</h2>
-                    <h3 style="color:#FF5555; margin: 0 0 15px 0; font-size: 18px;">${exactMessage}</h3>
-                    <div style="background: #200; padding: 10px; border-left: 4px solid #F00;">
-                        <span style="color:#FFAA00; font-weight: bold;">LOCATION:</span> 
-                        <span style="color:#FFF; font-size: 16px;">${location}</span>
-                    </div>
-                    ${diagnosticHTML} </div>
-                
-                <div style="border-top:1px solid #333; margin-top:20px; padding-top:20px; color:#AAA;">
-                    <strong style="color: #FFF;">RAW STACK TRACE:</strong><br>
-                    <div style="background:#111; padding:15px; margin-top:10px; border:1px solid #333; font-size:14px; line-height: 1.4;">
-                        ${stack ? stack : 'No stack trace available.'}
-                    </div>
-                </div>
+                let diagnosticHTML = "";
 
-                <div style="border-top:1px solid #333; margin-top:20px; padding-top:20px;">
-                    <strong style="color: #FFF;">RECENT CONSOLE TELEMETRY:</strong><br>
-                    <div style="background:#111; padding:15px; margin-top:10px; border:1px solid #333; font-size:12px; line-height: 1.4;">
-                        ${logsHtml || '<span style="color:#555">No recent console activity.</span>'}
-                    </div>
-                </div>
+                if (exactMessage.includes("Cannot read properties of undefined") || exactMessage.includes("Cannot read properties of null")) {
+                    const match = exactMessage.match(/reading '(.+?)'/);
+                    const prop = escapeHtml(match ? match[1] : 'something');
+                    const state = exactMessage.includes("null") ? "NULL" : "UNDEFINED";
 
-                <button onclick="location.reload()" style="margin-top:40px; padding:20px; background:#300; color:#F00; border:1px solid #F00; cursor:pointer; font-weight:bold; width: 100%; font-size: 18px;">ATTEMPT SYSTEM REBOOT</button>
-            `;
-            
-            document.body.style.opacity = '1';
-            document.body.style.visibility = 'visible';
-            document.body.appendChild(div);
-        }
+                    diagnosticHTML = `
+                    <div style="background: rgba(255, 165, 0, 0.1); border: 1px solid #FFAA00; padding: 15px; margin-top: 15px; font-family: sans-serif;">
+                        <strong style="color: #FFAA00; font-size: 16px;">💡 AUTO-DIAGNOSTIC: The "Ghost Object" Error</strong><br>
+                        <p style="color: #DDD; font-size: 14px; line-height: 1.5; margin-bottom: 0;">
+                            The code is trying to access <code>.${prop}</code> on an object, but that object is currently <strong>${state}</strong> (it does not exist yet).<br><br>
+                            <strong>Common Culprits:</strong><br>
+                            • <strong>DOM Typo:</strong> Did you misspell an ID or Class name in your HTML or JS?<br>
+                            • <strong>Execution Order:</strong> Are you trying to modify <code>.${prop}</code> before the HTML element has actually been rendered?<br>
+                            • <strong>Database Typo:</strong> Did you try to look up a ship or item ID that doesn't exist in your <code>const</code> databases?<br><br>
+                            <strong style="color:#FFF;">Traceability Step:</strong> Go to <strong>${escapeHtml(fileName)}</strong> at <strong>Line ${escapeHtml(lineNo)}</strong> and verify the object exists before accessing <code>.${prop}</code>.
+                        </p>
+                    </div>`;
+                }
+                else if (errorType === "ReferenceError" && exactMessage.includes("is not defined")) {
+                    const match = exactMessage.match(/(.+?) is not defined/);
+                    const varName = escapeHtml(match ? match[1] : 'A variable');
 
-        // 3. The Catchers
-        window.onerror = function(msg, url, lineNo, columnNo, error) {
-            const fileName = url ? url.split('/').pop() : 'Unknown File';
-            const loc = `${fileName} — Line: ${lineNo}, Column: ${columnNo}`;
-            
-            const errorType = error && error.name ? error.name : (msg.includes("SyntaxError") ? "SyntaxError" : "Runtime Error");
-            const exactMessage = error && error.message ? error.message : msg;
-            const stackTrace = (error && error.stack) ? error.stack : `Parse/Syntax Error Data:\n${msg}`;
+                    diagnosticHTML = `
+                    <div style="background: rgba(0, 150, 255, 0.1); border: 1px solid #0096FF; padding: 15px; margin-top: 15px; font-family: sans-serif;">
+                        <strong style="color: #0096FF; font-size: 16px;">🔍 AUTO-DIAGNOSTIC: The "Missing Identity" Error (ReferenceError)</strong><br>
+                        <p style="color: #DDD; font-size: 14px; line-height: 1.5; margin-bottom: 0;">
+                            The code is trying to use <code>${varName}</code>, but the browser has no idea what that is!<br><br>
+                            <strong>Common Culprits:</strong><br>
+                            • <strong>Typo:</strong> Did you misspell the variable or function name? (JavaScript is case-sensitive.)<br>
+                            • <strong>Scope:</strong> Is the variable defined inside a different function, making it invisible here?<br>
+                            • <strong>Script Load Failure:</strong> Did an earlier script fail to parse (e.g., a <code>SyntaxError</code>), leaving its exports undefined?
+                        </p>
+                    </div>`;
+                }
+                else if (errorType === "TypeError" && exactMessage.includes("is not a function")) {
+                    const match = exactMessage.match(/(.+?) is not a function/);
+                    const funcName = escapeHtml(match ? match[1] : 'Something');
 
-            let diagnosticHTML = "";
-            
-            if (exactMessage.includes("Cannot read properties of undefined") || exactMessage.includes("Cannot read properties of null")) {
-                const match = exactMessage.match(/reading '(.+?)'/);
-                const prop = match ? match[1] : 'something';
-                const isNull = exactMessage.includes("null");
-                const state = isNull ? "NULL" : "UNDEFINED";
-                
-                diagnosticHTML = `
-                <div style="background: rgba(255, 165, 0, 0.1); border: 1px solid #FFAA00; padding: 15px; margin-top: 15px; font-family: sans-serif;">
-                    <strong style="color: #FFAA00; font-size: 16px;">💡 AUTO-DIAGNOSTIC: The "Ghost Object" Error</strong><br>
-                    <p style="color: #DDD; font-size: 14px; line-height: 1.5; margin-bottom: 0;">
-                        The code is trying to access <code>.${prop}</code> on an object, but that object is currently <strong>${state}</strong> (it does not exist yet).<br><br>
-                        <strong>Common Culprits:</strong><br>
-                        • <strong>DOM Typo:</strong> Did you misspell an ID or Class name in your HTML or JS?<br>
-                        • <strong>Execution Order:</strong> Are you trying to modify <code>.${prop}</code> before the HTML element has actually been rendered?<br>
-                        • <strong>Database Typo:</strong> Did you try to look up a ship or item ID that doesn't exist in your <code>const</code> databases?<br><br>
-                        <strong style="color:#FFF;">Traceability Step:</strong> Go to <strong>${fileName}</strong> at <strong>Line ${lineNo}</strong>. Right before that line, type <code>console.log("Checking object:", the_object_variable_name)</code> to see what is failing to load!
-                    </p>
-                </div>`;
-            }
-            else if (errorType === "ReferenceError" && exactMessage.includes("is not defined")) {
-                const match = exactMessage.match(/(.+?) is not defined/);
-                const varName = match ? match[1] : 'A variable';
-                
-                diagnosticHTML = `
-                <div style="background: rgba(0, 150, 255, 0.1); border: 1px solid #0096FF; padding: 15px; margin-top: 15px; font-family: sans-serif;">
-                    <strong style="color: #0096FF; font-size: 16px;">🔍 AUTO-DIAGNOSTIC: The "Missing Identity" Error (ReferenceError)</strong><br>
-                    <p style="color: #DDD; font-size: 14px; line-height: 1.5; margin-bottom: 0;">
-                        The code is trying to use <code>${varName}</code>, but the browser has no idea what that is!<br><br>
-                        <strong>Common Culprits:</strong><br>
-                        • <strong>Typo:</strong> Did you misspell the variable or function name? (Remember, JavaScript is case-sensitive!)<br>
-                        • <strong>Scope:</strong> Is the variable defined inside a different function, making it invisible here?<br>
-                        • <strong>Missing Script:</strong> Are you trying to use data from <code>items.js</code> or <code>ships.js</code> before those files have finished loading?<br>
-                        • <strong>Forgot to Declare:</strong> Did you forget to put <code>let</code> or <code>const</code> before it when you created it?
-                    </p>
-                </div>`;
-            }
-            else if (errorType === "TypeError" && exactMessage.includes("is not a function")) {
-                const match = exactMessage.match(/(.+?) is not a function/);
-                const funcName = match ? match[1] : 'Something';
-                
-                diagnosticHTML = `
-                <div style="background: rgba(255, 50, 255, 0.1); border: 1px solid #FF32FF; padding: 15px; margin-top: 15px; font-family: sans-serif;">
-                    <strong style="color: #FF32FF; font-size: 16px;">⚙️ AUTO-DIAGNOSTIC: The "Imposter Function" Error (TypeError)</strong><br>
-                    <p style="color: #DDD; font-size: 14px; line-height: 1.5; margin-bottom: 0;">
-                        You are trying to call <code>${funcName}()</code>, but whatever <code>${funcName}</code> is, it's NOT a function.<br><br>
-                        <strong>Common Culprits:</strong><br>
-                        • <strong>Overwritten Variable:</strong> Did you accidentally name a string or a number the same thing as a function?<br>
-                        • <strong>Wrong Object:</strong> Are you calling a method on an array that only exists on strings? (e.g., trying to use <code>.toUpperCase()</code> on an array).<br>
-                        • <strong>Missing Method:</strong> If it's a built-in method, double-check the spelling.
-                    </p>
-                </div>`;
-            }
-            else if (errorType === "RangeError" && exactMessage.includes("Maximum call stack size exceeded")) {
-                diagnosticHTML = `
-                <div style="background: rgba(255, 0, 0, 0.2); border: 1px solid #FF0000; padding: 15px; margin-top: 15px; font-family: sans-serif;">
-                    <strong style="color: #FF0000; font-size: 16px;">🌀 AUTO-DIAGNOSTIC: The "Infinite Loop" Error (RangeError)</strong><br>
-                    <p style="color: #DDD; font-size: 14px; line-height: 1.5; margin-bottom: 0;">
-                        Your code got trapped in an endless loop of calling functions until the browser ran out of memory to keep track of it all.<br><br>
-                        <strong>Common Culprits:</strong><br>
-                        • <strong>Accidental Recursion:</strong> Did Function A call Function B, which then called Function A again, forever?<br>
-                        • <strong>Missing Exit Condition:</strong> If you are using a recursive function on purpose, double-check your <code>if</code> statement that is supposed to stop it.
-                    </p>
-                </div>`;
-            }
+                    diagnosticHTML = `
+                    <div style="background: rgba(255, 50, 255, 0.1); border: 1px solid #FF32FF; padding: 15px; margin-top: 15px; font-family: sans-serif;">
+                        <strong style="color: #FF32FF; font-size: 16px;">⚙️ AUTO-DIAGNOSTIC: The "Imposter Function" Error (TypeError)</strong><br>
+                        <p style="color: #DDD; font-size: 14px; line-height: 1.5; margin-bottom: 0;">
+                            You are trying to call <code>${funcName}()</code>, but whatever <code>${funcName}</code> is, it's NOT a function.<br><br>
+                            <strong>Common Culprits:</strong><br>
+                            • <strong>Overwritten Variable:</strong> Did a string, number, or object overwrite a function name?<br>
+                            • <strong>Wrong Type:</strong> Calling a string or Set method on an Array (or vice versa).
+                        </p>
+                    </div>`;
+                }
+                else if (errorType === "SyntaxError") {
+                    diagnosticHTML = `
+                    <div style="background: rgba(255, 80, 0, 0.15); border: 1px solid #FF5500; padding: 15px; margin-top: 15px; font-family: sans-serif;">
+                        <strong style="color: #FF8833; font-size: 16px;">🧩 AUTO-DIAGNOSTIC: Parse / Syntax Fault (SyntaxError)</strong><br>
+                        <p style="color: #DDD; font-size: 14px; line-height: 1.5; margin-bottom: 0;">
+                            <strong>${escapeHtml(fileName)}</strong> failed to parse at <strong>Line ${escapeHtml(lineNo)}</strong>. The entire script file was skipped by the browser.<br><br>
+                            <strong>Common Culprits:</strong><br>
+                            • Duplicate <code>const</code> or <code>let</code> declaration in the same block.<br>
+                            • Missing closing brace <code>}</code>, bracket <code>]</code>, or quote mark.
+                        </p>
+                    </div>`;
+                }
+                else if (errorType === "QuotaExceededError" || exactMessage.toLowerCase().includes("quota")) {
+                    diagnosticHTML = `
+                    <div style="background: rgba(255, 200, 0, 0.15); border: 1px solid #FFD700; padding: 15px; margin-top: 15px; font-family: sans-serif;">
+                        <strong style="color: #FFD700; font-size: 16px;">💾 AUTO-DIAGNOSTIC: LocalStorage Full (QuotaExceededError)</strong><br>
+                        <p style="color: #DDD; font-size: 14px; line-height: 1.5; margin-bottom: 0;">
+                            Browser storage (~5MB limit) is full. Use the <strong>SYS &gt; Save Vault</strong> tool to export and prune older campaigns.
+                        </p>
+                    </div>`;
+                }
+                else if (errorType === "RangeError" && exactMessage.includes("Maximum call stack size exceeded")) {
+                    diagnosticHTML = `
+                    <div style="background: rgba(255, 0, 0, 0.2); border: 1px solid #FF0000; padding: 15px; margin-top: 15px; font-family: sans-serif;">
+                        <strong style="color: #FF0000; font-size: 16px;">🌀 AUTO-DIAGNOSTIC: The "Infinite Loop" Error (RangeError)</strong><br>
+                        <p style="color: #DDD; font-size: 14px; line-height: 1.5; margin-bottom: 0;">
+                            Your code got trapped in an endless recursion loop until the browser ran out of call-stack memory.<br><br>
+                            <strong>Common Culprits:</strong><br>
+                            • Function A called Function B which called Function A again without an exit condition.
+                        </p>
+                    </div>`;
+                }
 
-            showCriticalErrorScreen(errorType, exactMessage, loc, stackTrace, diagnosticHTML);
-            return false; 
-        };
+                showCriticalErrorScreen(errorType, exactMessage, loc, stackTrace, diagnosticHTML);
+                return false;
+            };
 
-        window.addEventListener('unhandledrejection', function(event) {
-            const exactMessage = event.reason instanceof Error ? event.reason.message : String(event.reason);
-            const stackTrace = event.reason instanceof Error ? event.reason.stack : "No stack trace for this rejection.";
-            showCriticalErrorScreen("Unhandled Promise Rejection", exactMessage, "Async Operation", stackTrace);
-        });
+            window.addEventListener('unhandledrejection', function(event) {
+                const exactMessage = event.reason instanceof Error ? event.reason.message : String(event.reason);
+                const stackTrace = event.reason instanceof Error ? event.reason.stack : "No stack trace for this rejection.";
+                showCriticalErrorScreen("Unhandled Promise Rejection", exactMessage, "Async Operation", stackTrace);
+            });
 
-        window.addEventListener('error', function(event) {
-            if (event.target && (event.target.tagName === 'SCRIPT' || event.target.tagName === 'LINK')) {
-                const resourceType = event.target.tagName;
-                const resourceUrl = event.target.src || event.target.href;
-                const fileName = resourceUrl ? resourceUrl.split('/').pop() : 'Unknown';
-                
-                showCriticalErrorScreen(
-                    `Resource Load Failure (<${resourceType.toLowerCase()}>)`, 
-                    `Failed to load file: ${fileName}`, 
-                    `Attempted URL: ${resourceUrl}`, 
-                    `The browser could not fetch this resource. Check if the file exists and if the spelling matches exactly.`
-                );
-            } else if (event.target && (event.target.tagName === 'IMG' || event.target.tagName === 'AUDIO')) {
-                // Do not crash the game for missing images/audio, let the inline onerror fallbacks handle it
-                console.warn(`Optional media asset missing: ${event.target.src || 'unknown'}`);
-            }
-        }, true);
+            window.addEventListener('error', function(event) {
+                if (event.target && (event.target.tagName === 'SCRIPT' || event.target.tagName === 'LINK')) {
+                    const resourceType = event.target.tagName;
+                    const resourceUrl = event.target.src || event.target.href;
+                    const fileName = resourceUrl ? resourceUrl.split('/').pop() : 'Unknown';
+
+                    // Ignore external font stylesheet failures when offline so the game still boots cleanly
+                    if (resourceType === 'LINK' && resourceUrl && resourceUrl.includes('fonts.googleapis.com')) {
+                        console.warn(`Offline mode: could not fetch remote font stylesheet (${resourceUrl}). Falling back to system monospace.`);
+                        return;
+                    }
+
+                    showCriticalErrorScreen(
+                        `Resource Load Failure (<${resourceType.toLowerCase()}>)`,
+                        `Failed to load file: ${fileName}`,
+                        `Attempted URL: ${resourceUrl}`,
+                        `The browser could not fetch this resource. Check if the file exists and if the spelling matches exactly.`
+                    );
+                } else if (event.target && (event.target.tagName === 'IMG' || event.target.tagName === 'AUDIO' || event.target.tagName === 'VIDEO')) {
+                    // Do not crash the game for missing media, let inline onerror fallbacks handle it
+                    console.warn(`Optional media asset missing: ${event.target.src || 'unknown'}`);
+                }
+            }, true);
+        })();
     </script>
+
+    <style>
+        /* Smooth boot reveal + compact inline controls for System Menu sliders */
+        body.loaded {
+            opacity: 1;
+            visibility: visible;
+        }
+        .sys-slider-group {
+            padding: 6px 8px;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .sys-slider-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+            color: var(--item-desc-color);
+            letter-spacing: 1px;
+        }
+        .sys-slider-row input[type="range"] {
+            width: 96px;
+            accent-color: var(--accent-color);
+            cursor: pointer;
+            margin: 0;
+        }
+        .seed-quick-btn {
+            background: transparent;
+            border: 1px dashed var(--border-color);
+            color: var(--accent-color);
+            padding: 5px 12px;
+            font-size: 11px;
+            font-family: var(--title-font);
+            letter-spacing: 1px;
+            cursor: pointer;
+            margin-top: 4px;
+            border-radius: 3px;
+            transition: all 0.15s ease;
+        }
+        .seed-quick-btn:hover {
+            border-color: var(--accent-color);
+            background: rgba(0, 224, 224, 0.1);
+        }
+        .title-dispatch {
+            margin: 14px auto 0;
+            max-width: 360px;
+            font-size: 11px;
+            line-height: 1.5;
+            color: var(--item-desc-color);
+            border-left: 2px solid var(--accent-color);
+            padding: 6px 10px;
+            text-align: left;
+            background: rgba(0, 0, 0, 0.2);
+            font-style: italic;
+        }
+        body.light-mode .sys-slider-group,
+        body.light-mode .title-dispatch {
+            background: rgba(0, 0, 0, 0.04);
+        }
+    </style>
 
 </head>
 <body class="crt">
@@ -218,70 +421,87 @@
     <script>
         setTimeout(function() { document.body.classList.add('loaded'); }, 3000);
     </script>
-    
-    <script>
-    // 1. Immediate Theme Check (Run before visual render)
-    (function() {
-        const savedTheme = localStorage.getItem('wayfinderTheme');
-        const systemLight = window.matchMedia('(prefers-color-scheme: light)').matches;
-        
-        let isLight = false;
-        if (savedTheme === 'light') isLight = true;
-        else if (!savedTheme && systemLight) isLight = true;
 
-        // 2. Set the "Curtain" Color on the HTML tag immediately
-        // This ensures the background is already White (or Dark) before the fade-in starts.
-        if (isLight) {
-            document.documentElement.style.backgroundColor = '#FFFFFF';
-        } else {
-            document.documentElement.style.backgroundColor = '#050510';
-        }
+    <script>
+    // 1. Immediate Theme & CRT Curtain Check (Run before visual render)
+    (function() {
+        try {
+            const savedTheme = localStorage.getItem('wayfinderTheme');
+            const systemLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+
+            let isLight = false;
+            if (savedTheme === 'light') isLight = true;
+            else if (!savedTheme && systemLight) isLight = true;
+
+            const curtainColor = isLight ? '#FFFFFF' : '#050510';
+            document.documentElement.style.backgroundColor = curtainColor;
+
+            const metaTheme = document.getElementById('metaThemeColor');
+            if (metaTheme) metaTheme.setAttribute('content', curtainColor);
+
+            const crtPref = localStorage.getItem('wayfinder_crt_pref');
+            if (crtPref === 'false') {
+                document.body.classList.remove('crt');
+            }
+        } catch (e) {}
     })();
     </script>
 
-    <style>
-        /* When JS adds this class, the content fades in */
-        body.loaded {
-            opacity: 1;
-            visibility: visible;
-        }
-    </style>
-
-    <div id="titleOverlay">
+    <div id="titleOverlay" role="dialog" aria-modal="true" aria-label="Wayfinder Title Screen">
         <div id="titleContainer">
             <h1 class="game-title">Wayfinder</h1>
             <p class="subtitle">Echoes of the Void</p>
-            
+
             <div id="systemBoot" style="margin-top:20px; color:var(--accent-color); font-family:var(--main-font); min-height: 20px;">
                 <span id="bootText" style="animation: blink 1s infinite;">SYSTEM INITIALIZING...</span>
             </div>
-            
+
+            <div id="titleDispatch" class="title-dispatch" aria-live="polite"></div>
+
             <script>
-                // IMMERSION: Animated Boot Sequence
-                const bootPhrases = [
-                    "WAKING NAV-COMP...", 
-                    "MOUNTING DRIVES...", 
-                    "ESTABLISHING CONCORD LINK...", 
-                    "DECRYPTING ARCHIVES...", 
-                    "SYSTEM READY."
-                ];
-                let bootIdx = 0;
-                const bootEl = document.getElementById('bootText');
-                const bootTimer = setInterval(() => {
-                    bootIdx++;
-                    if(bootIdx < bootPhrases.length && bootEl) {
-                        bootEl.innerText = bootPhrases[bootIdx];
-                    } else {
-                        clearInterval(bootTimer);
-                        if(bootEl) bootEl.style.animation = 'none'; // Stop blinking when ready
+                // IMMERSION: Scoped Animated Boot Sequence & Subspace Dispatch Ticker
+                (function initTitleBootSequence() {
+                    const bootPhrases = [
+                        "WAKING NAV-COMP...",
+                        "CALIBRATING ASTROMETRIC ARRAYS...",
+                        "MOUNTING DRIVES...",
+                        "ESTABLISHING CONCORD LINK...",
+                        "DECRYPTING ARCHIVES...",
+                        "SYSTEM READY."
+                    ];
+                    let bootIdx = 0;
+                    const bootEl = document.getElementById('bootText');
+                    const bootTimer = setInterval(() => {
+                        bootIdx++;
+                        if (bootIdx < bootPhrases.length && bootEl) {
+                            bootEl.innerText = bootPhrases[bootIdx];
+                        } else {
+                            clearInterval(bootTimer);
+                            if (bootEl) bootEl.style.animation = 'none';
+                        }
+                    }, 350);
+
+                    const dispatches = [
+                        "[CONCORD RELAY 01] Sol Sector patrol density nominal. Independent haulers advised to maintain active transponders.",
+                        "[ARCHIVE FRAGMENT] 'The First Chord echoed before Sol ignited. Find the Compass, and the Nexus remembers.'",
+                        "[FUEL RATS BROADCAST] Running dry in the outer rim? Tune emergency beacon channel Z. We have fuel. You don't.",
+                        "[BORDER TELEMETRY] K'tharr Ascendancy war-barges massing along the eastern frontier. Approach Karak-Tor with caution.",
+                        "[SHADOW NETWORK] Unmarked Eclipse Cartel relays detected west of the Core. Customs immunity not guaranteed.",
+                        "[ASTRO-SURVEY] High-velocity cryogenic comets reported across frontier sectors. Intercept vectors yield Tritium.",
+                        "[XERXES WARNING] Rogue world Xerxes Prime exhibits severe gravimetric shear and lethal Spire encryption countermeasures.",
+                        "[UNIVERSITY OF CYGNUS] Open academic grants posted for Pulsar, Magnetar, Singularity, and Quasar spectroscopy."
+                    ];
+                    const dispatchEl = document.getElementById('titleDispatch');
+                    if (dispatchEl) {
+                        dispatchEl.textContent = dispatches[Math.floor(Math.random() * dispatches.length)];
                     }
-                }, 400);
+                })();
             </script>
-            
+
             <div id="saveSelectContainer" style="display:none;">
                 <div class="save-list-header">SELECT COMMANDER</div>
                 <div id="saveList" class="save-list"></div>
-                
+
                 <div class="title-controls">
                     <button id="showNewGameBtn" class="title-button small-btn">New Campaign</button>
                     <label class="checkbox-container">
@@ -293,33 +513,34 @@
             </div>
 
             <div id="introVideoContainer" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:#050510; z-index: 50; flex-direction:column; justify-content:center; align-items:center;">
-            
+
                 <video id="introVideo" autoplay muted playsinline style="max-width:100%; max-height:100%; box-shadow: 0 0 30px rgba(0,224,224,0.2);">
                     Your browser does not support the video tag.
                 </video>
 
                 <button onclick="skipIntroVideo()" style="position:absolute; bottom:30px; right:30px; background:rgba(0,0,0,0.7); border:1px solid var(--accent-color); color:var(--accent-color); padding:10px 20px; font-family:var(--title-font); cursor:pointer; font-weight:bold; letter-spacing: 2px;">
-                    SKIP TRANSMISSION >>
+                    SKIP TRANSMISSION &gt;&gt;
                 </button>
             </div>
 
             <div id="newGameContainer" style="display:none; text-align: center;">
                 <div class="player-customization">
                     <div class="pfp-selector">
-                        <button id="prevPfpBtn" class="pfp-arrow-btn">&lt;</button>
+                        <button id="prevPfpBtn" class="pfp-arrow-btn" aria-label="Previous Portrait">&lt;</button>
                         <img src="assets/pfp_01.png" id="pfpImage" alt="Profile">
-                        <button id="nextPfpBtn" class="pfp-arrow-btn">&gt;</button>
+                        <button id="nextPfpBtn" class="pfp-arrow-btn" aria-label="Next Portrait">&gt;</button>
                     </div>
-                    <input type="text" id="playerNameInput" class="seed-input" placeholder="Captain Name" style="width: 100%; max-width: 340px; box-sizing: border-box; margin: 0 auto; display: block;">
+                    <input type="text" id="playerNameInput" class="seed-input" maxlength="24" autocomplete="off" placeholder="Captain Name" aria-label="Captain Name" onkeydown="if(event.key==='Enter'){ const s=document.getElementById('seedInput'); if(s) s.focus(); }" style="width: 100%; max-width: 340px; box-sizing: border-box; margin: 0 auto; display: block;">
                 </div>
-                
+
                 <p class="seed-prompt-text" style="margin-top: 20px; margin-bottom: 5px;">Enter World Seed (Optional)</p>
                 <p style="color: var(--text-color); font-size: 13px; max-width: 340px; margin: 0 auto 12px; line-height: 1.4; font-family: var(--main-font); opacity: 0.8;">
                     Leave blank for a random universe. Entering a specific word or number generates the exact same galaxy every time you play.
                 </p>
-                <input type="text" id="seedInput" class="seed-input" placeholder="Random Seed" style="width: 100%; max-width: 340px; box-sizing: border-box; margin: 0 auto; display: block;">
-                
-                <div class="title-buttons" style="margin-top: 30px;">
+                <input type="text" id="seedInput" class="seed-input" maxlength="32" autocomplete="off" placeholder="Random Seed" aria-label="World Seed" style="width: 100%; max-width: 340px; box-sizing: border-box; margin: 0 auto; display: block;">
+                <button type="button" class="seed-quick-btn" onclick="rollCuratedLoreSeed()">🎲 ROLL LORE SEED</button>
+
+                <div class="title-buttons" style="margin-top: 24px;">
                     <button id="startButton" class="action-button">
                         INITIALIZE SYSTEMS
                     </button>
@@ -330,7 +551,7 @@
     </div>
 
     <div id="app-container">
-        
+
         <header id="top-hud">
             <div class="hud-group left">
                 <div class="hud-stat">
@@ -356,7 +577,7 @@
             </div>
 
             <div class="hud-group right">
-                
+
                 <div class="hud-stat compact">
                     <span class="label">LVL <span id="hudLevelStat">1</span></span>
                     <span id="hudXpStat" class="value-text" style="color:#00FF00">0 / 0</span>
@@ -366,18 +587,18 @@
                     <span class="label">CR</span>
                     <span id="creditsStat" class="value-text gold">0</span>
                 </div>
-                
+
                 <div class="hud-stat compact">
                     <span class="label">CARGO</span>
                     <span id="cargoStat" class="value-text">0/50</span>
                 </div>
-                
-                <button id="menuToggle" class="icon-btn">SYS</button>
+
+                <button id="menuToggle" class="icon-btn" aria-label="Toggle System Menu">SYS</button>
             </div>
 
-            <div id="systemMenu" class="hidden">
+            <div id="systemMenu" class="hidden" style="max-height: calc(100vh - 60px); overflow-y: auto;">
                 <div class="sys-header">COMMANDER DATA</div>
-                
+
                 <div id="sys-stats-display">
                     LVL: <span id="menuLevel">1</span> <span style="color:#555">|</span> XP: <span id="menuXP">0</span><br>
                    SHIP: <span id="menuShip">Light Freighter</span><br>
@@ -388,61 +609,76 @@
                 <button id="crewButton" class="sys-btn" onclick="displayCrewRoster()">Crew Roster</button>
                 <button id="saveButton" class="sys-btn">Manual Save</button>
                 <button id="loadButton" class="sys-btn">Load Manual Save</button>
-                
+                <button id="saveVaultButton" class="sys-btn" onclick="openSaveBackupModal()">Save Vault (Backup)</button>
+
                 <div class="sys-header" style="margin-top: 10px;">SYSTEM SETTINGS</div>
                 <button class="sys-btn" onclick="openHelpMenu()">Command Reference</button>
                 <button id="navToggleButton" class="sys-btn">Disable Nav-Assist</button>
+                <button id="crtToggleButton" class="sys-btn" onclick="toggleCRTFilter()">CRT Scanlines: ON</button>
                 <button id="themeButton" class="sys-btn">Toggle Theme</button>
+
+                <div class="sys-slider-group" title="Adjust Web Audio Synthesizer & Subspace Radio Levels">
+                    <div class="sys-slider-row">
+                        <label for="masterVolSlider">MASTER</label>
+                        <input type="range" id="masterVolSlider" min="0" max="1" step="0.05" value="0.30" oninput="if(window.soundManager) soundManager.setMasterVolume(this.value)">
+                    </div>
+                    <div class="sys-slider-row">
+                        <label for="musicVolSlider">RADIO</label>
+                        <input type="range" id="musicVolSlider" min="0" max="1" step="0.05" value="0.30" oninput="if(window.soundManager) soundManager.setMusicVolume(this.value)">
+                    </div>
+                </div>
+
+                <!-- NOTE: audio.js dynamically injects #radioStationButton directly above #soundButton -->
                 <button id="soundButton" class="sys-btn">Mute Audio</button>
-                <button id="mainMenuButton" class="sys-btn" style="border-top: 1px solid var(--border-color); margin-top: 5px;">Save & Quit to Menu</button>
-                
+                <button id="mainMenuButton" class="sys-btn" style="border-top: 1px solid var(--border-color); margin-top: 5px;">Save &amp; Quit to Menu</button>
+
                 <div id="versionInfo">v0.9.7</div>
-            </div> 
-         </header> 
-         
+            </div>
+         </header>
+
          <main id="main-view">
             <div id="statusOverlay" class="status-overlay"></div>
 
             <div class="side-border left"></div>
             <div class="side-border right"></div>
 
-            <canvas id="gameCanvas"></canvas>
+            <canvas id="gameCanvas" aria-label="Galactic Sector Map"></canvas>
 
-            <div id="mobileControls">
+            <div id="mobileControls" aria-label="Touch Flight Controls">
                 <!-- Expanded Mobile D-Pad with utility buttons -->
                 <div class="dpad-row">
-                    <button id="btnScan" class="dpad-btn" style="font-size:12px; font-weight:bold; color: var(--success);" onclick="if(typeof fireSensorPing === 'function') fireSensorPing();">PING</button>
-                    <button id="btnUp" class="dpad-btn">▲</button>
+                    <button id="btnScan" class="dpad-btn" title="Active Sensor Ping (P)" style="font-size:12px; font-weight:bold; color: var(--success);" onclick="if(typeof fireSensorPing === 'function') fireSensorPing();">PING</button>
+                    <button id="btnUp" class="dpad-btn" aria-label="Move North">▲</button>
                     <!-- Triggers 'V' (Deep Scan) by mimicking the keydown event handled in script.js -->
-                    <button id="btnDeepScan" class="dpad-btn" style="font-size:12px; font-weight:bold; color: var(--gold-text);" onclick="document.dispatchEvent(new KeyboardEvent('keydown', {'key': 'v'}))">SCAN</button>
+                    <button id="btnDeepScan" class="dpad-btn" title="Deep Stellar Scan (V)" style="font-size:12px; font-weight:bold; color: var(--gold-text);" onclick="document.dispatchEvent(new KeyboardEvent('keydown', {'key': 'v'}))">SCAN</button>
                 </div>
                 <div class="dpad-row">
-                    <button id="btnLeft" class="dpad-btn">◀</button>
-                    <button id="btnWait" class="dpad-btn" style="font-size:10px; color: var(--text-color);">WAIT</button>
-                    <button id="btnRight" class="dpad-btn">▶</button>
+                    <button id="btnLeft" class="dpad-btn" aria-label="Move West">◀</button>
+                    <button id="btnWait" class="dpad-btn" title="Hold Position (Space)" style="font-size:10px; color: var(--text-color);">WAIT</button>
+                    <button id="btnRight" class="dpad-btn" aria-label="Move East">▶</button>
                 </div>
                 <div class="dpad-row">
                     <!-- Triggers 'N' (Nav Ping) -->
-                    <button id="btnMap" class="dpad-btn" style="font-size:12px; font-weight:bold; color: #9933FF;" onclick="document.dispatchEvent(new KeyboardEvent('keydown', {'key': 'n'}))">NAV</button>
-                    <button id="btnDown" class="dpad-btn">▼</button>
-                    <button id="btnInteract" class="dpad-btn" style="font-size:12px; font-weight:bold; color: var(--danger);" onclick="if(typeof reEnterCurrentTile === 'function') reEnterCurrentTile();">ACT</button>
+                    <button id="btnMap" class="dpad-btn" title="Nav-Computer Target Ping (N)" style="font-size:12px; font-weight:bold; color: #9933FF;" onclick="document.dispatchEvent(new KeyboardEvent('keydown', {'key': 'n'}))">NAV</button>
+                    <button id="btnDown" class="dpad-btn" aria-label="Move South">▼</button>
+                    <button id="btnInteract" class="dpad-btn" title="Dock or Interact (E)" style="font-size:12px; font-weight:bold; color: var(--danger);" onclick="if(typeof reEnterCurrentTile === 'function') reEnterCurrentTile();">ACT</button>
                 </div>
             </div>
 
-            <div id="gameOverOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(20,0,0,0.9); z-index:4000; align-items:center; justify-content:center;">
+            <div id="gameOverOverlay" role="alertdialog" aria-modal="true" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(20,0,0,0.9); z-index:4000; align-items:center; justify-content:center;">
                 <div class="confirm-window" style="border-color: var(--danger); box-shadow: 0 0 50px rgba(255, 0, 0, 0.2);">
                     <div class="confirm-header" style="background: var(--danger); color: #000; animation: blink 0.5s infinite;">SIGNAL LOST</div>
                     <div class="confirm-body">
                         <h1 style="color: var(--danger); font-family: var(--title-font); font-size: 32px; margin: 10px 0;">CRITICAL FAILURE</h1>
                         <p id="deathReason" style="font-size: 16px; color: #fff; margin-bottom: 20px;">Cause: Unknown</p>
-                        
+
                         <div class="trade-math-area" style="border-color: #552222;">
                             <div class="trade-stat-row"><span>Final Level:</span> <span id="deathLevel" class="value-text" style="color:#fff"></span></div>
                             <div class="trade-stat-row"><span>Credits Lost:</span> <span id="deathCreditPenalty" class="value-text" style="color:var(--danger)"></span></div>
                         </div>
 
                         <p style="font-size: 12px; color: #888; margin-top: 15px;">Emergency Clone Protocol Available.</p>
-                        
+
                         <div class="confirm-actions" style="flex-direction: column; gap: 10px;">
                             <button id="respawnBtn" class="action-button" onclick="respawnPlayer()">INITIATE CLONE (RESPAWN)</button>
                             <button class="action-button danger-btn" onclick="quitToTitle()">TERMINATE SIGNAL (QUIT)</button>
@@ -451,11 +687,11 @@
                 </div>
             </div>
 
-            <div id="stationOverlay" style="display:none;">
+            <div id="stationOverlay" role="dialog" aria-modal="true" style="display:none;">
                 <div class="trade-window" style="max-width: 800px;">
                     <div class="trade-header">
                         <span id="stationNameTitle">STATION NAME</span>
-                        <button onclick="closeStationView()" class="icon-btn">X</button>
+                        <button onclick="closeStationView()" class="icon-btn" aria-label="Undock from Station">X</button>
                     </div>
                     <div class="station-body">
                         <div class="station-visual-panel">
@@ -463,21 +699,21 @@
                             <div id="stationFactionBadge" class="station-badge">FACTION</div>
                             <p id="stationDescText" class="station-desc">Station description goes here...</p>
                         </div>
-                        
+
                        <div id="dynamicStationMenu" class="station-menu-grid"></div>
                     </div>
                 </div>
             </div>
 
-            <div id="xerxesOverlay" style="display:none;">
+            <div id="xerxesOverlay" role="dialog" aria-modal="true" style="display:none;">
                 <div class="trade-window" style="max-width: 800px; border-color: #9933FF; box-shadow: 0 0 30px rgba(138, 43, 226, 0.3);">
                     <div class="trade-header" style="background: rgba(30, 0, 60, 0.95); border-bottom: 1px solid #9933FF;">
                         <span style="color: #DDA0DD; font-weight:900; letter-spacing:3px;">XERXES PRIME</span>
-                        <button onclick="closeXerxesView()" class="icon-btn" style="color:#DDA0DD; border-color:#9933FF;">X</button>
+                        <button onclick="closeXerxesView()" class="icon-btn" aria-label="Depart Xerxes" style="color:#DDA0DD; border-color:#9933FF;">X</button>
                     </div>
-                    
+
                     <div id="xerxesInfoBar" class="modal-info-bar" style="border-bottom: 1px solid #551188;"></div>
-                    
+
                     <div class="station-body" style="background: #050010;">
                         <div class="station-visual-panel" style="background: #080015; border-right: 1px solid #551188;">
                             <canvas id="xerxesCanvas" width="200" height="200" style="border-color:#551188; box-shadow: 0 0 20px rgba(138, 43, 226, 0.2);"></canvas>
@@ -486,21 +722,21 @@
                                 "A sunless world drifting in the void. Ancient geothermal spires pierce the eternal night, lighting a city of thieves and exiles."
                             </p>
                         </div>
-                        
+
                         <div id="xerxesMenu" class="station-menu-grid"></div>
                     </div>
-                    
+
                     <div id="xerxesLog" style="padding: 10px; background: rgba(20, 0, 40, 0.6); color: #DDA0DD; font-family: monospace; font-size: 12px; height: 80px; overflow-y: auto; border-top: 1px solid #551188;">
-                        > Atmosphere toxic. Docking clamps engaged at The Spire.
+                        &gt; Atmosphere toxic. Docking clamps engaged at The Spire.
                     </div>
                 </div>
             </div>
 
-            <div id="genericModalOverlay" style="display:none;">
+            <div id="genericModalOverlay" role="dialog" aria-modal="true" style="display:none;">
                 <div class="trade-window">
                     <div class="trade-header">
                         <span id="genericModalTitle">TITLE</span>
-                        <button onclick="closeGenericModal()" class="icon-btn">X</button>
+                        <button onclick="closeGenericModal()" class="icon-btn" aria-label="Close Modal">X</button>
                     </div>
                     <div id="genericInfoBar" class="modal-info-bar"></div>
                     <div id="genericModalContent" class="trade-body"></div>
@@ -510,13 +746,15 @@
             <div id="systemView" class="view-panel"></div>
             <div id="planetView" class="view-panel"></div>
             <div id="combatView" class="view-panel"></div>
-            
-            <div id="codexOverlay">
+
+            <div id="codexOverlay" role="dialog" aria-modal="true" aria-label="Galactic Archives">
                 <div class="codex-window">
                     <div class="codex-header">
                         <h2>GALACTIC ARCHIVES</h2>
-                        <button id="codexCloseButton" class="action-button danger-btn" style="padding: 5px 15px;">CLOSE</button>
+                        <button id="codexCloseButton" class="action-button danger-btn" style="padding: 5px 15px; width: auto; margin: 0;">CLOSE</button>
                     </div>
+                    <!-- BUG FIX: Restored #codexInfoBar expected by ui.js toggleCodex() -->
+                    <div id="codexInfoBar" class="modal-info-bar"></div>
                     <div class="codex-body">
                         <div id="codexCategories"></div>
                         <div id="codexEntries"></div>
@@ -527,7 +765,7 @@
         </main>
 
         <footer id="bottom-deck">
-            <div id="messageArea" class="log-panel">System Initialized...</div>
+            <div id="messageArea" class="log-panel" aria-live="polite">System Initialized...</div>
             <div id="context-panel">
                 <div id="mission-tracker" class="mission-box">
                     <span class="label">MISSION</span>
@@ -544,7 +782,7 @@
         <span id="fuelStat"></span><span id="shieldsStat"></span><span id="hullStat"></span>
     </div>
 
-    <div id="confirmationOverlay" style="display:none;">
+    <div id="confirmationOverlay" role="alertdialog" aria-modal="true" style="display:none;">
         <div class="confirm-window">
             <div class="confirm-header">! COMMAND AUTHORIZATION REQUIRED !</div>
             <div class="confirm-body">
@@ -557,53 +795,353 @@
         </div>
     </div>
 
-    <div id="toastContainer"></div>
+    <div id="toastContainer" aria-live="polite"></div>
 
-    <!-- UI HELPER SCRIPT: Command Reference Injection -->
+    <!-- SELF-CONTAINED UI HELPERS: Command Reference, Lore Primer, CRT Toggle, Curated Seeds & Save Vault -->
     <script>
+        function rollCuratedLoreSeed() {
+            const curatedSeeds = [
+                "SOL-PRIME",
+                "KEPLER-VEIL",
+                "SILENTIUM-09",
+                "XERXES-ECHO",
+                "KTHARR-FORGE",
+                "NEXUS-ZERO",
+                "AEGIS-BASTION",
+                "CYGNUS-DEEP",
+                "OBSIDIAN-DRIFT",
+                "VOID-VULTURE",
+                "FROTHY-MOON",
+                "PORT-NOMAD"
+            ];
+            const input = document.getElementById('seedInput');
+            if (!input) return;
+            const current = input.value.trim().toUpperCase();
+            const pool = curatedSeeds.filter(s => s !== current);
+            input.value = pool[Math.floor(Math.random() * pool.length)];
+            input.focus();
+            if (window.soundManager && typeof window.soundManager.playUIClick === 'function') {
+                window.soundManager.playUIClick();
+            }
+        }
+
+        function toggleCRTFilter() {
+            const enabled = document.body.classList.toggle('crt');
+            try {
+                localStorage.setItem('wayfinder_crt_pref', enabled ? 'true' : 'false');
+            } catch (e) {}
+            const btn = document.getElementById('crtToggleButton');
+            if (btn) btn.textContent = enabled ? "CRT Scanlines: ON" : "CRT Scanlines: OFF";
+            if (window.soundManager && typeof window.soundManager.playUIClick === 'function') {
+                window.soundManager.playUIClick();
+            }
+        }
+
+        // Render interactive tabs inside the SYS-OPS Manual right pane without disturbing #genericModalList
+        function renderHelpDetailTab(tab = 'BRIEFING') {
+            const detailEl = document.getElementById('genericDetailContent');
+            if (!detailEl) return;
+
+            const tabBtnStyle = (active) => `
+                flex: 1; padding: 7px 4px; font-size: 10px; font-family: var(--title-font);
+                cursor: pointer; border-radius: 3px; font-weight: bold; letter-spacing: 1px;
+                background: ${active ? 'rgba(0, 224, 224, 0.15)' : 'rgba(0, 0, 0, 0.35)'};
+                border: 1px solid ${active ? 'var(--accent-color)' : 'var(--border-color)'};
+                color: ${active ? 'var(--accent-color)' : 'var(--item-desc-color)'};
+            `;
+
+            const navHtml = `
+                <div style="display:flex; gap:6px; margin-bottom:15px;">
+                    <button type="button" style="${tabBtnStyle(tab === 'BRIEFING')}" onclick="renderHelpDetailTab('BRIEFING')">BRIEFING</button>
+                    <button type="button" style="${tabBtnStyle(tab === 'LEGEND')}" onclick="renderHelpDetailTab('LEGEND')">ASCII MAP</button>
+                    <button type="button" style="${tabBtnStyle(tab === 'FACTIONS')}" onclick="renderHelpDetailTab('FACTIONS')">FACTIONS</button>
+                </div>
+            `;
+
+            let bodyHtml = '';
+            if (tab === 'LEGEND') {
+                const legendRows = [
+                    ['@', '#FFFFFF', 'Your Vessel (Dims in Silent Running)'],
+                    ['#', '#00FFFF', 'Major Starbase / Faction Hub'],
+                    ['H / h', '#AADD99', 'Frontier Outpost / Player Waystation'],
+                    ['O', '#88CCFF', 'Planet (Orbit, Scan, Mine, or Land)'],
+                    ['*', '#FFDD00', 'Star System (Enter [E], Deep Scan [V], Scoop [H])'],
+                    ['%', '#FFAA66', 'Asteroid Field (Mine [M] for Ores & Geodes)'],
+                    ['~', '#DD99FF', 'Gas Nebula (Scoop Fuel [H] & Slip Pursuers)'],
+                    ['B', '#9933FF', 'Micro-Singularity (Gravity Well — Stay Clear!)'],
+                    ['W / Ω', '#FFB800', 'Wormhole / Stabilized Stargate (Jump [T])'],
+                    ['?', '#FF33FF', 'Spatial Anomaly (Containment / Astrometrics)'],
+                    ['D', '#88AACC', 'Derelict Ship (Scan, Salvage, or Breach)'],
+                    ['Ψ', '#9933FF', 'Precursor Monolith / Sanctuary Relay'],
+                    ['^', '#FF4444', 'Hidden Cartel Outpost (Marine Ground Raid)'],
+                    ['&', '#40E0D0', 'The First Nexus (Precursor Endgame Site)'],
+                    ['P / C / $ / M / N', '#00FFAA', 'Deep-Space POIs: Pod, Cache, Relay, Mine, Buoy'],
+                    ['V / ☠️ / ⚔️', '#FF5555', 'Hostiles, Legendary Bosses & Active Warzones']
+                ];
+                bodyHtml = `
+                    <div style="font-size:11px; color:var(--accent-color); letter-spacing:2px; margin-bottom:10px; font-weight:bold;">OPTICAL &amp; RADAR SYMBOL KEY</div>
+                    <div style="display:flex; flex-direction:column; gap:6px; text-align:left; font-size:12px;">
+                        ${legendRows.map(([sym, col, desc]) => `
+                            <div style="display:flex; gap:10px; align-items:center; padding:5px 8px; background:rgba(0,0,0,0.28); border-left:2px solid ${col}; border-radius:2px;">
+                                <span style="min-width:52px; text-align:center; font-weight:bold; color:${col}; font-family:var(--main-font);">${sym}</span>
+                                <span style="color:var(--text-color); line-height:1.35;">${desc}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (tab === 'FACTIONS') {
+                bodyHtml = `
+                    <div style="font-size:11px; color:var(--accent-color); letter-spacing:2px; margin-bottom:10px; font-weight:bold;">GALACTIC POWER BLOCS</div>
+                    <div style="display:flex; flex-direction:column; gap:10px; text-align:left; font-size:12px; line-height:1.5;">
+                        <div style="padding:10px; background:rgba(0,170,255,0.08); border-left:3px solid #00AAFF; border-radius:3px;">
+                            <div style="color:#00AAFF; font-weight:bold; letter-spacing:1px;">CONCORD DOMINION (CORE SECTORS)</div>
+                            <div style="color:var(--text-color); margin-top:4px;">Governs Sol Sector and the inner trade lanes from Starbase Alpha and the Aegis Dyson Sphere. Enforces strict customs scans; high standing unlocks Aegis Armory hardware and military hulls.</div>
+                        </div>
+                        <div style="padding:10px; background:rgba(153,51,255,0.08); border-left:3px solid #9933FF; border-radius:3px;">
+                            <div style="color:#DDA0DD; font-weight:bold; letter-spacing:1px;">ECLIPSE CARTEL (WESTERN RIM)</div>
+                            <div style="color:var(--text-color); margin-top:4px;">Controls the encrypted Shadow Network, Identity Forgers, and Black Market fences. Reaching 50+ Standing earns a Cartel Truce with roaming raiders.</div>
+                        </div>
+                        <div style="padding:10px; background:rgba(76,175,80,0.08); border-left:3px solid #4CAF50; border-radius:3px;">
+                            <div style="color:#4CAF50; font-weight:bold; letter-spacing:1px;">K'THARR ASCENDANCY (EASTERN FRONTIER)</div>
+                            <div style="color:var(--text-color); margin-top:4px;">A martial warrior empire forged around Karak-Tor and Fortress Drakon. Respect is earned in the Proving Grounds, warzones, and the lethal Rite of Combat.</div>
+                        </div>
+                        <div style="padding:10px; background:rgba(255,170,0,0.08); border-left:3px solid #FFAA00; border-radius:3px;">
+                            <div style="color:#FFAA00; font-weight:bold; letter-spacing:1px;">THE FUEL RATS COLLECTIVE (NOMADIC)</div>
+                            <div style="color:var(--text-color); margin-top:4px;">Neutral deep-space rescuers operating out of Port Nomad. Broadcast [Z] if stranded without fuel; tipping rescue tugs unlocks VIP hull repairs and their custom Salvage Tug.</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                bodyHtml = `
+                    <div style="text-align:center; padding: 8px 6px;">
+                        <div style="font-size:48px; margin-bottom:10px; filter: drop-shadow(0 0 15px var(--accent-color)); opacity:0.85;">⌨️</div>
+                        <h3 style="color:var(--accent-color); margin:0 0 10px 0; letter-spacing: 2px;">SYS-OPS MANUAL</h3>
+                        <p style="color:var(--item-desc-color); font-size:12px; line-height:1.55; font-style:italic; background: rgba(0,0,0,0.3); padding: 10px; border-left: 2px solid var(--accent-color); text-align: left;">
+                            "Welcome aboard, Commander. Use the hotkeys on the left to pilot your ship, manage cargo, and operate sub-systems without taking your hands off the helm."
+                        </p>
+                        <div style="margin-top:12px; text-align:left; font-size:12px; line-height:1.6; background:rgba(0,0,0,0.25); border:1px solid var(--border-color); padding:10px; border-radius:4px;">
+                            <div style="color:var(--gold-text); font-weight:bold; font-size:10px; letter-spacing:1px; margin-bottom:6px;">SURVIVAL PROTOCOLS</div>
+                            • <b>Fuel Running Low?</b> Scoop Stars (<b>H</b>) or Nebulae, or broadcast a Fuel Rats beacon (<b>Z</b>).<br>
+                            • <b>Hauling Contraband?</b> Toggle Silent Running (<b>Q</b>) near patrols, watch your Heat, and fence goods via Shadow Brokers.<br>
+                            • <b>Manufacturer Synergies:</b> Equip 3 modules from the same manufacturer (Concord, K'tharr, Eclipse, Frontier) for a passive Set Bonus.<br>
+                            • <b>Deep-Space Synthesis:</b> Press <b>U</b> anywhere to smelt ore, craft drones, or install permanent hull/shield upgrades.
+                        </div>
+                    </div>
+                `;
+            }
+
+            detailEl.innerHTML = `<div style="padding: 4px 2px;">${navHtml}${bodyHtml}</div>`;
+        }
+
         function openHelpMenu() {
-            // Close the SYS menu
             const sysMenu = document.getElementById('systemMenu');
             if (sysMenu) sysMenu.classList.add('hidden');
-            
-            // Open a generic modal containing the hotkeys
+
+            if (typeof openGenericModal !== 'function') return;
             openGenericModal("COMMAND REFERENCE");
+            const listEl = document.getElementById('genericModalList');
+            const actionsEl = document.getElementById('genericModalActions');
+
+            if (listEl) {
+                listEl.innerHTML = `
+                    <div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:6px; border-bottom:1px solid #333; padding-bottom: 5px;">FLIGHT &amp; SENSORS</div>
+                    <div style="padding: 6px 10px; font-size: 12px; color: var(--text-color); line-height: 1.85;">
+                        <span style="color:var(--accent-color); font-weight:bold;">W, A, S, D / ARROWS</span> : Move Ship<br>
+                        <span style="color:var(--accent-color); font-weight:bold;">SPACE / .</span> : Hold Position (Wait Turn)<br>
+                        <span style="color:var(--accent-color); font-weight:bold;">Q</span> : Toggle Silent Running (Stealth)<br>
+                        <span style="color:var(--accent-color); font-weight:bold;">V</span> : Deep Sensor Scan (Stars)<br>
+                        <span style="color:var(--accent-color); font-weight:bold;">P</span> : Active Telemetry Ping (-5 Fuel)<br>
+                        <span style="color:var(--accent-color); font-weight:bold;">N</span> : Nav-Computer Target Ping<br>
+                        <span style="color:var(--accent-color); font-weight:bold;">O</span> : Astrometric Observatory (Deep-Sky)
+                    </div>
+
+                    <div class="trade-list-header" style="color:var(--success); font-size:10px; letter-spacing:2px; margin-top: 8px; margin-bottom:6px; border-bottom:1px solid #333; padding-bottom: 5px;">OPERATIONS &amp; MENUS</div>
+                    <div style="padding: 6px 10px; font-size: 12px; color: var(--text-color); line-height: 1.85;">
+                        <span style="color:var(--success); font-weight:bold;">E / ENTER</span> : Interact / Dock / Enter Star<br>
+                        <span style="color:var(--success); font-weight:bold;">H</span> : Scoop Hydrogen (Stars / Nebulae)<br>
+                        <span style="color:var(--success); font-weight:bold;">M</span> : Mine Asteroid Field<br>
+                        <span style="color:var(--success); font-weight:bold;">T</span> : Traverse Wormhole / Stargate<br>
+                        <span style="color:var(--success); font-weight:bold;">I</span> : Cargo Manifest &nbsp;|&nbsp; <span style="color:var(--success); font-weight:bold;">J</span> : Galactic Codex<br>
+                        <span style="color:var(--success); font-weight:bold;">U</span> : Engineering Workbench (Crafting)<br>
+                        <span style="color:var(--success); font-weight:bold;">Z</span> : Fuel Rats Distress Beacon<br>
+                        <span style="color:var(--success); font-weight:bold;">F6 / F7</span> : Quick Manual Save / Load
+                    </div>
+
+                    <div class="trade-list-header" style="color:var(--danger); font-size:10px; letter-spacing:2px; margin-top: 8px; margin-bottom:6px; border-bottom:1px solid #333; padding-bottom: 5px;">COMBAT &amp; DOCKED</div>
+                    <div style="padding: 6px 10px; font-size: 12px; color: var(--text-color); line-height: 1.85;">
+                        <span style="color:var(--danger); font-weight:bold;">F / C / E / R</span> : Fire / Charge / Evade / Run<br>
+                        <span style="color:var(--gold-text); font-weight:bold;">B / S / R</span> : Buy / Sell / Repair (Docked)<br>
+                        <span style="color:var(--gold-text); font-weight:bold;">K / Y / V</span> : Contracts / Shipyard / Cantina
+                    </div>
+                `;
+            }
+
+            renderHelpDetailTab('BRIEFING');
+
+            if (actionsEl) {
+                actionsEl.innerHTML = `<button class="action-button full-width-btn" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="closeGenericModal()">CLOSE MANUAL</button>`;
+            }
+        }
+
+        // Self-Contained Save Vault (Export / Import all wayfinder_* localStorage saves as JSON)
+        function openSaveBackupModal() {
+            const sysMenu = document.getElementById('systemMenu');
+            if (sysMenu) sysMenu.classList.add('hidden');
+            if (typeof openGenericModal !== 'function') return;
+
+            openGenericModal("SAVE VAULT : DATA ARCHIVE");
             const listEl = document.getElementById('genericModalList');
             const detailEl = document.getElementById('genericDetailContent');
             const actionsEl = document.getElementById('genericModalActions');
 
-            listEl.innerHTML = `
-                <div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom: 5px;">FLIGHT CONTROLS</div>
-                <div style="padding: 10px; font-size: 13px; color: var(--text-color); line-height: 2.0;">
-                    <span style="color:var(--accent-color); font-weight:bold;">W, A, S, D</span> : Move Ship / Navigate<br>
-                    <span style="color:var(--accent-color); font-weight:bold;">SPACEBAR</span> : Hold Position (Wait)<br>
-                    <span style="color:var(--accent-color); font-weight:bold;">Q</span> : Toggle Silent Running (Stealth)<br>
-                    <span style="color:var(--accent-color); font-weight:bold;">V</span> : Deep Sensor Scan (Star Systems)<br>
-                    <span style="color:var(--accent-color); font-weight:bold;">P</span> : Active Telemetry Ping (Find Derelicts)<br>
-                    <span style="color:var(--accent-color); font-weight:bold;">N</span> : Nav-Computer Target Ping
-                </div>
-                
-                <div class="trade-list-header" style="color:var(--success); font-size:10px; letter-spacing:2px; margin-top: 15px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom: 5px;">MENU SHORTCUTS</div>
-                <div style="padding: 10px; font-size: 13px; color: var(--text-color); line-height: 2.0;">
-                    <span style="color:var(--success); font-weight:bold;">E / ENTER</span> : Interact / Dock / Land<br>
-                    <span style="color:var(--success); font-weight:bold;">I</span> : Open Cargo Manifest<br>
-                    <span style="color:var(--success); font-weight:bold;">J</span> : Open Galactic Codex<br>
-                    <span style="color:var(--success); font-weight:bold;">U</span> : Open Crafting / Workbench<br>
-                </div>
-            `;
-            
-            detailEl.innerHTML = `
-                <div style="text-align:center; padding: 20px;">
-                    <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 15px var(--accent-color)); opacity:0.8;">⌨️</div>
-                    <h3 style="color:var(--accent-color); margin-bottom:10px; letter-spacing: 2px;">SYS-OPS MANUAL</h3>
-                    <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5; font-style:italic; background: rgba(0,0,0,0.3); padding: 10px; border-left: 2px solid var(--accent-color); text-align: left;">
-                        "Welcome aboard, Commander. Use the hotkeys on the left to quickly navigate your vessel's sub-systems without taking your hands off the helm."
-                    </p>
-                </div>
-            `;
+            const backupObj = { exportedAt: new Date().toISOString(), keys: {} };
+            let saveCount = 0;
+            try {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && k.startsWith('wayfinder')) {
+                        backupObj.keys[k] = localStorage.getItem(k);
+                        if (k.includes('manual_') || k.includes('auto_') || k.includes('Save')) saveCount++;
+                    }
+                }
+            } catch (e) {}
 
-            actionsEl.innerHTML = `<button class="action-button full-width-btn" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="closeGenericModal()">CLOSE MANUAL</button>`;
+            const totalBytes = new Blob([JSON.stringify(backupObj)]).size;
+            const kbUsed = (totalBytes / 1024).toFixed(1);
+
+            if (listEl) {
+                listEl.innerHTML = `
+                    <div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px;">STORAGE DIAGNOSTICS</div>
+                    <div style="padding:14px; font-size:12px; line-height:1.7; color:var(--text-color);">
+                        <div class="trade-math-area">
+                            <div class="trade-stat-row"><span>Wayfinder Keys:</span> <span style="color:var(--accent-color); font-weight:bold;">${Object.keys(backupObj.keys).length}</span></div>
+                            <div class="trade-stat-row"><span>Campaign Slots:</span> <span style="color:var(--gold-text); font-weight:bold;">${saveCount}</span></div>
+                            <div class="trade-stat-row"><span>Archive Size:</span> <span style="color:var(--success); font-weight:bold;">${kbUsed} KB</span></div>
+                        </div>
+                        <p style="font-size:11px; color:var(--item-desc-color); margin-top:12px;">
+                            Export a portable JSON backup to transfer your commanders between browsers or protect campaigns before clearing browser cache.
+                        </p>
+                    </div>
+                `;
+            }
+
+            if (detailEl) {
+                detailEl.innerHTML = `
+                    <div style="padding:10px; display:flex; flex-direction:column; gap:10px;">
+                        <div style="font-size:11px; color:var(--accent-color); letter-spacing:1px; font-weight:bold;">IMPORT ARCHIVE (PASTE JSON OR UPLOAD FILE)</div>
+                        <textarea id="saveVaultInput" rows="7" placeholder="Paste exported Wayfinder JSON archive here..." style="width:100%; background:#000; color:var(--accent-color); border:1px solid var(--border-color); padding:10px; font-family:var(--main-font); font-size:11px; resize:vertical;"></textarea>
+                        <input type="file" id="saveVaultFileInput" accept=".json,application/json" style="display:none;" onchange="handleSaveVaultFileLoad(this)">
+                        <div id="saveVaultStatus" style="font-size:11px; min-height:16px; color:var(--item-desc-color);"></div>
+                    </div>
+                `;
+            }
+
+            if (actionsEl) {
+                actionsEl.innerHTML = `
+                    <button class="action-button" style="border-color:var(--success); color:var(--success);" onclick="downloadWayfinderBackup()">⬇ EXPORT BACKUP (.JSON)</button>
+                    <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color);" onclick="document.getElementById('saveVaultFileInput').click()">⬆ LOAD BACKUP FILE</button>
+                    <button class="action-button" style="border-color:var(--warning); color:var(--warning);" onclick="importWayfinderBackupFromText()">⚡ RESTORE FROM TEXT</button>
+                    <button class="action-button" style="border-color:#888; color:#888;" onclick="closeGenericModal()">CLOSE VAULT</button>
+                `;
+            }
         }
+
+        function downloadWayfinderBackup() {
+            const payload = { app: "Wayfinder", exportedAt: new Date().toISOString(), keys: {} };
+            try {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && k.startsWith('wayfinder')) {
+                        payload.keys[k] = localStorage.getItem(k);
+                    }
+                }
+                const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `wayfinder_save_vault_${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+                const status = document.getElementById('saveVaultStatus');
+                if (status) { status.style.color = 'var(--success)'; status.textContent = "Backup archive downloaded successfully."; }
+                if (typeof showToast === 'function') showToast("SAVE VAULT EXPORTED", "success");
+            } catch (e) {
+                const status = document.getElementById('saveVaultStatus');
+                if (status) { status.style.color = 'var(--danger)'; status.textContent = "Export failed: " + e.message; }
+            }
+        }
+
+        function handleSaveVaultFileLoad(inputEl) {
+            const file = inputEl && inputEl.files && inputEl.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const ta = document.getElementById('saveVaultInput');
+                if (ta) ta.value = e.target.result || '';
+                importWayfinderBackupFromText();
+            };
+            reader.readAsText(file);
+        }
+
+        function importWayfinderBackupFromText() {
+            const ta = document.getElementById('saveVaultInput');
+            const status = document.getElementById('saveVaultStatus');
+            if (!ta || !ta.value.trim()) {
+                if (status) { status.style.color = 'var(--warning)'; status.textContent = "Paste a valid backup JSON or select a file first."; }
+                return;
+            }
+            try {
+                const parsed = JSON.parse(ta.value.trim());
+                if (!parsed || typeof parsed.keys !== 'object') {
+                    throw new Error("Invalid Wayfinder backup format (missing keys object).");
+                }
+                let restored = 0;
+                Object.keys(parsed.keys).forEach(k => {
+                    if (k.startsWith('wayfinder') && typeof parsed.keys[k] === 'string') {
+                        localStorage.setItem(k, parsed.keys[k]);
+                        restored++;
+                    }
+                });
+                if (restored === 0) throw new Error("No valid wayfinder_* entries found in archive.");
+                if (status) { status.style.color = 'var(--success)'; status.textContent = `Restored ${restored} entries! Reloading terminal...`; }
+                if (typeof showToast === 'function') showToast(`RESTORED ${restored} SAVE KEYS`, "success");
+                setTimeout(() => location.reload(), 900);
+            } catch (err) {
+                if (status) { status.style.color = 'var(--danger)'; status.textContent = "Import error: " + err.message; }
+            }
+        }
+
+        // Sync CRT toggle label, audio volume sliders, and mobile theme-color after DOM load
+        window.addEventListener('DOMContentLoaded', () => {
+            try {
+                const crtBtn = document.getElementById('crtToggleButton');
+                if (crtBtn) {
+                    crtBtn.textContent = document.body.classList.contains('crt') ? "CRT Scanlines: ON" : "CRT Scanlines: OFF";
+                }
+
+                const masterSlider = document.getElementById('masterVolSlider');
+                const musicSlider = document.getElementById('musicVolSlider');
+                const savedMaster = parseFloat(localStorage.getItem('wayfinder_master_vol'));
+                const savedMusic = parseFloat(localStorage.getItem('wayfinder_music_vol'));
+                if (masterSlider && !isNaN(savedMaster)) masterSlider.value = savedMaster;
+                if (musicSlider && !isNaN(savedMusic)) musicSlider.value = savedMusic;
+
+                // Keep mobile browser address bar color synced when toggling light/dark theme
+                const themeBtn = document.getElementById('themeButton');
+                if (themeBtn) {
+                    themeBtn.addEventListener('click', () => {
+                        setTimeout(() => {
+                            const metaTheme = document.getElementById('metaThemeColor');
+                            if (metaTheme) {
+                                metaTheme.setAttribute('content', document.body.classList.contains('light-mode') ? '#FFFFFF' : '#050510');
+                            }
+                        }, 0);
+                    });
+                }
+            } catch (e) {}
+        });
     </script>
 
     <script src="config.js"></script>
@@ -625,13 +1163,13 @@
     <script src="crew.js"></script>
     <script src="colonies.js"></script>
     <script src="stations.js"></script>
-    
+
     <!-- Load Core Engine BEFORE background mechanics so coordinates sync first! -->
     <script src="script.js"></script>
     <script src="mechanics.js"></script>
     <script src="audio.js"></script>
 
     <div id="damageFlash" class="damage-flash"></div>
-    
+
 </body>
 </html>
