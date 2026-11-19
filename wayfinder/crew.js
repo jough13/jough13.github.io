@@ -173,7 +173,7 @@ function generateStationRecruits() {
         { id: "KORG_MAH", name: "Korg'Mah", role: "Mechanic", perk: "PASSIVE_REPAIR", desc: "A rugged K'tharr engineer. Passively repairs hull damage while you travel.", baseCost: 1800, image: "assets/engineer.png", isLegendary: true },
         { id: "LEGEND_ELIM", name: "Elim 'The Tailor' Darok", role: "Simple Tailor", perk: "TRADE_BONUS", desc: "Claims to be a humble clothier, yet possesses extreme bargaining leverage.", baseCost: 8500, image: "assets/legend_elim.png", isLegendary: true },
         { id: "LEGEND_MILES", name: "Chief Miles O'Tarek", role: "Miracle Worker", perk: "PASSIVE_REPAIR", desc: "A disgruntled but brilliant engineer. Can fix a warp core breach with a spanner and a piece of tape.", baseCost: 6000, image: "assets/legend_miles.png", isLegendary: true },
-        { id: "T3_SPARK", name: "T3-Spark", role: "Science Bot", perk: "SCOOP_BONUS", desc: "Advanced automated logic core. Increases fuel scooping yields by 20%.", baseCost: 2500, image: "assets/legend_cortex.png", isLegendary: true }
+        { id: "T3_SPARK", name: "T3-Spark", role: "Science Bot", perk: "SCOOP_BONUS", desc: "Advanced automated logic core. Increases fuel scooping yields by 20%.", baseCost: 2500, image: "assets/legend_spark.png", isLegendary: true }
     ];
 
     const standardRoles = [
