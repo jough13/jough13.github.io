@@ -187,7 +187,6 @@ function generateMissionsForStation(stationName) {
                     // Pass `true` so level 1 delivery contracts only request cheap, legal goods!
                     const deliveryItem = selectRandomCommodity(destination.name, true);
 
-                    const deliveryItem = selectRandomCommodity(destination.name);
                     if (!deliveryItem || !COMMODITIES[deliveryItem]) {
                         success = false;
                         break;
