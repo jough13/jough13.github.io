@@ -1390,12 +1390,15 @@ function generateStellarReport(starData, starId) {
     let hasCrystals = false;
     
     planets.forEach(p => {
-        // 👇 FIX: Safely check for biome ID, falling back to our injected biomeKey
         const bId = p.biome.id || p.biomeKey;
-        if (['TERRAN', 'OCEANIC', 'TOXIC'].includes(bId)) hasHabitable = true; 
+        // Use BiomeUtils to accurately check for all habitable environments
+        if ((typeof BiomeUtils !== 'undefined' && BiomeUtils.isHabitableBiome(bId)) || ['TERRAN', 'OCEANIC', 'TOXIC'].includes(bId)) {
+            hasHabitable = true; 
+        }
         if (['GAS_GIANT', 'ICE_GIANT'].includes(bId)) hasGasGiant = true; 
         if (bId === 'CRYSTAL') hasCrystals = true; 
     });
+
 
     // 3. Generate Astrochemistry (Based on Star Class)
     let chemistry = "";
