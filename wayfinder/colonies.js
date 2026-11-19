@@ -1012,6 +1012,11 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                         else if (biomeDef.id === 'GLACIAL' || biomeDef.id === 'OCEANIC') { stats.waterProd = Math.floor(stats.waterProd * 1.5); }
                         else if (biomeDef.id === 'DESERT') { stats.waterProd = Math.floor(stats.waterProd * 0.5); }
                         else if (biomeDef.id === 'MACHINE_WORLD') { stats.techProd = Math.floor(stats.techProd * 1.5); }
+                        else if (biomeDef.id === 'KARST_CAVERN') { stats.mineralProd = Math.floor(stats.mineralProd * 1.25); stats.waterProd = Math.floor(stats.waterProd * 1.25); }
+                        else if (biomeDef.id === 'TIDAL_LOCKED') { stats.waterProd = Math.floor(stats.waterProd * 1.25); stats.upkeep = Math.floor(stats.upkeep * 0.75); }
+                        else if (biomeDef.id === 'TERRAN') { stats.moraleBonus += 5; stats.popGrowthMult *= 1.25; }
+                        else if (biomeDef.id === 'BIOLUMINESCENT') { stats.moraleBonus += 10; stats.foodProd = Math.floor(stats.foodProd * 1.25); }
+                        else if (biomeDef.id === 'MYCELIAL') { stats.medProd = Math.floor(stats.medProd * 1.5); }
                     }
 
                     // --- 3. APPLY DEBT EFFICIENCY ---
