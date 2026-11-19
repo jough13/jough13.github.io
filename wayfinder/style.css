@@ -2,35 +2,55 @@
 
 /* Ensures the browser canvas is dark by default to prevent white flashes */
 html {
-    background-color: #050510; 
+    background-color: #050510;
 }
 
 :root {
+    /* --- CORE SURFACE & TEXT TOKENS --- */
     --bg-color: #050510;
-    --panel-bg: #070714; /* Slightly deeper navy-blue tint */
+    --panel-bg: #070714;
+    --surface-1: rgba(0, 0, 0, 0.35);
+    --surface-2: rgba(0, 0, 0, 0.55);
+    --surface-hover: rgba(255, 255, 255, 0.06);
     --border-color: #2a2a45;
-    --accent-color: #00E0E0; /* Bright cyan */
-    --concord-color: #00AAFF;
+
+    /* --- ACCENT & STATUS TOKENS --- */
+    --accent-color: #00E0E0;
+    --accent-glow: rgba(0, 224, 224, 0.25);
     --text-color: #a0a0c0;
-    
-    /* Deep Sci-Fi Teal/Aqua */
-    --success: #00AAAA; 
-    
+    --success: #00AAAA;
     --danger: #FF4444;
     --warning: #FFAA00;
     --item-name-color: #FFFFFF;
     --item-desc-color: #888888;
     --gold-text: #FFD700;
-    
-    /* --- FONTS --- */
-    --main-font: 'Roboto Mono', monospace;  /* Data, Logs, Body */
-    --title-font: 'Orbitron', sans-serif;   /* Headers, Titles, HUD labels */
 
+    /* --- FACTION PALETTE TOKENS (Expandability) --- */
+    --concord-color: #00AAFF;
+    --eclipse-color: #9933FF;
+    --ktharr-color: #4CAF50;
+    --fuelrats-color: #FFAA00;
+    --independent-color: #FFFF00;
+
+    /* --- TYPOGRAPHY --- */
+    --main-font: 'Roboto Mono', monospace;
+    --title-font: 'Orbitron', sans-serif;
+
+    /* --- Z-INDEX LAYER SCALE --- */
     --z-base: 1;
     --z-ui: 10;
     --z-overlay: 100;
-    --z-modal: 500;
-    --z-header: 1000;
+    --z-header: 150;
+    --z-status: 1000;
+    --z-modal: 2000;
+    --z-codex: 2100;
+    --z-confirm: 3500;
+    --z-gameover: 4000;
+    --z-toast: 4500;
+    --z-levelup: 5000;
+    --z-flash: 9500;
+    --z-crt: 9800;
+    --z-sysmenu: 9999;
 }
 
 *, *::before, *::after {
@@ -38,34 +58,76 @@ html {
 }
 
 /* Explicitly catch the XP and Cargo bars if they use standard classes */
-.bar-fill.xp, 
-.bar-fill.cargo { 
-    background: var(--accent-color) !important; 
+.bar-fill.xp,
+.bar-fill.cargo {
+    background: var(--accent-color) !important;
 }
 
 /* --- GLOBAL LAYOUT FIXES (No Scrollbars) --- */
 html, body {
-    margin: 0; padding: 0;
-    width: 100%; 
-    height: 100%; 
-    overflow: hidden; /* FORCE KILL MAIN SCROLLBAR */
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
     background-color: var(--bg-color);
     font-family: var(--main-font);
     color: var(--text-color);
+    -webkit-font-smoothing: antialiased;
+    transition: opacity 0.25s ease;
+}
+
+/* --- ACCESSIBLE KEYBOARD FOCUS RINGS --- */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+/* --- CUSTOM STARSHIP RANGE SLIDERS (Audio Mixers & Anomaly Tuning) --- */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.12);
+    height: 5px;
+    border-radius: 3px;
+    cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 13px;
+    height: 13px;
+    border-radius: 2px;
+    background: var(--accent-color);
+    border: 1px solid #000;
+    box-shadow: 0 0 6px var(--accent-glow);
+    cursor: pointer;
+}
+input[type="range"]::-moz-range-thumb {
+    width: 13px;
+    height: 13px;
+    border-radius: 2px;
+    background: var(--accent-color);
+    border: 1px solid #000;
+    box-shadow: 0 0 6px var(--accent-glow);
+    cursor: pointer;
 }
 
 /* --- WHISPY SIDE BORDERS (Dynamic Positioning) --- */
 .side-border {
     position: fixed;
-    top: 50px;       /* Starts below the Header */
-    bottom: 150px;   /* Ends above the Footer */
+    top: 50px;
+    bottom: 150px;
     width: 2px;
-    z-index: 50; 
-    pointer-events: none; 
+    z-index: 50;
+    pointer-events: none;
     transition: left 0.5s ease-out, right 0.5s ease-out, opacity 0.3s ease;
 }
 
-/* Automatically hide side borders when not on the Galactic Map (fixes #leftSideBorder ID mismatch in ui.js) */
+/* Automatically hide side borders when not on the Galactic Map */
 #main-view:has(#systemView[style*="block"]) .side-border,
 #main-view:has(#planetView[style*="block"]) .side-border,
 #main-view:has(#combatView[style*="flex"]) .side-border {
@@ -76,10 +138,10 @@ html, body {
 /* LEFT BORDER */
 .side-border.left {
     left: calc((100vw - var(--canvas-width, 100vw)) / 4);
-    background: linear-gradient(to bottom, 
-        transparent 0%, 
-        var(--accent-color) 20%, 
-        var(--accent-color) 80%, 
+    background: linear-gradient(to bottom,
+        transparent 0%,
+        var(--accent-color) 20%,
+        var(--accent-color) 80%,
         transparent 100%
     );
     opacity: 0.6;
@@ -89,17 +151,17 @@ html, body {
 /* RIGHT BORDER */
 .side-border.right {
     right: calc((100vw - var(--canvas-width, 100vw)) / 4);
-    background: linear-gradient(to bottom, 
-        transparent 0%, 
-        var(--accent-color) 20%, 
-        var(--accent-color) 80%, 
+    background: linear-gradient(to bottom,
+        transparent 0%,
+        var(--accent-color) 20%,
+        var(--accent-color) 80%,
         transparent 100%
     );
     opacity: 0.6;
     box-shadow: 2px 0 10px var(--accent-color);
 }
 
-/* Force inputs and buttons to inherit the cool fonts */
+/* Force inputs and buttons to inherit fonts */
 button, input, select, textarea {
     font-family: inherit;
 }
@@ -111,10 +173,24 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     letter-spacing: 2px;
 }
 
+/* Tabular numerals prevent horizontal HUD jitter as stats tick */
+.value-text,
+.coords,
+.info-bar-value,
+.trade-stat-row,
+#sys-stats-display {
+    font-variant-numeric: tabular-nums;
+}
+
 /* --- ANIMATIONS --- */
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
+}
+
+@keyframes modalEnter {
+    from { opacity: 0; transform: translateY(8px) scale(0.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes pulse {
@@ -132,10 +208,10 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     to { transform: rotate(360deg); }
 }
 
-@keyframes pulse-cyan { 
-    0% { opacity: 1; text-shadow: 0 0 8px #40E0D0, 0 0 15px #20C0B0; transform: scale(1); } 
-    50% { opacity: 0.8; text-shadow: 0 0 20px #40E0D0, 0 0 30px #FFFFFF; transform: scale(1.1); } 
-    100% { opacity: 1; text-shadow: 0 0 8px #40E0D0, 0 0 15px #20C0B0; transform: scale(1); } 
+@keyframes pulse-cyan {
+    0% { opacity: 1; text-shadow: 0 0 8px #40E0D0, 0 0 15px #20C0B0; transform: scale(1); }
+    50% { opacity: 0.8; text-shadow: 0 0 20px #40E0D0, 0 0 30px #FFFFFF; transform: scale(1.1); }
+    100% { opacity: 1; text-shadow: 0 0 8px #40E0D0, 0 0 15px #20C0B0; transform: scale(1); }
 }
 
 @keyframes shake {
@@ -215,15 +291,16 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     top: 0; left: 0; right: 0; bottom: 0;
     background: radial-gradient(circle, rgba(255, 0, 0, 0.15) 0%, rgba(255, 0, 0, 0.45) 100%);
     pointer-events: none;
-    z-index: 9500;
+    z-index: var(--z-flash);
     opacity: 0;
+    will-change: opacity;
     transition: opacity 0.15s ease-out;
 }
 
 /* --- LAYOUT GRID --- */
 #app-container {
     display: grid;
-    grid-template-rows: 50px 1fr 150px; /* Header | Map | Footer */
+    grid-template-rows: 50px 1fr 150px;
     height: 100%;
     width: 100%;
     overflow: hidden;
@@ -238,7 +315,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     position: relative;
     align-items: center;
     padding: 0 15px;
-    z-index: 150;
+    z-index: var(--z-header);
 }
 
 .hud-group { display: flex; align-items: center; gap: 15px; }
@@ -246,16 +323,16 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 .hud-stat { display: flex; flex-direction: column; width: 80px; }
 .hud-stat.compact { width: auto; text-align: right; }
 
-.label { 
-    font-size: 11px; 
-    color: #777; 
-    font-weight: bold; 
+.label {
+    font-size: 11px;
+    color: #777;
+    font-weight: bold;
     letter-spacing: 1px;
 }
 
-.value-text { 
-    font-size: 14px; 
-    color: var(--accent-color); 
+.value-text {
+    font-size: 14px;
+    color: var(--accent-color);
     font-weight: bold;
 }
 
@@ -267,63 +344,81 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     border: 1px solid #444;
     width: 100%;
     margin-top: 2px;
+    border-radius: 1px;
+    overflow: hidden;
 }
-.bar-fill { 
-    height: 100%; 
-    transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
+.bar-fill {
+    height: 100%;
+    transition: width 0.35s cubic-bezier(0.25, 1, 0.5, 1);
 }
 .bar-fill.hull { background: var(--danger); }
 .bar-fill.shield { background: var(--accent-color); }
 .bar-fill.fuel { background: var(--warning); }
 
-.sector-title { 
-    font-size: 20px; 
-    font-weight: bold; 
-    color: #FFF; 
-    text-shadow: 0 0 5px var(--accent-color); 
+.sector-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #FFF;
+    text-shadow: 0 0 5px var(--accent-color);
 }
-.coords { 
-    font-size: 14px; 
-    color: #888; 
-    margin-left: 10px; 
+.coords {
+    font-size: 14px;
+    color: #888;
+    margin-left: 10px;
     font-family: var(--main-font);
 }
 
 .icon-btn {
-    background: transparent; border: 1px solid var(--border-color);
-    color: var(--accent-color); padding: 5px 10px; cursor: pointer;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--accent-color);
+    padding: 5px 10px;
+    cursor: pointer;
     font-size: 12px;
+    border-radius: 2px;
     transition: all 0.15s ease;
 }
 .icon-btn:hover:not(:disabled) { background: var(--accent-color); color: #000; }
+.icon-btn:active:not(:disabled) { transform: translateY(1px); }
 .icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 /* --- SYSTEM MENU --- */
 #sys-stats-display {
     font-size: 13px;
-    color: var(--text-color) !important; 
-    margin-bottom: 10px; 
-    padding-bottom: 10px; 
-    border-bottom: 1px solid var(--border-color) !important; 
+    color: var(--text-color) !important;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color) !important;
+    line-height: 1.5;
 }
 
 #versionInfo {
-    margin-top: 15px;
-    padding-top: 10px;
+    margin-top: 12px;
+    padding-top: 8px;
     border-top: 1px solid var(--border-color);
     font-size: 10px;
     text-align: center;
-    color: var(--accent-color); 
+    color: var(--accent-color);
     opacity: 0.8;
     font-family: var(--title-font);
 }
+
 #systemMenu {
-    position: absolute; top: 50px; right: 0;
-    background: var(--panel-bg); border: 1px solid var(--border-color);
-    padding: 10px; display: flex; flex-direction: column; gap: 5px;
-    z-index: 9999;
-    width: 200px;
-    box-shadow: -5px 5px 20px rgba(0,0,0,0.5);
+    position: absolute;
+    top: 50px;
+    right: 0;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    z-index: var(--z-sysmenu);
+    width: 215px;
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+    box-shadow: -5px 8px 25px rgba(0, 0, 0, 0.6);
 }
 
 #systemMenu.hidden { display: none; }
@@ -336,33 +431,44 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     justify-content: center;
     align-items: stretch;
     width: 100%;
-    max-width: var(--canvas-width, 1024px); 
-    margin: 0 auto; 
-    padding: 0 10px; 
+    max-width: var(--canvas-width, 1024px);
+    margin: 0 auto;
+    padding: 0 10px;
     box-sizing: border-box;
 }
 
 .system-planet-grid > div {
-    position: relative; /* Ensures SCANNED badge positions relative to planet card */
+    position: relative;
 }
 
 .sys-header {
-    font-size: 12px; 
-    color: var(--accent-color); 
-    border-bottom: 1px solid var(--border-color); 
-    margin-bottom: 5px; 
+    font-size: 12px;
+    color: var(--accent-color);
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 5px;
     padding-bottom: 5px;
     font-weight: bold;
     letter-spacing: 1px;
 }
 
-.sys-btn { 
-    background: #222; color: #888; border: none; 
-    padding: 12px; cursor: pointer; font-size: 14px; 
+.sys-btn {
+    background: #1a1a28;
+    color: #b0b0c8;
+    border: 1px solid transparent;
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 12px;
     font-family: var(--title-font);
+    text-align: left;
+    border-radius: 2px;
     transition: all 0.15s ease;
 }
-.sys-btn:hover { background: #333; color: #FFF; }
+.sys-btn:hover:not(:disabled) {
+    background: #282840;
+    border-color: var(--accent-color);
+    color: #FFF;
+}
+.sys-btn:active:not(:disabled) { transform: translateY(1px); }
 
 /* --- MAIN VIEWPORT --- */
 #main-view {
@@ -375,17 +481,19 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 #gameCanvas {
-    max-width: 100%; max-height: 100%;
+    max-width: 100%;
+    max-height: 100%;
     object-fit: contain;
     image-rendering: pixelated;
-    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 }
 
 .view-panel {
-    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
     background: var(--panel-bg);
     padding: 20px;
-    display: none; /* Toggled by JS */
+    display: none;
     overflow-y: auto;
 }
 
@@ -404,14 +512,15 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     background: #000;
     border: 1px solid #333;
     padding: 10px;
-    font-size: 15px;
-    line-height: 1.6;
+    font-size: 14px;
+    line-height: 1.55;
     font-family: var(--main-font);
-    color: var(--accent-color); 
-    text-shadow: 0 0 2px rgba(0, 224, 224, 0.4);
+    color: var(--accent-color);
+    text-shadow: 0 0 2px rgba(0, 224, 224, 0.35);
     overflow-y: auto;
     height: 100%;
-    opacity: 0.95;
+    opacity: 0.96;
+    contain: layout style;
 }
 
 .log-datestamp {
@@ -423,91 +532,162 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 #context-panel {
-    display: flex; flex-direction: column; gap: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
     overflow: hidden;
 }
 
 .mission-box {
     border: 1px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.25);
     padding: 5px 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 8px;
+    border-radius: 2px;
 }
-#mission-tracker .value { font-size: 14px; }
+#mission-tracker .value {
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 
 .action-row {
-    display: flex; flex-wrap: wrap; gap: 5px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
     overflow-y: auto;
 }
 
 .control-button {
     flex: 1;
     min-width: 120px;
-    background: #222; border: 1px solid var(--border-color);
-    color: var(--accent-color); padding: 12px;
-    font-size: 14px; cursor: pointer;
+    background: #1a1a28;
+    border: 1px solid var(--border-color);
+    color: var(--accent-color);
+    padding: 12px;
+    font-size: 13px;
+    cursor: pointer;
     font-family: var(--title-font);
     font-weight: bold;
+    border-radius: 2px;
     transition: all 0.15s ease;
 }
-.control-button:hover { background: var(--accent-color); color: #000; }
+.control-button:hover:not(:disabled) {
+    background: var(--accent-color);
+    color: #000;
+    box-shadow: 0 0 10px var(--accent-glow);
+}
+.control-button:active:not(:disabled) { transform: translateY(1px); }
+.control-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
 
 /* --- COMBAT VIEW --- */
 .combatants-wrapper { display: flex; justify-content: space-around; padding-top: 20px; }
 .combatant-panel { width: 40%; text-align: center; }
-.combat-actions { 
-    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; 
-    margin-top: 20px; padding: 20px; padding-bottom: 50px;
+.combat-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 20px;
+    padding: 20px;
+    padding-bottom: 50px;
 }
-.combat-action-btn { 
-    padding: 15px; font-size: 14px; 
-    background: #330000; border: 1px solid #FF5555; color: #FF5555; 
-    cursor: pointer; font-family: var(--title-font);
+.combat-action-btn {
+    padding: 15px;
+    font-size: 14px;
+    background: #330000;
+    border: 1px solid #FF5555;
+    color: #FF5555;
+    cursor: pointer;
+    font-family: var(--title-font);
+    transition: all 0.15s ease;
 }
-.combat-action-btn:hover { background: #FF5555; color: #000; }
+.combat-action-btn:hover:not(:disabled) { background: #FF5555; color: #000; }
+.combat-action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.nexus-char { 
-    color: #40E0D0; 
-    font-weight: bold; 
-    animation: pulse-cyan 2s infinite ease-in-out; 
-    position: relative; 
-    z-index: 5; 
+.nexus-char {
+    color: #40E0D0;
+    font-weight: bold;
+    animation: pulse-cyan 2s infinite ease-in-out;
+    position: relative;
+    z-index: 5;
 }
 
-/* --- CRT Scanline Effect (Subtle Modern Version) --- */
+/* --- CRT Scanline Effect (Fixed Full-Viewport Overlay) --- */
 .crt::before {
-    content: " "; display: block; position: absolute;
+    content: " ";
+    display: block;
+    position: fixed;
     top: 0; left: 0; bottom: 0; right: 0;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.015) 50%), 
-                linear-gradient(90deg, rgba(255, 0, 0, 0.01), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.01));
-    z-index: 999; background-size: 100% 2px, 3px 100%; pointer-events: none;
+    background:
+        linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.04) 50%),
+        linear-gradient(90deg, rgba(255, 0, 0, 0.012), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.012));
+    z-index: var(--z-crt);
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
+    contain: strict;
 }
 
 /* --- TITLE SCREEN --- */
 #titleOverlay {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: var(--bg-color); z-index: 2000;
-    display: flex; justify-content: center; align-items: center;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(circle at 50% 35%, #0c1228 0%, var(--bg-color) 70%);
+    z-index: var(--z-modal);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 0.45s ease;
 }
-#titleContainer { text-align: center; width: 400px; max-width: 92vw; }
+#titleContainer { text-align: center; width: 420px; max-width: 92vw; }
 
-.game-title { 
+.game-title {
     font-family: var(--title-font);
-    font-weight: 900; 
-    font-size: 48px;  
-    color: var(--accent-color); 
-    margin: 0; 
+    font-weight: 900;
+    font-size: 48px;
+    color: var(--accent-color);
+    margin: 0;
     text-shadow: 0 0 15px var(--accent-color), 0 0 30px rgba(0, 224, 224, 0.4);
 }
-.subtitle { color: #666; margin-bottom: 30px; letter-spacing: 3px; }
-.seed-input { width: 100%; padding: 10px; margin: 10px 0; background: #000; border: 1px solid #444; color: #FFF; text-align: center; }
-.title-button { width: 100%; padding: 15px; background: var(--accent-color); border: none; font-weight: bold; cursor: pointer; margin-top: 10px; font-family: var(--title-font); }
+.subtitle { color: #778; margin-bottom: 24px; letter-spacing: 3px; }
+.seed-input {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    background: #000;
+    border: 1px solid #444;
+    color: #FFF;
+    text-align: center;
+    border-radius: 3px;
+    transition: border-color 0.2s;
+}
+.seed-input:focus {
+    border-color: var(--accent-color);
+}
+.title-button {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent-color);
+    color: #000;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+    font-family: var(--title-font);
+    border-radius: 3px;
+    transition: all 0.15s ease;
+}
 .title-button:hover { background: #FFF; }
 .player-customization { margin-bottom: 20px; }
 .pfp-selector { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 10px; }
-#pfpImage { width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--accent-color); }
-.pfp-arrow-btn { background: none; border: none; color: var(--text-color); font-size: 20px; cursor: pointer; }
+#pfpImage { width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--accent-color); object-fit: cover; }
+.pfp-arrow-btn { background: none; border: none; color: var(--text-color); font-size: 20px; cursor: pointer; padding: 4px 10px; }
 .pfp-arrow-btn:hover { color: var(--accent-color); }
 
 /* --- SCI-FI BUTTONS & PLANET VIEW --- */
@@ -521,16 +701,23 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     font-weight: bold;
     text-transform: uppercase;
     cursor: pointer;
-    transition: all 0.2s ease;
-    width: 100%; 
+    transition: all 0.18s ease;
+    width: 100%;
     margin-bottom: 10px;
+    border-radius: 3px;
     box-shadow: 0 0 5px rgba(0, 224, 224, 0.2);
-    display: flex; justify-content: center; align-items: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
 }
 .action-button:hover:not(:disabled) {
     background: var(--accent-color);
     color: #000 !important;
     box-shadow: 0 0 15px var(--accent-color);
+}
+.action-button:active:not(:disabled) {
+    transform: translateY(1px);
 }
 .action-button:disabled {
     border-color: #444;
@@ -568,6 +755,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     color: #000;
     box-shadow: 0 0 10px var(--success);
 }
+.trade-btn:active:not(:disabled) { transform: translateY(1px); }
 .trade-btn.locked,
 .trade-btn:disabled {
     background: rgba(20, 20, 25, 0.6);
@@ -579,29 +767,36 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 /* Planet View Container */
 .planet-view-content {
-    max-width: 600px;
-    margin: 40px auto;
-    padding: 30px;
+    max-width: 620px;
+    margin: 30px auto;
+    padding: 28px;
     background: rgba(11, 11, 24, 0.95);
     border: 1px solid var(--border-color);
     border-left: 4px solid var(--accent-color);
-    box-shadow: 0 0 30px rgba(0,0,0,0.8);
-    display: flex; flex-direction: column; align-items: center; text-align: center;
+    border-radius: 4px;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
 }
 
 .planet-header {
-    margin-bottom: 30px;
+    margin-bottom: 24px;
     border-bottom: 1px solid #333;
-    padding-bottom: 20px;
+    padding-bottom: 18px;
     width: 100%;
 }
 
 /* Large Planet Image (Detail View) */
 .planet-large-img {
-    width: 128px; height: 128px;
+    width: 128px;
+    height: 128px;
     image-rendering: pixelated;
-    border: 2px solid #333; border-radius: 50%;
-    margin-bottom: 15px; background: #000;
+    border: 2px solid #333;
+    border-radius: 50%;
+    margin-bottom: 15px;
+    background: #000;
     object-fit: cover;
 }
 
@@ -614,9 +809,9 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 .planet-desc {
     color: #aaa;
-    font-size: 16px; 
+    font-size: 15px;
     line-height: 1.6;
-    max-width: 500px;
+    max-width: 520px;
     margin: 0 auto;
 }
 
@@ -624,14 +819,14 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 .planet-actions-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 15px;
+    gap: 14px;
     width: 100%;
-    margin-top: 20px;
+    margin-top: 16px;
 }
 
 .full-width-btn {
     grid-column: span 2;
-    margin-top: 10px;
+    margin-top: 8px;
     border-color: #FFaa00;
     color: #FFaa00;
 }
@@ -643,30 +838,30 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 /* --- SYSTEM MAP ICONS --- */
 .planet-icon-img {
-    width: 80px;            
-    height: 80px;           
-    object-fit: contain;    
-    image-rendering: pixelated; 
-    margin: 10px auto;      
-    display: block;         
-    background-color: #000; 
-    border: 1px solid #333; 
-    border-radius: 4px;     
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    margin: 10px auto;
+    display: block;
+    background-color: #000;
+    border: 1px solid #333;
+    border-radius: 4px;
 }
 
 /* --- ULTRA-MINIMAL SCROLLBARS (Global Base) --- */
-::-webkit-scrollbar { 
-    width: 4px;
-    height: 4px;
-} 
-::-webkit-scrollbar-track { 
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+::-webkit-scrollbar-track {
     background: transparent;
 }
-::-webkit-scrollbar-thumb { 
-    background: rgba(0, 224, 224, 0.2);
-    border-radius: 2px;
+::-webkit-scrollbar-thumb {
+    background: rgba(0, 224, 224, 0.25);
+    border-radius: 3px;
 }
-::-webkit-scrollbar-thumb:hover { 
+::-webkit-scrollbar-thumb:hover {
     background: var(--accent-color);
     box-shadow: 0 0 5px var(--accent-color);
 }
@@ -676,47 +871,56 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 /* --- TRADE & GENERIC MODAL STYLES --- */
-
 #tradeOverlay, #cargoOverlay, #stationOverlay, #genericModalOverlay, #derelictOverlay, #xerxesOverlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.85); 
-    z-index: 2000; 
-    display: flex; justify-content: center; align-items: center;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: var(--z-modal);
+    display: flex;
+    justify-content: center;
+    align-items: center;
     padding: 10px;
     backdrop-filter: blur(3px);
 }
 
 .trade-window {
-    width: 95%; max-width: 760px;
-    height: auto; max-height: 90vh;
+    width: 95%;
+    max-width: 760px;
+    height: auto;
+    max-height: 90vh;
     background: var(--panel-bg);
     border: 1px solid var(--accent-color);
     box-shadow: 0 0 25px rgba(0, 224, 224, 0.2);
-    display: flex; flex-direction: column;
+    display: flex;
+    flex-direction: column;
     border-radius: 4px;
     overflow: hidden;
+    animation: modalEnter 0.18s ease-out;
 }
 
 /* Ensure #genericModalOverlay has a consistent flex height so child 100% layouts scroll cleanly */
 #genericModalOverlay .trade-window {
-    max-width: 820px;
+    max-width: 840px;
     height: 82vh;
-    max-height: 740px;
+    max-height: 750px;
 }
 
 .trade-header {
-    background: rgba(0, 20, 20, 0.9);
-    padding: 15px;
+    background: rgba(0, 20, 20, 0.92);
+    padding: 14px 16px;
     border-bottom: 1px solid var(--border-color);
-    display: flex; justify-content: space-between; align-items: center;
-    font-family: var(--title-font); font-size: 16px; color: #FFF;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--title-font);
+    font-size: 16px;
+    color: #FFF;
     flex-shrink: 0;
 }
 
 .trade-body {
-    display: flex; 
-    flex: 1; 
+    display: flex;
+    flex: 1;
     overflow: hidden;
     min-height: 0;
 }
@@ -726,17 +930,19 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     width: 45%;
     border-right: 1px solid var(--border-color);
     overflow-y: auto;
+    contain: layout style;
 }
 
 .trade-item-row {
     padding: 12px;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid #2b2b40;
     cursor: pointer;
-    display: flex; justify-content: space-between;
+    display: flex;
+    justify-content: space-between;
     font-size: 13px;
-    transition: background 0.2s;
+    transition: background 0.15s ease;
 }
-.trade-item-row:hover { background: rgba(255, 255, 255, 0.05); }
+.trade-item-row:hover { background: var(--surface-hover); }
 .trade-item-row.selected {
     background: rgba(0, 224, 224, 0.15);
     border-left: 3px solid var(--accent-color);
@@ -755,64 +961,78 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     border-left: 1px solid var(--border-color);
 }
 
-/* Custom Scrollbar for the Detail Panel */
-.trade-panel-right::-webkit-scrollbar {
-    width: 6px;
-}
-.trade-panel-right::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.2);
-}
-.trade-panel-right::-webkit-scrollbar-thumb {
-    background: var(--accent-color);
-    border-radius: 3px;
-}
+.trade-panel-right::-webkit-scrollbar { width: 6px; }
+.trade-panel-right::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+.trade-panel-right::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 3px; }
 
 #tradeItemName {
     color: var(--accent-color);
-    font-size: 18px; margin-bottom: 5px;
+    font-size: 18px;
+    margin-bottom: 5px;
     text-transform: uppercase;
 }
 
 .trade-math-area {
     margin: 10px 0;
-    padding: 10px;
-    background: #000;
+    padding: 10px 12px;
+    background: rgba(0, 0, 0, 0.65);
     border: 1px solid #333;
     border-radius: 4px;
 }
 
 .trade-stat-row {
-    display: flex; justify-content: space-between;
-    margin-bottom: 5px; font-size: 13px; color: #888;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 5px;
+    font-size: 13px;
+    color: #888;
 }
 
 /* Controls */
 .qty-control-row {
-    display: flex; gap: 5px; margin-bottom: 15px;
+    display: flex;
+    gap: 5px;
+    margin-bottom: 15px;
     justify-content: center;
 }
 
 #tradeQtyInput {
-    background: #000; border: 1px solid var(--accent-color);
-    color: #FFF; width: 50px; text-align: center;
-    font-size: 16px; font-weight: bold;
+    background: #000;
+    border: 1px solid var(--accent-color);
+    color: #FFF;
+    width: 50px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
 }
 
 .qty-btn {
-    background: #222; border: 1px solid #444; color: #FFF;
-    width: 30px; cursor: pointer; font-weight: bold;
+    background: #222;
+    border: 1px solid #444;
+    color: #FFF;
+    width: 30px;
+    cursor: pointer;
+    font-weight: bold;
 }
 .qty-btn:hover { background: var(--accent-color); color: #000; }
 .max-btn { width: auto; padding: 0 10px; font-size: 12px; }
 
 .total-cost-display {
-    font-size: 16px; text-align: right; margin-bottom: 15px;
-    color: #FFF; font-weight: bold; border-top: 1px solid #444; padding-top: 10px;
+    font-size: 16px;
+    text-align: right;
+    margin-bottom: 15px;
+    color: #FFF;
+    font-weight: bold;
+    border-top: 1px solid #444;
+    padding-top: 10px;
 }
 
 /* Button Group at bottom of modal */
 .trade-btn-group {
-    display: flex; flex-direction: column; gap: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     margin-top: auto;
 }
 
@@ -838,12 +1058,12 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     background: rgba(0, 0, 0, 0.4);
     border: 1px solid var(--border-color);
     border-radius: 6px;
-    padding: 10px; 
-    margin-bottom: 15px;
+    padding: 10px;
+    margin-bottom: 12px;
     display: flex;
-    align-items: center; 
-    gap: 15px; 
-    cursor: default; 
+    align-items: center;
+    gap: 15px;
+    cursor: default;
     transition: all 0.2s;
     position: relative;
     justify-content: space-between;
@@ -872,7 +1092,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 .save-meta {
     color: var(--item-desc-color);
     font-size: 12px;
-    margin-top: 4px;
+    margin-top: 2px;
     font-family: var(--main-font);
 }
 
@@ -887,7 +1107,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     vertical-align: middle;
 }
 
-.auto-badge { 
+.auto-badge {
     background: rgba(0, 170, 170, 0.2);
     color: var(--success);
     border: 1px solid var(--success);
@@ -936,6 +1156,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     width: 20px;
     background-color: #111;
     border: 1px solid #444;
+    border-radius: 2px;
 }
 
 .checkbox-container:hover input ~ .checkmark {
@@ -976,11 +1197,11 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     background: #000;
     object-fit: cover;
     image-rendering: pixelated;
-    flex-shrink: 0; 
+    flex-shrink: 0;
 }
 
 .save-arrow {
-    font-size: 20px; 
+    font-size: 20px;
     color: #555;
     padding-right: 10px;
 }
@@ -1065,7 +1286,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 .save-delete-btn {
     background: transparent;
-    border: 1px solid var(--danger); 
+    border: 1px solid var(--danger);
     color: var(--danger);
     width: 32px;
     height: 32px;
@@ -1079,6 +1300,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     transition: all 0.2s;
     font-family: var(--main-font);
     z-index: 10;
+    flex-shrink: 0;
 }
 
 .save-delete-btn:hover {
@@ -1095,7 +1317,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     display: none;
     justify-content: center;
     align-items: center;
-    z-index: 3000;
+    z-index: var(--z-confirm);
     backdrop-filter: blur(4px);
 }
 
@@ -1108,7 +1330,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     border-radius: 4px;
     text-align: center;
     font-family: var(--main-font);
-    animation: pulse-danger-subtle 2s infinite;
+    animation: pulse-danger-subtle 2s infinite, modalEnter 0.18s ease-out;
 }
 
 .confirm-header {
@@ -1161,9 +1383,9 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 /* --- TOAST NOTIFICATIONS --- */
 #toastContainer {
     position: fixed;
-    top: 80px;
+    top: 70px;
     right: 20px;
-    z-index: 4000;
+    z-index: var(--z-toast);
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -1171,20 +1393,22 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 .toast {
-    background: rgba(10, 15, 20, 0.95);
+    background: rgba(10, 15, 22, 0.96);
     border: 1px solid var(--accent-color);
     border-left: 5px solid var(--accent-color);
     color: #fff;
-    padding: 15px 20px;
-    min-width: 280px;
+    padding: 14px 18px;
+    min-width: 260px;
     max-width: 90vw;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
+    border-radius: 3px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.75);
     font-family: var(--title-font);
-    font-size: 14px;
+    font-size: 13px;
     opacity: 0;
     transform: translateX(50px);
-    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-    pointer-events: auto; 
+    will-change: transform, opacity;
+    transition: all 0.28s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+    pointer-events: auto;
 }
 
 .toast.show {
@@ -1192,8 +1416,8 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     transform: translateX(0);
 }
 
-.toast.success { 
-    border-color: var(--success); 
+.toast.success {
+    border-color: var(--success);
     border-left-color: var(--success);
     color: var(--success);
     box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
@@ -1213,8 +1437,8 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     box-shadow: 0 0 10px rgba(0, 224, 224, 0.2);
 }
 
-.toast.error { 
-    border-color: var(--danger); 
+.toast.error {
+    border-color: var(--danger);
     border-left-color: var(--danger);
     color: var(--danger);
     box-shadow: 0 0 10px rgba(255, 68, 68, 0.2);
@@ -1246,7 +1470,14 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     flex-direction: column;
     align-items: center;
     gap: 5px;
-    opacity: 0.8;
+    opacity: 0.82;
+}
+
+/* BUG FIX: Automatically hide mobile D-Pad when not on Galactic Map */
+#main-view:has(#systemView[style*="block"]) #mobileControls,
+#main-view:has(#planetView[style*="block"]) #mobileControls,
+#main-view:has(#combatView[style*="flex"]) #mobileControls {
+    display: none !important;
 }
 
 .dpad-row { display: flex; gap: 5px; }
@@ -1281,14 +1512,14 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     #app-container {
         display: flex;
         flex-direction: column;
-        height: 100dvh; 
+        height: 100dvh;
         width: 100%;
         overflow: hidden;
     }
 
     #main-view {
         flex-grow: 1;
-        align-items: center; 
+        align-items: center;
         padding: 0;
         background: #050510;
     }
@@ -1312,30 +1543,32 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     }
 
     .log-panel {
-        height: 80px; 
+        height: 82px;
         font-size: 11px;
-        padding: 5px;
+        padding: 6px;
     }
 
+    /* BUG FIX: Removed !important so script.js & view guards can hide D-Pad cleanly */
     #mobileControls {
-        display: flex !important;
-        bottom: 20px;
-        left: 20px;
-        right: auto; 
-        transform: scale(1.0);
+        display: flex;
+        bottom: 16px;
+        left: 16px;
+        right: auto;
+        transform: scale(0.95);
         transform-origin: bottom left;
-        opacity: 0.8; 
+        opacity: 0.82;
     }
 
-    #top-hud { padding: 0 5px; font-size: 10px; }
-    .hud-group { gap: 5px; }
+    #top-hud { padding: 0 6px; font-size: 10px; }
+    .hud-group { gap: 6px; }
+    .hud-stat { width: auto; }
     .label { display: none; }
     .bar-container { width: 35px; }
     .sector-title { font-size: 12px; }
     .coords { font-size: 10px; margin-left: 5px; }
-    
-    .trade-window, .confirm-window { width: 95%; max-height: 90dvh; }
-    #genericModalOverlay .trade-window { height: 88dvh; max-height: 90dvh; }
+
+    .trade-window, .confirm-window { width: 96%; max-height: 90dvh; }
+    #genericModalOverlay .trade-window { height: 90dvh; max-height: 92dvh; }
     .combatants-wrapper { gap: 5px; }
     .combatant-icon { width: 60px; height: 60px; }
 
@@ -1344,15 +1577,34 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     }
     .trade-list-container {
         width: 100%;
-        height: 50%;
+        height: 45%;
         border-right: none;
         border-bottom: 2px solid var(--border-color);
     }
     .trade-panel-right {
         width: 100%;
-        height: 50%;
+        height: 55%;
         border-left: none;
+        padding: 12px;
         overflow-y: auto;
+    }
+
+    /* Stack inline two-column flex modals cleanly on mobile */
+    #genericModalContent > div:has(#genericModalList),
+    #genericModalContent:has(#cargoLeftColumn) {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+    #cargoLeftColumn,
+    #cargoRightColumn,
+    #genericModalDetails {
+        width: 100% !important;
+        max-width: 100% !important;
+        border-right: none !important;
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+        flex: 1 1 50% !important;
+        min-height: 0 !important;
     }
 
     /* Mobile Codex Stacking */
@@ -1360,7 +1612,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
         flex-direction: column;
     }
     #codexCategories, #codexEntries {
-        flex: 0 0 25%;
+        flex: 0 0 26%;
         width: 100%;
         border-right: none;
         border-bottom: 1px solid var(--border-color);
@@ -1377,8 +1629,8 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     }
 
     .trade-item-row, .codex-list-item {
-        padding: 16px 12px;
-        font-size: 14px; 
+        padding: 14px 12px;
+        font-size: 13px;
     }
 
     .sys-meta-row {
@@ -1389,9 +1641,13 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 /* --- CRITICAL STATUS OVERLAYS --- */
 .status-overlay {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    pointer-events: none; z-index: 1000;
-    opacity: 0; transition: opacity 0.5s;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: var(--z-status);
+    opacity: 0;
+    will-change: opacity;
+    transition: opacity 0.5s;
 }
 
 .critical-fuel {
@@ -1404,15 +1660,55 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     animation: pulse-warning 1s infinite;
 }
 
-/* --- LIGHT MODE GLOBAL VARIABLES & OVERRIDES --- */
+/* ==========================================
+   --- EXPANDABLE RETRO CRT THEME PALETTES ---
+   (Toggleable via body.phosphor-mode / body.amber-mode)
+   ========================================== */
+
+body.phosphor-mode {
+    --bg-color: #020a04;
+    --panel-bg: #041208;
+    --border-color: #164824;
+    --accent-color: #33FF66;
+    --accent-glow: rgba(51, 255, 102, 0.25);
+    --text-color: #88cc99;
+    --item-name-color: #ccffdd;
+    --item-desc-color: #559966;
+    --success: #55FF88;
+    --warning: #CCFF44;
+    --gold-text: #AAFF66;
+}
+
+body.amber-mode {
+    --bg-color: #0a0602;
+    --panel-bg: #140c04;
+    --border-color: #4d2f12;
+    --accent-color: #FFB000;
+    --accent-glow: rgba(255, 176, 0, 0.25);
+    --text-color: #d9a760;
+    --item-name-color: #ffe2b3;
+    --item-desc-color: #9e7540;
+    --success: #FFD24C;
+    --warning: #FF8800;
+    --gold-text: #FFD700;
+}
+
+/* ==========================================
+   --- LIGHT MODE GLOBAL VARIABLES & OVERRIDES ---
+   ========================================== */
+
 body.light-mode, .light-mode {
     --bg-color: #f4f4f9;
     --panel-bg: #ffffff;
+    --surface-1: rgba(0, 0, 0, 0.04);
+    --surface-2: rgba(0, 0, 0, 0.07);
+    --surface-hover: rgba(0, 119, 119, 0.06);
     --border-color: #cccccc;
     --text-color: #222233;
     --item-name-color: #000000;
     --item-desc-color: #555566;
     --accent-color: #007777;
+    --accent-glow: rgba(0, 119, 119, 0.18);
     --concord-color: #0055aa;
     --gold-text: #aa7700;
     --success: #007700;
@@ -1434,56 +1730,100 @@ body.light-mode #game-log {
     color: #111111;
 }
 
-/* 1. Main Backgrounds */
+/* 1. Main Backgrounds & Modals */
 body.light-mode #main-view {
     background-color: #FFFFFF !important;
     border: none;
 }
-body.light-mode #titleOverlay, 
+body.light-mode #titleOverlay,
 body.light-mode #titleScreenOverlay,
 body.light-mode .trade-window,
 body.light-mode .confirm-window,
 body.light-mode #codexOverlay .codex-window {
     background-color: #FFFFFF;
 }
+body.light-mode #tradeOverlay,
+body.light-mode #cargoOverlay,
+body.light-mode #stationOverlay,
+body.light-mode #genericModalOverlay,
+body.light-mode #derelictOverlay,
+body.light-mode #codexOverlay {
+    background: rgba(15, 25, 35, 0.55);
+}
+body.light-mode #systemMenu {
+    box-shadow: -5px 8px 20px rgba(0, 0, 0, 0.14);
+}
+body.light-mode .bar-container {
+    background: #E8E8F0;
+    border-color: #CCCCCC;
+}
+body.light-mode .mission-box {
+    background: #F7F9FB;
+}
+body.light-mode input[type="range"] {
+    background: rgba(0, 0, 0, 0.15);
+}
 
 /* 2. The Log Panel */
 body.light-mode .log-panel {
     background: #FFFFFF;
     color: #000000;
-    border-color: #EEE;
+    border-color: #E0E0E0;
     box-shadow: none;
     text-shadow: none;
 }
 
 /* 3. Buttons */
-body.light-mode .action-button, 
-body.light-mode .sys-btn, 
+body.light-mode .action-button,
+body.light-mode .sys-btn,
 body.light-mode .control-button,
 body.light-mode .title-button,
 body.light-mode .trade-btn {
-    background: #FFFFFF; 
-    color: #333;      
+    background: #FFFFFF;
+    color: #333;
     border: 1px solid #CCC;
     box-shadow: 0 2px 0 #EEE;
 }
 
 body.light-mode .action-button:hover:not(:disabled),
 body.light-mode .trade-btn:hover:not(:disabled) {
-    background: #F0Fafa;
+    background: #F0FAFA;
     border-color: var(--accent-color);
     color: var(--accent-color) !important;
+}
+
+/* BUG FIX: Preserve crisp white text on red hover for danger buttons in Light Mode */
+body.light-mode .danger-btn {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+body.light-mode .danger-btn:hover:not(:disabled) {
+    background: var(--danger) !important;
+    border-color: var(--danger) !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 0 12px rgba(204, 0, 0, 0.25);
 }
 
 body.light-mode .pfp-arrow-btn {
     color: #222;
 }
 
+body.light-mode .dpad-btn {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+body.light-mode .dpad-btn:active {
+    background: var(--accent-color);
+    color: #FFFFFF;
+}
+
 /* 4. Save Slots (Clean White Cards) */
 body.light-mode .save-slot-card {
     background: #FFFFFF;
     border: 1px solid #DDD;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 body.light-mode .save-slot-card:hover {
     background: #FAFAFA;
@@ -1517,21 +1857,28 @@ body.light-mode .save-list-header {
     border-bottom-color: #BBB;
 }
 
-/* 5. Inputs */
-body.light-mode .seed-input {
-    background: #FFFFFF;
-    color: #222;
-    border: 1px solid #AAA;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+/* 5. Inputs (Seed, Codex Search, Save Vault, Vault Cipher) */
+body.light-mode .seed-input,
+body.light-mode #codexSearchInput,
+body.light-mode #saveVaultInput,
+body.light-mode #vaultInput {
+    background: #FFFFFF !important;
+    color: #222233 !important;
+    border: 1px solid #AAA !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
 }
-body.light-mode .seed-input::placeholder { color: #999; }
+body.light-mode .seed-input::placeholder,
+body.light-mode #codexSearchInput::placeholder,
+body.light-mode #saveVaultInput::placeholder {
+    color: #999;
+}
 
 /* 6. Checkbox & Labels */
 body.light-mode .checkbox-container { color: #444; }
 body.light-mode .checkmark { background-color: #FFF; border: 1px solid #999; }
 body.light-mode .subtitle { color: #555; font-weight: bold; }
 body.light-mode .game-title {
-    text-shadow: 0 4px 0 rgba(0,0,0,0.1);
+    text-shadow: 0 4px 0 rgba(0, 0, 0, 0.1);
     color: #007777;
 }
 
@@ -1541,17 +1888,21 @@ body.light-mode .sector-title {
     text-shadow: none;
     font-weight: 900;
     letter-spacing: 1px;
-    filter: drop-shadow(1px 1px 0px rgba(0,0,0,0.1));
+    filter: drop-shadow(1px 1px 0px rgba(0, 0, 0, 0.1));
 }
 body.light-mode .coords {
     color: #444;
     font-weight: bold;
     text-shadow: none;
 }
+body.light-mode .sys-title-large {
+    color: #111122;
+    text-shadow: none;
+}
 
 /* --- LIGHT MODE: DYNAMIC BACKGROUND & ANIMATIONS --- */
 body.light-mode #titleOverlay {
-    background: linear-gradient(120deg, #FFFFFF 0%, #F0F0F0 50%, #FFFFFF 100%);
+    background: linear-gradient(120deg, #FFFFFF 0%, #F0F0F5 50%, #FFFFFF 100%);
     background-size: 200% 200%;
     animation: paper-drift 15s ease infinite;
 }
@@ -1571,13 +1922,13 @@ body.light-mode .toast {
     color: #333333;
     border: 1px solid #E0E0E0;
     border-left: 5px solid var(--accent-color);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     font-weight: 600;
 }
 body.light-mode .toast.success {
-    border-left-color: var(--success); 
-    color: var(--success);             
-    background: #F4FFF4;               
+    border-left-color: var(--success);
+    color: var(--success);
+    background: #F4FFF4;
 }
 body.light-mode .toast.warning {
     border-left-color: var(--warning);
@@ -1590,9 +1941,9 @@ body.light-mode .toast.info {
     background: #F0FAFA;
 }
 body.light-mode .toast.error {
-    border-left-color: var(--danger);  
+    border-left-color: var(--danger);
     color: var(--danger);
-    background: #FFF4F4;               
+    background: #FFF4F4;
 }
 
 /* --- LIGHT MODE: PLANET VIEW OVERRIDES --- */
@@ -1600,20 +1951,20 @@ body.light-mode .planet-view-content {
     background: #FFFFFF;
     border: 1px solid #CCC;
     border-left: 4px solid var(--accent-color);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     color: #333;
 }
 body.light-mode .planet-title {
-    color: var(--accent-color);   
-    text-shadow: none;            
+    color: var(--accent-color);
+    text-shadow: none;
     font-weight: 900;
 }
 body.light-mode .planet-desc {
-    color: #555;                  
+    color: #555;
     font-weight: 600;
 }
 body.light-mode .planet-large-img {
-    background: #F0F0F0;          
+    background: #F0F0F0;
     border-color: #CCC;
 }
 body.light-mode .planet-header {
@@ -1622,9 +1973,9 @@ body.light-mode .planet-header {
 
 /* --- LIGHT MODE: MODAL & COMBAT POLISH --- */
 body.light-mode .trade-header {
-    background: #E0E0E0;
+    background: #E8ECEF;
     color: #111;
-    border-bottom: 1px solid #BBB;
+    border-bottom: 1px solid #CCC;
     text-shadow: none;
 }
 body.light-mode .trade-math-area {
@@ -1697,18 +2048,18 @@ body.light-mode .control-button {
     color: var(--accent-color);
     border: 1px solid #CCC;
 }
-body.light-mode .control-button:hover {
+body.light-mode .control-button:hover:not(:disabled) {
     background: var(--accent-color);
     color: #FFF;
 }
 
 /* --- LIGHT MODE: CODEX --- */
 body.light-mode .codex-header {
-    background: #E0E0E0;
+    background: #E8ECEF;
     color: #111;
-    border-bottom: 1px solid #BBB;
+    border-bottom: 1px solid #CCC;
 }
-body.light-mode #codexCategories, 
+body.light-mode #codexCategories,
 body.light-mode #codexEntries {
     border-right-color: #CCC;
     background: #FAFAFA;
@@ -1720,10 +2071,14 @@ body.light-mode .codex-list-item:hover {
     background: #F0F0F0;
     color: var(--accent-color);
 }
-body.light-mode .codex-list-item.active {
+body.light-mode .codex-list-item.active,
+body.light-mode .active-cat {
     background: #E0F7FA;
-    color: #006064;
     border-left-color: #006064;
+}
+body.light-mode .active-entry {
+    background: #FFF8E1;
+    border-left-color: var(--gold-text);
 }
 
 /* --- LIGHT MODE: CODEX CONTRAST FIX --- */
@@ -1740,8 +2095,8 @@ body.light-mode #codexCategories > div:first-child > div:nth-child(2) {
     color: #000000 !important;
     font-weight: 900 !important;
 }
-body.light-mode #codexCategories > div:first-child > div:last-child {
-    color: #333344 !important; 
+body.light-mode #codexCategories > div:first-child > div:nth-child(3) {
+    color: #333344 !important;
     font-weight: bold !important;
 }
 
@@ -1751,7 +2106,7 @@ body.light-mode .trade-item-row {
     color: #333;
 }
 body.light-mode .trade-item-row:hover {
-    background: #F5F5F5; 
+    background: #F5F5F5;
 }
 body.light-mode .trade-item-row.selected {
     background: #E0F7FA;
@@ -1761,61 +2116,64 @@ body.light-mode .trade-item-row.selected {
 
 /* --- LEVEL UP MODAL STYLES --- */
 #levelUpOverlay {
-    display: none; 
-    position: fixed; 
+    display: none;
+    position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.95); 
-    z-index: 5000;
-    flex-direction: column; 
-    align-items: center; 
+    background: rgba(0, 0, 0, 0.95);
+    z-index: var(--z-levelup);
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
 }
 
 .perk-card {
-    width: 200px; 
-    padding: 20px; 
-    border-radius: 8px; 
-    cursor: pointer; 
-    transition: all 0.2s; 
+    width: 210px;
+    padding: 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
     text-align: center;
     font-family: var(--main-font);
-    background: #111; 
+    background: #111;
     border: 1px solid #444;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
 }
 .perk-card:hover {
     border-color: #FFD700;
-    background: #222;
+    background: #1c1c28;
     transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(255, 215, 0, 0.18);
 }
 .perk-icon { font-size: 40px; margin-bottom: 10px; }
 .perk-title {
-    color: var(--accent-color); 
-    margin: 0 0 10px 0; 
+    color: var(--accent-color);
+    margin: 0 0 10px 0;
     font-family: var(--title-font);
-    font-size: 18px;
+    font-size: 16px;
 }
 .perk-desc {
-    color: #888; 
-    font-size: 12px; 
-    line-height: 1.4;
+    color: #999;
+    font-size: 12px;
+    line-height: 1.45;
 }
 .perk-category {
-    margin-top: 15px; 
-    font-size: 10px; 
-    color: #555; 
-    text-transform: uppercase; 
+    margin-top: 15px;
+    font-size: 10px;
+    color: #666;
+    text-transform: uppercase;
     letter-spacing: 1px;
 }
 
 /* --- LIGHT MODE: LEVEL UP OVERRIDES --- */
 body.light-mode #levelUpOverlay {
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.96);
 }
 body.light-mode .perk-card {
     background: #FFFFFF;
     border: 1px solid #CCC;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
 }
 body.light-mode .perk-card:hover {
     background: #F9F9F9;
@@ -1861,7 +2219,8 @@ body.light-mode #levelUpOverlay p {
 }
 
 #stationCanvas {
-    width: 180px; height: 180px;
+    width: 180px;
+    height: 180px;
     border: 2px solid #333;
     border-radius: 8px;
     background: #000;
@@ -1895,47 +2254,55 @@ body.light-mode #levelUpOverlay p {
     padding: 20px;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 15px;
+    gap: 14px;
     align-content: start;
     overflow-y: auto;
 }
 
 .station-action-btn {
-    background: #111;
+    background: #11111e;
     border: 1px solid #333;
     border-left: 3px solid #333;
-    padding: 15px;
+    border-radius: 3px;
+    padding: 14px;
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 14px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.18s ease;
     text-align: left;
 }
 
 .station-action-btn:hover:not(:disabled) {
-    background: #1a1a25;
+    background: #1a1a2a;
     border-color: var(--accent-color);
-    transform: translateX(5px);
+    transform: translateX(4px);
+}
+.station-action-btn:active:not(:disabled) {
+    transform: translateX(2px) translateY(1px);
+}
+.station-action-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 
-.btn-icon { font-size: 24px; }
-.btn-label { 
-    font-family: var(--title-font); 
-    color: #FFF; 
-    font-size: 14px; 
+.btn-icon { font-size: 24px; flex-shrink: 0; }
+.btn-label {
+    font-family: var(--title-font);
+    color: #FFF;
+    font-size: 13px;
 }
-.btn-sub { 
-    display: block; 
-    font-family: var(--main-font); 
-    font-size: 10px; 
-    color: #666; 
-    margin-top: 3px; 
+.btn-sub {
+    display: block;
+    font-family: var(--main-font);
+    font-size: 10px;
+    color: #777;
+    margin-top: 3px;
 }
 
 /* Specific Button Colors */
-.repair-btn:hover { border-color: var(--success); }
-.leave-btn:hover { border-color: var(--danger); }
+.repair-btn:hover:not(:disabled) { border-color: var(--success); }
+.leave-btn:hover:not(:disabled) { border-color: var(--danger); }
 
 /* --- LIGHT MODE STATION OVERRIDES --- */
 body.light-mode .station-body,
@@ -1944,12 +2311,12 @@ body.light-mode .station-badge {
     color: var(--accent-color);
     border-color: #CCC;
     font-weight: 900;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 body.light-mode .station-visual-panel { background: #FFFFFF; }
 body.light-mode #stationCanvas { border-color: #CCC; background: #F0F0F0; }
-body.light-mode .station-action-btn { background: #FFF; border: 1px solid #CCC; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-body.light-mode .station-action-btn:hover:not(:disabled) { background: #F9F9F9; border-color: var(--accent-color); }
+body.light-mode .station-action-btn { background: #FFF; border: 1px solid #CCC; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); }
+body.light-mode .station-action-btn:hover:not(:disabled) { background: #F5FAFA; border-color: var(--accent-color); }
 body.light-mode .btn-label { color: #222; }
 
 /* Responsive Station View */
@@ -1962,7 +2329,7 @@ body.light-mode .btn-label { color: #222; }
 
 /* --- LIGHT MODE TEXT VISIBILITY FIXES --- */
 body.light-mode .station-desc {
-    color: #333; 
+    color: #333;
     font-weight: 600;
 }
 
@@ -1980,7 +2347,7 @@ body.light-mode #genericDetailContent p {
     font-size: 10px;
     color: var(--accent-color);
     padding: 8px 15px;
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.25);
     border-bottom: 1px solid var(--border-color);
     letter-spacing: 1px;
 }
@@ -1993,7 +2360,7 @@ body.light-mode .trade-list-header {
 
 /* --- MODAL INFO BAR (PLAYER STATS OVERLAY) --- */
 .modal-info-bar {
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.45);
     border-bottom: 1px solid var(--border-color);
     padding: 8px 15px;
     display: flex;
@@ -2008,7 +2375,7 @@ body.light-mode .trade-list-header {
 }
 
 body.light-mode .modal-info-bar {
-    background: #F0F0F0;
+    background: #F0F2F5;
     color: #555;
     border-bottom-color: #CCC;
 }
@@ -2038,7 +2405,7 @@ body.light-mode .info-ship { color: #222; }
 
 /* --- DERELICT MODAL OVERRIDES --- */
 #derelictLog {
-    background: rgba(30, 10, 10, 0.5) !important; 
+    background: rgba(30, 10, 10, 0.5) !important;
     border-top: 1px solid #552222 !important;
     color: #AAA !important;
 }
@@ -2077,77 +2444,63 @@ body.light-mode #xerxesOverlay .trade-window {
     border-color: #9C27B0 !important;
     box-shadow: 0 0 40px rgba(156, 39, 176, 0.25) !important;
 }
-
 body.light-mode #xerxesOverlay .trade-header {
     background: #F3E5F5 !important;
     border-bottom: 1px solid #E1BEE7 !important;
 }
-
 body.light-mode #xerxesOverlay .trade-header span {
     color: #4A148C !important;
     text-shadow: none !important;
 }
-
 body.light-mode #xerxesOverlay .icon-btn {
     color: #7B1FA2 !important;
     border-color: #CE93D8 !important;
 }
-
 body.light-mode #xerxesInfoBar {
     border-bottom-color: #F3E5F5 !important;
 }
-
 body.light-mode #xerxesOverlay .station-body {
     background: #FFFFFF !important;
 }
-
 body.light-mode #xerxesOverlay .station-visual-panel {
     background: #FAFAFA !important;
     border-right: 1px solid #F3E5F5 !important;
 }
-
 body.light-mode #xerxesOverlay .station-badge {
     background: #F3E5F5 !important;
     color: #7B1FA2 !important;
     border-color: #E1BEE7 !important;
     font-weight: 900;
 }
-
 body.light-mode #xerxesOverlay .station-desc {
     color: #555 !important;
 }
-
 body.light-mode .xerxes-btn {
     background: #FFFFFF !important;
     border: 1px solid #E1BEE7 !important;
     color: #6A1B9A !important;
     box-shadow: 0 2px 0 #F3E5F5 !important;
 }
-
 body.light-mode .xerxes-btn:hover:not(:disabled) {
     background: #F3E5F5 !important;
     border-color: #9C27B0 !important;
     color: #4A148C !important;
     box-shadow: 0 0 10px rgba(156, 39, 176, 0.3) !important;
 }
-
 body.light-mode .xerxes-spire-btn {
     border-left: 4px solid #9C27B0 !important;
 }
-
 body.light-mode #xerxesLog {
     background: #F3E5F5 !important;
     color: #4A148C !important;
     border-top: 1px solid #CE93D8 !important;
 }
-
 body.light-mode #spireInput {
     background-color: #FFFFFF !important;
     color: #4A148C !important;
     border: 2px solid #9C27B0 !important;
     box-shadow: inset 0 0 5px rgba(156, 39, 176, 0.2) !important;
 }
-
 body.light-mode #spireInput::placeholder {
     color: #CE93D8;
     opacity: 1;
@@ -2156,7 +2509,7 @@ body.light-mode #spireInput::placeholder {
 /* --- SYSTEM VIEW HEADER --- */
 .system-header-panel {
     width: 100%;
-    max-width: clamp(320px, 100vw, 1024px); 
+    max-width: clamp(320px, 100vw, 1024px);
     margin: 0 auto 20px auto;
     padding: 0 15px 15px 15px;
     z-index: var(--z-header);
@@ -2203,7 +2556,7 @@ body.light-mode #spireInput::placeholder {
     background-image: url('assets/black_market.png');
     background-size: cover;
     background-position: center bottom;
-    border-bottom: 2px solid var(--accent-color); 
+    border-bottom: 2px solid var(--accent-color);
     box-shadow: inset 0 -15px 30px rgba(0, 224, 224, 0.2);
     margin-bottom: 15px;
     border-radius: 4px 4px 0 0;
@@ -2225,7 +2578,7 @@ body.light-mode #spireInput::placeholder {
 }
 
 .modal-right-pane {
-    flex: 1; 
+    flex: 1;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -2234,8 +2587,8 @@ body.light-mode #spireInput::placeholder {
 
 .scan-data-box {
     overflow-y: auto;
-    flex-grow: 1; 
-    padding-right: 15px; 
+    flex-grow: 1;
+    padding-right: 15px;
 }
 
 .modal-left-pane img {
@@ -2247,13 +2600,13 @@ body.light-mode #spireInput::placeholder {
 
 /* --- GENERIC LIST ITEM (Cantina, Job Board, Dev Menu) --- */
 .generic-list-item {
-    padding: 15px;
-    border-bottom: 1px solid #333;
-    transition: background 0.2s;
+    padding: 14px 15px;
+    border-bottom: 1px solid #2b2b40;
+    transition: background 0.15s ease;
 }
 
 .generic-list-item:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--surface-hover);
 }
 
 .generic-list-item.active {
@@ -2280,30 +2633,32 @@ body.light-mode .generic-list-item.active {
     display: none;
     justify-content: center;
     align-items: center;
-    z-index: var(--z-modal);
+    z-index: var(--z-codex);
     backdrop-filter: blur(5px);
 }
 
 .codex-window {
     width: 90vw;
-    max-width: 1100px;
-    height: 80vh;
+    max-width: 1120px;
+    height: 82vh;
     background: var(--bg-color);
     border: 1px solid var(--border-color);
-    box-shadow: 0 0 30px rgba(0, 224, 224, 0.1);
+    box-shadow: 0 0 30px rgba(0, 224, 224, 0.15);
     display: flex;
     flex-direction: column;
     border-radius: 6px;
     overflow: hidden;
+    animation: modalEnter 0.18s ease-out;
 }
 
 .codex-header {
     background: #0a0a1a;
     border-bottom: 1px solid var(--border-color);
-    padding: 15px 20px;
+    padding: 14px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .codex-header h2 {
@@ -2317,22 +2672,25 @@ body.light-mode .generic-list-item.active {
 .codex-body {
     display: flex;
     flex: 1;
+    min-height: 0;
     overflow: hidden;
 }
 
 /* --- THE 3 PANES --- */
 #codexCategories {
-    flex: 0 0 220px;
-    background: rgba(0, 0, 0, 0.2);
+    flex: 0 0 230px;
+    background: rgba(0, 0, 0, 0.22);
     border-right: 1px solid var(--border-color);
     overflow-y: auto;
+    contain: layout style;
 }
 
 #codexEntries {
-    flex: 0 0 260px;
-    background: rgba(0, 0, 0, 0.4);
+    flex: 0 0 265px;
+    background: rgba(0, 0, 0, 0.38);
     border-right: 1px solid var(--border-color);
     overflow-y: auto;
+    contain: layout style;
 }
 
 #codexEntryText {
@@ -2348,69 +2706,69 @@ body.light-mode .generic-list-item.active {
 }
 
 .codex-cat-btn:hover, .codex-entry-btn:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--surface-hover);
 }
 
 .active-cat {
     border-left: 3px solid var(--accent-color);
-    background: rgba(0, 224, 224, 0.05);
+    background: rgba(0, 224, 224, 0.08);
 }
 
 .active-entry {
     border-left: 3px solid var(--gold-text);
-    background: rgba(255, 215, 0, 0.05);
+    background: rgba(255, 215, 0, 0.08);
 }
 
 /* --- GALACTIC CODEX READING PANE --- */
 .codex-reading-pane {
-    padding: 30px; 
+    padding: 28px 30px;
     font-family: var(--main-font);
 }
 
 .codex-classification {
-    font-size: 11px; 
-    color: var(--item-desc-color); 
-    letter-spacing: 2px; 
-    margin-bottom: 12px; 
+    font-size: 11px;
+    color: var(--item-desc-color);
+    letter-spacing: 2px;
+    margin-bottom: 12px;
     font-weight: bold;
 }
 
 .codex-classification span {
-    color: var(--accent-color); 
+    color: var(--accent-color);
     text-transform: uppercase;
 }
 
 .codex-title {
-    color: var(--item-name-color); 
-    font-family: var(--title-font); 
-    font-size: 32px; 
-    margin-top: 0; 
-    margin-bottom: 25px; 
-    border-bottom: 2px solid var(--border-color); 
-    padding-bottom: 15px; 
+    color: var(--item-name-color);
+    font-family: var(--title-font);
+    font-size: 30px;
+    margin-top: 0;
+    margin-bottom: 22px;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 14px;
     letter-spacing: 1px;
 }
 
 .codex-body-text {
-    color: var(--text-color); 
-    font-size: 15px; 
-    line-height: 1.9; 
-    text-align: left; 
-    max-width: 700px; 
+    color: var(--text-color);
+    font-size: 15px;
+    line-height: 1.85;
+    text-align: left;
+    max-width: 700px;
     margin: 0 auto;
 }
 
 .codex-footer {
-    margin-top: 50px; 
-    border-top: 1px dashed var(--border-color); 
-    padding-top: 20px; 
-    font-size: 11px; 
-    color: var(--item-desc-color); 
-    text-align: center; 
+    margin-top: 44px;
+    border-top: 1px dashed var(--border-color);
+    padding-top: 18px;
+    font-size: 11px;
+    color: var(--item-desc-color);
+    text-align: center;
     letter-spacing: 3px;
 }
 
-.codex-cat-btn div, 
+.codex-cat-btn div,
 .codex-entry-btn div {
     color: var(--text-color);
 }
@@ -2424,12 +2782,12 @@ body.light-mode .generic-list-item.active {
 
 /* --- START BUTTONS --- */
 #startButton, #bootButton {
-    display: block; 
-    width: fit-content; 
-    margin: 40px auto; 
+    display: block;
+    width: fit-content;
+    margin: 30px auto;
     padding: 15px 40px;
     background: rgba(0, 224, 224, 0.05);
-    border: 2px solid var(--accent-color); 
+    border: 2px solid var(--accent-color);
     color: var(--accent-color);
     font-family: var(--title-font);
     font-size: 18px;
@@ -2446,7 +2804,40 @@ body.light-mode .generic-list-item.active {
     background: var(--accent-color);
     color: #000;
     box-shadow: 0 0 25px var(--accent-color);
-    transform: scale(1.05);
+    transform: scale(1.04);
+}
+
+/* --- REUSABLE EXPANDABILITY UTILITIES --- */
+.badge-illegal {
+    color: var(--danger);
+    border: 1px solid var(--danger);
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    font-weight: bold;
+}
+
+.panel-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.divider-dashed {
+    border: 0;
+    border-top: 1px dashed var(--border-color);
+    margin: 12px 0;
+}
+
+/* --- ACCESSIBILITY: REDUCED MOTION SUPPORT --- */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }
 
 /* --- END OF FILE style.css --- */
