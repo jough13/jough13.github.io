@@ -471,20 +471,7 @@ window.hasPlayerPerk = hasPlayerPerk;
                 }
             }
 
-            // E. HEALTH_PHYSICIST: Protect shields & fuel inside galactic map Radiation Belts
-            if (hasPlayerPerk('HEALTH_PHYSICIST') && typeof getHazardType === 'function' && typeof playerX !== 'undefined') {
-                const hasRadMod = typeof playerShip !== 'undefined' && playerShip.components && playerShip.components.utility === 'UTIL_DOSIMETRY_ARRAY';
-                if (!hasRadMod && getHazardType(playerX, playerY) === 'RADIATION_BELT') {
-                    // Refund the 5.0 shield or 3.0 fuel drain applied by System 1 in script.js
-                    if (typeof playerShields !== 'undefined' && playerShields > 0 && typeof MAX_SHIELDS !== 'undefined') {
-                        playerShields = Math.min(MAX_SHIELDS, playerShields + 5.0);
-                    } else if (typeof playerFuel !== 'undefined' && typeof MAX_FUEL !== 'undefined') {
-                        playerFuel = Math.min(MAX_FUEL, playerFuel + 3.0);
-                    }
-                }
-            }
-
-            // F. SHADOW_TRANSPONDER: Halves Notoriety decay interval (from 15.0 to 7.5 stardates)
+            // E. SHADOW_TRANSPONDER: Halves Notoriety decay interval (from 15.0 to 7.5 stardates)
             if (hasPlayerPerk('SHADOW_TRANSPONDER') && typeof playerNotoriety !== 'undefined' && playerNotoriety > 0) {
                 if (window.lastNotorietyDecayTime && typeof currentGameDate !== 'undefined') {
                     if (currentGameDate - window.lastNotorietyDecayTime >= 7.5) {
@@ -497,7 +484,7 @@ window.hasPlayerPerk = hasPlayerPerk;
                 }
             }
 
-            // G. COLONY_ARCHITECT: +100% construction speed & +15% tax bonus per Stardate
+            // F. COLONY_ARCHITECT: +100% construction speed & +15% tax bonus per Stardate
             if (hasPlayerPerk('COLONY_ARCHITECT') && typeof playerColonies !== 'undefined' && typeof currentGameDate !== 'undefined') {
                 Object.values(playerColonies).forEach(colony => {
                     if (!colony || !colony.established) return;
@@ -621,10 +608,15 @@ window.hasPlayerPerk = hasPlayerPerk;
         if (typeof window.handleCombatAction === 'function' && !window._perksCombatHooked) {
             const originalHandleCombatAction = window.handleCombatAction;
             window.handleCombatAction = function(action) {
+                // Track the cooldown before the action resolves
+                const prevCooldown = typeof playerAbilityCooldown !== 'undefined' ? playerAbilityCooldown : 0;
+                
                 originalHandleCombatAction.apply(this, arguments);
+                
                 if (hasPlayerPerk('TACTICAL_OVERDRIVE')) {
                     if (typeof currentCombatContext !== 'undefined' && currentCombatContext && action !== 'ability') {
-                        if (typeof playerAbilityCooldown !== 'undefined' && playerAbilityCooldown > 0) {
+                        // Only reduce if the original action successfully consumed a turn!
+                        if (typeof playerAbilityCooldown !== 'undefined' && playerAbilityCooldown < prevCooldown && playerAbilityCooldown > 0) {
                             playerAbilityCooldown = Math.max(0, playerAbilityCooldown - 1);
                             if (typeof renderCombatView === 'function') renderCombatView();
                         }
