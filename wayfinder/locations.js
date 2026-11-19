@@ -669,9 +669,6 @@ if (typeof GameRegistry !== 'undefined') {
                     unlocked: false
                 };
             }
-            if (strippedKey !== normalizedKey && !LORE_DATABASE[strippedKey]) {
-                LORE_DATABASE[strippedKey] = LORE_DATABASE[normalizedKey];
-            }
         }
     }
 
