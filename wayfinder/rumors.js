@@ -350,7 +350,9 @@ const RumorManager = {
         if (typeof LOCATIONS_DATA !== 'undefined' && typeof discoveredLocations !== 'undefined' && discoveredLocations.has) {
             const undiscovered = Object.keys(LOCATIONS_DATA).filter(name => {
                 const loc = LOCATIONS_DATA[name];
-                return loc && loc.coords && !discoveredLocations.has(name);
+                // Check against loc.name so it doesn't infinitely loop on Obelisk!
+                const checkName = (loc && loc.name) ? loc.name : name;
+                return loc && loc.coords && !discoveredLocations.has(checkName);
             });
             if (undiscovered.length > 0) {
                 const pick = undiscovered[Math.floor(Math.random() * undiscovered.length)];
