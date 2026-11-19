@@ -2999,7 +2999,10 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                             playerFuel += 1.0; 
                         }
                     } else {
-                        playerX += Math.sign(dx); playerY += Math.sign(dy); playerFuel -= 1.0; 
+                        // Clamp fuel to 0 so it doesn't go negative!
+                        playerX += Math.sign(dx); playerY += Math.sign(dy); 
+                        playerFuel = Math.max(0, playerFuel - 1.0); 
+                        
                         logMessage("<span style='color:var(--danger); font-weight:bold;'>[ EVENT HORIZON ] Massive gravity well detected! Ship is being pulled in!</span>");
                         if (typeof triggerHaptic === 'function') triggerHaptic([50, 100]);
                         if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
