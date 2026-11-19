@@ -771,35 +771,6 @@ const ENCOUNTER_DATABASE = {
             }
         ]
     },
-    STRANDED_SURVEYOR: {
-        id: "STRANDED_SURVEYOR",
-        title: "CRIPPLED SURVEY VESSEL",
-        icon: "🛰️",
-        color: "#00AAFF",
-        text: "A University of Cygnus Prime research explorer is dead in the water with a ruptured cryo-coolant manifold. Their chief astrophysicist pleads for spare Tech Parts to patch their reactor before stellar drift pulls them into a radiation belt.",
-        choices: [
-            {
-                label: "DONATE 2 TECH PARTS (Data+, Concord Rep+)",
-                reqItem: "TECH_PARTS", reqQty: 2,
-                costs: { items: [{ id: "TECH_PARTS", qty: 2 }] },
-                rewards: { credits: 600, xp: 150, items: [{ id: "PLANETARY_DATA", qty: 2 }], rep: { faction: "CONCORD", amount: 10 } },
-                sound: "gain",
-                log: "<span style='color:var(--success)'>[ ENCOUNTER ] Your engineers patch their manifold. The grateful science team transfers 600c, 2x Planetary Data cartridges, and commends you to Concord (+10 Rep).</span>"
-            },
-            {
-                label: "SIPHON THEIR DATA CORES (Eclipse Rep+)",
-                rewards: { items: [{ id: "PLANETARY_DATA", qty: 1 }, { id: "ENCRYPTED_DATA", qty: 1 }], rep: { faction: "ECLIPSE", amount: 5 } },
-                costs: { rep: { faction: "CONCORD", amount: -10 } },
-                sound: "error",
-                log: "<span style='color:var(--danger)'>[ ENCOUNTER ] You slice their defenseless computer core while their systems are offline, seizing their research data (-10 Concord Rep, +5 Eclipse Rep).</span>"
-            },
-            {
-                label: "DROP BEACON AND CONTINUE",
-                rewards: { xp: 25 },
-                log: "<span style='color:var(--item-desc-color)'>[ ENCOUNTER ] You relay their coordinates to the nearest Fuel Rat dispatch (+25 XP).</span>"
-            }
-        ]
-    },
     GHOST_SHIP_ECHO: {
         id: "GHOST_SHIP_ECHO",
         title: "QUANTUM GHOST VESSEL",
