@@ -1146,46 +1146,7 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                             colony.storage['LUXURY_GOODS'] = (colony.storage['LUXURY_GOODS'] || 0) + luxProd;
                         }
                     }
-
-                    // C. Advanced Logistics (Consumes specific multi-inputs)
-                    if (!isStorageFull && eff > 0) {
-                        let wProd = Math.floor(stats.weaponProd * eff * stats.omniProd);
-                        if (wProd > 0 && (colony.storage['REFINED_ALLOY']||0) >= Math.floor(stats.consume['REFINED_ALLOY']*eff) && (colony.storage['MINERALS']||0) >= Math.floor(stats.consume['MINERALS']*eff)) {
-                            colony.storage['REFINED_ALLOY'] -= Math.floor(stats.consume['REFINED_ALLOY']*eff); colony.storage['MINERALS'] -= Math.floor(stats.consume['MINERALS']*eff);
-                            colony.storage['WEAPONS'] = (colony.storage['WEAPONS'] || 0) + wProd;
-                        }
-                        
-                        let trProd = Math.floor(stats.troopProd * eff * stats.omniProd);
-                        if (trProd > 0 && (colony.storage['REFINED_ALLOY']||0) >= Math.floor(stats.consume['REFINED_ALLOY']*eff) && (colony.storage['FOOD_SUPPLIES']||0) >= Math.floor(stats.consume['FOOD_SUPPLIES']*eff)) {
-                            colony.storage['REFINED_ALLOY'] -= Math.floor(stats.consume['REFINED_ALLOY']*eff); colony.storage['FOOD_SUPPLIES'] -= Math.floor(stats.consume['FOOD_SUPPLIES']*eff);
-                            colony.storage['MERCENARY_PLATOON'] = (colony.storage['MERCENARY_PLATOON'] || 0) + trProd;
-                        }
-                        
-                        let meProd = Math.floor(stats.mechProd * eff * stats.omniProd);
-                        if (meProd > 0 && (colony.storage['REFINED_ALLOY']||0) >= Math.floor(stats.consume['REFINED_ALLOY']*eff) && (colony.storage['TECH_PARTS']||0) >= Math.floor(stats.consume['TECH_PARTS']*eff)) {
-                            colony.storage['REFINED_ALLOY'] -= Math.floor(stats.consume['REFINED_ALLOY']*eff); colony.storage['TECH_PARTS'] -= Math.floor(stats.consume['TECH_PARTS']*eff);
-                            colony.storage['ASSAULT_MECH'] = (colony.storage['ASSAULT_MECH'] || 0) + meProd;
-                        }
-                        
-                        let stProd = Math.floor(stats.stimProd * eff * stats.omniProd);
-                        if (stProd > 0 && (colony.storage['MEDICAL_SUPPLIES']||0) >= Math.floor(stats.consume['MEDICAL_SUPPLIES']*eff) && (colony.storage['MINERALS']||0) >= Math.floor(stats.consume['MINERALS']*eff)) {
-                            colony.storage['MEDICAL_SUPPLIES'] -= Math.floor(stats.consume['MEDICAL_SUPPLIES']*eff); colony.storage['MINERALS'] -= Math.floor(stats.consume['MINERALS']*eff);
-                            colony.storage['PROHIBITED_STIMS'] = (colony.storage['PROHIBITED_STIMS'] || 0) + stProd;
-                        }
-                        
-                        let vProd = Math.floor(stats.voidProd * eff * stats.omniProd);
-                        if (vProd > 0) colony.storage['VOID_CRYSTALS'] = (colony.storage['VOID_CRYSTALS'] || 0) + vProd;
-                        
-                        let mdProd = Math.floor(stats.medProd * eff * stats.omniProd);
-                        if (mdProd > 0) colony.storage['MEDICAL_SUPPLIES'] = (colony.storage['MEDICAL_SUPPLIES'] || 0) + mdProd;
-                        
-                        let luxProd = Math.floor(stats.luxuryProd * eff * stats.omniProd);
-                        if (luxProd > 0 && (colony.storage['WATER']||0) >= Math.floor(stats.consume['WATER']*eff) && (colony.storage['MINERALS']||0) >= Math.floor(stats.consume['MINERALS']*eff)) {
-                            colony.storage['WATER'] -= Math.floor(stats.consume['WATER']*eff); colony.storage['MINERALS'] -= Math.floor(stats.consume['MINERALS']*eff);
-                            colony.storage['LUXURY_GOODS'] = (colony.storage['LUXURY_GOODS'] || 0) + luxProd;
-                        }
-                    }
-
+                    
                     // --- 6. DEMOGRAPHICS & CONSUMPTION ---
                     let foodConsumption = Math.ceil((colony.population / 100) * stats.foodEfficiency); 
                     
