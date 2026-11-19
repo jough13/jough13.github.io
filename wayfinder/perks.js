@@ -243,167 +243,8 @@ window.hasPlayerPerk = hasPlayerPerk;
 // ==========================================
 
 (function initPerkSystems() {
-    // 1. FIELD DECRYPTION FOR ENCRYPTED ITEMS & PRECURSOR CIPHERS
-    function executeFieldDecryption(itemId, forcedCipher = false) {
-        if (typeof playerCargo === 'undefined') return false;
-
-        const hasSlicer = hasPlayerPerk('CYBER_SLICER');
-        const hasCipher = (playerCargo['PRECURSOR_CIPHER'] || 0) > 0;
-
-        if (!hasSlicer && !hasCipher && !forcedCipher) {
-            if (typeof showToast === 'function') showToast("Requires Cyber Slicer or Precursor Cipher", "error");
-            if (typeof soundManager !== 'undefined') soundManager.playError();
-            if (typeof logMessage === 'function') {
-                logMessage("<span style='color:var(--danger)'>[ DECRYPTION FAILED ] Field decryption requires the Cyber Slicer perk or a Precursor Cipher in your hold.</span>");
-            }
-            return false;
-        }
-
-        // Consume Cipher if the player doesn't have Cyber Slicer (and wasn't already triggered via PRECURSOR_CIPHER.onUse)
-        if (!hasSlicer && !forcedCipher) {
-            playerCargo['PRECURSOR_CIPHER'] -= 1;
-            if (playerCargo['PRECURSOR_CIPHER'] <= 0) delete playerCargo['PRECURSOR_CIPHER'];
-            if (typeof logMessage === 'function') {
-                logMessage("<span style='color:var(--warning)'>[ FIELD DECRYPTION ] 1x Precursor Cipher consumed to collapse quantum encryption.</span>");
-            }
-        } else if (hasSlicer) {
-            if (typeof logMessage === 'function') {
-                logMessage("<span style='color:var(--accent-color)'>[ CYBER SLICER ] Bypassing Precursor encryption algorithms in the field...</span>");
-            }
-        }
-
-        // Check if player is at Planet Xerxes for Spire Resonance (2x XP)
-        const loc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
-        const isAtXerxes = Boolean(
-            (document.getElementById('xerxesOverlay') && document.getElementById('xerxesOverlay').style.display === 'flex') ||
-            (loc && loc.name && loc.name.includes('Xerxes'))
-        );
-        const xpMultiplier = isAtXerxes ? 2 : 1;
-
-        // Calculate Rewards (matching Cryptarch payouts)
-        let xpReward = 150;
-        let creditReward = 0;
-        let textReward = "Data recovered.";
-
-        if (itemId === 'ENCRYPTED_ENGRAM') {
-            // 👇 FIX: Synchronized the 4-item loot table from the Cryptarch (trade.js)
-            const spaceLeft = (typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50) - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
-            
-            const rewards = [
-                { xp: 150, text: "FRAGMENT RECOVERED: 'The ruler of the sunless world is the DARKNESS.'" },
-                { xp: 300, text: "NAV-DATA: 'Sector [39, 17] - Precursor activity detected.'" },
-                { xp: 500, itemDrop: "VOID_CRYSTALS", qty: 2, text: "JACKPOT: Precursor crystalline matrix stabilized into 2x Void Crystals!" },
-                { xp: 400, itemDrop: "PRECURSOR_STAR_MAP_FRAGMENT", qty: 1, text: "ASTRONOMICAL CACHE: Recovered 1x Star Map Fragment!" }
-            ];
-            const r = rewards[Math.floor(Math.random() * rewards.length)];
-            xpReward = r.xp;
-            textReward = r.text;
-            
-            if (r.itemDrop && spaceLeft >= (r.qty || 1) && typeof COMMODITIES !== 'undefined' && COMMODITIES[r.itemDrop]) {
-                playerCargo[r.itemDrop] = (playerCargo[r.itemDrop] || 0) + (r.qty || 1);
-                if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-            }
-        } else if (itemId === 'ENCRYPTED_DATA') {
-            xpReward = 250;
-            creditReward = 500 + Math.floor(Math.random() * 500);
-            textReward = `Decrypted mercantile ledger (+${creditReward}c).`;
-        } else if (itemId === 'ANCIENT_ARCHIVE') {
-            xpReward = 500;
-            creditReward = 1000 + Math.floor(Math.random() * 1000);
-            textReward = `Holographic array unlocked! Forbidden history recovered (+${creditReward}c).`;
-            if (typeof unlockLoreEntry === 'function') unlockLoreEntry('XENO_PRECURSORS');
-        }
-
-        const finalXP = xpReward * xpMultiplier;
-
-        if (creditReward > 0 && typeof playerCredits !== 'undefined') {
-            playerCredits += creditReward;
-        }
-        if (typeof playerXP !== 'undefined') {
-            playerXP += finalXP;
-        }
-
-        if (isAtXerxes && typeof logMessage === 'function') {
-            logMessage(`<span style="color:#00E0E0">> SPIRE RESONANCE: Decryption output doubled! (+${finalXP} XP)</span>`);
-        }
-        if (typeof logMessage === 'function') {
-            logMessage(`<span style="color:#DDA0DD">> FIELD DECRYPTION SUCCESS: ${textReward} (+${finalXP} XP)</span>`);
-        }
-        if (typeof showToast === 'function') {
-            showToast(`DECRYPTED: +${finalXP} XP${creditReward > 0 ? ` / +${creditReward}c` : ''}`, "success");
-        }
-        if (typeof soundManager !== 'undefined') {
-            soundManager.playAbilityActivate();
-        }
-
-        // Defer checkLevelUp slightly so ui.js finishes decrementing the item and refreshing cargo load first
-        setTimeout(() => {
-            if (typeof checkLevelUp === 'function') checkLevelUp();
-        }, 50);
-
-        return true; // Signals ui.js useCargoItem() to consume 1 unit of itemId
-    }
-
-    function bindFieldDecryptionHandlers() {
-        if (typeof COMMODITIES === 'undefined') return;
-
-        ['ENCRYPTED_ENGRAM', 'ENCRYPTED_DATA', 'ANCIENT_ARCHIVE'].forEach(itemId => {
-            if (COMMODITIES[itemId]) {
-                COMMODITIES[itemId].onUse = () => {
-                    const hasSlicer = hasPlayerPerk('CYBER_SLICER');
-                    const hasCipher = (playerCargo['PRECURSOR_CIPHER'] || 0) > 0;
-                    const loc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
-
-                    // If player lacks field decryption tools but is docked at a hub with a Cryptarch, open the Cryptarch!
-                    if (!hasSlicer && !hasCipher && loc && loc.isMajorHub && loc.name !== 'The Rusty Anchor') {
-                        if (typeof visitCryptarch === 'function') {
-                            visitCryptarch();
-                            return false;
-                        }
-                    }
-                    return executeFieldDecryption(itemId, false);
-                };
-            }
-        });
-
-        if (COMMODITIES['PRECURSOR_CIPHER']) {
-            COMMODITIES['PRECURSOR_CIPHER'].onUse = () => {
-                const targetTypes = ['ENCRYPTED_ENGRAM', 'ENCRYPTED_DATA', 'ANCIENT_ARCHIVE'];
-                const targetId = targetTypes.find(id => (playerCargo[id] || 0) > 0);
-
-                if (!targetId) {
-                    if (typeof showToast === 'function') showToast("No Encrypted Items in Hold", "info");
-                    if (typeof soundManager !== 'undefined') soundManager.playError();
-                    return false;
-                }
-
-                const success = executeFieldDecryption(targetId, true);
-                if (success) {
-                    playerCargo[targetId] -= 1;
-                    if (playerCargo[targetId] <= 0) delete playerCargo[targetId];
-                    const hasSlicer = hasPlayerPerk('CYBER_SLICER');
-
-                    // BUG FIX: If Cyber Slicer saved the Cipher from being consumed, manually refresh the Cargo UI!
-                    if (hasSlicer) {
-                        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                        if (typeof renderUIStats === 'function') renderUIStats();
-                        const modal = document.getElementById('genericModalOverlay');
-                        if (modal && modal.style.display === 'flex' && typeof renderCargoList === 'function') {
-                            renderCargoList();
-                        }
-                        return false;
-                    }
-                    return true;
-                }
-                return false;
-            };
-        }
-    }
-
-    // Bind immediately for items in items.js
-    bindFieldDecryptionHandlers();
-
-    // 2. GAMEBUS TICK & DAMAGE HOOKS FOR PASSIVE PERKS
+    
+    // 1. GAMEBUS TICK & DAMAGE HOOKS FOR PASSIVE PERKS
     let _awardedCartographerSectors = new Set();
     let _lastColonyArchitectTick = {};
     let _ordnanceMoveCounter = 0;
@@ -514,7 +355,7 @@ window.hasPlayerPerk = hasPlayerPerk;
         });
     }
 
-    // 3. HOOK ENGINE FUNCTIONS ON DOM LOAD (Using document so it runs before script.js auto-login!)
+    // 2. HOOK ENGINE FUNCTIONS ON DOM LOAD (Using document so it runs before script.js auto-login!)
     function attachPerkWrappers() {
         bindFieldDecryptionHandlers();
 
@@ -789,14 +630,27 @@ window.hasPlayerPerk = hasPlayerPerk;
             const origBrokerTrade = window.processShadowBrokerTrade;
             window.processShadowBrokerTrade = function(itemId) {
                 const prevCredits = typeof playerCredits !== 'undefined' ? playerCredits : 0;
-                
                 const loc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
-                const soldLocally = itemId !== 'ALL' && loc && loc.sells && loc.sells.some(s => (s.id === itemId) || (s === itemId));
+                
+                // Properly evaluate if we are fencing non-local goods, even when fencing 'ALL'
+                let fencingForeignGoods = false;
+                if (itemId === 'ALL') {
+                    for (const id in playerCargo) {
+                        if (id === 'HOT_CARGO') continue;
+                        if (playerCargo[id] > 0 && COMMODITIES[id] && COMMODITIES[id].illegal) {
+                            const soldLocally = loc && loc.sells && loc.sells.some(s => (s.id === id) || (s === id));
+                            if (!soldLocally) { fencingForeignGoods = true; break; }
+                        }
+                    }
+                } else {
+                    const soldLocally = loc && loc.sells && loc.sells.some(s => (s.id === itemId) || (s === itemId));
+                    fencingForeignGoods = !soldLocally;
+                }
                 
                 origBrokerTrade.apply(this, arguments);
                 
                 // Deny the Eclipse Rep bonus if they are just fencing local store goods
-                if (hasPlayerPerk('BLACK_MARKET_BARON') && playerCredits > prevCredits && typeof playerFactionStanding !== 'undefined' && !soldLocally) {
+                if (hasPlayerPerk('BLACK_MARKET_BARON') && playerCredits > prevCredits && typeof playerFactionStanding !== 'undefined' && fencingForeignGoods) {
                     playerFactionStanding['ECLIPSE'] = (playerFactionStanding['ECLIPSE'] || 0) + 2;
                     if (typeof logMessage === 'function') {
                         logMessage("<span style='color:#9933FF'>[ SYNDICATE KINGPIN ] +25% Black Market bonus applied (+2 Eclipse Cartel Rep).</span>");
