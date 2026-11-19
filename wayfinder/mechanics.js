@@ -1342,19 +1342,4 @@ if (typeof GameBus !== 'undefined') {
     });
 }
 
-// Ensure the mobile D-Pad WAIT button calls playerWaitTurn() so ECS entities (like Fuel Rats) advance!
-window.addEventListener('DOMContentLoaded', () => {
-    const btnWait = document.getElementById('btnWait');
-    if (btnWait && !window._mechanicsWaitPatched) {
-        const cleanBtn = btnWait.cloneNode(true);
-        btnWait.parentNode.replaceChild(cleanBtn, btnWait);
-        cleanBtn.addEventListener('click', () => {
-            if (typeof currentGameState !== 'undefined' && currentGameState === 'galactic_map') {
-                if (typeof playerWaitTurn === 'function') playerWaitTurn();
-            }
-        });
-        window._mechanicsWaitPatched = true;
-    }
-});
-
 // --- END OF FILE mechanics.js ---
