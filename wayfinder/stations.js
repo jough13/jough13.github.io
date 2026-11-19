@@ -204,11 +204,13 @@ function renderStationMenu(location, faction) {
     // --- 6. MAINTENANCE & LEAVE ---
     const missingFuel = Math.floor(MAX_FUEL - playerFuel);
     const refuelLabel = missingFuel > 0 ? `${missingFuel}c` : "Tanks Full";
-    html += createBtn('⛽', 'Refuel', refuelLabel, "refuelShip()", "background: rgba(0, 224, 224, 0.05);");
+
+    html += createBtn('⛽', 'Refuel', refuelLabel, "refuelShip(); openStationView();", "background: rgba(0, 224, 224, 0.05);");
 
     const repairCost = Math.ceil((MAX_PLAYER_HULL - playerHull) * HULL_REPAIR_COST_PER_POINT);
     const repairLabel = repairCost > 0 ? `${repairCost}c` : "Hull 100%";
-    html += createBtn('🔧', 'Repair Hull', repairLabel, "repairShip()", "background: rgba(255, 170, 0, 0.05);");
+
+    html += createBtn('🔧', 'Repair Hull', repairLabel, "repairShip(); openStationView();", "background: rgba(255, 170, 0, 0.05);");
     
     html += createBtn('👋', 'Undock', 'Return to Space', "closeStationView()", "background: rgba(255, 85, 85, 0.05);");
 
@@ -693,7 +695,8 @@ function showConcordArmoryDetails(compId) {
     const currentCompId = playerShip.components[comp.slot];
     const currentComp = COMPONENTS_DATABASE[currentCompId];
     
-    const tradeInValue = currentComp ? Math.floor(currentComp.cost * 0.5) : 0;
+    // Cap 999999c boss drops to 0c trade-in!
+    const tradeInValue = (currentComp && currentComp.cost < 999999) ? Math.floor(currentComp.cost * 0.5) : 0;
     const netCost = comp.cost - tradeInValue;
 
     const detailEl = document.getElementById('genericDetailContent');
@@ -1270,9 +1273,13 @@ function showTroopDetails(itemId) {
 
     const maxTroops = GameState.ship.forces.maxTroops || 20;
     const currentMarines = GameState.ship.forces.marines || 0;
+    const currentMechs = GameState.ship.forces.heavyMechs || 0;
 
     let isFull = false;
+    // Check +10 for Marines, and add the Mech check!
     if (itemId === 'MERCENARY_PLATOON' && currentMarines + 10 > maxTroops) {
+        isFull = true;
+    } else if (itemId === 'ASSAULT_MECH' && currentMechs + 1 > maxTroops) {
         isFull = true;
     }
 
@@ -1317,15 +1324,17 @@ function purchaseTroops(itemId, cost) {
     if (playerCredits < cost) return;
 
     if (itemId === 'MERCENARY_PLATOON') {
-        if (playerShip.forces.marines >= playerShip.forces.maxTroops) {
+        // Add +10 to current marines before checking against max
+        if (playerShip.forces.marines + 10 > playerShip.forces.maxTroops) {
             logMessage("<span style='color:var(--danger)'>[ BARRACKS ] Troop capacity exceeded. Cannot accommodate more Marines.</span>");
             return;
         }
         playerCredits -= cost;
         playerShip.forces.marines += 10;
         logMessage(`<span style="color:var(--success)">[ BARRACKS ] 10 Marines boarded the vessel.</span>`);
-    } else if (itemId === 'ASSAULT_MECH') {
-        if (playerShip.forces.heavyMechs >= playerShip.forces.maxTroops) {
+        } else if (itemId === 'ASSAULT_MECH') {
+        // Add +1 to current mechs before checking against max
+        if (playerShip.forces.heavyMechs + 1 > playerShip.forces.maxTroops) {
             logMessage("<span style='color:var(--danger)'>[ BARRACKS ] Vehicle bay capacity exceeded. Cannot accommodate more Mechs.</span>");
             return;
         }
