@@ -213,13 +213,13 @@ function openTradeModal(mode = 'buy') {
     let borderColor = 'var(--accent-color)';
     let glowColor = 'rgba(0, 224, 224, 0.15)'; 
     
-    if (window.activeTradeNPC) {
-        bannerSrc = 'assets/civ_hauler.jpg'; 
+   if (window.activeTradeNPC) {
+        bannerSrc = 'assets/civ_hauler.png';
         borderColor = 'var(--gold-text)';
         glowColor = 'rgba(255, 215, 0, 0.2)';
     } else if (location.isBlackMarket) {
-        bannerSrc = 'assets/black_market.jpg';
-        borderColor = '#9C27B0'; 
+        bannerSrc = 'assets/black_market.png';
+        borderColor = '#9C27B0';
         glowColor = 'rgba(156, 39, 176, 0.2)';
     } else {
         if (faction === 'CONCORD') {
