@@ -5208,9 +5208,8 @@ function initializeDOMElements() {
     if (btnWait) {
         btnWait.addEventListener('click', (e) => {
             if (currentGameState === GAME_STATES.GALACTIC_MAP) {
-                logMessage("Holding position. Systems recharging...");
-                advanceGameTime(0.15); 
-                render();
+                // Route directly to playerWaitTurn to trigger ECS traffic correctly
+                if (typeof playerWaitTurn === 'function') playerWaitTurn();
             }
         });
     }
