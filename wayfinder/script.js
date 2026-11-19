@@ -2968,7 +2968,11 @@ GameBus.on('TICK_PROCESSED', (tick) => {
 
     // 2. RADIATION HAZARDS (Left intact - environmental hazard)
     const hazard = getHazardType(playerX, playerY);
-    const hasRadShield = playerShip.components.utility === 'UTIL_DOSIMETRY_ARRAY';
+    
+    // Check the HEALTH_PHYSICIST perk BEFORE applying damage!
+    const hasRadShield = (playerShip.components.utility === 'UTIL_DOSIMETRY_ARRAY') || 
+                         (typeof hasPlayerPerk === 'function' && hasPlayerPerk('HEALTH_PHYSICIST'));
+                         
     if (hazard === 'RADIATION_BELT' && !hasRadShield) {
         if (playerShields > 0) {
             playerShields = Math.max(0, playerShields - 5.0);
