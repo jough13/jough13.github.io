@@ -7,31 +7,38 @@
 const GameBus = {
     events: {},
     on(event, listener) {
-        if (typeof listener !== 'function') return;
+        if (typeof listener !== 'function') return () => {};
         if (!this.events[event]) this.events[event] = [];
         if (!this.events[event].includes(listener)) {
             this.events[event].push(listener);
         }
+        return () => this.off(event, listener);
     },
     once(event, listener) {
-        if (typeof listener !== 'function') return;
+        if (typeof listener !== 'function') return () => {};
         const wrapper = (data) => {
             this.off(event, wrapper);
             listener(data);
         };
-        // Store the original listener on the wrapper so we can properly remove it if needed before it fires
-        wrapper._originalListener = listener; 
-        this.on(event, wrapper);
+        // Store the original listener on the wrapper so it can be removed cleanly before firing
+        wrapper._originalListener = listener;
+        return this.on(event, wrapper);
     },
     off(event, listener) {
         if (!this.events[event]) return;
-        // Also check against wrapped single-fire listeners
         this.events[event] = this.events[event].filter(l => l !== listener && l._originalListener !== listener);
     },
+    clear(event) {
+        if (event) delete this.events[event];
+        else this.events = {};
+    },
+    listenerCount(event) {
+        return this.events[event] ? this.events[event].length : 0;
+    },
     emit(event, data) {
-        if (!this.events[event]) return;
-        // Copy array so listeners that unsubscribe during emit don't skip indices
-        const listeners = [...this.events[event]];
+        if (!this.events[event] || this.events[event].length === 0) return;
+        // Snapshot array so listeners that unsubscribe during emit never skip indices
+        const listeners = this.events[event].slice();
         for (let i = 0; i < listeners.length; i++) {
             try {
                 listeners[i](data);
@@ -49,14 +56,14 @@ window.GameBus = GameBus;
 // ==========================================
 
 // STARTING VALUES (Based on Light Freighter + Standard Drive Mk1)
-let MAX_FUEL = 220; 
-let PLAYER_CARGO_CAPACITY = 50; 
-let MAX_SHIELDS = 50; 
+let MAX_FUEL = 220;
+let PLAYER_CARGO_CAPACITY = 50;
+let MAX_SHIELDS = 50;
 let MAX_PLAYER_HULL = 100;
 
-const GAME_VERSION = "v0.9.7"; // Updated Version
-const MAP_WIDTH = 40;  
-const MAP_HEIGHT = 22; 
+const GAME_VERSION = "v0.9.7";
+const MAP_WIDTH = 40;
+const MAP_HEIGHT = 22;
 const PLAYER_CHAR_VAL = '@';
 const EMPTY_SPACE_CHAR_VAL = '.';
 const STAR_CHAR_VAL = '*';
@@ -81,12 +88,15 @@ const MONOLITH_CHAR_VAL = 'Ψ';
 const CARGO_CACHE_CHAR_VAL = 'C';
 const SPACE_MINE_CHAR_VAL = 'M';
 const NAV_BUOY_CHAR_VAL = 'N';
+const RESEARCH_SAT_CHAR_VAL = '¤';
+const FUEL_TANKER_CHAR_VAL = 'F';
+const TIME_CAPSULE_CHAR_VAL = 'T';
 
-const DERELICT_SPAWN_CHANCE = 0.00025; 
-const STAR_SPAWN_CHANCE = 0.0025; 
-const ASTEROID_SPAWN_CHANCE = 0.00125; 
-const NEBULA_SPAWN_CHANCE = 0.05; 
-const ASTEROID_BELT_CHANCE = 0.01; 
+const DERELICT_SPAWN_CHANCE = 0.00025;
+const STAR_SPAWN_CHANCE = 0.0025;
+const ASTEROID_SPAWN_CHANCE = 0.00125;
+const NEBULA_SPAWN_CHANCE = 0.05;
+const ASTEROID_BELT_CHANCE = 0.01;
 
 const INITIAL_CREDITS = 1000;
 const BASE_FUEL_PER_MOVE = 0.8;
@@ -99,7 +109,7 @@ const BIOLOGICAL_RESOURCES = new Set([
     'SENTIENT_MYCELIUM',
     'MEDICAL_SUPPLIES'
 ]);
-Object.freeze(BIOLOGICAL_RESOURCES); // Optimize Set lookups
+Object.freeze(BIOLOGICAL_RESOURCES);
 
 const PIRATE_ENCOUNTER_CHANCE = 0.0025;
 const RUN_ESCAPE_CHANCE = 0.6;
@@ -132,10 +142,10 @@ const MIN_SCOOP_YIELD = 10;
 const MAX_SCOOP_YIELD_RICHNESS_MULTIPLIER = 18;
 const SCOOP_RANDOM_BONUS = 4;
 
-const ANOMALY_SPAWN_CHANCE = 0.000125; 
-const OUTPOST_SPAWN_CHANCE = 0.0002; 
+const ANOMALY_SPAWN_CHANCE = 0.000125;
+const OUTPOST_SPAWN_CHANCE = 0.0002;
 
-const WORMHOLE_SPAWN_CHANCE = 0.0000075; 
+const WORMHOLE_SPAWN_CHANCE = 0.0000075;
 const WORMHOLE_TRAVEL_FUEL_COST = 20;
 const WORMHOLE_JUMP_MIN_DIST = 5;
 const WORMHOLE_JUMP_MAX_DIST = 15;
@@ -154,9 +164,8 @@ const XP_MISSION_COMPLETION_BASE = 50;
 
 let sensorPulseActive = false;
 let sensorPulseRadius = 0;
-const MAX_PULSE_RADIUS = 150; 
+const MAX_PULSE_RADIUS = 150;
 
-// 👇 BUG FIX: Natively attaching to window prevents interval leaks when save slots are swapped!
 window.autoSaveInterval = null;
 const AUTOSAVE_DELAY = 60000;
 
@@ -173,10 +182,10 @@ const NOTORIETY_TITLES = [
 Object.freeze(NOTORIETY_TITLES);
 
 const PLAYER_PORTRAITS = [
-    "assets/pfp_01.png", 
+    "assets/pfp_01.png",
     "assets/pfp_02.png",
     "assets/pfp_03.png",
-    "assets/pfp_04.png", 
+    "assets/pfp_04.png",
     "assets/pfp_05.png",
     "assets/pfp_06.png"
 ];
@@ -186,35 +195,35 @@ Object.freeze(PLAYER_PORTRAITS);
 const FACTIONS = {
     CONCORD: {
         name: "Concord Dominion",
-        color: "#00AAFF", // Blue
-        bg: "rgba(0, 100, 255, 0.08)", 
+        color: "#00AAFF",
+        bg: "rgba(0, 100, 255, 0.08)",
         homeRadius: 8, // 400 Tiles
         description: "The central government. Values law, order, and taxes."
     },
-    ECLIPSE: { 
+    ECLIPSE: {
         name: "Eclipse Cartel",
-        color: "#FF4444", // Red
+        color: "#FF4444",
         bg: "rgba(255, 50, 50, 0.08)",
-        zone: "WEST", // X < -20
+        zone: "WEST",
         description: "A shadow organization controlling the black markets of the outer rim."
     },
     KTHARR: {
         name: "K'tharr Ascendancy",
-        color: "#4CAF50", // Green
+        color: "#4CAF50",
         bg: "rgba(0, 255, 50, 0.08)",
-        zone: "EAST", // X > 20
+        zone: "EAST",
         description: "A xenophobic warrior caste. Highly territorial."
     },
     FUEL_RATS: {
         name: "The Fuel Rats Collective",
-        color: "#FFAA00", // Amber
+        color: "#FFAA00",
         bg: "transparent",
         zone: "NOMAD",
         description: "An independent galaxy-wide collective of emergency rescue pilots."
     },
     INDEPENDENT: {
         name: "Free Systems",
-        color: "#FFFF00", // Yellow
+        color: "#FFFF00",
         bg: "transparent",
         description: "Lawless fringe worlds."
     }
@@ -224,20 +233,65 @@ Object.freeze(FACTIONS);
 function getStartingFactionStanding() {
     return {
         CONCORD: 0,
-        ECLIPSE: -10,  
-        KTHARR: -50,   
-        FUEL_RATS: 0   
+        ECLIPSE: -10,
+        KTHARR: -50,
+        FUEL_RATS: 0
     };
 }
 
 let playerFactionStanding = getStartingFactionStanding();
 
 // ==========================================
-// --- CUSTOM TILE INTERACTIONS ---
+// --- INTERNAL CONFIG HELPERS ---
 // ==========================================
 
+function _configHasPerk(perkId) {
+    if (typeof hasPlayerPerk === 'function') return hasPlayerPerk(perkId);
+    if (typeof playerPerks === 'undefined' || !playerPerks) return false;
+    if (typeof playerPerks.has === 'function') return playerPerks.has(perkId);
+    if (Array.isArray(playerPerks)) return playerPerks.includes(perkId);
+    return false;
+}
+
+function _configSafeAddCargo(itemId, qty) {
+    if (!itemId || qty <= 0 || typeof playerCargo === 'undefined') return 0;
+    const maxCap = typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50;
+    const curLoad = typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0;
+    const itemDef = (typeof COMMODITIES !== 'undefined' && COMMODITIES[itemId]) ? COMMODITIES[itemId] : null;
+    const weight = (itemDef && itemDef.weight !== undefined) ? itemDef.weight : 1;
+
+    const maxFit = weight > 0 ? Math.floor((maxCap - curLoad) / weight) : qty;
+    const actualAdd = Math.max(0, Math.min(qty, maxFit));
+
+    if (actualAdd > 0) {
+        playerCargo[itemId] = (playerCargo[itemId] || 0) + actualAdd;
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+    }
+    return actualAdd;
+}
+
+function _getCompassBearing(dx, dy) {
+    if (dx === 0 && dy === 0) return "HERE";
+    const dirs = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
+    const idx = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
+    return dirs[(idx + 8) % 8];
+}
+
+function _getContrastSafeStarColor(starData) {
+    const isLight = document.body && document.body.classList.contains('light-mode');
+    let color = (starData && starData.color) ? starData.color : '#FFFFFF';
+    if (isLight && starData) {
+        if (starData.class === "A") color = "#444444";
+        else if (starData.class === "F") color = "#887700";
+        else if (starData.class === "B") color = "#3355BB";
+        else if (starData.class === "O") color = "#0033AA";
+        else if (starData.class === "G") color = "#AA7700";
+    }
+    return color;
+}
+
 function _clearCustomTileAtPlayer() {
-    // 👇 BUG FIX: Do not attempt to clear tiles or re-render if the player was killed by the interaction!
+    // Do not clear tiles or re-render if the player was killed by the interaction
     if (typeof playerHull !== 'undefined' && playerHull <= 0) return;
 
     if (typeof updateWorldState === 'function') {
@@ -251,36 +305,151 @@ function _clearCustomTileAtPlayer() {
         });
     }
     if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
-    if (typeof render === 'function') render();
-    if (typeof handleInteraction === 'function') handleInteraction();
+    if (typeof currentGameState === 'undefined' || currentGameState === 'galactic_map') {
+        if (typeof render === 'function') render();
+        if (typeof handleInteraction === 'function') handleInteraction();
+    }
 }
+
+// Rotating Precursor visions for Monoliths (Ψ) & Pre-Warp Time Capsules (T)
+const _MONOLITH_VISIONS = [
+    "You glimpse a spiral galaxy before Sol ignited—thousands of luminous conduits humming in unison across the dark.",
+    "Geometric chords echo across your cockpit speakers: 'WHEN THE SILENCE ARRIVES, THE COMPASS POINTS HOME.'",
+    "Starlight bends into an impossible lattice; your sensor array records harmonic calibration constants centuries ahead of Concord physics.",
+    "A fleeting vision of a sunless obsidian spire beneath frozen storms flashes across your nav-display before fading to static."
+];
+
+const _TIME_CAPSULE_LOGS = [
+    {
+        era: "TERRAN DIASPORA // 2144 CE",
+        loreKey: "TECH_FTL_DRIVES",
+        text: "Colony Ark 'Hesperia' Log 04: First test of the folded-spacetime motivator held for 14 seconds. We are no longer bound to one star."
+    },
+    {
+        era: "TERRAN RESOURCE WARS // 2219 CE",
+        loreKey: "FACTION_CONCORD",
+        text: "Orbital Defense Directive 9: Automated proximity mines deployed across outer-rim shipping lanes. May whoever finds this after the ceasefire forgive us."
+    },
+    {
+        era: "EARLY CONCORD SURVEY // 2298 CE",
+        loreKey: "XENO_PRECURSORS",
+        text: "Dr. Elena Vance, Cygnus Survey Team: The obsidian monoliths aren't monuments—they are tuning forks calibrated to the background metric of space itself."
+    },
+    {
+        era: "FUEL RATS FOUNDING CHARTER // 2341 CE",
+        loreKey: "FACTION_FUEL_RATS",
+        text: "Tug Captain 'Rusty' Callaghan: No spacer dies cold in the black while another ship still has hydrogen to spare. Broadcast on channel Z."
+    },
+    {
+        era: "K'THARR BORDER TREATY // 2384 CE",
+        loreKey: "FACTION_KTHARR",
+        text: "Translated from High K'tharr: 'We do not sign peace on paper. Bring an iron hull to the eastern rim, and we shall weigh your worth in fire.'"
+    },
+    {
+        era: "SHADOW NETWORK GENESIS // 2402 CE",
+        loreKey: "FACTION_SHADOW_NETWORK",
+        text: "Encrypted Dead-Drop 01: Concord customs scans only see what they expect. Coat the bulkhead in obsidian slag and whisper through Xerxes."
+    },
+    {
+        era: "OBSERVATORY ARCHIVE // 2427 CE",
+        loreKey: "PHENOMENON_BLACK_HOLE",
+        text: "Chief Astronomer Lin: By matching angular momentum at the ergosphere boundary, an explorer equipped with Precursor nav-optics can slingshot without burning a drop of fuel."
+    },
+    {
+        era: "SILENTIUM EXPEDITION // 2449 CE",
+        loreKey: "REGION_SILENTIUM_EXPANSE",
+        text: "Final Burst, SSV Wayfarer-Zero: Beyond Sector 25 the starlight thins out. Something immense is listening between the galaxies..."
+    }
+];
+let _timeCapsuleCursor = 0;
+
+// ==========================================
+// --- DATA-DRIVEN DEEP SPACE POI TABLE ---
+// ==========================================
+
+const DEEP_SPACE_POI_TABLE = [
+    {
+        id: 'BLACK_HOLE',
+        chance: BLACK_HOLE_SPAWN_CHANCE,
+        createTile: () => ({ char: BLACK_HOLE_CHAR_VAL, type: 'black_hole', name: 'Micro-Singularity' })
+    },
+    {
+        id: 'ESCAPE_POD',
+        chance: 0.00025,
+        createTile: () => ({ char: ESCAPE_POD_CHAR_VAL, displayChar: ESCAPE_POD_CHAR_VAL, customColor: '#00FFAA', type: 'custom_pod' })
+    },
+    {
+        id: 'RELAY_CASINO',
+        chance: 0.00015,
+        createTile: () => ({ char: RELAY_CASINO_CHAR_VAL, displayChar: RELAY_CASINO_CHAR_VAL, customColor: '#FFD700', type: 'custom_relay' })
+    },
+    {
+        id: 'MONOLITH',
+        chance: 0.00010,
+        createTile: () => ({ char: MONOLITH_CHAR_VAL, displayChar: MONOLITH_CHAR_VAL, customColor: '#9933FF', type: 'custom_monolith' })
+    },
+    {
+        id: 'CARGO_CACHE',
+        chance: 0.00020,
+        createTile: () => ({ char: CARGO_CACHE_CHAR_VAL, displayChar: CARGO_CACHE_CHAR_VAL, customColor: '#AAAAAA', type: 'custom_cargo' })
+    },
+    {
+        id: 'SPACE_MINE',
+        chance: 0.00015,
+        createTile: () => ({ char: SPACE_MINE_CHAR_VAL, displayChar: SPACE_MINE_CHAR_VAL, customColor: '#FF5555', type: 'custom_mine' })
+    },
+    {
+        id: 'NAV_BUOY',
+        chance: 0.00015,
+        createTile: () => ({ char: NAV_BUOY_CHAR_VAL, displayChar: NAV_BUOY_CHAR_VAL, customColor: '#00AAFF', type: 'custom_nav' })
+    },
+    {
+        id: 'RESEARCH_SAT',
+        chance: 0.00015,
+        createTile: () => ({ char: RESEARCH_SAT_CHAR_VAL, displayChar: RESEARCH_SAT_CHAR_VAL, customColor: '#00FFFF', type: 'custom_satellite' })
+    },
+    {
+        id: 'FUEL_TANKER',
+        chance: 0.00018,
+        createTile: () => ({ char: FUEL_TANKER_CHAR_VAL, displayChar: FUEL_TANKER_CHAR_VAL, customColor: '#FFAA00', type: 'custom_tanker' })
+    },
+    {
+        id: 'TIME_CAPSULE',
+        chance: 0.00012,
+        createTile: () => ({ char: TIME_CAPSULE_CHAR_VAL, displayChar: TIME_CAPSULE_CHAR_VAL, customColor: '#DDA0DD', type: 'custom_capsule' })
+    }
+];
+
+// ==========================================
+// --- CUSTOM TILE INTERACTIONS ---
+// ==========================================
 
 const TILE_INTERACTIONS = {
     // 1. Cryo-Escape Pod
     [ESCAPE_POD_CHAR_VAL]: {
         log: "<span style='color:#00FFAA'>[ SENSORS ]</span> A frosted cryo-escape pod drifts silently in the void. Life-support telemetry is flickering.",
-        actions: (tileObj) => [
-            { 
-                label: 'Rescue Occupant', 
-                key: 'e', 
+        actions: () => [
+            {
+                label: 'Rescue Occupant',
+                key: 'e',
                 onclick: () => {
                     const roll = Math.random();
+                    let gainedXP = false;
                     if (roll < 0.65) {
                         const reward = 400 + Math.floor(Math.random() * 400);
                         playerCredits += reward;
                         playerXP += 35;
+                        gainedXP = true;
                         if (typeof playerFactionStanding !== 'undefined') {
                             playerFactionStanding['CONCORD'] = (playerFactionStanding['CONCORD'] || 0) + 3;
                         }
                         logMessage(`<span style='color:var(--success)'>[ RESCUE ]</span> You thaw a stranded merchant pilot. They wire you <b>${formatNumber(reward)}c</b> for passage (+35 XP, +3 Concord Rep).`);
                         if (typeof soundManager !== 'undefined') soundManager.playGain();
-                        if (typeof checkLevelUp === 'function') checkLevelUp();
                     } else {
                         const medQty = 2 + Math.floor(Math.random() * 3);
-                        if ((typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0) + medQty <= PLAYER_CARGO_CAPACITY) {
-                            playerCargo['MEDICAL_SUPPLIES'] = (playerCargo['MEDICAL_SUPPLIES'] || 0) + medQty;
-                            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                            logMessage(`<span style='color:var(--accent-color)'>[ SALVAGE ]</span> The pod's occupant is long gone, but you recover <b>${medQty}x Medical Supplies</b>.`);
+                        const added = _configSafeAddCargo('MEDICAL_SUPPLIES', medQty);
+                        if (added > 0) {
+                            logMessage(`<span style='color:var(--accent-color)'>[ SALVAGE ]</span> The pod's occupant is long gone, but you recover <b>${added}x Medical Supplies</b>.`);
                         } else {
                             playerCredits += 250;
                             logMessage(`<span style='color:var(--gold-text)'>[ SALVAGE ]</span> Cargo hold full! You strip the pod's emergency credit chip (+250c).`);
@@ -288,6 +457,7 @@ const TILE_INTERACTIONS = {
                         if (typeof soundManager !== 'undefined') soundManager.playBuy();
                     }
                     _clearCustomTileAtPlayer();
+                    if (gainedXP && typeof checkLevelUp === 'function') checkLevelUp();
                 }
             },
             {
@@ -295,10 +465,9 @@ const TILE_INTERACTIONS = {
                 key: 'x',
                 onclick: () => {
                     const techQty = 2 + Math.floor(Math.random() * 3);
-                    if ((typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0) + techQty <= PLAYER_CARGO_CAPACITY) {
-                        playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + techQty;
-                        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                        logMessage(`<span style='color:var(--warning)'>[ SCRAPPED ]</span> Dismantled the pod's beacon for <b>${techQty}x Tech Parts</b>.`);
+                    const added = _configSafeAddCargo('TECH_PARTS', techQty);
+                    if (added > 0) {
+                        logMessage(`<span style='color:var(--warning)'>[ SCRAPPED ]</span> Dismantled the pod's beacon for <b>${added}x Tech Parts</b>.`);
                     } else {
                         playerCredits += 200;
                         logMessage(`<span style='color:var(--warning)'>[ SCRAPPED ]</span> Sold the pod's transponder frequencies over subspace (+200c).`);
@@ -307,10 +476,10 @@ const TILE_INTERACTIONS = {
                     _clearCustomTileAtPlayer();
                 }
             },
-            { 
-                label: 'Leave Pod', 
-                key: 'l', 
-                onclick: () => logMessage("You leave the escape pod drifting on its trajectory.") 
+            {
+                label: 'Leave Pod',
+                key: 'l',
+                onclick: () => logMessage("You leave the escape pod drifting on its trajectory.")
             }
         ]
     },
@@ -318,9 +487,9 @@ const TILE_INTERACTIONS = {
     // 2. Automated Subspace Wagering & Supply Relay
     [RELAY_CASINO_CHAR_VAL]: {
         log: "<span style='color:var(--gold-text)'>[ RELAY BEACON ]</span> An automated neon-lit syndicate trade & wagering buoy hums in the dark.",
-        actions: (tileObj) => [
+        actions: () => [
             {
-                label: 'Wager 200c (Subspace Slots)',
+                label: 'Wager 200c (Slots)',
                 key: 'e',
                 onclick: () => {
                     if (playerCredits < 200) {
@@ -347,6 +516,33 @@ const TILE_INTERACTIONS = {
                 }
             },
             {
+                label: 'High-Roller (1,000c)',
+                key: 'h',
+                onclick: () => {
+                    if (playerCredits < 1000) {
+                        if (typeof showToast === 'function') showToast("Need 1,000c for High-Roller Table!", "error");
+                        if (typeof soundManager !== 'undefined') soundManager.playError();
+                        return;
+                    }
+                    playerCredits -= 1000;
+                    const roll = Math.random();
+                    if (roll < 0.10) {
+                        playerCredits += 5000;
+                        logMessage("<span style='color:var(--gold-text); font-weight:bold;'>[ GRAND JACKPOT! ]</span> Triple Precursor Rings! The buoy flashes violet and wires <b>5,000c</b>!");
+                        if (typeof showToast === 'function') showToast("GRAND JACKPOT! +4,000c NET", "success");
+                        if (typeof soundManager !== 'undefined') soundManager.playGain();
+                    } else if (roll < 0.44) {
+                        playerCredits += 2000;
+                        logMessage("<span style='color:var(--success)'>[ HIGH-ROLLER WIN ]</span> Pulsar alignment! Payout: <b>2,000c</b>.");
+                        if (typeof soundManager !== 'undefined') soundManager.playBuy();
+                    } else {
+                        logMessage("<span style='color:var(--danger)'>[ BUST ]</span> The syndicate algorithm sweeps the pot. (-1,000c)");
+                        if (typeof soundManager !== 'undefined') soundManager.playError();
+                    }
+                    if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
+                }
+            },
+            {
                 label: 'Emergency Fuel (100c)',
                 key: 'f',
                 onclick: () => {
@@ -359,7 +555,7 @@ const TILE_INTERACTIONS = {
                         return;
                     }
                     playerCredits -= 100;
-                    playerFuel = Math.min(MAX_FUEL, playerFuel + 50);
+                    playerFuel = Math.min(MAX_FUEL, Math.round((playerFuel + 50) * 10) / 10);
                     logMessage("<span style='color:var(--accent-color)'>[ RELAY ]</span> Purchased 50 units of hyper-refined hydrogen for 100c.");
                     if (typeof soundManager !== 'undefined') soundManager.playBuy();
                     if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
@@ -383,15 +579,16 @@ const TILE_INTERACTIONS = {
                     if (typeof unlockLoreEntry === 'function') unlockLoreEntry('XENO_PRECURSORS');
                     const xp = 120;
                     playerXP += xp;
-                    let bonusText = "";
-                    if ((typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0) + 1 <= PLAYER_CARGO_CAPACITY) {
-                        const drop = Math.random() < 0.4 ? 'PRECURSOR_CIPHER' : 'ARTIFACT_SHARDS';
-                        playerCargo[drop] = (playerCargo[drop] || 0) + 1;
-                        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                        const dropName = (typeof COMMODITIES !== 'undefined' && COMMODITIES[drop]) ? COMMODITIES[drop].name : drop;
-                        bonusText = ` Materialized <b>1x ${dropName}</b> in cargo bay!`;
+                    if (typeof playerShields !== 'undefined' && typeof MAX_SHIELDS !== 'undefined') {
+                        playerShields = MAX_SHIELDS;
                     }
-                    logMessage(`<span style='color:#DDA0DD'>[ MONOLITH ATTUNED ]</span> Ancient star-charts flood your nav-computer (+${xp} XP).${bonusText}`);
+                    const drop = Math.random() < 0.4 ? 'PRECURSOR_CIPHER' : 'ARTIFACT_SHARDS';
+                    const added = _configSafeAddCargo(drop, 1);
+                    const dropName = (typeof COMMODITIES !== 'undefined' && COMMODITIES[drop]) ? COMMODITIES[drop].name : drop;
+                    const bonusText = added > 0 ? ` Materialized <b>1x ${dropName}</b> in cargo bay!` : '';
+                    const vision = _MONOLITH_VISIONS[Math.floor(Math.random() * _MONOLITH_VISIONS.length)];
+
+                    logMessage(`<span style='color:#DDA0DD'>[ MONOLITH ATTUNED ]</span> <i>"${vision}"</i> (+${xp} XP, Shields Maxed).${bonusText}`);
                     if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
                     _clearCustomTileAtPlayer();
                     if (typeof checkLevelUp === 'function') checkLevelUp();
@@ -400,31 +597,71 @@ const TILE_INTERACTIONS = {
         ]
     },
 
-    // Added the specific static "Alien Obelisk" from locations.js
+    // Static "Alien Obelisk" from locations.js (BUG FIX: actions() is now 100% pure — no side-effects on hotkey lookup!)
     'I': {
-        log: "", // Let the logic handle the log dynamically
+        log: "<span style='color:#9933FF'>[ OBSIDIAN OBELISK ]</span> An ancient geometric spire hangs in silent orbit, pulsing with a low violet resonance.",
         actions: (tileObj) => {
             if (tileObj && tileObj.studied) {
-                // Wrap in span
-                logMessage("<span style='color:var(--item-desc-color)'>The obelisk is dark and silent. Its energy is spent.</span>");
                 return [
-                    { label: 'Inspect Runes', key: 'e', onclick: () => logMessage("Cold geometric trenches run deep into the stone. Whatever intelligence dwelled within has departed.") }
+                    {
+                        label: 'Inspect Runes',
+                        key: 'e',
+                        onclick: () => logMessage("<span style='color:var(--item-desc-color)'>Cold geometric trenches run deep into the stone. Whatever intelligence dwelled within has departed.</span>")
+                    }
                 ];
             }
-            
-            logMessage("<span style='color:#9933FF'>The obelisk hums. You feel strange...</span>");
-            if (typeof unlockLoreEntry === 'function') unlockLoreEntry("XENO_PRECURSORS");
-            if (typeof GameBus !== 'undefined') {
-                GameBus.emit('HULL_REPAIRED', 50);
-                GameBus.emit('XP_GAINED', 100);
-            }
-            
-            // Mark as used persistently
-            updateWorldState(playerX, playerY, { studied: true, lastInteraction: typeof currentGameDate !== 'undefined' ? currentGameDate : 0 });
-            
+
             return [
-                { label: 'Touch the Singularity Core', key: 'e', onclick: () => triggerGameOver("Your mind was absorbed into the stone.") },
-                { label: 'Back Away Slowly', key: 'l', onclick: () => { logMessage("You sever sensor lock with the monolith."); renderContextualActions([]); } }
+                {
+                    label: 'Commune with Obelisk',
+                    key: 'e',
+                    onclick: () => {
+                        if (tileObj && tileObj.studied) return;
+                        logMessage("<span style='color:#9933FF'>[ OBELISK ] The obelisk hums in harmonic sympathy. Your hull knits together (+50 Hull) and star-charts flood your mind (+100 XP).</span>");
+                        if (typeof unlockLoreEntry === 'function') {
+                            unlockLoreEntry("XENO_PRECURSORS");
+                            unlockLoreEntry("LOCATION_OBSIDIAN_OBELISK");
+                        }
+                        if (typeof updateWorldState === 'function') {
+                            updateWorldState(playerX, playerY, { studied: true, isUnique: true, lastInteraction: typeof currentGameDate !== 'undefined' ? currentGameDate : 0 });
+                        } else if (tileObj) {
+                            tileObj.studied = true;
+                        }
+                        if (typeof GameBus !== 'undefined') {
+                            GameBus.emit('HULL_REPAIRED', 50);
+                            GameBus.emit('XP_GAINED', 100);
+                        }
+                        if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+                        if (typeof renderContextualActions === 'function') renderContextualActions(TILE_INTERACTIONS['I'].actions(tileObj));
+                    }
+                },
+                {
+                    label: 'Touch Singularity Core (Fatal?)',
+                    key: 'x',
+                    onclick: () => {
+                        if (_configHasPerk('VOID_DIVER')) {
+                            const added = _configSafeAddCargo('VOID_CRYSTALS', 2);
+                            if (typeof updateWorldState === 'function') {
+                                updateWorldState(playerX, playerY, { studied: true, isUnique: true, lastInteraction: typeof currentGameDate !== 'undefined' ? currentGameDate : 0 });
+                            }
+                            playerXP += 250;
+                            logMessage(`<span style='color:#DDA0DD; font-weight:bold;'>[ VOID DIVER ]</span> Your mind resists the stone's gravity! You pull back intact with +250 XP${added > 0 ? ` and <b>${added}x Void Crystals</b>` : ''}!`);
+                            if (typeof soundManager !== 'undefined') soundManager.playGain();
+                            if (typeof checkLevelUp === 'function') checkLevelUp();
+                            if (typeof renderContextualActions === 'function') renderContextualActions(TILE_INTERACTIONS['I'].actions(tileObj));
+                        } else if (typeof triggerGameOver === 'function') {
+                            triggerGameOver("Your mind was absorbed into the stone.");
+                        }
+                    }
+                },
+                {
+                    label: 'Back Away Slowly',
+                    key: 'l',
+                    onclick: () => {
+                        logMessage("You sever sensor lock with the monolith.");
+                        if (typeof renderContextualActions === 'function') renderContextualActions([]);
+                    }
+                }
             ];
         }
     },
@@ -432,27 +669,24 @@ const TILE_INTERACTIONS = {
     // 4. Cargo Cache
     [CARGO_CACHE_CHAR_VAL]: {
         log: "<span style='color:#AAAAAA'>[ SENSORS ]</span> A cluster of reinforced cargo containers is drifting amidst wreckage debris.",
-        actions: (tileObj) => [
+        actions: () => [
             {
                 label: 'Tractor Cargo In',
                 key: 'e',
                 onclick: () => {
-                    const spaceLeft = PLAYER_CARGO_CAPACITY - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
-                    if (spaceLeft <= 0) {
+                    const lootTables = ['TECH_PARTS', 'FOOD_SUPPLIES', 'MINERALS', 'WATER', 'REFINED_ALLOY'];
+                    const picked = lootTables[Math.floor(Math.random() * lootTables.length)];
+                    const wantQty = picked === 'REFINED_ALLOY' ? (1 + Math.floor(Math.random() * 2)) : (3 + Math.floor(Math.random() * 5));
+                    const added = _configSafeAddCargo(picked, wantQty);
+
+                    if (added <= 0) {
                         if (typeof showToast === 'function') showToast("CARGO HOLD FULL", "error");
                         logMessage("<span style='color:var(--danger)'>[ SALVAGE FAILED ] Cannot tractor containers, cargo hold is full!</span>");
                         return;
                     }
-                    
-                    const lootTables = ['TECH_PARTS', 'FOOD_SUPPLIES', 'MINERALS', 'WATER'];
-                    const picked = lootTables[Math.floor(Math.random() * lootTables.length)];
-                    const qty = Math.min(spaceLeft, 3 + Math.floor(Math.random() * 5));
-                    
-                    playerCargo[picked] = (playerCargo[picked] || 0) + qty;
-                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                    
-                    const itemName = typeof COMMODITIES !== 'undefined' && COMMODITIES[picked] ? COMMODITIES[picked].name : picked;
-                    logMessage(`<span style='color:var(--success)'>[ SALVAGE ]</span> Recovered <b>${qty}x ${itemName}</b> from the drifting cache.`);
+
+                    const itemName = (typeof COMMODITIES !== 'undefined' && COMMODITIES[picked]) ? COMMODITIES[picked].name : picked;
+                    logMessage(`<span style='color:var(--success)'>[ SALVAGE ]</span> Recovered <b>${added}x ${itemName}</b> from the drifting cache.`);
                     if (typeof soundManager !== 'undefined') soundManager.playGain();
                     _clearCustomTileAtPlayer();
                 }
@@ -468,18 +702,19 @@ const TILE_INTERACTIONS = {
     // 5. Space Mine
     [SPACE_MINE_CHAR_VAL]: {
         log: "<span style='color:var(--danger); font-weight:bold; animation: blink 1s infinite;'>[ WARNING ]</span> Proximity sensors triggered! A live sub-space mine from the Terran Wars is arming!",
-        actions: (tileObj) => [
+        actions: () => [
             {
-                label: 'Defuse Mine (Requires Cyber Slicer)',
+                label: 'Defuse Mine (Cyber Slicer)',
                 key: 'e',
                 onclick: () => {
-                    const hasSlicer = typeof playerPerks !== 'undefined' && playerPerks.has && playerPerks.has('CYBER_SLICER');
-                    if (hasSlicer) {
+                    if (_configHasPerk('CYBER_SLICER')) {
                         playerXP += 75;
-                        logMessage("<span style='color:var(--success)'>[ DEFUSED ]</span> Cyber Slicer rapidly disabled the archaic detonator sequence. (+75 XP)");
+                        const salvaged = _configSafeAddCargo('WEAPONS', 1) || _configSafeAddCargo('TECH_PARTS', 2);
+                        const salvageMsg = salvaged > 0 ? " Salvaged intact ordnance from the warhead." : "";
+                        logMessage(`<span style='color:var(--success)'>[ DEFUSED ]</span> Cyber Slicer rapidly disabled the archaic detonator sequence (+75 XP).${salvageMsg}`);
                         if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
-                        if (typeof checkLevelUp === 'function') checkLevelUp();
                         _clearCustomTileAtPlayer();
+                        if (typeof checkLevelUp === 'function') checkLevelUp();
                     } else {
                         if (typeof showToast === 'function') showToast("DEFUSAL FAILED", "error");
                         logMessage("<span style='color:var(--danger)'>[ DETONATION ]</span> Lacking proper slicing tools, you trigger the anti-tamper switch!");
@@ -493,7 +728,7 @@ const TILE_INTERACTIONS = {
                 key: 'x',
                 onclick: () => {
                     const damage = 15;
-                    logMessage(`<span style='color:var(--warning)'>[ DETONATION ]</span> You blast the mine from close range. The shockwave strikes your shields/hull for ${damage} damage.`);
+                    logMessage(`<span style='color:var(--warning)'>[ DETONATION ]</span> You blast the mine from close range. The shockwave strikes your hull for ${damage} damage.`);
                     if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: damage, reason: "Space Mine Shockwave" });
                     _clearCustomTileAtPlayer();
                 }
@@ -502,7 +737,8 @@ const TILE_INTERACTIONS = {
                 label: 'Evasive Retreat (Risk)',
                 key: 'l',
                 onclick: () => {
-                    if (Math.random() < (typeof PLAYER_EVASION !== 'undefined' ? 0.5 + PLAYER_EVASION : 0.5)) {
+                    const evadeOdds = Math.min(0.90, 0.50 + (typeof PLAYER_EVASION !== 'undefined' ? PLAYER_EVASION : 0));
+                    if (Math.random() < evadeOdds) {
                         logMessage("<span style='color:var(--success)'>[ EVADED ]</span> You backed away slowly before the proximity fuse tripped.");
                     } else {
                         logMessage("<span style='color:var(--danger)'>[ DETONATION ]</span> Thruster wash triggered the mine as you turned!");
@@ -528,23 +764,172 @@ const TILE_INTERACTIONS = {
                     }
                     const xp = 50;
                     playerXP += xp;
-                    
-                    // 25% chance to extract Navigation Charts for trading
+
                     let extraLoot = "";
-                    if (Math.random() < 0.25 && (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0) < PLAYER_CARGO_CAPACITY) {
-                        playerCargo['NAVIGATION_CHARTS'] = (playerCargo['NAVIGATION_CHARTS'] || 0) + 1;
-                        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                        extraLoot = " Copied <b>1x Nav-Charts</b> to data drive.";
+                    if (Math.random() < 0.30) {
+                        const added = _configSafeAddCargo('NAVIGATION_CHARTS', 1);
+                        if (added > 0) extraLoot = " Copied <b>1x Nav-Charts</b> to data drive.";
                     }
-                    
-                    logMessage(`<span style='color:#00AAFF'>[ DATA SECURED ]</span> Sector topography updated (+${xp} XP).${extraLoot}`);
-                    if (typeof soundManager !== 'undefined') soundManager.playScan();
-                    if (typeof checkLevelUp === 'function') checkLevelUp();
-                    
+
+                    let nearestNote = "";
+                    if (typeof findNearestStation === 'function') {
+                        const st = findNearestStation(playerX, playerY);
+                        if (st) {
+                            const dx = st.x - playerX;
+                            const dy = st.y - playerY;
+                            const dist = Math.floor(Math.sqrt(dx * dx + dy * dy));
+                            nearestNote = ` Nearest port: <b>${st.name}</b> (${dist}u ${_getCompassBearing(dx, dy)}).`;
+                        }
+                    }
+
                     if (typeof updateWorldState === 'function') {
                         updateWorldState(playerX, playerY, { studied: true, lastInteraction: typeof currentGameDate !== 'undefined' ? currentGameDate : 0 });
+                    } else if (tileObj) {
+                        tileObj.studied = true;
                     }
+
+                    logMessage(`<span style='color:#00AAFF'>[ DATA SECURED ]</span> Sector topography updated (+${xp} XP).${extraLoot}${nearestNote}`);
+                    if (typeof soundManager !== 'undefined') soundManager.playScan();
+                    if (typeof checkLevelUp === 'function') checkLevelUp();
                     if (typeof handleInteraction === 'function') handleInteraction();
+                }
+            }
+        ]
+    },
+
+    // 7. NEW POI: Deep-Space Astrometric Research Satellite (¤)
+    [RESEARCH_SAT_CHAR_VAL]: {
+        log: "<span style='color:#00FFFF'>[ RESEARCH SATELLITE ]</span> A solar-finned University of Cygnus astrometric probe drifts off-axis, broadcasting narrowband spectral telemetry.",
+        actions: (tileObj) => [
+            {
+                label: 'Download Spectral Data',
+                key: 'e',
+                onclick: () => {
+                    if (tileObj && tileObj.studied) {
+                        logMessage("This satellite's spectral buffer has already been archived.");
+                        return;
+                    }
+                    const isNexStar = typeof playerShip !== 'undefined' && playerShip.components && playerShip.components.scanner === 'SCANNER_NEXSTAR_4SE';
+                    const hasSensors = isNexStar || _configHasPerk('LONG_RANGE_SENSORS');
+                    const xp = hasSensors ? 95 : 65;
+                    playerXP += xp;
+
+                    let dropNote = "";
+                    const roll = Math.random();
+                    if (hasSensors && roll < 0.25) {
+                        if (_configSafeAddCargo('DATA_PULSAR', 1) > 0) dropNote = " Extracted <b>1x Pulsar Timing Data</b>!";
+                    } else if (roll < 0.55) {
+                        if (_configSafeAddCargo('PLANETARY_DATA', 1) > 0) dropNote = " Extracted <b>1x Planetary Data</b> cartridge!";
+                    }
+
+                    if (typeof updateWorldState === 'function') {
+                        updateWorldState(playerX, playerY, { studied: true, lastInteraction: typeof currentGameDate !== 'undefined' ? currentGameDate : 0 });
+                    } else if (tileObj) {
+                        tileObj.studied = true;
+                    }
+
+                    logMessage(`<span style='color:#00FFFF'>[ ASTROMETRIC RELAY ]</span> Downloaded deep-sky interferometry logs (+${xp} XP).${dropNote}`);
+                    if (typeof soundManager !== 'undefined') soundManager.playScan();
+                    if (typeof checkLevelUp === 'function') checkLevelUp();
+                    if (typeof handleInteraction === 'function') handleInteraction();
+                }
+            },
+            {
+                label: 'Salvage Optics',
+                key: 'x',
+                onclick: () => {
+                    const added = _configSafeAddCargo('TECH_PARTS', 2 + Math.floor(Math.random() * 3));
+                    if (added > 0) {
+                        logMessage(`<span style='color:var(--warning)'>[ SALVAGED ]</span> Stripped the derelict probe's gyros and mirrors for <b>${added}x Tech Parts</b>.`);
+                    } else {
+                        playerCredits += 300;
+                        logMessage("<span style='color:var(--gold-text)'>[ SALVAGED ]</span> Cargo full! Broadcast the satellite's recovery transponder for a <b>300c</b> finder's fee.");
+                    }
+                    if (typeof soundManager !== 'undefined') soundManager.playMining();
+                    _clearCustomTileAtPlayer();
+                }
+            }
+        ]
+    },
+
+    // 8. NEW POI: Abandoned Promethium Fuel Tanker (F)
+    [FUEL_TANKER_CHAR_VAL]: {
+        log: "<span style='color:var(--warning)'>[ FUEL BARGE ]</span> A scarred, derelict promethium tanker floats silently. Reserve cryogenic tanks still register positive pressure.",
+        actions: () => [
+            {
+                label: 'Siphon Reserve Tanks (Safe)',
+                key: 'e',
+                onclick: () => {
+                    const fuelGain = 45 + Math.floor(Math.random() * 35);
+                    const prevFuel = typeof playerFuel !== 'undefined' ? playerFuel : 0;
+                    playerFuel = Math.min(MAX_FUEL, Math.round((prevFuel + fuelGain) * 10) / 10);
+                    const actual = Math.max(0, Math.round((playerFuel - prevFuel) * 10) / 10);
+
+                    let extra = "";
+                    if (actual < 15) {
+                        const addedCells = _configSafeAddCargo('FUEL_CELLS', 3);
+                        if (addedCells > 0) extra = ` Tanks nearly full—pumped <b>${addedCells}x Fuel Cells</b> into cargo!`;
+                    }
+
+                    logMessage(`<span style='color:var(--success)'>[ FUEL SIPHON ]</span> Transferred <b>+${actual.toFixed(1)} Fuel</b> from the drifting barge.${extra}`);
+                    if (typeof soundManager !== 'undefined') soundManager.playBuy();
+                    _clearCustomTileAtPlayer();
+                }
+            },
+            {
+                label: 'Tap Pressurized Core (Risk)',
+                key: 'x',
+                onclick: () => {
+                    const isProtected = _configHasPerk('HEALTH_PHYSICIST') ||
+                        (typeof playerShip !== 'undefined' && playerShip.components && playerShip.components.utility === 'UTIL_DOSIMETRY_ARRAY');
+
+                    if (!isProtected && Math.random() < 0.30) {
+                        logMessage("<span style='color:var(--danger)'>[ VALVE RUPTURE ]</span> Super-cooled plasma vented across your hull (-15 Hull), though you still captured emergency fuel!");
+                        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 15, reason: "Fuel Barge Valve Rupture" });
+                        if (typeof playerHull !== 'undefined' && playerHull <= 0) return;
+                    }
+
+                    playerFuel = Math.min(MAX_FUEL, Math.round((playerFuel + 110) * 10) / 10);
+                    const addedH3 = _configSafeAddCargo('HYDROGEN_3', 1 + Math.floor(Math.random() * 2));
+                    logMessage(`<span style='color:#00FFFF'>[ CORE TAPPED ]</span> Extracted +110 Fuel${addedH3 > 0 ? ` and <b>${addedH3}x Hydrogen-3</b>` : ''}!`);
+                    if (typeof soundManager !== 'undefined') soundManager.playGain();
+                    _clearCustomTileAtPlayer();
+                }
+            },
+            {
+                label: 'Leave Tanker',
+                key: 'l',
+                onclick: () => logMessage("You steer clear of the unstable fuel barge.")
+            }
+        ]
+    },
+
+    // 9. NEW POI: Pre-Warp Time Capsule / Archive Buoy (T)
+    [TIME_CAPSULE_CHAR_VAL]: {
+        log: "<span style='color:#DDA0DD'>[ ARCHIVE CAPSULE ]</span> A weathered titanium time capsule tumbles through the dark, pinging an archaic optical distress code.",
+        actions: () => [
+            {
+                label: 'Decode Historical Log',
+                key: 'e',
+                onclick: () => {
+                    const entry = _TIME_CAPSULE_LOGS[_timeCapsuleCursor % _TIME_CAPSULE_LOGS.length];
+                    _timeCapsuleCursor++;
+
+                    const xp = 80;
+                    const bounty = 200 + Math.floor(Math.random() * 250);
+                    playerXP += xp;
+                    playerCredits += bounty;
+
+                    if (entry.loreKey && typeof unlockLoreEntry === 'function') {
+                        unlockLoreEntry(entry.loreKey);
+                    }
+
+                    logMessage(`<span style='color:#DDA0DD; font-weight:bold;'>[ ARCHIVE: ${entry.era} ]</span> <i>"${entry.text}"</i> (+${xp} XP, +${formatNumber(bounty)}c Academic Grant)`);
+                    if (typeof showToast === 'function') showToast(`ARCHIVE DECODED (+${xp} XP)`, "success");
+                    if (typeof soundManager !== 'undefined') soundManager.playGain();
+
+                    _clearCustomTileAtPlayer();
+                    if (typeof checkLevelUp === 'function') checkLevelUp();
                 }
             }
         ]
@@ -552,57 +937,173 @@ const TILE_INTERACTIONS = {
 };
 
 // ==========================================
+// --- PUBLIC EXPANDABILITY REGISTRY ---
+// ==========================================
+
+window.ConfigRegistry = {
+    registerTileInteraction(charKey, def) {
+        if (!charKey || !def) return false;
+        TILE_INTERACTIONS[charKey] = def;
+        return true;
+    },
+    registerDeepSpacePOI(poiDef) {
+        if (!poiDef || !poiDef.id || typeof poiDef.chance !== 'number' || typeof poiDef.createTile !== 'function') return false;
+        const idx = DEEP_SPACE_POI_TABLE.findIndex(p => p.id === poiDef.id);
+        if (idx !== -1) DEEP_SPACE_POI_TABLE[idx] = poiDef;
+        else DEEP_SPACE_POI_TABLE.push(poiDef);
+        return true;
+    },
+    getDeepSpacePOIs: () => DEEP_SPACE_POI_TABLE.slice()
+};
+
+// ==========================================
 // --- ASTROMETRIC OBSERVATORY (HOTKEY O) ---
 // ==========================================
+
+let _lastObservatoryScan = null;
+
+function _renderObservatorySummaryDetail(scan) {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    if (!detailEl || !actionsEl || !scan) return;
+
+    const sectorPhotoKey = `ASTRO_PHOTO_${typeof currentSectorX !== 'undefined' ? currentSectorX : 0}_${typeof currentSectorY !== 'undefined' ? currentSectorY : 0}`;
+    const alreadyImaged = typeof discoveredLocations !== 'undefined' && discoveredLocations.has && discoveredLocations.has(sectorPhotoKey);
+
+    // Count total deep-sky plates imaged across the campaign
+    let totalPlates = 0;
+    if (typeof discoveredLocations !== 'undefined' && discoveredLocations.forEach) {
+        discoveredLocations.forEach(k => {
+            if (typeof k === 'string' && k.startsWith('ASTRO_PHOTO_')) totalPlates++;
+        });
+    }
+
+    const exposureSeed = Math.abs(((typeof currentSectorX !== 'undefined' ? currentSectorX : 0) * 31) ^ ((typeof currentSectorY !== 'undefined' ? currentSectorY : 0) * 17));
+    const filterBands = ["H-Alpha (656.3 nm)", "O-III (500.7 nm)", "S-II (672.4 nm)", "Broadband Luminance"];
+    const bandLabel = filterBands[exposureSeed % filterBands.length];
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 14px;">
+            <div style="font-size:44px; margin-bottom:8px; filter: drop-shadow(0 0 15px var(--accent-color));">🔭</div>
+            <h3 style="color:var(--accent-color); margin:0 0 4px 0; letter-spacing:1px;">${scan.scannerName.toUpperCase()}</h3>
+            <div style="font-size:10px; color:var(--item-desc-color); letter-spacing:2px; margin-bottom:14px;">
+                SECTOR: ${typeof currentSectorName !== 'undefined' ? currentSectorName.toUpperCase() : 'DEEP SPACE'}
+            </div>
+
+            <div class="trade-math-area" style="text-align:left;">
+                <div class="trade-stat-row"><span>Local Stars Mapped:</span> <span style="color:var(--accent-color); font-weight:bold;">${scan.stars.length}</span></div>
+                <div class="trade-stat-row"><span>Anomalies &amp; Hazards:</span> <span style="color:#FF33FF; font-weight:bold;">${scan.anomalies.length}</span></div>
+                <div class="trade-stat-row"><span>Wrecks / Pods / Barges:</span> <span style="color:var(--warning); font-weight:bold;">${scan.derelicts.length}</span></div>
+                <div class="trade-stat-row"><span>Ports &amp; Relays:</span> <span style="color:var(--success); font-weight:bold;">${scan.stations.length}</span></div>
+                <div class="trade-stat-row" style="margin-top:6px; border-top:1px dashed #333; padding-top:6px;">
+                    <span>Optical Resolution:</span>
+                    <span style="color:var(--success); font-weight:bold;">${scan.isNexStar ? 'NexStar-4SE Prime Focus (+100%)' : 'Standard'}</span>
+                </div>
+                <div class="trade-stat-row"><span>Narrowband Filter:</span> <span style="color:var(--gold-text);">${bandLabel}</span></div>
+                <div class="trade-stat-row"><span>Archived Sector Plates:</span> <span style="color:var(--text-color); font-weight:bold;">${totalPlates}</span></div>
+            </div>
+
+            <p style="font-size:12px; color:var(--text-color); line-height:1.5; background:rgba(0,0,0,0.3); padding:10px; border-left:2px solid var(--accent-color); text-align:left; margin-top:12px;">
+                ${alreadyImaged
+                    ? "Long-exposure astrophotography plates for this sector have been archived in your ship's databanks. Click any star on the left to inspect its spectral profile."
+                    : "Align your T-ring adapter and capture a long-exposure deep-sky plate of this sector's nebular and stellar alignments. Click any star on the left for live spectroscopy."}
+            </p>
+        </div>
+    `;
+
+    actionsEl.innerHTML = `
+        <button class="action-button" ${alreadyImaged ? 'disabled' : ''} style="${alreadyImaged ? '' : 'border-color:var(--success); color:var(--success);'}" onclick="captureDeepSkyImage()">
+            ${alreadyImaged ? '✓ SECTOR PLATE ARCHIVED' : '📸 CAPTURE DEEP-SKY PLATE'}
+        </button>
+        <button class="action-button" onclick="closeGenericModal()">CLOSE OBSERVATORY</button>
+    `;
+}
+
+function previewObservatoryStar(starIndex) {
+    if (!_lastObservatoryScan || !_lastObservatoryScan.stars[starIndex]) return;
+    const s = _lastObservatoryScan.stars[starIndex];
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    if (!detailEl || !actionsEl) return;
+
+    const safeColor = _getContrastSafeStarColor(s.data);
+    if (typeof soundManager !== 'undefined') soundManager.playUIClick();
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding:14px; animation: fadeIn 0.25s ease-out;">
+            <div style="font-size:10px; color:var(--accent-color); letter-spacing:2px; margin-bottom:4px;">OPTICAL SPECTROSCOPY PREVIEW</div>
+            <h3 style="color:${safeColor}; margin:0 0 6px 0;">★ ${s.data.designation}</h3>
+            <div style="font-size:11px; color:var(--item-desc-color); margin-bottom:14px;">
+                ${s.data.class}-Class ${s.data.name} &nbsp;|&nbsp; Bearing: <b>${s.dist}u ${s.bearing}</b>
+            </div>
+
+            <div class="trade-math-area" style="text-align:left;">
+                <div class="trade-stat-row"><span>Coordinates:</span> <span style="color:var(--accent-color); font-weight:bold;">[${s.x}, ${-s.y}]</span></div>
+                <div class="trade-stat-row"><span>Photosphere Temp:</span> <span style="color:var(--text-color); font-weight:bold;">${s.data.temp}</span></div>
+                <div class="trade-stat-row"><span>Corona Hazard:</span> <span style="color:${s.data.hazard === 'NONE' ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${s.data.hazard}</span></div>
+                <div class="trade-stat-row"><span>Est. Scoop Yield:</span> <span style="color:var(--gold-text); font-weight:bold;">${s.data.scoopYield} Fuel Units</span></div>
+                <div class="trade-stat-row"><span>Galactic Incidence:</span> <span style="color:var(--text-color);">${(s.data.rarity * 100).toFixed(1)}%</span></div>
+            </div>
+
+            <p style="font-size:12px; color:var(--item-desc-color); font-style:italic; background:rgba(0,0,0,0.3); padding:10px; border-left:2px solid ${safeColor}; text-align:left; margin-top:12px; line-height:1.5;">
+                "${s.data.desc}"
+            </p>
+        </div>
+    `;
+
+    actionsEl.innerHTML = `
+        <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color);" onclick="_renderObservatorySummaryDetail(_lastObservatoryScan)">◀ BACK TO OBSERVATORY PLATE</button>
+        <button class="action-button" onclick="closeGenericModal()">CLOSE OBSERVATORY</button>
+    `;
+}
 
 function openObservatory() {
     if (typeof openGenericModal !== 'function') return;
 
     openGenericModal("DEEP SPACE ASTROMETRIC OBSERVATORY");
     const listEl = document.getElementById('genericModalList');
-    const detailEl = document.getElementById('genericDetailContent');
-    const actionsEl = document.getElementById('genericModalActions');
-    if (!listEl || !detailEl || !actionsEl) return;
+    if (!listEl) return;
 
     const scannerId = (typeof playerShip !== 'undefined' && playerShip.components) ? playerShip.components.scanner : 'SCANNER_BASIC_SUITE';
     const scannerObj = (typeof COMPONENTS_DATABASE !== 'undefined' && COMPONENTS_DATABASE[scannerId]) ? COMPONENTS_DATABASE[scannerId] : { name: "Standard Sensor Suite", stats: {} };
     const isNexStar = scannerId === 'SCANNER_NEXSTAR_4SE';
-    
-    // Fix: Safely check perks
-    const hasTelemetryPerk = typeof playerPerks !== 'undefined' && 
-                             ((playerPerks.has && playerPerks.has('LONG_RANGE_SENSORS')) || 
-                              (playerPerks.includes && playerPerks.includes('LONG_RANGE_SENSORS')));
-
+    const hasTelemetryPerk = _configHasPerk('LONG_RANGE_SENSORS');
     const scanRange = isNexStar ? 16 : (hasTelemetryPerk ? 12 : 8);
+    const maxDistSq = scanRange * scanRange;
 
-    // Scan local surroundings within scanRange
-    let stars = [];
-    let anomalies = [];
-    let derelicts = [];
-    let stations = [];
+    const stars = [];
+    const anomalies = [];
+    const derelicts = [];
+    const stations = [];
 
     if (typeof chunkManager !== 'undefined') {
         for (let dy = -scanRange; dy <= scanRange; dy++) {
+            const dySq = dy * dy;
             for (let dx = -scanRange; dx <= scanRange; dx++) {
                 if (dx === 0 && dy === 0) continue;
+                const distSq = dx * dx + dySq;
+                // PERFORMANCE: Reject corners outside circular range before hitting chunkManager
+                if (distSq > maxDistSq) continue;
+
                 const wx = playerX + dx;
                 const wy = playerY + dy;
                 const t = chunkManager.getTile(wx, wy);
                 const ch = typeof getTileChar === 'function' ? getTileChar(t) : t;
-                const dist = Math.floor(Math.sqrt(dx * dx + dy * dy));
-                if (dist > scanRange) continue;
+                if (ch === EMPTY_SPACE_CHAR_VAL || ch === ASTEROID_CHAR_VAL || ch === NEBULA_CHAR_VAL) continue;
+
+                const dist = Math.floor(Math.sqrt(distSq));
+                const bearing = _getCompassBearing(dx, dy);
 
                 if (ch === STAR_CHAR_VAL && typeof generateStarData === 'function') {
-                    const sData = generateStarData(wx, wy);
-                    stars.push({ x: wx, y: wy, dist, data: sData });
-                } else if (ch === ANOMALY_CHAR_VAL || ch === WORMHOLE_CHAR_VAL || ch === BLACK_HOLE_CHAR_VAL || ch === MONOLITH_CHAR_VAL || ch === SPACE_MINE_CHAR_VAL) {
-                    anomalies.push({ x: wx, y: wy, dist, char: ch });
-                } else if (ch === DERELICT_CHAR_VAL || ch === ESCAPE_POD_CHAR_VAL || ch === CARGO_CACHE_CHAR_VAL) {
-                    derelicts.push({ x: wx, y: wy, dist, char: ch });
+                    stars.push({ x: wx, y: wy, dist, bearing, data: generateStarData(wx, wy) });
+                } else if (ch === ANOMALY_CHAR_VAL || ch === WORMHOLE_CHAR_VAL || ch === BLACK_HOLE_CHAR_VAL || ch === MONOLITH_CHAR_VAL || ch === SPACE_MINE_CHAR_VAL || ch === NEXUS_CHAR_VAL) {
+                    anomalies.push({ x: wx, y: wy, dist, bearing, char: ch });
+                } else if (ch === DERELICT_CHAR_VAL || ch === ESCAPE_POD_CHAR_VAL || ch === CARGO_CACHE_CHAR_VAL || ch === FUEL_TANKER_CHAR_VAL || ch === TIME_CAPSULE_CHAR_VAL || ch === RESEARCH_SAT_CHAR_VAL) {
+                    derelicts.push({ x: wx, y: wy, dist, bearing, char: ch });
                 } else if (t && t.type === 'location') {
-                    stations.push({ x: wx, y: wy, dist, name: t.name || 'Outpost' });
-                } else if (ch === NAV_BUOY_CHAR_VAL) {
-                    stations.push({ x: wx, y: wy, dist, name: 'Nav-Buoy' });
+                    stations.push({ x: wx, y: wy, dist, bearing, name: t.name || 'Outpost' });
+                } else if (ch === NAV_BUOY_CHAR_VAL || ch === RELAY_CASINO_CHAR_VAL) {
+                    stations.push({ x: wx, y: wy, dist, bearing, name: ch === NAV_BUOY_CHAR_VAL ? 'Nav-Buoy' : 'Syndicate Relay' });
                 }
             }
         }
@@ -610,6 +1111,18 @@ function openObservatory() {
 
     stars.sort((a, b) => a.dist - b.dist);
     anomalies.sort((a, b) => a.dist - b.dist);
+    derelicts.sort((a, b) => a.dist - b.dist);
+    stations.sort((a, b) => a.dist - b.dist);
+
+    _lastObservatoryScan = {
+        scannerName: scannerObj.name || "Standard Sensor Suite",
+        isNexStar,
+        scanRange,
+        stars,
+        anomalies,
+        derelicts,
+        stations
+    };
 
     let listHtml = `
         <div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; border-bottom:1px solid #333;">
@@ -618,16 +1131,34 @@ function openObservatory() {
     `;
 
     if (stars.length === 0 && anomalies.length === 0 && derelicts.length === 0 && stations.length === 0) {
-        listHtml += `<div style="padding:15px; color:#888; font-size:12px;">No major stellar bodies or phenomena within ${scanRange} units.</div>`;
+        listHtml += `<div style="padding:15px; color:#888; font-size:12px;">No major stellar bodies, stations, or phenomena within ${scanRange} units.</div>`;
     } else {
-        stars.slice(0, 6).forEach(s => {
+        stars.slice(0, 6).forEach((s, idx) => {
+            const safeColor = _getContrastSafeStarColor(s.data);
+            listHtml += `
+                <div class="trade-item-row" onclick="previewObservatoryStar(${idx})" style="padding:10px 12px; cursor:pointer;" title="Click to inspect spectral telemetry">
+                    <div>
+                        <div style="color:${safeColor}; font-weight:bold; font-size:12px;">★ ${s.data.designation}</div>
+                        <div style="color:var(--item-desc-color); font-size:10px;">${s.data.class}-Class ${s.data.name}</div>
+                    </div>
+                    <div style="color:var(--text-color); font-size:11px; text-align:right;">
+                        <div>[${s.x}, ${-s.y}]</div>
+                        <div style="font-size:10px; color:var(--accent-color);">${s.dist}u ${s.bearing}</div>
+                    </div>
+                </div>
+            `;
+        });
+        stations.slice(0, 4).forEach(st => {
             listHtml += `
                 <div class="trade-item-row" style="padding:10px 12px; cursor:default;">
                     <div>
-                        <div style="color:${s.data.color}; font-weight:bold; font-size:12px;">★ ${s.data.designation}</div>
-                        <div style="color:var(--item-desc-color); font-size:10px;">${s.data.class}-Class ${s.data.name}</div>
+                        <div style="color:var(--success); font-weight:bold; font-size:12px;">⚓ ${st.name}</div>
+                        <div style="color:var(--item-desc-color); font-size:10px;">Port / Beacon</div>
                     </div>
-                    <div style="color:var(--text-color); font-size:11px;">[${s.x}, ${-s.y}] (${s.dist}u)</div>
+                    <div style="color:var(--text-color); font-size:11px; text-align:right;">
+                        <div>[${st.x}, ${-st.y}]</div>
+                        <div style="font-size:10px; color:var(--success);">${st.dist}u ${st.bearing}</div>
+                    </div>
                 </div>
             `;
         });
@@ -635,71 +1166,49 @@ function openObservatory() {
             let label = 'Spatial Anomaly';
             let color = '#FF33FF';
             if (a.char === WORMHOLE_CHAR_VAL) { label = 'Subspace Wormhole'; color = '#FFB800'; }
-            else if (a.char === BLACK_HOLE_CHAR_VAL) { label = 'Singularity'; color = '#9933FF'; }
+            else if (a.char === BLACK_HOLE_CHAR_VAL) { label = 'Micro-Singularity'; color = '#9933FF'; }
             else if (a.char === MONOLITH_CHAR_VAL) { label = 'Precursor Monolith'; color = '#9933FF'; }
             else if (a.char === SPACE_MINE_CHAR_VAL) { label = 'Live Ordnance (Mine)'; color = 'var(--danger)'; }
-            
+            else if (a.char === NEXUS_CHAR_VAL) { label = 'The First Nexus'; color = '#40E0D0'; }
+
             listHtml += `
                 <div class="trade-item-row" style="padding:10px 12px; cursor:default;">
                     <div>
                         <div style="color:${color}; font-weight:bold; font-size:12px;">🌀 ${label}</div>
-                        <div style="color:var(--item-desc-color); font-size:10px;">Exotic Signature</div>
+                        <div style="color:var(--item-desc-color); font-size:10px;">Exotic / Hazard Signature</div>
                     </div>
-                    <div style="color:var(--text-color); font-size:11px;">[${a.x}, ${-a.y}] (${a.dist}u)</div>
+                    <div style="color:var(--text-color); font-size:11px; text-align:right;">
+                        <div>[${a.x}, ${-a.y}]</div>
+                        <div style="font-size:10px; color:${color};">${a.dist}u ${a.bearing}</div>
+                    </div>
                 </div>
             `;
         });
-        derelicts.slice(0, 3).forEach(d => {
+        derelicts.slice(0, 4).forEach(d => {
             let label = 'Derelict Hull';
             if (d.char === ESCAPE_POD_CHAR_VAL) label = 'Cryo-Escape Pod';
             else if (d.char === CARGO_CACHE_CHAR_VAL) label = 'Drifting Cargo Cache';
-            
+            else if (d.char === FUEL_TANKER_CHAR_VAL) label = 'Abandoned Fuel Barge';
+            else if (d.char === TIME_CAPSULE_CHAR_VAL) label = 'Pre-Warp Time Capsule';
+            else if (d.char === RESEARCH_SAT_CHAR_VAL) label = 'Research Satellite';
+
             listHtml += `
                 <div class="trade-item-row" style="padding:10px 12px; cursor:default;">
                     <div>
                         <div style="color:var(--warning); font-weight:bold; font-size:12px;">🛰️ ${label}</div>
-                        <div style="color:var(--item-desc-color); font-size:10px;">Salvage Opportunity</div>
+                        <div style="color:var(--item-desc-color); font-size:10px;">Salvage / Telemetry Contact</div>
                     </div>
-                    <div style="color:var(--text-color); font-size:11px;">[${d.x}, ${-d.y}] (${d.dist}u)</div>
+                    <div style="color:var(--text-color); font-size:11px; text-align:right;">
+                        <div>[${d.x}, ${-d.y}]</div>
+                        <div style="font-size:10px; color:var(--warning);">${d.dist}u ${d.bearing}</div>
+                    </div>
                 </div>
             `;
         });
     }
 
     listEl.innerHTML = listHtml;
-
-    const sectorPhotoKey = `ASTRO_PHOTO_${typeof currentSectorX !== 'undefined' ? currentSectorX : 0}_${typeof currentSectorY !== 'undefined' ? currentSectorY : 0}`;
-    const alreadyImaged = typeof discoveredLocations !== 'undefined' && discoveredLocations.has && discoveredLocations.has(sectorPhotoKey);
-
-    detailEl.innerHTML = `
-        <div style="text-align:center; padding: 15px;">
-            <div style="font-size:48px; margin-bottom:10px; filter: drop-shadow(0 0 15px var(--accent-color));">🔭</div>
-            <h3 style="color:var(--accent-color); margin:0 0 5px 0; letter-spacing:1px;">${scannerObj.name.toUpperCase()}</h3>
-            <div style="font-size:10px; color:var(--item-desc-color); letter-spacing:2px; margin-bottom:15px;">
-                SECTOR: ${typeof currentSectorName !== 'undefined' ? currentSectorName.toUpperCase() : 'DEEP SPACE'}
-            </div>
-
-            <div class="trade-math-area" style="text-align:left;">
-                <div class="trade-stat-row"><span>Local Stars Mapped:</span> <span style="color:var(--accent-color); font-weight:bold;">${stars.length}</span></div>
-                <div class="trade-stat-row"><span>Anomalies in Range:</span> <span style="color:#FF33FF; font-weight:bold;">${anomalies.length}</span></div>
-                <div class="trade-stat-row"><span>Wrecks / Pods Detected:</span> <span style="color:var(--warning); font-weight:bold;">${derelicts.length}</span></div>
-                <div class="trade-stat-row"><span>Optical Resolution:</span> <span style="color:var(--success); font-weight:bold;">${isNexStar ? 'NexStar-4SE Prime Focus (+100%)' : 'Standard'}</span></div>
-            </div>
-
-            <p style="font-size:12px; color:var(--text-color); line-height:1.5; background:rgba(0,0,0,0.3); padding:12px; border-left:2px solid var(--accent-color); text-align:left; margin-top:15px;">
-                ${alreadyImaged
-                    ? "Long-exposure astrophotography plates for this sector have been archived in your ship's databanks."
-                    : "Align your T-ring adapter and capture a long-exposure deep-sky plate of this sector's nebular and stellar alignments."}
-            </p>
-        </div>
-    `;
-
-    actionsEl.innerHTML = `
-        <button class="action-button" ${alreadyImaged ? 'disabled' : ''} style="${alreadyImaged ? '' : 'border-color:var(--success); color:var(--success);'}" onclick="captureDeepSkyImage()">
-            ${alreadyImaged ? 'SECTOR PLATE ARCHIVED' : '📸 CAPTURE DEEP-SKY PLATE'}
-        </button>
-        <button class="action-button" onclick="closeGenericModal()">CLOSE OBSERVATORY</button>
-    `;
+    _renderObservatorySummaryDetail(_lastObservatoryScan);
 }
 
 function captureDeepSkyImage() {
@@ -711,27 +1220,32 @@ function captureDeepSkyImage() {
 
     const isNexStar = typeof playerShip !== 'undefined' && playerShip.components && playerShip.components.scanner === 'SCANNER_NEXSTAR_4SE';
     const xpGain = isNexStar ? 120 : 50;
-    
+
     if (typeof playerXP !== 'undefined') playerXP += xpGain;
 
     let rewardMsg = `<span style="color:var(--accent-color)">[ ASTROPHOTOGRAPHY ]</span> Captured long-exposure plate of ${typeof currentSectorName !== 'undefined' ? currentSectorName : 'this sector'} (+${xpGain} XP).`;
 
-    if (isNexStar && (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0) + 1 <= PLAYER_CARGO_CAPACITY) {
-        playerCargo['PLANETARY_DATA'] = (playerCargo['PLANETARY_DATA'] || 0) + 1;
-        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-        rewardMsg += ` <span style="color:var(--gold-text)">NexStar-4SE resolved 1x Planetary Data cartridge!</span>`;
+    if (isNexStar) {
+        const added = _configSafeAddCargo('PLANETARY_DATA', 1);
+        if (added > 0) {
+            rewardMsg += ` <span style="color:var(--gold-text)">NexStar-4SE resolved 1x Planetary Data cartridge!</span>`;
+        }
     }
 
     if (typeof soundManager !== 'undefined') soundManager.playScan();
     if (typeof showToast === 'function') showToast(`DEEP-SKY PLATE SAVED (+${xpGain} XP)`, "success");
     if (typeof logMessage === 'function') logMessage(rewardMsg);
 
-    openObservatory();
+    // Refresh summary pane without re-scanning 1,000+ tiles
+    if (_lastObservatoryScan) _renderObservatorySummaryDetail(_lastObservatoryScan);
+    else openObservatory();
+
     if (typeof checkLevelUp === 'function') checkLevelUp();
 }
 
 window.openObservatory = openObservatory;
 window.captureDeepSkyImage = captureDeepSkyImage;
+window.previewObservatoryStar = previewObservatoryStar;
 
 // ==========================================
 // --- SELF-CONTAINED ENGINE BRIDGES ---
@@ -767,14 +1281,13 @@ function attachConfigHooks() {
         window.traverseRandomWormhole = window.traverseWormhole;
     }
 
-    // 3. Hook chunkManager.generateChunk to spawn Black Holes & Custom TILE_INTERACTIONS
+    // 3. Hook chunkManager.generateChunk to spawn Black Holes & Data-Driven Deep Space POIs
     if (typeof chunkManager !== 'undefined' && typeof chunkManager.generateChunk === 'function' && !window._configChunkPatched) {
         const origGenerateChunk = chunkManager.generateChunk.bind(chunkManager);
-        
+
         chunkManager.generateChunk = function(chunkX, chunkY) {
             const chunkData = origGenerateChunk(chunkX, chunkY);
-            
-            // Defend against missing globals during hot reloads
+
             const mapW = typeof MAP_WIDTH !== 'undefined' ? MAP_WIDTH : 40;
             const mapH = typeof MAP_HEIGHT !== 'undefined' ? MAP_HEIGHT : 22;
             const spawnX = mapW - 7;
@@ -783,16 +1296,15 @@ function attachConfigHooks() {
             for (let y = 0; y < this.CHUNK_SIZE; y++) {
                 for (let x = 0; x < this.CHUNK_SIZE; x++) {
                     const currentTile = chunkData[y][x];
-                    
+
                     // Only roll on unmodified empty space tiles
                     if (currentTile !== EMPTY_SPACE_CHAR_VAL && (!currentTile || currentTile.char !== EMPTY_SPACE_CHAR_VAL)) continue;
 
                     const worldX = chunkX * this.CHUNK_SIZE + x;
                     const worldY = chunkY * this.CHUNK_SIZE + y;
 
-                    // Keep a 30-tile safe radius around Starbase Alpha free of hazards
-                    const distFromSpawn = Math.abs(worldX - spawnX) + Math.abs(worldY - spawnY);
-                    if (distFromSpawn < 30) continue;
+                    // Keep a 30-tile safe radius around Starbase Alpha free of deep-space hazards/POIs
+                    if (Math.abs(worldX - spawnX) + Math.abs(worldY - spawnY) < 30) continue;
 
                     const deltaKey = `${worldX},${worldY}`;
                     if (typeof worldStateDeltas !== 'undefined' && worldStateDeltas[deltaKey] && worldStateDeltas[deltaKey].char) continue;
@@ -800,37 +1312,16 @@ function attachConfigHooks() {
                     const tileSeed = (typeof WORLD_SEED !== 'undefined' ? WORLD_SEED : 1337) ^ (worldX * 73856093) ^ (worldY * 19349663);
                     const roll = typeof seededRandom === 'function' ? seededRandom(tileSeed + 17) : Math.random();
 
-                    let currentThreshold = typeof BLACK_HOLE_SPAWN_CHANCE !== 'undefined' ? BLACK_HOLE_SPAWN_CHANCE : 0.00035;
-
-                    if (roll < currentThreshold) {
-                        chunkData[y][x] = { char: BLACK_HOLE_CHAR_VAL, type: 'black_hole', name: 'Micro-Singularity' };
-                    } 
-                    currentThreshold += 0.00025;
-                    if (roll >= currentThreshold - 0.00025 && roll < currentThreshold) {
-                        chunkData[y][x] = { char: ESCAPE_POD_CHAR_VAL, displayChar: ESCAPE_POD_CHAR_VAL, customColor: '#00FFAA', type: 'custom_pod' };
-                    } 
-                    currentThreshold += 0.00015;
-                    if (roll >= currentThreshold - 0.00015 && roll < currentThreshold) {
-                        chunkData[y][x] = { char: RELAY_CASINO_CHAR_VAL, displayChar: RELAY_CASINO_CHAR_VAL, customColor: '#FFD700', type: 'custom_relay' };
-                    } 
-                    currentThreshold += 0.00010;
-                    if (roll >= currentThreshold - 0.00010 && roll < currentThreshold) {
-                        chunkData[y][x] = { char: MONOLITH_CHAR_VAL, displayChar: MONOLITH_CHAR_VAL, customColor: '#9933FF', type: 'custom_monolith' };
-                    }
-                    currentThreshold += 0.00020;
-                    if (roll >= currentThreshold - 0.00020 && roll < currentThreshold) {
-                        chunkData[y][x] = { char: CARGO_CACHE_CHAR_VAL, displayChar: CARGO_CACHE_CHAR_VAL, customColor: '#AAAAAA', type: 'custom_cargo' };
-                    }
-                    currentThreshold += 0.00015;
-                    if (roll >= currentThreshold - 0.00015 && roll < currentThreshold) {
-                        chunkData[y][x] = { char: SPACE_MINE_CHAR_VAL, displayChar: SPACE_MINE_CHAR_VAL, customColor: '#FF5555', type: 'custom_mine' };
-                    }
-                    currentThreshold += 0.00015;
-                    if (roll >= currentThreshold - 0.00015 && roll < currentThreshold) {
-                        chunkData[y][x] = { char: NAV_BUOY_CHAR_VAL, displayChar: NAV_BUOY_CHAR_VAL, customColor: '#00AAFF', type: 'custom_nav' };
+                    let cumulative = 0;
+                    for (let p = 0; p < DEEP_SPACE_POI_TABLE.length; p++) {
+                        cumulative += DEEP_SPACE_POI_TABLE[p].chance;
+                        if (roll < cumulative) {
+                            chunkData[y][x] = DEEP_SPACE_POI_TABLE[p].createTile(worldX, worldY);
+                            break;
+                        }
                     }
 
-                    // 👇 FIX: Merge any existing interaction deltas onto the newly spawned custom tile!
+                    // Merge any existing interaction deltas onto the newly spawned custom tile
                     if (typeof worldStateDeltas !== 'undefined' && worldStateDeltas[deltaKey] && typeof chunkData[y][x] === 'object') {
                         Object.assign(chunkData[y][x], worldStateDeltas[deltaKey]);
                     }
@@ -848,13 +1339,13 @@ function attachConfigHooks() {
     if (typeof window.handleGalacticMapInput === 'function' && !window._configInputPatched) {
         const origMapInput = window.handleGalacticMapInput;
         window.handleGalacticMapInput = function(key) {
-            if (typeof chunkManager !== 'undefined' && typeof TILE_INTERACTIONS !== 'undefined') {
+            if (typeof key === 'string' && typeof chunkManager !== 'undefined' && typeof TILE_INTERACTIONS !== 'undefined') {
                 const tileObj = chunkManager.getTile(playerX, playerY);
                 const tileChar = typeof getTileChar === 'function' ? getTileChar(tileObj) : tileObj;
                 if (TILE_INTERACTIONS[tileChar]) {
                     const customDef = TILE_INTERACTIONS[tileChar];
                     const acts = typeof customDef.actions === 'function' ? customDef.actions(tileObj) : (customDef.actions || []);
-                    const matched = acts.find(a => a.key && a.key.toLowerCase() === key.toLowerCase());
+                    const matched = acts.find(a => a && a.key && a.key.toLowerCase() === key.toLowerCase());
                     if (matched && typeof matched.onclick === 'function') {
                         matched.onclick();
                         return true;
