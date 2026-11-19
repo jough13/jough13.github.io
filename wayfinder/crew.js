@@ -171,13 +171,11 @@ function generateStationRecruits() {
         { id: "LEGEND_CORTEX", name: "Unit-04 'Cortex'", role: "AI Navigator", perk: "ASTROMETRICS", desc: "Improves deep space scanning arrays and reveals hidden anomalies.", baseCost: 10000, image: "assets/legend_cortex.png", isLegendary: true },
         { id: "JAX_VANE", name: "Jax Vane", role: "Gunner", perk: "COMBAT_DAMAGE", desc: "Ex-pirate with a steady hand. Adds +15% to all ship weapon damage.", baseCost: 1500, image: "assets/gunner.png", isLegendary: true },
         { id: "KORG_MAH", name: "Korg'Mah", role: "Mechanic", perk: "PASSIVE_REPAIR", desc: "A rugged K'tharr engineer. Passively repairs hull damage while you travel.", baseCost: 1800, image: "assets/engineer.png", isLegendary: true },
-        // NEW LEGENDARY RECRUITS
         { id: "LEGEND_ELIM", name: "Elim 'The Tailor' Darok", role: "Simple Tailor", perk: "TRADE_BONUS", desc: "Claims to be a humble clothier, yet possesses extreme bargaining leverage.", baseCost: 8500, image: "assets/legend_elim.png", isLegendary: true },
-        { id: "LEGEND_MILES", name: "Chief Miles O'Tarek", role: "Miracle Worker", perk: "PASSIVE_REPAIR", desc: "A disgruntled but brilliant engineer. Can fix a warp core breach with a spanner and a piece of tape.", baseCost: 6000, image: "assets/legend_miles.png", isLegendary: true }
+        { id: "LEGEND_MILES", name: "Chief Miles O'Tarek", role: "Miracle Worker", perk: "PASSIVE_REPAIR", desc: "A disgruntled but brilliant engineer. Can fix a warp core breach with a spanner and a piece of tape.", baseCost: 6000, image: "assets/legend_miles.png", isLegendary: true },
+        { id: "T3_SPARK", name: "T3-Spark", role: "Science Bot", perk: "SCOOP_BONUS", desc: "Advanced automated logic core. Increases fuel scooping yields by 20%.", baseCost: 2500, image: "assets/legend_cortex.png", isLegendary: true }
     ];
 
-    // EXPANDED STANDARD ROLES POOL!
-    // FIXED: Remapped all generated perks to the 8 legally implemented engine hooks!
     const standardRoles = [
         { role: "Quartermaster", perk: "TRADE_BONUS", desc: "Negotiates 10% better prices at all stations.", baseCost: 1200, image: "assets/default_npc.png" },
         { role: "Astrogator", perk: "FUEL_EFFICIENCY", desc: "Reduces fuel consumption during hyper-jumps.", baseCost: 1000, image: "assets/default_npc.png" },
@@ -188,7 +186,8 @@ function generateStationRecruits() {
         { role: "Shield Technician", perk: "SHIELD_BOOST", desc: "Overclocks emitters to permanently grant +25% Max Shields.", baseCost: 1500, image: "assets/scientist.png" },
         { role: "Chief Medical Officer", perk: "PASSIVE_REPAIR", desc: "Implements bio-restorative routines. Passively repairs hull damage while you travel.", baseCost: 1800, image: "assets/default_npc.png" },
         { role: "Gunnery Sergeant", perk: "COMBAT_DAMAGE", desc: "Maintains ordnance, adding +15% to all ship weapon damage.", baseCost: 1750, image: "assets/gunner.png" },
-        { role: "Cyber-Slicer", perk: "ASTROMETRICS", desc: "Bypasses encrypted networks to reveal deep space anomalies. Grants bonus XP.", baseCost: 1900, image: "assets/scientist.png" }
+        { role: "Cyber-Slicer", perk: "ASTROMETRICS", desc: "Bypasses encrypted networks to reveal deep space anomalies. Grants bonus XP.", baseCost: 1900, image: "assets/scientist.png" },
+        { role: "Plasma Condenser", perk: "SCOOP_BONUS", desc: "Specializes in magnetic field manipulation. Increases fuel scooping yields by 20%.", baseCost: 1100, image: "assets/engineer.png" }
     ];
 
     const firstNames = ["Odin", "Nyx", "Garrus", "Sasha", "Vane", "Silas", "Kira", "Rook", "Juno", "Cassian"];
