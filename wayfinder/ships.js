@@ -1,20 +1,66 @@
 // --- START OF FILE ships.js ---
 
 // ==========================================
+// --- MANUFACTURER DOCTRINE PROFILES ---
+// ==========================================
+
+const MANUFACTURER_PROFILES = {
+    CONCORD: {
+        id: "CONCORD",
+        name: "Concord Fleet Yards",
+        doctrine: "Balanced defense, precision optics, and high-capacity shield harmonics.",
+        synergySummary: "3-Piece Set: Concord Authority (+20 Max Shields)"
+    },
+    KTHARR: {
+        id: "KTHARR",
+        name: "Karak-Tor Blood-Forges",
+        doctrine: "Heavy kinetic impact, reinforced ablative armor, and bio-regenerative plating.",
+        synergySummary: "3-Piece Set: K'tharr Blood-Iron (+5 Weapon Damage)"
+    },
+    ECLIPSE: {
+        id: "ECLIPSE",
+        name: "Eclipse Shadow-Works",
+        doctrine: "Low-emission smuggling baffles, high-evasion thrusters, and sensor-slicing ECM.",
+        synergySummary: "3-Piece Set: Eclipse Shadow (+15% Evasion)"
+    },
+    FRONTIER: {
+        id: "FRONTIER",
+        name: "Independent Frontier Guilds",
+        doctrine: "Rugged, field-serviceable industrial hardware built for cargo hauls and deep-rim range.",
+        synergySummary: "3-Piece Set: Scrapper's Luck (+50 Max Fuel)"
+    },
+    INDEPENDENT: {
+        id: "INDEPENDENT",
+        name: "Custom Artisan Workshops",
+        doctrine: "Bespoke civilian instruments and restored pre-Concord precision optics.",
+        synergySummary: "Standalone Specialist Hardware"
+    },
+    UNKNOWN: {
+        id: "UNKNOWN",
+        name: "Precursor / Reverse-Engineered",
+        doctrine: "Experimental prototypes incorporating exotic spacetime alloys and zero-point cores.",
+        synergySummary: "Exotic Prototype Hardware"
+    }
+};
+Object.freeze(MANUFACTURER_PROFILES);
+
+// ==========================================
 // --- SHIP CLASSES DATABASE (Shipyard) ---
 // ==========================================
 
 const SHIP_CLASSES = {
     LIGHT_FREIGHTER: {
         name: "Light Freighter",
+        role: "Multi-Role Utility",
+        manufacturer: "FRONTIER",
         image: "assets/light_freighter.png",
         baseHull: 100,
         cargoCapacity: 50,
         baseTroops: 20,
-        baseCost: 0, 
-        baseSignature: 1.0, // Standard radar profile
-        baseEvasion: 0.05,  // 5% Dodge Chance
-        description: "A reliable, jack-of-all-trades vessel.",
+        baseCost: 0,
+        baseSignature: 1.0,
+        baseEvasion: 0.05,
+        description: "A reliable, jack-of-all-trades frontier freighter. Easy to patch in deep space and forgiving at the helm.",
         loreKey: "LORE_SHIP_LIGHT_FREIGHTER",
         ability: {
             name: "Emergency Patch",
@@ -30,22 +76,24 @@ const SHIP_CLASSES = {
     },
     VOID_SKIFF: {
         name: "Void-Skiff",
+        role: "Ultralight Striker",
+        manufacturer: "FRONTIER",
         image: "assets/void_skiff.png",
         baseHull: 50,
         cargoCapacity: 15,
         baseTroops: 10,
         baseCost: 2500,
-        baseSignature: 0.4, 
-        baseEvasion: 0.25, // Extremely hard to hit
-        description: "Fast, fragile, and cheap.",
+        baseSignature: 0.4,
+        baseEvasion: 0.25,
+        description: "Fast, fragile, and cheap. Little more than a cockpit welded to an oversized reactor core.",
         loreKey: "LORE_SHIP_VOID_SKIFF",
         ability: {
             name: "Overload",
-            desc: "Deals heavy direct damage to enemy hull.",
+            desc: "Deals 40 direct damage straight to enemy hull.",
             id: "CRIT",
             cooldown: 5,
             execute: (combatCtx, playerStats) => {
-                const dmg = 40; 
+                const dmg = 40;
                 combatCtx.pirateHull -= dmg;
                 return `Reactor overloaded and channeled into weapons! Dealt ${dmg} direct damage!`;
             }
@@ -53,63 +101,69 @@ const SHIP_CLASSES = {
     },
     COURIER: {
         name: "Courier",
+        role: "Fast Blockade Runner",
+        manufacturer: "CONCORD",
         image: "assets/courier.png",
         baseHull: 115,
         cargoCapacity: 65,
         baseTroops: 20,
         baseCost: 6500,
-        baseSignature: 0.8, 
-        baseEvasion: 0.10, // 10% Dodge Chance
-        description: "A professional vessel balancing speed and durability.",
+        baseSignature: 0.8,
+        baseEvasion: 0.10,
+        description: "A sleek professional courier balancing respectable cargo bays, speed, and reinforced bulkheads.",
         loreKey: "LORE_SHIP_COURIER",
         ability: {
             name: "Precision Burn",
-            desc: "Increases evasion and boosts targeting systems.",
+            desc: "Engages evasion and guarantees your next shot hits.",
             id: "ACCURACY_BOOST",
             cooldown: 5,
             execute: (combatCtx, playerStats) => {
                 playerStats.isEvading = true;
-                playerStats.guaranteedHit = true; 
+                playerStats.guaranteedHit = true;
                 return `Precision Burn engaged! Evasive maneuvers maximized, targeting locked.`;
             }
         }
     },
     INTERCEPTOR: {
         name: "Interceptor",
+        role: "Dogfighter",
+        manufacturer: "CONCORD",
         image: "assets/interceptor.png",
         baseHull: 75,
         cargoCapacity: 20,
         baseTroops: 15,
         baseCost: 8000,
-        baseSignature: 0.5, 
-        baseEvasion: 0.20, // 20% Dodge Chance (Very Agile)
-        description: "Built for speed and combat agility.",
+        baseSignature: 0.5,
+        baseEvasion: 0.20,
+        description: "Built for pure speed and combat agility. Favored by bounty hunters patrolling the outer rim.",
         loreKey: "LORE_SHIP_INTERCEPTOR",
         ability: {
             name: "Afterburner",
-            desc: "Guarantees evasion for 1 turn.",
+            desc: "Engages high-G evasion protocols for 1 turn.",
             id: "DODGE",
             cooldown: 4,
             execute: (combatCtx, playerStats) => {
-                playerStats.isEvading = true; 
+                playerStats.isEvading = true;
                 return `Evasion protocols maximized. Thrusters burning hot!`;
             }
         }
     },
     EXPLORER: {
         name: "Explorer",
+        role: "Deep-Space Recon",
+        manufacturer: "CONCORD",
         image: "assets/explorer.png",
         baseHull: 120,
         cargoCapacity: 40,
         baseTroops: 20,
         baseCost: 10000,
-        baseSignature: 1.2, 
-        baseEvasion: 0.08, 
-        description: "Long-range vessel with advanced sensors.",
+        baseSignature: 1.2,
+        baseEvasion: 0.08,
+        description: "Long-range survey vessel built for extended voyages into uncharted nebulae and anomaly belts.",
         loreKey: "LORE_SHIP_EXPLORER",
         ability: {
             name: "Sensor Blind",
-            desc: "Stuns enemy for 1 turn (No attack).",
+            desc: "Stuns enemy for 1 turn (disrupts enemy attack).",
             id: "STUN",
             cooldown: 5,
             execute: (combatCtx, playerStats) => {
@@ -120,8 +174,9 @@ const SHIP_CLASSES = {
     },
     SCIENCE_SURVEYOR: {
         name: "Deep-Space Surveyor",
-        image: "assets/explorer.png", // Safe fallback; auto-upgrades to assets/ship_surveyor.png if present
-        customAsset: "assets/ship_surveyor.png",
+        role: "Astrometric Research",
+        manufacturer: "CONCORD",
+        image: "assets/explorer.png",
         baseHull: 135,
         cargoCapacity: 75,
         baseTroops: 20,
@@ -144,14 +199,16 @@ const SHIP_CLASSES = {
     },
     HEAVY_HAULER: {
         name: "Heavy Hauler",
+        role: "Bulk Freighter",
+        manufacturer: "FRONTIER",
         image: "assets/heavy_hauler.png",
         baseHull: 150,
         cargoCapacity: 120,
         baseTroops: 30,
         baseCost: 15000,
-        baseSignature: 1.8, 
-        baseEvasion: 0.0, 
-        description: "A veritable fortress with massive cargo holds.",
+        baseSignature: 1.8,
+        baseEvasion: 0.0,
+        description: "A veritable industrial fortress with cavernous cargo holds engineered for inter-sector trade routes.",
         loreKey: "LORE_SHIP_HEAVY_HAULER",
         ability: {
             name: "Reinforce Structure",
@@ -167,18 +224,20 @@ const SHIP_CLASSES = {
     },
     ROCK_HOPPER: {
         name: "Rock-Hopper",
+        role: "Industrial Mining Barge",
+        manufacturer: "FRONTIER",
         image: "assets/rock_hopper.png",
         baseHull: 180,
         cargoCapacity: 150,
         baseTroops: 30,
         baseCost: 22000,
-        baseSignature: 1.5, 
-        baseEvasion: 0.0, // A flying brick
-        description: "Industrial mining barge. Tough but slow.",
+        baseSignature: 1.5,
+        baseEvasion: 0.0,
+        description: "Heavy industrial mining barge plated to shrug off asteroid collisions and deep-rim claim jumpers.",
         loreKey: "LORE_SHIP_ROCK_HOPPER",
         ability: {
             name: "Shield Hardening",
-            desc: "Fully restores Shields.",
+            desc: "Fully restores Shields to 100%.",
             id: "SHIELD_BOOST",
             cooldown: 8,
             execute: (combatCtx, playerStats) => {
@@ -189,22 +248,30 @@ const SHIP_CLASSES = {
     },
     STAR_GALLEON: {
         name: "Star-Galleon",
+        role: "Diplomatic Cruiser",
+        manufacturer: "CONCORD",
         image: "assets/star_galleon.png",
         baseHull: 200,
         cargoCapacity: 80,
         baseTroops: 35,
         baseCost: 50000,
-        baseSignature: 2.0, 
-        baseEvasion: 0.02, 
-        description: "The pinnacle of luxury and defense.",
+        baseSignature: 2.0,
+        baseEvasion: 0.02,
+        description: "The pinnacle of luxury and defense, outfitted with Concord VIP transponders and heavy bulkheads.",
         loreKey: "LORE_SHIP_STAR_GALLEON",
         ability: {
             name: "Diplomatic Immunity",
-            desc: "Instantly ends combat (Escape).",
+            desc: "Instantly disengages standard hostiles (against Bosses, boosts +60 Shields & Evasion).",
             id: "ESCAPE",
             cooldown: 10,
             execute: (combatCtx, playerStats) => {
-                playerStats.triggerEscape = true; 
+                // BUG FIX: Respect locked Boss/Warlord arenas instead of letting VIP codes bypass Rite of Combat
+                if (combatCtx && (combatCtx.isLegendary || (combatCtx.ship && combatCtx.ship.isBoss))) {
+                    playerStats.shields = Math.min(playerStats.maxShields, playerStats.shields + 60);
+                    playerStats.isEvading = true;
+                    return `Diplomatic frequencies jammed by hostile commander! Rerouted power to emergency deflectors (+60 Shields & Evasion).`;
+                }
+                playerStats.triggerEscape = true;
                 return `Transmitting Concord VIP clearance codes... Hostiles disengaging!`;
             }
         }
@@ -216,8 +283,9 @@ const SHIP_CLASSES = {
 
     FUEL_RAT_RESCUER: {
         name: "Fuel Rats Salvage Tug",
-        image: "assets/courier.png", // Safe fallback; auto-upgrades to assets/ship_fuelrat.png if present
-        customAsset: "assets/ship_fuelrat.png",
+        role: "Deep-Space Rescue Tug",
+        manufacturer: "FRONTIER",
+        image: "assets/courier.png",
         baseHull: 165,
         cargoCapacity: 95,
         baseTroops: 25,
@@ -226,7 +294,6 @@ const SHIP_CLASSES = {
         baseEvasion: 0.12,
         description: "A heavily modified deep-space rescue tug painted in high-visibility amber. Features oversized transfer coils and reinforced grapplers.",
         loreKey: "FACTION_FUEL_RATS",
-        manufacturer: "FRONTIER",
         reqFaction: "FUEL_RATS",
         minRep: 10,
         ability: {
@@ -239,7 +306,7 @@ const SHIP_CLASSES = {
                 combatCtx.pirateShields = Math.max(0, (combatCtx.pirateShields || 0) - 25);
                 playerStats.shields = Math.min(playerStats.maxShields, playerStats.shields + Math.max(15, drained));
                 if (typeof playerFuel !== 'undefined' && typeof MAX_FUEL !== 'undefined') {
-                    playerFuel = Math.min(MAX_FUEL, playerFuel + 15);
+                    playerFuel = Math.min(MAX_FUEL, Math.round((playerFuel + 15) * 10) / 10);
                 }
                 return `Refueling umbilicus fired! Siphoned enemy power grid (+Shields & +15 Fuel).`;
             }
@@ -247,8 +314,9 @@ const SHIP_CLASSES = {
     },
     ECLIPSE_CORSAIR: {
         name: "Eclipse Corsair",
-        image: "assets/interceptor.png", // Safe fallback; auto-upgrades to assets/ship_corsair.png if present
-        customAsset: "assets/ship_corsair.png",
+        role: "Boarding Raider",
+        manufacturer: "ECLIPSE",
+        image: "assets/interceptor.png",
         baseHull: 130,
         cargoCapacity: 55,
         baseTroops: 30,
@@ -257,7 +325,6 @@ const SHIP_CLASSES = {
         baseEvasion: 0.16,
         description: "A sleek Cartel boarding raider equipped with magnetic grapplers and low-emission thrusters.",
         loreKey: "FACTION_ECLIPSE",
-        manufacturer: "ECLIPSE",
         reqFaction: "ECLIPSE",
         minRep: 15,
         ability: {
@@ -274,21 +341,22 @@ const SHIP_CLASSES = {
     },
     KTHARR_BLOODBARGE: {
         name: "K'tharr Blood-Barge",
-        image: "assets/ship_bloodbarge.png", 
+        role: "Assault War-Hulk",
+        manufacturer: "KTHARR",
+        image: "assets/ship_bloodbarge.png",
         baseHull: 350,
         cargoCapacity: 60,
         baseTroops: 45,
         baseCost: 50000,
-        baseSignature: 1.9, 
+        baseSignature: 1.9,
         baseEvasion: 0.02,
-        description: "A brutal, heavily armored war-hulk. Lacks finesse, but hits like a localized asteroid strike.",
+        description: "A brutal, heavily armored war-hulk forged in volcanic gravity wells. Lacks finesse, but hits like a localized asteroid strike.",
         loreKey: "LORE_SHIP_BLOODBARGE",
-        manufacturer: "KTHARR",
         reqFaction: "KTHARR",
         minRep: 30,
         ability: {
             name: "Ramming Speed",
-            desc: "Deals massive damage, but hurts your own hull.",
+            desc: "Deals 60 direct hull damage at the cost of up to 15 self-damage.",
             id: "CRIT",
             cooldown: 5,
             execute: (combatCtx, playerStats) => {
@@ -303,21 +371,22 @@ const SHIP_CLASSES = {
     },
     ECLIPSE_NIGHTRUNNER: {
         name: "Eclipse Night-Runner",
-        image: "assets/ship_nightrunner.png", 
+        role: "Stealth Smuggler",
+        manufacturer: "ECLIPSE",
+        image: "assets/ship_nightrunner.png",
         baseHull: 90,
         cargoCapacity: 80,
         baseTroops: 20,
         baseCost: 55000,
-        baseSignature: 0.2, 
+        baseSignature: 0.2,
         baseEvasion: 0.18,
-        description: "A stealth smuggling vessel. Sensor-absorbent plating makes it a ghost on Concord radars.",
+        description: "A stealth smuggling vessel coated in sensor-absorbent polymer, rendering it a ghost on Concord radars.",
         loreKey: "LORE_SHIP_NIGHTRUNNER",
-        manufacturer: "ECLIPSE",
         reqFaction: "ECLIPSE",
         minRep: 30,
         ability: {
             name: "Sensor Ghost",
-            desc: "Guarantees evasion from incoming fire.",
+            desc: "Engages phase-shifter evasion against incoming fire.",
             id: "DODGE",
             cooldown: 8,
             execute: (combatCtx, playerStats) => {
@@ -328,21 +397,22 @@ const SHIP_CLASSES = {
     },
     AEGIS_GUNSHIP: {
         name: "Aegis Gunship",
-        image: "assets/ship_aegis.png", 
+        role: "Heavy Patrol Escort",
+        manufacturer: "CONCORD",
+        image: "assets/ship_aegis.png",
         baseHull: 250,
         cargoCapacity: 40,
         baseTroops: 35,
         baseCost: 65000,
-        baseSignature: 1.6, 
+        baseSignature: 1.6,
         baseEvasion: 0.05,
         description: "A Concord military patrol vessel. Heavily armored and built for pure combat superiority.",
         loreKey: "LORE_SHIP_AEGIS",
-        manufacturer: "CONCORD",
         reqFaction: "CONCORD",
         minRep: 30,
         ability: {
             name: "Phalanx Array",
-            desc: "Instantly restores shields and increases evasion.",
+            desc: "Instantly restores shields to 100% and engages evasion.",
             id: "SHIELD_BOOST",
             cooldown: 6,
             execute: (combatCtx, playerStats) => {
@@ -354,8 +424,9 @@ const SHIP_CLASSES = {
     },
     CONCORD_DREADNOUGHT: {
         name: "Aegis Dreadnought",
-        image: "assets/ship_aegis.png", // Safe fallback; auto-upgrades to assets/ship_dreadnought.png if present
-        customAsset: "assets/ship_dreadnought.png",
+        role: "Sector Command Fortress",
+        manufacturer: "CONCORD",
+        image: "assets/ship_aegis.png",
         baseHull: 420,
         cargoCapacity: 110,
         baseTroops: 60,
@@ -364,12 +435,11 @@ const SHIP_CLASSES = {
         baseEvasion: 0.03,
         description: "The undisputed apex of Concord naval engineering. A mobile sector command fortress bristling with spinal battery mounts and troop bays.",
         loreKey: "LORE_SHIP_DREADNOUGHT",
-        manufacturer: "CONCORD",
         reqFaction: "CONCORD",
         minRep: 50,
         ability: {
             name: "Spinal Broadside",
-            desc: "Fires all batteries for 75 direct damage and bolsters Shields by +30.",
+            desc: "Fires all batteries for 75 damage and bolsters Shields by +30.",
             id: "SPINAL_BROADSIDE",
             cooldown: 6,
             execute: (combatCtx, playerStats) => {
@@ -394,26 +464,43 @@ const SHIP_CLASSES = {
 
 const PIRATE_SHIP_CLASSES = {
     // --- STANDARD PIRATES & CARTEL ---
-    RAIDER: { id: "RAIDER", name: "Pirate Raider", baseHull: 60, baseShields: 20, weight: 5 },
-    STRIKER: { id: "STRIKER", name: "Pirate Striker", baseHull: 45, baseShields: 35, weight: 3 },
-    BRUISER: { id: "BRUISER", name: "Pirate Bruiser", baseHull: 80, baseShields: 15, weight: 2 },
-    PIRATE_GUNSHIP: { id: "PIRATE_GUNSHIP", name: "Void Vulture Gunship", baseHull: 110, baseShields: 45, weight: 1 },
-    ECLIPSE_ASSASSIN: { id: "ECLIPSE_ASSASSIN", name: "Cartel Shadow-Interceptor", baseHull: 70, baseShields: 70, weight: 1 },
-    PIRATE_DREADNOUGHT: { id: "PIRATE_DREADNOUGHT", name: "Cartel Pocket-Dreadnought", baseHull: 175, baseShields: 60, weight: 0.4 },
+    RAIDER:             { id: "RAIDER",             name: "Pirate Raider",             baseHull: 60,  baseShields: 20,  weight: 5 },
+    STRIKER:            { id: "STRIKER",            name: "Pirate Striker",            baseHull: 45,  baseShields: 35,  weight: 3 },
+    PIRATE_INTERCEPTOR: { id: "PIRATE_INTERCEPTOR", name: "Void Vulture Interceptor",  baseHull: 55,  baseShields: 45,  weight: 2.2 },
+    BRUISER:            { id: "BRUISER",            name: "Pirate Bruiser",            baseHull: 80,  baseShields: 15,  weight: 2 },
+    PIRATE_GUNSHIP:     { id: "PIRATE_GUNSHIP",     name: "Void Vulture Gunship",      baseHull: 110, baseShields: 45,  weight: 1 },
+    ECLIPSE_ASSASSIN:   { id: "ECLIPSE_ASSASSIN",   name: "Cartel Shadow-Interceptor", baseHull: 70,  baseShields: 70,  weight: 1 },
+    ECLIPSE_GUNSHIP:    { id: "ECLIPSE_GUNSHIP",    name: "Cartel Enforcer Gunship",   baseHull: 125, baseShields: 65,  weight: 0.8 },
+    PIRATE_DREADNOUGHT: { id: "PIRATE_DREADNOUGHT", name: "Cartel Pocket-Dreadnought", baseHull: 175, baseShields: 60,  weight: 0.4 },
 
     // --- K'THARR HEGEMONY ---
-    KTHARR_SCOUT: { id: "KTHARR_SCOUT", name: "K'tharr Vanguard", baseHull: 90, baseShields: 10, weight: 3 },
-    KTHARR_DESTROYER: { id: "KTHARR_DESTROYER", name: "K'tharr War-Hulk", baseHull: 150, baseShields: 20, weight: 1 },
-    KTHARR_WARLORD: { id: "KTHARR_WARLORD", name: "K'tharr Blood-Dreadnought", baseHull: 260, baseShields: 50, weight: 0, isBoss: true },
+    KTHARR_SCOUT:       { id: "KTHARR_SCOUT",       name: "K'tharr Vanguard",          baseHull: 90,  baseShields: 10,  weight: 3 },
+    KTHARR_GUNSHIP:     { id: "KTHARR_GUNSHIP",     name: "K'tharr Siege Gunship",     baseHull: 125, baseShields: 20,  weight: 1.5 },
+    KTHARR_DESTROYER:   { id: "KTHARR_DESTROYER",   name: "K'tharr War-Hulk",          baseHull: 150, baseShields: 20,  weight: 1 },
 
     // --- CONCORD SECURITY ---
-    CONCORD_PATROL: { id: "CONCORD_PATROL", name: "Concord Patrol", baseHull: 60, baseShields: 60, weight: 3 },
-    CONCORD_ENFORCER: { id: "CONCORD_ENFORCER", name: "Concord Enforcer", baseHull: 80, baseShields: 100, weight: 1 },
-
-    // --- LEGENDARY BOUNTY BOSSES (weight: 0 so they never spawn as random pirates!) ---
-    BOSS_VOSS: { id: "BOSS_VOSS", name: "The Butcher's Blade", baseHull: 400, baseShields: 150, weight: 0, isBoss: true },
-    BOSS_THORNE: { id: "BOSS_THORNE", name: "Rogue Aegis Interceptor", baseHull: 200, baseShields: 350, weight: 0, isBoss: true }
+    CONCORD_PATROL:      { id: "CONCORD_PATROL",      name: "Concord Patrol",           baseHull: 60,  baseShields: 60,  weight: 3 },
+    CONCORD_INTERCEPTOR: { id: "CONCORD_INTERCEPTOR", name: "Aegis Pursuit Interceptor", baseHull: 65, baseShields: 85,  weight: 1.8 },
+    CONCORD_ENFORCER:    { id: "CONCORD_ENFORCER",    name: "Concord Enforcer",         baseHull: 80,  baseShields: 100, weight: 1 }
 };
+
+// BUG FIX: Define Boss ships as non-enumerable properties so Object.keys()/Object.values()
+// random patrol/pirate pools (e.g. K'tharr border spawns) never roll an un-escapable Boss!
+// Direct lookups like PIRATE_SHIP_CLASSES.KTHARR_WARLORD still work identically.
+Object.defineProperties(PIRATE_SHIP_CLASSES, {
+    KTHARR_WARLORD: {
+        value: { id: "KTHARR_WARLORD", name: "K'tharr Blood-Dreadnought", baseHull: 260, baseShields: 50, weight: 0, isBoss: true },
+        enumerable: false, writable: true, configurable: true
+    },
+    BOSS_VOSS: {
+        value: { id: "BOSS_VOSS", name: "The Butcher's Blade", baseHull: 400, baseShields: 150, weight: 0, isBoss: true },
+        enumerable: false, writable: true, configurable: true
+    },
+    BOSS_THORNE: {
+        value: { id: "BOSS_THORNE", name: "Rogue Aegis Interceptor", baseHull: 200, baseShields: 350, weight: 0, isBoss: true },
+        enumerable: false, writable: true, configurable: true
+    }
+});
 
 // ==========================================
 // --- COMPONENTS DATABASE ---
@@ -423,29 +510,29 @@ const COMPONENTS_DATABASE = {
     // --- PROTOTYPE & BOSS GEAR (CRAFTING / BOSS LOOT ONLY) ---
     "WEAPON_VOID_CASTER": {
         name: "Void Caster Prototype", type: "weapon", slot: "weapon", cost: 0, manufacturer: "UNKNOWN",
-        description: "An experimental weapon firing weaponized void energy. Incredible damage output and critical strike capability.", 
-        stats: { damage: 35, hitChance: 0.85, critChance: 0.25 }, loreKey: "PHENOMENON_VOID_CRYSTALS"
+        description: "An experimental weapon firing coherent void energy. Incredible damage output and critical strike capability.",
+        stats: { damage: 35, hitChance: 0.85, critChance: 0.25, vsShieldBonus: 15 }, loreKey: "PHENOMENON_VOID_CRYSTALS"
     },
     "SHIELD_AETHER_WARD": {
         name: "Aether Ward Emitter", type: "shield", slot: "shield", cost: 0, manufacturer: "UNKNOWN",
-        description: "A prototype shield utilizing phase-shifted tech to rapidly disperse kinetic and thermal impacts.", 
-        stats: { maxShields: 200, rechargeRate: 5 }, loreKey: "TECH_PHASE_SHIFT_ALLOY"
+        description: "A prototype shield utilizing phase-shifted tech to rapidly disperse kinetic and thermal impacts.",
+        stats: { maxShields: 200, rechargeRate: 5, evasionBonus: 0.05 }, loreKey: "TECH_PHASE_SHIFT_ALLOY"
     },
     "ENGINE_SLIPSTREAM": {
         name: "Slipstream Drive", type: "engine", slot: "engine", cost: 0, manufacturer: "UNKNOWN",
-        description: "Reverse-engineered from precursor tech. Provides immense fuel reserves and peak sublight efficiency.", 
-        stats: { maxFuel: 500, fuelEfficiency: 0.4 }, loreKey: "XENO_PRECURSORS"
+        description: "Reverse-engineered from Precursor tech. Provides immense fuel reserves and peak sublight efficiency.",
+        stats: { maxFuel: 500, fuelEfficiency: 0.4, evasionBonus: 0.12 }, loreKey: "XENO_PRECURSORS"
     },
     "WEAPON_SINGULARITY_CANNON": {
         name: "Singularity Cannon", type: "weapon", slot: "weapon", manufacturer: "UNKNOWN",
         description: "Fires localized micro-black holes. Devastating hull damage. Prototype hardwired to ship.",
         cost: 999999,
-        stats: { damage: 85, hitChance: 0.85, maxAmmo: 8 }
+        stats: { damage: 85, hitChance: 0.85, critChance: 0.20, maxAmmo: 8 }
     },
     "WEAPON_VOID_BEAM": {
         name: "K'tharr Void-Beam", type: "weapon", slot: "weapon", manufacturer: "KTHARR",
         description: "An experimental continuous beam weapon stolen by the Cartel. Melts shields instantly.",
-        cost: 999999, 
+        cost: 999999,
         stats: { damage: 45, hitChance: 0.95, vsShieldBonus: 50, maxAmmo: 12 }
     },
 
@@ -453,12 +540,12 @@ const COMPONENTS_DATABASE = {
     "WEAPON_CONCORD_PLASMA": {
         name: "Aegis Plasma Cannon", type: "weapon", slot: "weapon", cost: 8500, manufacturer: "CONCORD", reqFaction: "CONCORD", minRep: 20,
         description: "Military-grade plasma projector. Melts pirate armor into slag.",
-        stats: { damage: 45, hitChance: 0.90 }, loreKey: "LORE_COMP_PULSE_LASER"
+        stats: { damage: 45, hitChance: 0.90, critChance: 0.12 }, loreKey: "LORE_COMP_PULSE_LASER"
     },
     "WEAPON_CONCORD_RAILGUN": {
         name: "Concord 'Punisher' Railgun", type: "weapon", slot: "weapon", cost: 15000, manufacturer: "CONCORD", reqFaction: "CONCORD", minRep: 40,
         description: "Accelerates tungsten slugs to a fraction of lightspeed. Requires specialized ammo clips.",
-        stats: { damage: 85, hitChance: 0.75, maxAmmo: 10 }, loreKey: "LORE_COMP_MASS_DRIVER"
+        stats: { damage: 85, hitChance: 0.75, critChance: 0.20, maxAmmo: 10 }, loreKey: "LORE_COMP_MASS_DRIVER"
     },
     "SHIELD_CONCORD_BULWARK": {
         name: "Aegis Bulwark Array", type: "shield", slot: "shield", cost: 12000, manufacturer: "CONCORD", reqFaction: "CONCORD", minRep: 20,
@@ -468,11 +555,11 @@ const COMPONENTS_DATABASE = {
     "ENGINE_CONCORD_CRUISER": {
         name: "Concord Patrol Drive", type: "engine", slot: "engine", cost: 9500, manufacturer: "CONCORD", reqFaction: "CONCORD", minRep: 20,
         description: "Incredibly efficient micro-fusion drive used by long-range security patrols.",
-        stats: { maxFuel: 300, fuelEfficiency: 0.5 }, loreKey: "LORE_COMP_ENGINE" 
+        stats: { maxFuel: 300, fuelEfficiency: 0.5 }, loreKey: "LORE_COMP_ENGINE"
     },
     "SCANNER_CONCORD_MILITARY": {
         name: "Deep-Space Tactical Sensors", type: "scanner", slot: "scanner", cost: 6000, manufacturer: "CONCORD", reqFaction: "CONCORD", minRep: 30,
-        description: "Pierces through nebulas and stealth fields with ease. Highly classified tech.",
+        description: "Pierces through nebulae and stealth fields with ease. Highly classified tech.",
         stats: { scanBonus: 0.8, accuracyBonus: 0.08 }, loreKey: "LORE_COMP_SCANNER"
     },
     "UTIL_CONCORD_REACTIVE": {
@@ -488,33 +575,54 @@ const COMPONENTS_DATABASE = {
 
     // --- STANDARD & FACTION UTILITY GEAR ---
     UTIL_NONE: {
-        name: "Empty Slot", type: "utility", slot: "utility", manufacturer: "FRONTIER",
+        // BUG FIX: Manufacturer set to "NONE" so an empty slot never falsely triggers Frontier Set Synergy!
+        name: "Empty Slot", type: "utility", slot: "utility", manufacturer: "NONE",
         description: "No utility module installed.", cost: 0, stats: {}
     },
     UTIL_ORBITAL_EXTRACTOR: {
         name: "Orbital Extractor", type: "utility", slot: "utility", manufacturer: "FRONTIER",
-        description: "Fires localized tectonic charges to strip-mine planetary surfaces from orbit. Unlocks planetary mining.",
-        cost: 8500, stats: { unlocksMining: true }, loreKey: "LORE_COMP_SCANNER"
+        description: "Fires localized tectonic charges to strip-mine planetary surfaces from orbit. Unlocks orbital planetary extraction.",
+        cost: 8500, stats: { unlocksMining: true, cargoBonus: 10 }, loreKey: "LORE_COMP_SCANNER"
     },
     UTIL_REINFORCED_PLATING: {
         name: "Reinforced Plating", type: "utility", slot: "utility", manufacturer: "CONCORD",
         description: "Adds thick ablative armor plates. (+40 Max Hull)",
-        cost: 1500, stats: { hullBonus: 40 }, loreKey: "LORE_COMP_SHIELD_GENERATOR" 
+        cost: 1500, stats: { hullBonus: 40 }, loreKey: "LORE_COMP_SHIELD_GENERATOR"
     },
     UTIL_CARGO_POD: {
         name: "Ext. Cargo Pod", type: "utility", slot: "utility", manufacturer: "FRONTIER",
         description: "Bolted-on storage racks. (+20 Cargo Capacity)",
-        cost: 2000, stats: { cargoBonus: 20 }, loreKey: "LORE_SHIP_LIGHT_FREIGHTER" 
+        cost: 2000, stats: { cargoBonus: 20 }, loreKey: "LORE_SHIP_LIGHT_FREIGHTER"
+    },
+    UTIL_FRONTIER_SALVAGE_RIG: {
+        name: "Frontier Salvage Rig", type: "utility", slot: "utility", manufacturer: "FRONTIER",
+        description: "Welded grapple-arms and external ore bins favored by outer-rim scrappers. (+25 Cargo, +20 Max Hull)",
+        cost: 3800, stats: { cargoBonus: 25, hullBonus: 20 }, loreKey: "LORE_SHIP_ROCK_HOPPER"
+    },
+    UTIL_FUEL_SCOOP_BOOSTER: {
+        name: "Reserve Hydrogen Tanks", type: "utility", slot: "utility", manufacturer: "FRONTIER",
+        description: "Conformal external deuterium bladders with optimized injector manifolds. (+80 Max Fuel, -10% Fuel Burn)",
+        cost: 3200, stats: { fuelBonus: 80, fuelEfficiency: 0.90 }, loreKey: "LORE_COMP_ENGINE"
     },
     UTIL_DOSIMETRY_ARRAY: {
         name: "Radiological Dosimeter", type: "utility", slot: "utility", manufacturer: "CONCORD",
         description: "A professional-grade health physics suite. Completely shields the vessel and crew from environmental radiation hazards.",
-        cost: 3500, stats: { radImmunity: true, shieldBonus: 15 }, loreKey: "LORE_COMP_SCANNER" 
+        cost: 3500, stats: { radImmunity: true, shieldBonus: 15 }, loreKey: "LORE_COMP_SCANNER"
+    },
+    UTIL_THERMAL_BAFFLES: {
+        name: "Aegis Thermal Heatsinks", type: "utility", slot: "utility", manufacturer: "CONCORD",
+        description: "Active liquid-nitrogen radiator vanes that reinforce bulkheads and stabilize shield emitters. (+25 Hull, +20 Shields, +5% Evasion)",
+        cost: 4600, stats: { hullBonus: 25, shieldBonus: 20, evasionBonus: 0.05 }, loreKey: "LORE_COMP_SHIELD_GENERATOR"
     },
     UTIL_TARGETING_COMPUTER: {
         name: "Gyroscopic Targeting AI", type: "utility", slot: "utility", manufacturer: "FRONTIER",
         description: "An automated tracking system that syncs ship gimbals to enemy vectors. Increases Weapon Hit Chance by 15%.",
-        cost: 4200, stats: { accuracyBonus: 0.15 }, loreKey: "LORE_COMP_SCANNER" 
+        cost: 4200, stats: { accuracyBonus: 0.15 }, loreKey: "LORE_COMP_SCANNER"
+    },
+    UTIL_ECLIPSE_ECM_SUITE: {
+        name: "Eclipse Chaff & ECM Suite", type: "utility", slot: "utility", manufacturer: "ECLIPSE",
+        description: "Active radar spoofing array that masks ship emissions and throws off hostile fire-control. (-25% Signature, +10% Evasion)",
+        cost: 4800, stats: { signatureMod: -0.25, evasionBonus: 0.10 }, loreKey: "FACTION_ECLIPSE"
     },
     UTIL_MARINE_BARRACKS: {
         name: "Drop-Troop Barracks Pod", type: "utility", slot: "utility", manufacturer: "KTHARR",
@@ -532,6 +640,11 @@ const COMPONENTS_DATABASE = {
         name: "Pulse Laser Mk2", type: "weapon", slot: "weapon", manufacturer: "FRONTIER",
         description: "Upgraded pulse laser with improved focusing coils for higher damage.",
         cost: 2000, stats: { damage: 12, hitChance: 0.75, critChance: 0.10 }, loreKey: "LORE_COMP_PULSE_LASER"
+    },
+    WEAPON_AUTOCANNON_MK2: {
+        name: "Frontier Rotary Autocannon", type: "weapon", slot: "weapon", manufacturer: "FRONTIER",
+        description: "Heavy twin-linked slug thrower bolted together on rim shipyards. No ammo limits, brutal kinetic punch.",
+        cost: 4200, stats: { damage: 20, hitChance: 0.74, critChance: 0.14 }, loreKey: "LORE_COMP_KINETIC_WEAPON"
     },
     WEAPON_PULSE_LASER_MK3: {
         name: "Pulse Laser Mk3", type: "weapon", slot: "weapon", manufacturer: "CONCORD",
@@ -553,6 +666,11 @@ const COMPONENTS_DATABASE = {
         description: "Disrupts shields effectively, less hull damage.",
         cost: 2200, stats: { damage: 6, hitChance: 0.80, vsShieldBonus: 10 }, loreKey: "LORE_COMP_ION_WEAPON"
     },
+    WEAPON_ION_CANNON_MK2: {
+        name: "Concord Arc-Ion Emitter", type: "weapon", slot: "weapon", manufacturer: "CONCORD",
+        description: "High-voltage fleet ion projector engineered to collapse heavy pirate deflectors in seconds.",
+        cost: 5200, stats: { damage: 14, hitChance: 0.86, vsShieldBonus: 22, critChance: 0.10 }, loreKey: "LORE_COMP_ION_WEAPON"
+    },
     WEAPON_BEAM_LASER_MK1: {
         name: "Beam Laser Mk1", type: "weapon", slot: "weapon", manufacturer: "CONCORD",
         description: "Sustained energy beam. High accuracy, consistent damage over time.",
@@ -573,10 +691,20 @@ const COMPONENTS_DATABASE = {
         description: "Fires unstable bolts of compressed blood-red plasma that shred both shields and armor.",
         cost: 7200, stats: { damage: 32, hitChance: 0.78, critChance: 0.15, vsShieldBonus: 10 }, loreKey: "FACTION_KTHARR"
     },
+    WEAPON_PLASMA_LANCE: {
+        name: "Karak-Tor Siege Lance", type: "weapon", slot: "weapon", manufacturer: "KTHARR", reqFaction: "KTHARR", minRep: 35,
+        description: "Spinal magma-plasma lance forged by K'tharr smiths. Brutal critical impact against capital armor.",
+        cost: 12500, stats: { damage: 48, hitChance: 0.76, critChance: 0.28 }, loreKey: "FACTION_KTHARR"
+    },
     WEAPON_ECLIPSE_RAIL_REPEATER: {
         name: "Eclipse Silent Repeater", type: "weapon", slot: "weapon", manufacturer: "ECLIPSE", reqFaction: "ECLIPSE", minRep: 15,
         description: "Flash-suppressed electromagnetic flechette cannon engineered for Cartel ambush wings.",
         cost: 6800, stats: { damage: 26, hitChance: 0.88, critChance: 0.22, signatureMod: -0.10 }, loreKey: "FACTION_ECLIPSE"
+    },
+    WEAPON_VOID_SIPHON_BEAM: {
+        name: "Shadow-Stalker Beam", type: "weapon", slot: "weapon", manufacturer: "ECLIPSE", reqFaction: "ECLIPSE", minRep: 35,
+        description: "Dark-spectrum cutting beam built for silent ambushes. Melts shields with pinpoint accuracy.",
+        cost: 11800, stats: { damage: 34, hitChance: 0.92, critChance: 0.20, vsShieldBonus: 20, signatureMod: -0.15 }, loreKey: "FACTION_ECLIPSE"
     },
 
     // --- SHIELDS ---
@@ -589,6 +717,11 @@ const COMPONENTS_DATABASE = {
         name: "Guardian Shield Emitter B", type: "shield", slot: "shield", manufacturer: "FRONTIER",
         description: "Military surplus shield, offering better resilience and faster recharge.",
         cost: 2500, stats: { maxShields: 80, rechargeRate: 2 }, loreKey: "LORE_COMP_SHIELD_GENERATOR"
+    },
+    SHIELD_FRONTIER_CAPACITOR: {
+        name: "Frontier Heavy Capacitor", type: "shield", slot: "shield", manufacturer: "FRONTIER",
+        description: "Oversized industrial mining deflector repurposed for deep-rim haulers. Reliable and spacious.",
+        cost: 4800, stats: { maxShields: 110, rechargeRate: 2.2, hullBonus: 15 }, loreKey: "LORE_COMP_SHIELD_GENERATOR"
     },
     SHIELD_AEGIS_C: {
         name: "Aegis Shield Projector C", type: "shield", slot: "shield", manufacturer: "CONCORD",
@@ -605,10 +738,20 @@ const COMPONENTS_DATABASE = {
         description: "Extremely high capacity, but slow to regenerate. For ships that can take a beating.",
         cost: 4500, stats: { maxShields: 150, rechargeRate: 1 }, loreKey: "LORE_COMP_SHIELD_GENERATOR"
     },
+    SHIELD_KTHARR_BONEWEAVE: {
+        name: "K'tharr Carapace Emitter", type: "shield", slot: "shield", manufacturer: "KTHARR", reqFaction: "KTHARR", minRep: 20,
+        description: "Dense gravimetric barrier interwoven with chitinous hull reinforcement ribs. (+45 Max Hull)",
+        cost: 7600, stats: { maxShields: 125, rechargeRate: 2, hullBonus: 45 }, loreKey: "FACTION_KTHARR"
+    },
     SHIELD_STEALTH_GRID: {
         name: "Whisper Deflector Grid", type: "shield", slot: "shield", manufacturer: "ECLIPSE",
         description: "A modified shield array that sacrifices raw capacity to absorb radar emissions. Reduces ship signature.",
         cost: 4200, stats: { maxShields: 40, rechargeRate: 2, signatureMod: -0.2 }, loreKey: "LORE_COMP_SHIELD_GENERATOR"
+    },
+    SHIELD_ECLIPSE_MIRAGE: {
+        name: "Eclipse Mirage Field", type: "shield", slot: "shield", manufacturer: "ECLIPSE", reqFaction: "ECLIPSE", minRep: 20,
+        description: "Refractive holo-shield that distorts enemy optics while keeping radar profile razor-thin.",
+        cost: 7400, stats: { maxShields: 95, rechargeRate: 3.5, evasionBonus: 0.10, signatureMod: -0.20 }, loreKey: "FACTION_ECLIPSE"
     },
 
     // --- ENGINES ---
@@ -622,10 +765,20 @@ const COMPONENTS_DATABASE = {
         description: "Larger fuel tank for extended travel, slightly improved efficiency.",
         cost: 3000, stats: { maxFuel: 350, fuelEfficiency: 0.95 }, loreKey: "LORE_COMP_ENGINE"
     },
+    ENGINE_FRONTIER_MULE: {
+        name: "Frontier Mule Deep-Burner", type: "engine", slot: "engine", manufacturer: "FRONTIER",
+        description: "Heavy-duty long-rim freighter engine with integrated structural cargo bracing. (+420 Max Fuel, +15 Cargo)",
+        cost: 6200, stats: { maxFuel: 420, fuelEfficiency: 0.85, cargoBonus: 15 }, loreKey: "LORE_COMP_ENGINE"
+    },
     ENGINE_IONFLOW_MK2: {
         name: "IonFlow Drive Mk2", type: "engine", slot: "engine", manufacturer: "CONCORD",
         description: "Advanced ion engine, significantly better fuel efficiency.",
         cost: 4000, stats: { maxFuel: 275, fuelEfficiency: 0.75 }, loreKey: "LORE_COMP_ENGINE"
+    },
+    ENGINE_CONCORD_INTERCEPT: {
+        name: "Aegis Vector-Thrust Drive", type: "engine", slot: "engine", manufacturer: "CONCORD", reqFaction: "CONCORD", minRep: 15,
+        description: "Precision vectored-nozzle patrol thrusters built for rapid interception and clean evasion.",
+        cost: 6800, stats: { maxFuel: 290, fuelEfficiency: 0.70, evasionBonus: 0.10 }, loreKey: "LORE_COMP_ENGINE"
     },
     ENGINE_HIGH_THRUST_MK1: {
         name: "High-Thrust Drive Mk1", type: "engine", slot: "engine", manufacturer: "ECLIPSE",
@@ -636,6 +789,11 @@ const COMPONENTS_DATABASE = {
         name: "Night-Runner Injectors", type: "engine", slot: "engine", manufacturer: "ECLIPSE",
         description: "Runs cold to evade thermal tracking. Modest fuel capacity, but heavily reduces ship signature.",
         cost: 6500, stats: { maxFuel: 250, fuelEfficiency: 0.9, signatureMod: -0.3 }, loreKey: "LORE_SHIP_NIGHTRUNNER"
+    },
+    ENGINE_VOID_GLIDER: {
+        name: "Eclipse Whisper-Core Drive", type: "engine", slot: "engine", manufacturer: "ECLIPSE", reqFaction: "ECLIPSE", minRep: 30,
+        description: "Top-tier cold-burn smuggling drive combining deep range, quiet emissions, and razor-sharp thrust vectoring.",
+        cost: 9200, stats: { maxFuel: 320, fuelEfficiency: 0.75, evasionBonus: 0.12, signatureMod: -0.25 }, loreKey: "LORE_SHIP_NIGHTRUNNER"
     },
     ENGINE_KTHARR_AFTERBURNER: {
         name: "K'tharr War-Torch Drive", type: "engine", slot: "engine", manufacturer: "KTHARR",
@@ -649,14 +807,24 @@ const COMPONENTS_DATABASE = {
         description: "Basic sensor package. Provides essential data.",
         cost: 0, stats: { scanBonus: 0 }, loreKey: "LORE_COMP_SCANNER"
     },
+    SCANNER_FRONTIER_PROSPECTOR: {
+        name: "Frontier Prospector Array", type: "scanner", slot: "scanner", manufacturer: "FRONTIER",
+        description: "Deep-core gravimetric scanner designed to pinpoint mineral seams and salvage debris.",
+        cost: 2400, stats: { scanBonus: 0.15, cargoBonus: 5, accuracyBonus: 0.04 }, loreKey: "LORE_COMP_SCANNER"
+    },
     SCANNER_DEEP_RANGE_A: {
         name: "Deep-Range Array A", type: "scanner", slot: "scanner", manufacturer: "CONCORD",
         description: "Improved sensor resolution. May reveal more details or rarer finds.",
         cost: 1500, stats: { scanBonus: 0.05 }, loreKey: "LORE_COMP_SCANNER"
     },
+    SCANNER_CONCORD_AUSPEX: {
+        name: "Concord Fire-Control Auspex", type: "scanner", slot: "scanner", manufacturer: "CONCORD",
+        description: "Synchronizes target telemetry directly into turret gimbals and deflector harmonics. (+10% Hit, +15 Shields)",
+        cost: 4200, stats: { scanBonus: 0.20, accuracyBonus: 0.10, shieldBonus: 15 }, loreKey: "LORE_COMP_SCANNER"
+    },
     SCANNER_NEXSTAR_4SE: {
         name: "NexStar-4 Optical Array", type: "scanner", slot: "scanner", manufacturer: "INDEPENDENT",
-        description: "An antique but meticulously maintained optical tracking array. Exceptional for deep-space stargazing.",
+        description: "An antique but meticulously maintained optical tracking array. Exceptional for deep-space stargazing and astrophotography.",
         cost: 1200, stats: { scanBonus: 0.15, accuracyBonus: 0.05 }, loreKey: "LORE_COMP_SCANNER"
     },
     SCANNER_KTHARR_HUNTER: {
@@ -669,12 +837,12 @@ const COMPONENTS_DATABASE = {
         description: "Intercepts patrol telemetry and masks your hull emissions (-15% Signature, +8% Accuracy).",
         cost: 3900, stats: { signatureMod: -0.15, accuracyBonus: 0.08, scanBonus: 0.15 }, loreKey: "FACTION_ECLIPSE"
     },
-   
+
     // --- FACTION EXCLUSIVES ---
     SMUGGLERS_HOLD: {
         name: "Eclipse Cargo Bay", type: "utility", slot: "utility", manufacturer: "ECLIPSE",
-        description: "Shielded cargo bays. +10 Cargo. Immune to standard scans.",
-        cost: 4000, stats: { cargoBonus: 10, isSmuggler: true, signatureMod: -0.3 }, reqFaction: "ECLIPSE", minRep: 20, loreKey: "FACTION_ECLIPSE" 
+        description: "Shielded cargo bays. +10 Cargo. Conceals 5 units of contraband from standard Concord customs scans.",
+        cost: 4000, stats: { cargoBonus: 10, isSmuggler: true, signatureMod: -0.3 }, reqFaction: "ECLIPSE", minRep: 20, loreKey: "FACTION_ECLIPSE"
     },
     BIO_REPAIR_NODES: {
         name: "Living Hull Tissue", type: "utility", slot: "utility", manufacturer: "KTHARR",
@@ -683,32 +851,67 @@ const COMPONENTS_DATABASE = {
     }
 };
 
+// Normalize all static definitions for uniform V8 object shapes
+for (const shipId in SHIP_CLASSES) {
+    const s = SHIP_CLASSES[shipId];
+    if (s) s.id = shipId;
+}
+for (const compId in COMPONENTS_DATABASE) {
+    const c = COMPONENTS_DATABASE[compId];
+    if (!c) continue;
+    c.id = compId;
+    if (!c.slot) c.slot = c.type || 'utility';
+    if (!c.type) c.type = c.slot;
+    if (!c.stats) c.stats = {};
+}
+
 // Expose databases globally
+window.MANUFACTURER_PROFILES = MANUFACTURER_PROFILES;
 window.SHIP_CLASSES = SHIP_CLASSES;
 window.PIRATE_SHIP_CLASSES = PIRATE_SHIP_CLASSES;
 window.COMPONENTS_DATABASE = COMPONENTS_DATABASE;
 
+if (typeof GameRegistry !== 'undefined') {
+    GameRegistry.ships = SHIP_CLASSES;
+}
+
+// ==========================================
 // --- PROCEDURAL LOOT ENGINE ---
+// ==========================================
+
 const LOOT_PREFIXES = [
-    { name: "Hardened", stat: "hullBonus", val: 15, costMod: 1.2 },
-    { name: "Overcharged", stat: "shieldBonus", val: 20, costMod: 1.3 },
-    { name: "Smuggler's", stat: "cargoBonus", val: 10, costMod: 1.5 },
-    { name: "Tuned", stat: "evasionBonus", val: 0.05, costMod: 1.4 },
-    { name: "Vicious", stat: "damageBonus", val: 5, costMod: 1.5 },
-    { name: "Calibrated", stat: "accuracyBonus", val: 0.10, costMod: 1.3 }
+    { name: "Hardened",        stat: "hullBonus",     val: 15,    costMod: 1.20 },
+    { name: "Overcharged",     stat: "shieldBonus",   val: 20,    costMod: 1.30 },
+    { name: "Smuggler's",      stat: "cargoBonus",    val: 10,    costMod: 1.45 },
+    { name: "Tuned",           stat: "evasionBonus",  val: 0.05,  costMod: 1.35 },
+    { name: "Vicious",         stat: "damageBonus",   val: 5,     costMod: 1.50 },
+    { name: "Calibrated",      stat: "accuracyBonus", val: 0.10,  costMod: 1.30 },
+    { name: "Aegis-Spec",      stat: "shieldBonus",   val: 30,    costMod: 1.55 },
+    { name: "Blood-Forged",    stat: "hullBonus",     val: 30,    costMod: 1.55 },
+    { name: "Phantom",         stat: "signatureMod",  val: -0.18, costMod: 1.45 },
+    { name: "Precursor-Tuned", stat: "critChance",    val: 0.08,  costMod: 1.65 },
+    { name: "Frontier-Rigged", stat: "fuelBonus",     val: 45,    costMod: 1.25 },
+    { name: "Masterwork",      stat: "damageBonus",   val: 7,     costMod: 1.70 }
 ];
+Object.freeze(LOOT_PREFIXES);
 
 const LOOT_SUFFIXES = [
-    { name: "of the Cartel", stat: "signatureMod", val: -0.20, costMod: 1.4 },
-    { name: "from the Core", stat: "scanBonus", val: 0.10, costMod: 1.2 },
-    { name: "of the Vanguard", stat: "hullBonus", val: 25, costMod: 1.5 },
-    { name: "of the Void", stat: "fuelEfficiency", val: -0.15, costMod: 1.6 } // Lower is better for efficiency multiplier
+    { name: "of the Cartel",    stat: "signatureMod",   val: -0.20, costMod: 1.40 },
+    { name: "from the Core",    stat: "scanBonus",      val: 0.12,  costMod: 1.25 },
+    { name: "of the Vanguard",  stat: "hullBonus",      val: 25,    costMod: 1.50 },
+    { name: "of the Void",      stat: "fuelEfficiency", val: -0.15, costMod: 1.60 },
+    { name: "of Karak-Tor",     stat: "damageBonus",    val: 6,     costMod: 1.55 },
+    { name: "of Xerxes",        stat: "evasionBonus",   val: 0.08,  costMod: 1.50 },
+    { name: "of the Expanse",   stat: "fuelBonus",      val: 60,    costMod: 1.40 },
+    { name: "of the Fuel Rats", stat: "fuelEfficiency", val: -0.12, costMod: 1.45 },
+    { name: "of Cygnus",        stat: "accuracyBonus",  val: 0.08,  costMod: 1.40 }
 ];
+Object.freeze(LOOT_SUFFIXES);
 
 function _applyProceduralModifier(itemObj, mod) {
     if (!itemObj || !mod) return;
-    // BUG FIX: fuelEfficiency is a multiplier (baseline 1.0), not an additive 0-base stat!
     if (mod.stat === "fuelEfficiency") {
+        // fuelEfficiency is a multiplier (baseline 1.0); lower is better
         const currentEff = itemObj.stats.fuelEfficiency !== undefined ? itemObj.stats.fuelEfficiency : 1.0;
         itemObj.stats.fuelEfficiency = Math.max(0.25, parseFloat((currentEff + mod.val).toFixed(2)));
     } else {
@@ -721,7 +924,6 @@ function _applyProceduralModifier(itemObj, mod) {
 function generateProceduralModule(baseModuleKey) {
     if (typeof COMPONENTS_DATABASE === 'undefined') return null;
 
-    // 1. Resolve base item (supports specific key or "RANDOM" fallback)
     let resolvedKey = baseModuleKey;
     if (!resolvedKey || resolvedKey === "RANDOM" || !COMPONENTS_DATABASE[resolvedKey]) {
         const eligibleKeys = Object.keys(COMPONENTS_DATABASE).filter(k => {
@@ -734,16 +936,13 @@ function generateProceduralModule(baseModuleKey) {
     const baseItem = COMPONENTS_DATABASE[resolvedKey];
     if (!baseItem) return null;
 
-    // 2. Deep clone base item
     const newItem = JSON.parse(JSON.stringify(baseItem));
     if (!newItem.stats) newItem.stats = {};
 
-    let rolledPrefix = Math.random() < 0.65;
-    let rolledSuffix = Math.random() < 0.40;
-    // Guarantee at least one modifier so procedural modules are never identical to stock store items
+    let rolledPrefix = Math.random() < 0.70;
+    let rolledSuffix = Math.random() < 0.45;
     if (!rolledPrefix && !rolledSuffix) rolledPrefix = true;
 
-    // 3. Apply Prefix
     if (rolledPrefix) {
         const prefix = LOOT_PREFIXES[Math.floor(Math.random() * LOOT_PREFIXES.length)];
         newItem.name = `${prefix.name} ${newItem.name}`;
@@ -751,7 +950,6 @@ function generateProceduralModule(baseModuleKey) {
         _applyProceduralModifier(newItem, prefix);
     }
 
-    // 4. Apply Suffix
     if (rolledSuffix) {
         const suffix = LOOT_SUFFIXES[Math.floor(Math.random() * LOOT_SUFFIXES.length)];
         newItem.name = `${newItem.name} ${suffix.name}`;
@@ -759,19 +957,23 @@ function generateProceduralModule(baseModuleKey) {
         _applyProceduralModifier(newItem, suffix);
     }
 
-    // 5. Assign collision-safe unique ID and register in databases
-    newItem.id = `${resolvedKey}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    newItem.rarity = (rolledPrefix && rolledSuffix) ? "EXOTIC" : "RARE";
+    // Prefix with PROC_ and suffix with numeric stamp so both save serialization & outfitting stowing work seamlessly
+    newItem.id = `PROC_${resolvedKey}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     COMPONENTS_DATABASE[newItem.id] = newItem;
 
+    const slotIcons = { weapon: "🔫", shield: "🛡️", engine: "🚀", scanner: "📡", utility: "🔧" };
     if (typeof COMMODITIES !== 'undefined' && !COMMODITIES[newItem.id]) {
         COMMODITIES[newItem.id] = {
+            id: newItem.id,
             name: newItem.name,
             basePrice: Math.max(500, Math.floor((newItem.cost || 2000) * 0.6)),
-            icon: "⚙️",
+            icon: slotIcons[newItem.slot] || "⚙️",
             weight: 1,
             isComponent: true,
             slot: newItem.slot,
-            description: `${newItem.description} [Custom Calibrated Module - Install at an Engineering Bay].`
+            category: "TECH",
+            description: `${newItem.description} [${newItem.rarity} Custom Module — Install at an Engineering Bay].`
         };
     }
 
@@ -781,22 +983,94 @@ function generateProceduralModule(baseModuleKey) {
 window.generateProceduralModule = generateProceduralModule;
 
 // ==========================================
+// --- PUBLIC SHIP & COMPONENT UTILITY API ---
+// ==========================================
+
+const ShipUtils = {
+    getShipClass(id) {
+        return SHIP_CLASSES[id] || null;
+    },
+    getComponent(id) {
+        return COMPONENTS_DATABASE[id] || null;
+    },
+    getComponentsBySlot(slot) {
+        return Object.values(COMPONENTS_DATABASE).filter(c => c && c.slot === slot);
+    },
+    getComponentsByManufacturer(mfg) {
+        return Object.values(COMPONENTS_DATABASE).filter(c => c && c.manufacturer === mfg);
+    },
+    getSetBonusProgress(componentsObj) {
+        const counts = { CONCORD: 0, KTHARR: 0, ECLIPSE: 0, FRONTIER: 0 };
+        if (!componentsObj) return { counts, activeSet: null };
+        const slots = ['weapon', 'shield', 'engine', 'scanner', 'utility'];
+        slots.forEach(s => {
+            const comp = COMPONENTS_DATABASE[componentsObj[s]];
+            if (comp && comp.manufacturer && counts[comp.manufacturer] !== undefined) {
+                counts[comp.manufacturer]++;
+            }
+        });
+        const activeSet = Object.keys(counts).find(k => counts[k] >= 3) || null;
+        return { counts, activeSet };
+    },
+    registerShipClass(id, def) {
+        if (!id || !def) return false;
+        def.id = id;
+        SHIP_CLASSES[id] = def;
+        return true;
+    },
+    registerComponent(id, def) {
+        if (!id || !def) return false;
+        def.id = id;
+        if (!def.slot) def.slot = def.type || 'utility';
+        if (!def.type) def.type = def.slot;
+        if (!def.stats) def.stats = {};
+        COMPONENTS_DATABASE[id] = def;
+        return true;
+    },
+    registerEnemyClass(id, def, isBoss = false) {
+        if (!id || !def) return false;
+        def.id = id;
+        if (isBoss || def.isBoss) {
+            def.isBoss = true;
+            def.weight = 0;
+            Object.defineProperty(PIRATE_SHIP_CLASSES, id, {
+                value: def,
+                enumerable: false,
+                writable: true,
+                configurable: true
+            });
+        } else {
+            PIRATE_SHIP_CLASSES[id] = def;
+        }
+        return true;
+    }
+};
+
+window.ShipUtils = ShipUtils;
+
+// ==========================================
 // --- SELF-CONTAINED ENGINE HOOKS ---
 // ==========================================
 
 (function initShipsModuleHooks() {
     function attachShipHooks() {
-        // 1. Fix getWeightedRandomOutcome in script.js so weight: 0 (used on Boss ships) is never treated as 1!
+        if (typeof GameRegistry !== 'undefined') {
+            GameRegistry.ships = SHIP_CLASSES;
+        }
+
+        // 1. Fix getWeightedRandomOutcome so weight: 0 (Boss ships) is never treated as 1
         if (typeof window.getWeightedRandomOutcome === 'function' && !window._shipsWeightPatched) {
             window.getWeightedRandomOutcome = function(outcomes) {
                 if (!Array.isArray(outcomes) || outcomes.length === 0) return null;
                 const validOutcomes = outcomes.filter(o => o && !o.isBoss && (o.weight === undefined || o.weight > 0));
                 const pool = validOutcomes.length > 0 ? validOutcomes : outcomes;
-                const totalWeight = pool.reduce((sum, o) => sum + (o.weight !== undefined ? o.weight : 1), 0);
-                let random = Math.random() * totalWeight;
+                const totalWeight = pool.reduce((sum, o) => sum + (o && o.weight !== undefined ? Math.max(0, o.weight) : 1), 0);
+                if (totalWeight <= 0) return pool[0];
 
-                for (const outcome of pool) {
-                    const weight = outcome.weight !== undefined ? outcome.weight : 1;
+                let random = Math.random() * totalWeight;
+                for (let i = 0; i < pool.length; i++) {
+                    const outcome = pool[i];
+                    const weight = outcome && outcome.weight !== undefined ? Math.max(0, outcome.weight) : 1;
                     if (random < weight) return outcome;
                     random -= weight;
                 }
@@ -829,19 +1103,6 @@ window.generateProceduralModule = generateProceduralModule;
                 }
             };
             window._shipsTroopCapHooked = true;
-        }
-
-        // 3. Safely probe for optional custom ship assets without triggering <img> error events
-        if (typeof fetch === 'function' && window.location && window.location.protocol !== 'file:') {
-            Object.values(SHIP_CLASSES).forEach(ship => {
-                if (ship.customAsset) {
-                    fetch(ship.customAsset, { method: 'HEAD' })
-                        .then(res => {
-                            if (res && res.ok) ship.image = ship.customAsset;
-                        })
-                        .catch(() => {});
-                }
-            });
         }
     }
 
