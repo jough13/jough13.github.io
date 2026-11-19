@@ -1711,7 +1711,8 @@ function extractAnomalyData() {
     let logMsg = `<span style="color:var(--success)">Anomaly Containment Successful! (${resonance.toFixed(1)}% Resonance)</span>`;
     
     // --- PERK HOOK: SCAVENGER_PROTOCOL ---
-    const lootMult = (typeof playerPerks !== 'undefined' && playerPerks.has('SCAVENGER_PROTOCOL')) ? 2 : 1;
+    const hasScavenger = (typeof playerPerks !== 'undefined' && playerPerks.has('SCAVENGER_PROTOCOL')) || (typeof hasCrewPerk === 'function' && hasCrewPerk('SCAVENGER_PROTOCOL'));
+    const lootMult = hasScavenger ? 2 : 1;
 
     // Higher resonance = exponentially better rewards
     if (resonance >= 98) {
@@ -1834,7 +1835,8 @@ function handleDerelictAction(action) {
             let scrap = 2 + Math.floor(Math.random() * 5);
             
             // --- PERK HOOK: SCAVENGER_PROTOCOL ---
-            if (typeof playerPerks !== 'undefined' && playerPerks.has('SCAVENGER_PROTOCOL')) {
+            const hasScavenger = (typeof playerPerks !== 'undefined' && playerPerks.has('SCAVENGER_PROTOCOL')) || (typeof hasCrewPerk === 'function' && hasCrewPerk('SCAVENGER_PROTOCOL'));
+            if (hasScavenger) {
                 scrap *= 2;
             }
 
@@ -2292,11 +2294,12 @@ function resolveUSSEncounter() {
         logMessage("<span style='color:var(--danger); font-weight:bold;'>[ USS CLASSIFIED ] Cartel Ambush! Weapons hot!</span>");
         if (typeof startCombat === 'function') startCombat();
     } // Radiation check for hot stars!
-    else if (roll < 0.50) {
+        else if (roll < 0.50) {
         // 25% Salvage
-        const salvageAmt = (typeof playerPerks !== 'undefined' && playerPerks.has('SCAVENGER_PROTOCOL')) ? 10 : 5;
+        const hasScavenger = (typeof playerPerks !== 'undefined' && playerPerks.has('SCAVENGER_PROTOCOL')) || (typeof hasCrewPerk === 'function' && hasCrewPerk('SCAVENGER_PROTOCOL'));
+        const salvageAmt = hasScavenger ? 10 : 5;
         
-        // 👇 BUG FIX: Check cargo space
+        // Check cargo space
         const spaceLeft = PLAYER_CARGO_CAPACITY - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
         const actualQty = Math.min(salvageAmt, spaceLeft);
         
