@@ -27,10 +27,11 @@ function _refreshItemUI() {
     if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
 }
 
-function _safeAddCargoFromItem(itemId, qty) {
+function _safeAddCargoFromItem(itemId, qty, freedSpace = 0) {
     if (!itemId || qty <= 0 || typeof playerCargo === 'undefined') return 0;
     const maxCap = typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50;
-    const curLoad = typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0;
+    // Factor in the space we just made by consuming the item!
+    const curLoad = (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0) - freedSpace;
     const itemDef = (typeof COMMODITIES !== 'undefined' && COMMODITIES[itemId]) ? COMMODITIES[itemId] : null;
     const weight = (itemDef && itemDef.weight !== undefined) ? itemDef.weight : 1;
 
@@ -88,6 +89,11 @@ function _executeItemFieldDecryption(itemId, triggeredByCipher = false) {
     let textReward = "Data recovered.";
 
     if (itemId === 'ENCRYPTED_ENGRAM') {
+        // Calculate exactly how much space was freed by consuming items
+        let freedSpace = 1; // The engram itself
+        if (!hasSlicer && !triggeredByCipher) freedSpace += 1; // A cipher was consumed
+        else if (triggeredByCipher) freedSpace += 1; // The cipher that triggered this was consumed
+        
         const rewards = [
             { xp: 150, text: "FRAGMENT RECOVERED: 'The ruler of the sunless world is the DARKNESS.'" },
             { xp: 300, text: "NAV-DATA: 'Sector [39, 17] - Precursor activity detected.'" },
@@ -98,7 +104,8 @@ function _executeItemFieldDecryption(itemId, triggeredByCipher = false) {
         xpReward = r.xp;
         textReward = r.text;
         if (r.itemDrop) {
-            const added = _safeAddCargoFromItem(r.itemDrop, r.qty || 1);
+            // Pass the freedSpace variable!
+            const added = _safeAddCargoFromItem(r.itemDrop, r.qty || 1, freedSpace);
             if (added < (r.qty || 1) && typeof logMessage === 'function') {
                 logMessage("<span style='color:var(--warning)'>Cargo hold full! Materialized relic could not be fully stowed.</span>");
             }
@@ -348,11 +355,22 @@ const COMMODITIES = {
                 dropId = "GOLD";
                 qty = 1 + Math.floor(Math.random() * 2);
             }
-            playerCargo[dropId] = (playerCargo[dropId] || 0) + qty;
-            const dropName = COMMODITIES[dropId] ? COMMODITIES[dropId].name : dropId;
-            logMessage(`<span style='color:var(--gold-text)'>[ GEODE CRACKED ]</span> Precision laser cut revealed <b>${qty}x ${dropName}</b>!`);
-            if (typeof soundManager !== 'undefined') soundManager.playMining();
-            if (typeof showToast === 'function') showToast(`FOUND: ${qty}x ${dropName}`, "success");
+            
+            // Properly calculate available space (+1 for the geode consumed)
+            const spaceLeft = (typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50) - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0) + 1;
+            qty = Math.min(qty, spaceLeft);
+            
+            if (qty > 0) {
+                playerCargo[dropId] = (playerCargo[dropId] || 0) + qty;
+                const dropName = COMMODITIES[dropId] ? COMMODITIES[dropId].name : dropId;
+                logMessage(`<span style='color:var(--gold-text)'>[ GEODE CRACKED ]</span> Precision laser cut revealed <b>${qty}x ${dropName}</b>!`);
+                if (typeof soundManager !== 'undefined') soundManager.playMining();
+                if (typeof showToast === 'function') showToast(`FOUND: ${qty}x ${dropName}`, "success");
+            } else {
+                logMessage(`<span style='color:var(--warning)'>[ GEODE CRACKED ]</span> Cargo hold full! Precious metals discarded.`);
+                if (typeof showToast === 'function') showToast("CARGO FULL", "error");
+            }
+            
             _refreshItemUI();
             return true;
         }
@@ -903,9 +921,15 @@ const COMMODITIES = {
                 if (typeof soundManager !== 'undefined') soundManager.playGain();
             } else {
                 playerXP += 60;
-                _safeAddCargoFromItem('MEDICAL_SUPPLIES', 2);
-                logMessage("<span style='color:var(--accent-color)'>[ CRYO-POD THAWED ]</span> The pod was carrying emergency medical reserves! Recovered <b>2x Medical Supplies</b> (+60 XP).");
-                if (typeof showToast === 'function') showToast("SALVAGED 2x MEDICAL SUPPLIES", "info");
+                // Pass 1 as the freedSpace parameter
+                const added = _safeAddCargoFromItem('MEDICAL_SUPPLIES', 2, 1);
+                
+                if (added > 0) {
+                    logMessage(`<span style='color:var(--accent-color)'>[ CRYO-POD THAWED ]</span> The pod was carrying emergency medical reserves! Recovered <b>${added}x Medical Supplies</b> (+60 XP).`);
+                    if (typeof showToast === 'function') showToast(`SALVAGED ${added}x MEDICAL SUPPLIES`, "info");
+                } else {
+                    logMessage("<span style='color:var(--warning)'>[ CRYO-POD THAWED ]</span> Emergency medical reserves found, but cargo hold is full!");
+                }
                 if (typeof soundManager !== 'undefined') soundManager.playBuy();
             }
             _refreshItemUI();
@@ -1080,6 +1104,12 @@ const COMMODITIES = {
         category: "CONTRABAND",
         description: "Illicit combat-pilot neuro-accelerant. Activate during Combat to reset Ability Cooldown, engage Evasive Maneuvers, and lock your next shot.",
         onUse: () => {
+            // Ensure the item is only consumed in combat!
+            if (typeof currentGameState === 'undefined' || currentGameState !== 'combat' || typeof currentCombatContext === 'undefined' || !currentCombatContext) {
+                if (typeof showToast === 'function') showToast("MUST BE IN COMBAT", "error");
+                return false;
+            }
+            
             playerAbilityCooldown = 0;
             playerIsEvading = true;
             if (typeof currentCombatContext !== 'undefined' && currentCombatContext) {
