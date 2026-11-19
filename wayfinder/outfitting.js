@@ -184,8 +184,10 @@ function _initializeOutfittingDatabases() {
     };
 
     for (const id in expansionComponents) {
-        // 👇 FIX: Removed the !COMPONENTS_DATABASE[id] guard so these polished versions take priority!
-        COMPONENTS_DATABASE[id] = expansionComponents[id];
+        // Restored the guard so ships.js remains the single source of truth for base stats & lore!
+        if (!COMPONENTS_DATABASE[id]) {
+            COMPONENTS_DATABASE[id] = expansionComponents[id];
+        }
     }
 
     // Sync components into COMMODITIES so stowed modules in playerCargo render properly in Cargo UI & Trade
@@ -225,65 +227,6 @@ function _syncComponentsToCommodities() {
         };
     }
 }
-
-// ==========================================
-// --- PROCEDURAL MODULE GENERATOR ---
-// ==========================================
-
-function generateProceduralModule(templateType = "RANDOM") {
-    const prefixes = [
-        { name: "Overclocked", mfg: "FRONTIER", dmg: 4, shield: 15, eva: 0.04, eff: 0.92 },
-        { name: "Aegis-Spec", mfg: "CONCORD", dmg: 2, shield: 25, acc: 0.08, hull: 15 },
-        { name: "Blood-Forged", mfg: "KTHARR", dmg: 6, hull: 30, shield: 10, crit: 0.06 },
-        { name: "Shadow-Tuned", mfg: "ECLIPSE", eva: 0.08, sig: -0.20, crit: 0.08, acc: 0.06 },
-        { name: "Precursor-Touched", mfg: "UNKNOWN", dmg: 5, shield: 30, eva: 0.06, eff: 0.85 }
-    ];
-
-    const slotTemplates = {
-        MILITARY_SHIELD_MOD: { slot: "shield", baseName: "Bastion Deflector", baseStats: { maxShields: 110, rechargeRate: 1.8 } },
-        WEAPON_MOD: { slot: "weapon", baseName: "Plasma Repeater", baseStats: { damage: 24, hitChance: 0.82 } },
-        ENGINE_MOD: { slot: "engine", baseName: "Vector Thruster", baseStats: { maxFuel: 300, fuelEfficiency: 0.85 } },
-        SCANNER_MOD: { slot: "scanner", baseName: "Deep-Core Auspex", baseStats: { scanBonus: 0.25, accuracyBonus: 0.08 } },
-        UTILITY_MOD: { slot: "utility", baseName: "Tactical Co-Processor", baseStats: { hullBonus: 20, cargoBonus: 15 } }
-    };
-
-    const keys = Object.keys(slotTemplates);
-    const chosenTemplate = slotTemplates[templateType] || slotTemplates[keys[Math.floor(Math.random() * keys.length)]];
-    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-    const uniqueNum = Date.now() + Math.floor(Math.random() * 1000);
-    const id = `PROC_${chosenTemplate.slot.toUpperCase()}_${uniqueNum}`;
-
-    const stats = Object.assign({}, chosenTemplate.baseStats);
-    if (prefix.dmg) stats.damageBonus = (stats.damageBonus || 0) + prefix.dmg;
-    if (prefix.shield) stats.shieldBonus = (stats.shieldBonus || 0) + prefix.shield;
-    if (prefix.hull) stats.hullBonus = (stats.hullBonus || 0) + prefix.hull;
-    if (prefix.eva) stats.evasionBonus = Number(((stats.evasionBonus || 0) + prefix.eva).toFixed(2));
-    if (prefix.acc) stats.accuracyBonus = Number(((stats.accuracyBonus || 0) + prefix.acc).toFixed(2));
-    if (prefix.crit) stats.critChance = Number(((stats.critChance || 0) + prefix.crit).toFixed(2));
-    if (prefix.sig) stats.signatureMod = Number(((stats.signatureMod || 0) + prefix.sig).toFixed(2));
-    if (prefix.eff && chosenTemplate.slot === "engine") {
-        stats.fuelEfficiency = Number(((stats.fuelEfficiency || 1.0) * prefix.eff).toFixed(2));
-    }
-
-    const newModule = {
-        id: id,
-        name: `${prefix.name} ${chosenTemplate.baseName}`,
-        type: chosenTemplate.slot,
-        slot: chosenTemplate.slot,
-        manufacturer: prefix.mfg,
-        cost: 4800 + Math.floor(Math.random() * 3200),
-        description: `Custom-calibrated ${prefix.mfg} prototype module recovered from deep-space operations.`,
-        stats: stats
-    };
-
-    if (typeof COMPONENTS_DATABASE !== 'undefined') {
-        COMPONENTS_DATABASE[id] = newModule;
-    }
-    _syncComponentsToCommodities();
-    return newModule;
-}
-
-window.generateProceduralModule = generateProceduralModule;
 
 // Run database initialization in the correct boot order
 if (document.readyState === 'loading') {
