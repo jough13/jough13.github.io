@@ -62,6 +62,9 @@ function startCombat(specificEnemyEntity = null) {
          if (specificEnemyEntity.id) enemyShipClone.id = specificEnemyEntity.id;
          if (specificEnemyEntity.isBountyTarget) enemyShipClone.isBountyTarget = specificEnemyEntity.isBountyTarget;
          if (specificEnemyEntity.isLegendary) enemyShipClone.isLegendary = specificEnemyEntity.isLegendary;
+         
+         // Ensure the boss flag is copied over!
+         if (specificEnemyEntity.isBoss) enemyShipClone.isBoss = true; 
      }
 
      // 20% chance to spawn an Elite/Mutated variant (unless it's already a legendary boss)
