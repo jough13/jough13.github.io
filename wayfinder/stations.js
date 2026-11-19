@@ -331,7 +331,7 @@ function visitCantina() {
                 <span style="color:var(--gold-text); font-weight:bold;">${act.cost}</span>
             </div>
         `;
-        row.onclick = () => eval(act.fn);
+        row.onclick = act.fn;
         listEl.appendChild(row);
     });
 }
