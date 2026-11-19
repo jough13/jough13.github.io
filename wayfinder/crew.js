@@ -248,7 +248,9 @@ function displayCrewRoster() {
                     <div style="font-size:10px; color:#888; letter-spacing:2px; margin-bottom:5px;">PAYROLL / UPKEEP</div>
                     <div class="trade-stat-row"><span>Total Crew:</span> <span style="color:var(--text-color); font-weight:bold;">${playerCrew.length}</span></div>
                     <div class="trade-stat-row"><span>Salary Cost:</span> <span style="color:var(--warning); font-weight:bold;">-${playerCrew.length * (typeof COST_PER_CREW !== 'undefined' ? COST_PER_CREW : 250)}c</span></div>
-                    <div class="trade-stat-row" style="margin-top:5px; border-top:1px dashed #333; padding-top:5px;"><span style="font-size:10px; color:var(--item-desc-color);">* Paid automatically every 30 sectors</span></div>
+                    
+                    <div class="trade-stat-row" style="margin-top:5px; border-top:1px dashed #333; padding-top:5px;"><span style="font-size:10px; color:var(--item-desc-color);">* Paid automatically every 30 Stardates</span></div>
+                    
                 </div>
             </div>
             
