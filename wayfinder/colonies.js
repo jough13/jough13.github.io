@@ -918,7 +918,8 @@ function triggerColonyEvent(colony) {
     if (colony.morale < 30 && Math.random() < 0.1) {
         events.push(() => {
             colony.alerts.unshift(`<span style="color:var(--danger)">[ STRIKE ] Unhappy workers halted production for the day.</span>`);
-            // Effectively skips production this tick
+            // Flag the colony to lose all production efficiency next tick
+            colony.strikeActive = true; 
         });
     }
     if (colony.morale >= 80 && Math.random() < 0.1) {
@@ -1016,9 +1017,10 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                     // --- 3. APPLY DEBT EFFICIENCY ---
                     colony.treasury -= stats.upkeep; 
                     const inDebt = colony.treasury < 0;
-                    const eff = inDebt ? 0.5 : 1.0;
+                    let eff = inDebt ? 0.5 : 1.0;
 
                     // --- 4. APPLY POLICY MODIFIERS ---
+                    if (policy === 'MILITIA') { stats.defense += 40; stats.taxMult *= 0.85; }
                     if (policy === 'AUTHORITARIAN') { stats.defense += 100; stats.taxMult *= 1.4; stats.moralePenalty += 20; stats.popGrowthMult *= 0.5; }
                     if (policy === 'SURVIVALIST') { stats.defense += 10; stats.foodEfficiency *= 0.8; stats.popGrowthMult *= 0.5; }
                     if (policy === 'EXPANSIONIST') { stats.defense -= 20; stats.foodEfficiency *= 1.5; stats.popGrowthMult *= 2.0; }
@@ -1027,8 +1029,13 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                     if (policy === 'UTOPIAN') { stats.moraleRegen += 10; stats.taxMult = 0; }
                     if (policy === 'RESEARCH') { stats.passiveXP *= 2; stats.taxMult *= 0.5; }
 
+                    // Enforce active strikes by zeroing out efficiency for one turn
+                    if (colony.strikeActive) {
+                        eff = 0;
+                        colony.strikeActive = false; 
+                    }
+
                     colony.defense = Math.max(0, stats.defense);
-                    if (colony.alerts === undefined) colony.alerts = [];
 
                     // --- 5. PRODUCE RESOURCES ---
                     let currentStorage = Object.values(colony.storage).reduce((a,b) => a + b, 0);
