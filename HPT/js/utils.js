@@ -205,7 +205,8 @@ const parseHalfLifeToSeconds = (halfLifeStr) => {
 
    // 2. Try Scientific Notation first: "1.2 x 10^9 years" or "1.2e9 y"
    // Captures: (Number) ... (Exponent) ... (Unit)
-   const sciRegex = /([-\d.]+)\s*(?:x|×|\*|e|E)\s*(?:10\^?)?([⁻⁺\-−\d⁰¹²³⁴⁵⁶⁷⁸⁹]+)\s*([a-zA-Zμµ]+.*)/i;
+   const sciRegex = /([-\d.]+)\s*(?:(?:x|×|\*)\s*10\^?|e|E)\s*([⁻⁺\-−\d⁰¹²³⁴⁵⁶⁷⁸⁹]+)\s*([a-zA-Zμµ]+.*)/i;
+
    const sciMatch = cleanStr.match(sciRegex);
 
    let value = 0;
@@ -459,7 +460,7 @@ const parseSpecificActivity = (saStr) => {
     // Non-capturing group: Separator (x, ×, *, e, E) with optional spaces
     // Non-capturing group: Base "10" or "10^" (optional, for E-notation)
     // Group 2: Exponent (including unicode superscripts and signs)
-    const sciRegex = /([-\d.]+)\s*(?:x|×|\*|e|E)\s*(?:10\^?)?([⁻⁺\-−\d⁰¹²³⁴⁵⁶⁷⁸⁹]+)/i;
+    const sciRegex = /([-\d.]+)\s*(?:(?:x|×|\*)\s*10\^?|e|E)\s*([⁻⁺\-−\d⁰¹²³⁴⁵⁶⁷⁸⁹]+)/i;
     
     const sciMatch = cleanStr.match(sciRegex);
 
