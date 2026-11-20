@@ -1325,9 +1325,9 @@ if (chartRef.current && chartData) {
     }
 
     if (chartData.datasets && chartData.datasets.length > 0) {
-        // Assuming Total Activity is always index 0 (unshifted in parent)
-        if (chartData.datasets[0].label === 'Total Activity') {
-            chartData.datasets[0].borderColor = theme === 'dark' ? '#ffffff' : '#000000';
+        const totalDataset = chartData.datasets.find(d => d.label === 'Total Activity');
+        if (totalDataset) {
+            totalDataset.borderColor = theme === 'dark' ? '#ffffff' : '#000000';
         }
     }
 
