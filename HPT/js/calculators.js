@@ -5581,9 +5581,9 @@ const DecaySeriesCalculator = ({ radionuclides, decaySeriesData, theme, onNuclid
             
                 for (let i = 0; i <= steps; i++) {
                     const timePoint = (t_input / steps) * i;
-                    
-                    // Push pure numeric points instead of custom rounded strings
-                    chartLabels.push(timePoint); 
+
+                    // Format label for clean x-axis display while keeping raw timePoint for math/CSV
+                    let label;
                     
                     const timePoint_seconds = timePoint * unitConversionsTime[timeUnit];
                     const actsAtT_Bq = runBatemanWithBranching(flatChain, A0_Bq, timePoint_seconds);
