@@ -3274,15 +3274,15 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     const FISSILE_ISOTOPES = ['U-233', 'U-235', 'Pu-239', 'Pu-241'];
 
-    const PSN_OPTIONS = [
+        const PSN_OPTIONS = [
         "UN2910, Radioactive material, excepted package - limited quantity of material, 7",
         "UN2911, Radioactive material, excepted package - instruments or articles, 7",
         "UN2908, Radioactive material, excepted package - empty packaging, 7",
         "UN2909, Radioactive material, excepted package - articles manufactured from natural uranium or depleted uranium or natural thorium, 7",
-        "UN2912, Radioactive material, low specific activity (LSA-I), 7",
-        "UN3321, Radioactive material, low specific activity (LSA-II), 7",
-        "UN3322, Radioactive material, low specific activity (LSA-III), 7",
-        "UN2913, Radioactive material, surface contaminated objects (SCO-I or SCO-II), 7",
+        "UN2912, Radioactive material, low specific activity (LSA-I) non-fissile or fissile-excepted, 7",
+        "UN3321, Radioactive material, low specific activity (LSA-II) non-fissile or fissile-excepted, 7",
+        "UN3322, Radioactive material, low specific activity (LSA-III) non-fissile or fissile-excepted, 7",
+        "UN2913, Radioactive material, surface contaminated objects (SCO-I or SCO-II) non-fissile or fissile-excepted, 7",
         "UN2915, Radioactive material, Type A package, non-special form, 7",
         "UN3332, Radioactive material, Type A package, special form, 7",
         "UN2916, Radioactive material, Type B(U) package, 7",
@@ -3876,8 +3876,9 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     } else if (newItemState === 'liquid') { 
                                         matPkgMult = 1e-4; instItemMult = 1e-3; instPkgMult = 1e-1; 
                                     } else if (newItemState === 'gas') {
-                                        matPkgMult = newItemForm === 'A1' ? 1e-3 : 1e-4; 
+                                        matPkgMult = 1e-3; // 49 CFR 173.425 Table 4: 1e-3 A1 or 1e-3 A2 for gases
                                         instItemMult = 1e-3; instPkgMult = 1e-2;
+
                                     } else { // Solid
                                         matPkgMult = 1e-3; instItemMult = 1e-2; instPkgMult = 1; 
                                     }
@@ -7790,8 +7791,8 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                         const d_ft = (d_val * distanceFactorsM[distanceUnit]) * 3.28084;
                         const d_m = d_val * distanceFactorsM[distanceUnit];
                         
-                        // Katz-Penfold Range
-                        let range_g_cm2 = E_max > 0.8 ? (0.542 * E_max - 0.133) : (0.407 * Math.pow(E_max, 1.38));
+                                                // Katz-Penfold Range (using global calculateBetaRange helper in g/cm²)
+                        const range_g_cm2 = calculateBetaRange(E_max);
                         const density_air_g_cm3 = 0.001225; 
                         const range_m = (range_g_cm2 / density_air_g_cm3) / 100;
                         
@@ -7831,13 +7832,15 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                     const A_Ci = A_val * activityFactorsCi[activityUnit];
                     const d_m = d_val * distanceFactorsM[distanceUnit];
                     
-                    // Brems Rule: 5.8e-5 * Z * E^2 * Activity
+                    // Unattenuated Bremsstrahlung Rule of Thumb: ~5.8e-5 * Z * E_max^2 * Activity (Ci) at 1 m
                     const doseRate_R_hr_1m = (5.8e-5 * matProps.Z * Math.pow(E_max, 2) * A_Ci);
                     const finalRate = doseRate_R_hr_1m / Math.pow(d_m, 2);
                     const fraction = 3.5e-4 * matProps.Z * E_max;
                     
-                    let note = "";
-                    if (matProps.type === 'High-Z') note = "Warning: High-Z shield generates significantly more Bremsstrahlung. Consider Plastic/Aluminum.";
+                    let note = "Unattenuated estimate (ignores photon self-absorption in the shield).";
+                    if (matProps.type === 'High-Z') {
+                        note = "Warning: High-Z shield generates significantly more Bremsstrahlung. Consider Plastic/Aluminum. (Unattenuated estimate)";
+                    }
                     
                     setResult({ 
                         type: 'bremsstrahlung', 
@@ -7847,6 +7850,7 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                         label: "X-Ray Dose Rate (Brems.)"
                     });
                 }
+
                 break;
             }
             
@@ -8296,13 +8300,11 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
                 if (mat.density <= 0) { setError("Cannot calculate range for 'None' density."); return; }
                 
                 // Katz-Penfold Range (mg/cm2)
-                let range_mg_cm2;
-                if (E_max > 0.8) range_mg_cm2 = 542 * E_max - 133;
-                else if (E_max >= 0.15) range_mg_cm2 = 407 * Math.pow(E_max, 1.38);
-                else range_mg_cm2 = 407 * Math.pow(E_max, 1.38);
-                
-                const density_mg_cm3 = mat.density * 1000;
-                const thickness_cm = range_mg_cm2 / density_mg_cm3;
+                // Katz-Penfold Range (using global calculateBetaRange in g/cm², converted to mg/cm²)
+                const range_g_cm2 = calculateBetaRange(E_max);
+                const range_mg_cm2 = range_g_cm2 * 1000;
+                const thickness_cm = range_g_cm2 / mat.density;
+
                 
                 let warning = null;
                 let msg = null;
@@ -8374,6 +8376,16 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
             // TVL Calculation
             const tvl_cm = hvl_cm * 3.3219;
             
+                        // Helper for material-aware buildup factor: B = 1 + k*(μx) + (k*μx)^2 / 2
+            // Uses BUILDUP_K_FACTORS from constants.js to reflect low-Z vs high-Z scatter
+            const calcMaterialBuildup = (mfp) => {
+                const k = (typeof BUILDUP_K_FACTORS !== 'undefined' && BUILDUP_K_FACTORS[shieldMaterial]) 
+                    ? BUILDUP_K_FACTORS[shieldMaterial] 
+                    : 0.25;
+                // Second-order Berger-like polynomial captures low-Z exponential rise better than pure linear
+                return 1 + mfp + (k * Math.pow(mfp, 2));
+            };
+
             if (calcMode === MODE_GAMMA_DOSE) {
                 const thickVal = safeParseFloat(shieldThickness);
                 if (isNaN(thickVal) || thickVal < 0) return;
@@ -8384,11 +8396,11 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
                 
                 if (useBuildup) {
                     const mu = Math.log(2) / hvl_cm;
-                    const mfp = mu * thickCm; // Mean Free Paths
-                    buildup = 1 + mfp;
+                    const mfp = mu * thickCm; // Mean Free Paths (μx)
+                    buildup = calcMaterialBuildup(mfp);
 
-                    if (thickCm > (1.5 * hvl_cm)) {
-                        warning = "Caution: Linear buildup approximation underestimates dose for thick shields (>1.5 HVL).";
+                    if (mfp > 3.0) {
+                        warning = "Caution: Approximate buildup model may deviate from ANSI/ANS-6.4.3 tables for deep penetration (>3 MFP / ~4.3 HVLs).";
                     }
                 }
                                                         
@@ -8398,7 +8410,9 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
                 const shieldedRate_R_hr = unshieldedRate_R_hr * transmission * buildup;
                 const shieldedRate_mrem_hr = shieldedRate_R_hr * 1000;
                 
-                let reductionFactor = transmission > 0 ? (1 / transmission) : 99999; 
+                // Effective dose reduction factor includes buildup
+                const effectiveAttenuation = transmission * buildup;
+                let reductionFactor = effectiveAttenuation > 0 ? (1 / effectiveAttenuation) : 99999; 
                 if (reductionFactor > 10000) reductionFactor = 10000;
                 
                 setResult({
@@ -8426,37 +8440,38 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
                 
                 // Initial base estimate without buildup
                 let reqThickCm = hvl_cm * Math.log2(unshieldedRate_R_hr / target_R_hr);
+                let warning = null;
                 
                 if (useBuildup) {
-                    // STABLE ITERATIVE METHOD FOR TRANSYNDENTAL EQUATION
-                    for (let i = 0; i < 12; i++) {
+                    // STABLE ITERATIVE METHOD FOR TRANSCENDENTAL EQUATION
+                    for (let i = 0; i < 15; i++) {
                         const mfp = (Math.log(2) / hvl_cm) * reqThickCm; // Mean Free Paths (μx)
-                        const B = 1 + mfp; // Linear buildup approximation
+                        const B = calcMaterialBuildup(mfp);
                         
-                        // Break if buildup factor reaches unphysical boundaries
                         if (!isFinite(B) || B > 1e5) break;
                         
                         const logArg = (unshieldedRate_R_hr * B) / target_R_hr;
-                        // Catch negative/zero log arguments before they turn into NaN
                         if (logArg <= 0 || isNaN(logArg)) break;
                         
                         const nextThick = hvl_cm * Math.log2(logArg);
-                        
-                        // DAMPING MECHANISM: 50/50 blend smooths out oscillations 
-                        // and forces rapid convergence to a fixed point.
                         reqThickCm = 0.5 * reqThickCm + 0.5 * nextThick;
+                    }
+                    const finalMfp = (Math.log(2) / hvl_cm) * reqThickCm;
+                    if (finalMfp > 3.0) {
+                        warning = "Caution: Approximate buildup model may deviate from ANSI/ANS-6.4.3 tables for deep penetration (>3 MFP / ~4.3 HVLs).";
                     }
                 }
                 
                 setResult({
                     type: 'thickness',
-                    val: Math.max(0, reqThickCm), // Enforce non-negative physics edge clamp
+                    val: Math.max(0, reqThickCm),
                     unshielded_mrem_hr: unshieldedRate_R_hr * 1000,
                     hvl: hvl_cm,
-                    tvl: tvl_cm 
+                    tvl: tvl_cm,
+                    warning: warning
                 });
             }
-            
+           
         } catch (e) { setError(e.message); setResult(null); }
     }, [calcMode, definitionMode, inputMode, nuclideSymbol, manualGamma, manualHVL, manualBetaEnergy, activity, activityUnit, distance, distanceUnit, unshieldedRate, unshieldedRateUnit, genericReference, shieldMaterial, shieldThickness, thicknessUnit, targetDoseRate, targetDoseRateUnit, useManualHVL, useBuildup]);
     
