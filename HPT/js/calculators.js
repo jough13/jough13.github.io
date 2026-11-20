@@ -5489,15 +5489,9 @@ const DecaySeriesCalculator = ({ radionuclides, decaySeriesData, theme, onNuclid
                         throw new Error(`Cannot calculate activity from mass for a stable nuclide.`);
                     }
             
-                    // FIX: Hardened Specific Activity parsing
-                    let sa_Bq_g = 0;
-                    if (parentNuclide.specificActivity) {
-                        // Extract just the number portion (e.g. "2.16e15" from "2.16e15 Bq/g")
-                        const saMatch = parentNuclide.specificActivity.match(/[\d.e+-]+/i);
-                        if (saMatch) {
-                            sa_Bq_g = parseFloat(saMatch[0]);
-                        }
-                    }
+                    // Use the global parseSpecificActivity utility to properly handle 
+                    // "1.24 x 10^4 Bq/g", "2.16e15 Bq/g", and comma-formatted strings like "4,059 Bq/g"
+                    let sa_Bq_g = parseSpecificActivity(parentNuclide.specificActivity);
             
                     // If specific activity is not pre-calculated in the database or parsing failed, calculate it.
                     if (!sa_Bq_g || isNaN(sa_Bq_g) || sa_Bq_g === 0) {
