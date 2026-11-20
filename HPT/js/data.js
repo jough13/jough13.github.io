@@ -1074,7 +1074,7 @@ const NEUTRON_ACTIVATION_DATA = [{
         productSymbol: 'Mg-27',
         abundance: 11.01
     },
-    {
+        {
         targetSymbol: 'Mn-55',
         name: 'Manganese-55',
         atomicWeight: 54.938,
@@ -1082,50 +1082,69 @@ const NEUTRON_ACTIVATION_DATA = [{
         productSymbol: 'Mn-56',
         abundance: 100
     },
+    {
+        targetSymbol: 'Cl-37',
+        name: 'Chlorine-37',
+        atomicWeight: 36.966,
+        thermalCrossSection_barns: 0.433,
+        productSymbol: 'Cl-38',
+        abundance: 24.24
+    },
+    {
+        targetSymbol: 'Ni-62',
+        name: 'Nickel-62',
+        atomicWeight: 61.928,
+        thermalCrossSection_barns: 14.5,
+        productSymbol: 'Ni-63',
+        abundance: 3.635
+    }
 ].sort((a, b) => a.name.localeCompare(b.name));
 
 // --- Material & Shielding Data ---
 
-// 1. Expanded Composite Materials
+// 1. Expanded Composite Materials (massFraction = elemental weight fraction in bulk material)
 const COMPOSITE_MATERIALS_DATA = {
     'Ordinary Concrete': {
         density_g_cm3: 2.3,
         composition: [
-            { element: 'Sodium-23', targetSymbol: 'Na-23', massFraction: 0.01 },
-            { element: 'Iron-58', targetSymbol: 'Fe-58', massFraction: 0.015 },
-            { element: 'Cobalt-59', targetSymbol: 'Co-59', massFraction: 0.00001 },
-            { element: 'Europium-151', targetSymbol: 'Eu-151', massFraction: 0.000001 },
-            { element: 'Calcium-44', targetSymbol: 'Ca-44', massFraction: 0.08 }
+            { element: 'Sodium (Na-23)', targetSymbol: 'Na-23', massFraction: 0.01 },
+            { element: 'Iron (Fe-58)', targetSymbol: 'Fe-58', massFraction: 0.015 },
+            { element: 'Cobalt (Co-59)', targetSymbol: 'Co-59', massFraction: 0.00001 },
+            { element: 'Europium (Eu-151)', targetSymbol: 'Eu-151', massFraction: 0.000001 },
+            { element: 'Calcium (Ca-44)', targetSymbol: 'Ca-44', massFraction: 0.08 }
         ]
     },
     'Standard Human Tissue': {
         density_g_cm3: 1.0,
         composition: [
-            { element: 'Sodium-23', targetSymbol: 'Na-23', massFraction: 0.0015 }
+            { element: 'Sodium (Na-23)', targetSymbol: 'Na-23', massFraction: 0.0015 },
+            { element: 'Chlorine (Cl-37)', targetSymbol: 'Cl-37', massFraction: 0.0015 }
         ]
     },
     'Stainless Steel 304': {
         density_g_cm3: 8.0,
         composition: [
-            { element: 'Iron-58', targetSymbol: 'Fe-58', massFraction: 0.70 },
-            { element: 'Cobalt-59', targetSymbol: 'Co-59', massFraction: 0.001 },
-            { element: 'Chromium-50', targetSymbol: 'Cr-50', massFraction: 0.19 }
+            { element: 'Iron (Fe-58)', targetSymbol: 'Fe-58', massFraction: 0.68 },
+            { element: 'Chromium (Cr-50)', targetSymbol: 'Cr-50', massFraction: 0.19 },
+            { element: 'Nickel (Ni-62)', targetSymbol: 'Ni-62', massFraction: 0.095 },
+            { element: 'Manganese (Mn-55)', targetSymbol: 'Mn-55', massFraction: 0.02 },
+            { element: 'Cobalt impurity (Co-59)', targetSymbol: 'Co-59', massFraction: 0.001 }
         ]
     },
     'Aluminum 6061': {
         density_g_cm3: 2.7,
         composition: [
-            { element: 'Aluminum-27', targetSymbol: 'Al-27', massFraction: 0.97 }, // Activates to Al-28
-            { element: 'Magnesium-26', targetSymbol: 'Mg-26', massFraction: 0.01 }, // Activates to Mg-27
-            { element: 'Copper-63', targetSymbol: 'Cu-63', massFraction: 0.003 }
+            { element: 'Aluminum (Al-27)', targetSymbol: 'Al-27', massFraction: 0.97 },
+            { element: 'Magnesium (Mg-26)', targetSymbol: 'Mg-26', massFraction: 0.01 },
+            { element: 'Copper (Cu-63)', targetSymbol: 'Cu-63', massFraction: 0.003 }
         ]
     },
     'Standard Soil': {
         density_g_cm3: 1.6,
         composition: [
-            { element: 'Sodium-23', targetSymbol: 'Na-23', massFraction: 0.006 }, // Na-24
-            { element: 'Manganese-55', targetSymbol: 'Mn-55', massFraction: 0.0008 }, // Mn-56
-            { element: 'Aluminum-27', targetSymbol: 'Al-27', massFraction: 0.07 } // Al-28
+            { element: 'Sodium (Na-23)', targetSymbol: 'Na-23', massFraction: 0.006 },
+            { element: 'Manganese (Mn-55)', targetSymbol: 'Mn-55', massFraction: 0.0008 },
+            { element: 'Aluminum (Al-27)', targetSymbol: 'Al-27', massFraction: 0.07 }
         ]
     }
 };
