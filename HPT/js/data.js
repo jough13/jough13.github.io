@@ -215,13 +215,21 @@ const HVL_DATA = {
         'Water': 14.5,
         sourceRef: 'rse'
     },
-    'Ra-226': {
+    'Ra-226 eq': {
         'Lead': 1.4,
         'Steel': 2.3,
         'Concrete': 6.9,
         'Aluminum': 5.5,
         'Water': 13.0,
         sourceRef: 'rse'
+    },
+    'Ra-226': {
+        'Lead': 0.05,
+        'Steel': 0.6,
+        'Concrete': 2.5,
+        'Aluminum': 2.0,
+        'Water': 4.8,
+        sourceRef: 'estimated'
     },
     'Sc-46': {
         'Lead': 1.0,
