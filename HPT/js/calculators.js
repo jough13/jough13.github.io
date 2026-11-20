@@ -4590,19 +4590,28 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
     const therapyNuclides = React.useMemo(() => radionuclides.filter(n => therapyList.includes(n.symbol) && n.gammaConstant).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides, therapyList]);
     const selectedNuclide = React.useMemo(() => therapyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, therapyNuclides]);
     
+        // Auto-adjust default NUREG-1556 Vol. 9 occupancy factor (E=0.25 if Tp > 1 day, E=1.0 if Tp <= 1 day)
+    React.useEffect(() => {
+        if (selectedNuclide) {
+            const tp_days = parseHalfLifeToSeconds(selectedNuclide.halfLife) / 86400;
+            setOccupancyFactor(tp_days > 1.0 ? '0.25' : '1.0');
+        }
+    }, [selectedNuclide, setOccupancyFactor]);
+
     React.useEffect(() => {
         if (!selectedNuclide) { setResult(null); return; }
         try {
             setError('');
             const A0_mCi = safeParseFloat(activity) * actToMci[activityUnit];
             const rateCheck = safeParseFloat(measuredRate); 
+            const hasMeasuredRate = !isNaN(rateCheck) && rateCheck > 0;
             
-            if (isNaN(A0_mCi) || A0_mCi <= 0) throw new Error("Invalid activity.");
+            if (!hasMeasuredRate && (isNaN(A0_mCi) || A0_mCi <= 0)) throw new Error("Invalid activity.");
             
             // 1. Tier 1 Check (Activity OR Dose Rate)
             if (selectedNuclide.symbol.includes('I-131')) {
-                const passesActivity = A0_mCi <= I131_ACTIVITY_LIMIT_MCI;
-                const passesRate = !isNaN(rateCheck) && rateCheck > 0 && rateCheck <= I131_RATE_LIMIT_MREM_HR;
+                const passesActivity = !isNaN(A0_mCi) && A0_mCi > 0 && A0_mCi <= I131_ACTIVITY_LIMIT_MCI;
+                const passesRate = hasMeasuredRate && rateCheck <= I131_RATE_LIMIT_MREM_HR;
                 
                 if (passesActivity) {
                     setResult({ title: 'PASS (Tier 1)', pass: true, details: [`Activity ≤ ${I131_ACTIVITY_LIMIT_MCI} mCi. Release permitted.`] });
@@ -4614,26 +4623,24 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
                 }
             }
             
-            // 2. Calc Effective Half Life
-            let T_half_hours_eff;
+            // 2. Calc Half-Life (NUREG-1556 Vol. 9 Rev. 3 Eq. U.1 uses Physical T_p with E=0.25)
+            let T_half_hours_used;
             const T_half_hours_phys = parseHalfLifeToSeconds(selectedNuclide.halfLife) / 3600;
             const effHL = safeParseFloat(effectiveHalfLife);
+            let usingCustomTeff = false;
             
             if (!isNaN(effHL) && effHL > 0) {
                 const factors = { 'hours': 1, 'days': 24 };
-                T_half_hours_eff = effHL * factors[effectiveHalfLifeUnit];
-                
-                if (T_half_hours_eff > T_half_hours_phys) {
-                    T_half_hours_eff = T_half_hours_phys;
-                }
-            } else { T_half_hours_eff = T_half_hours_phys; }
+                T_half_hours_used = Math.min(effHL * factors[effectiveHalfLifeUnit], T_half_hours_phys);
+                usingCustomTeff = T_half_hours_used < T_half_hours_phys;
+            } else {
+                T_half_hours_used = T_half_hours_phys;
+            }
             
-            // 3. Dose Calc (NUREG-1556 Vol 9 Eq 1)
+            // 3. Dose Calc (NUREG-1556 Vol. 9 Eq. U.1 / U.2)
             const gamma_app = safeParseFloat(selectedNuclide.gammaConstant); // R·m²/hr·Ci
-
             const E = safeParseFloat(occupancyFactor);
             const att = safeParseFloat(attenuation);
-
             const A0_Ci = A0_mCi / 1000; 
             const d_m = safeParseFloat(distance); 
 
@@ -4644,36 +4651,40 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
             let rate_R_hr;
             let basisText = '';
             
-            if (!isNaN(rateCheck) && rateCheck > 0) {
-                const rate_mrem_hr_at_1m = rateCheck; 
-                // Convert mrem to rem (R) and apply inverse square law for the target distance
-                rate_R_hr = (rate_mrem_hr_at_1m / 1000) / Math.pow(d_m, 2); 
-                basisText = 'Measured 1m rate basis';
+            if (hasMeasuredRate) {
+                // Measured rate @ 1m already includes patient self-attenuation
+                rate_R_hr = (rateCheck / 1000) / Math.pow(d_m, 2); 
+                basisText = 'Measured 1m rate basis (self-attenuation included)';
             } else {
-                // Fall back to theoretical calculation using the nuclide's gamma constant
+                // Theoretical calculation using the nuclide's gamma constant
                 rate_R_hr = (gamma_app * A0_Ci * att) / Math.pow(d_m, 2);
-                basisText = 'Theoretical activity basis';
+                basisText = `Theoretical activity basis (${usingCustomTeff ? 'Custom T_eff' : 'Physical T_p'})`;
             }
 
-            // Total Dose = Rate * Occupancy * (T_eff / ln(2))
-            const total_dose_R = (rate_R_hr * E) * (T_half_hours_eff * 1.443);
+            // Total Dose = Rate * Occupancy * (T_half / ln(2))
+            const total_dose_R = (rate_R_hr * E) * (T_half_hours_used * 1.443);
             const dose_mrem = total_dose_R * 1000;
             
             const limitDisplay = settings.unitSystem === 'si' ? '5 mSv' : '500 mrem';
+            const detailsList = [
+                `Total Dose: ${formatDoseValue(dose_mrem, 'dose', settings).value} ${formatDoseValue(dose_mrem, 'dose', settings).unit}`, 
+                `(Limit: ${limitDisplay})`,
+                `(${basisText})`
+            ];
+
+            if (usingCustomTeff && E <= 0.25) {
+                detailsList.push('⚠️ Note: NUREG-1556 Vol. 9 Eq. U.1 pairs E=0.25 with physical T½. Pairing E=0.25 with a single T_eff without biokinetic compartmental fractions (Eq. U.5) may underestimate dose.');
+            }
             
             setResult({
                 title: dose_mrem <= TEDE_LIMIT_MREM ? 'PASS (Tier 2)' : 'FAIL',
                 pass: dose_mrem <= TEDE_LIMIT_MREM,
-            
-                details: [
-                    `Total Dose: ${formatDoseValue(dose_mrem, 'dose', settings).value} ${formatDoseValue(dose_mrem, 'dose', settings).unit}`, 
-                    `(Limit: ${limitDisplay})`,
-                    `(${basisText})`
-                ],
+                details: detailsList,
                 rawDose: dose_mrem
             });
         } catch (e) { setResult(null); setError(e.message); }
     }, [selectedNuclide, activity, activityUnit, measuredRate, occupancyFactor, distance, attenuation, effectiveHalfLife, effectiveHalfLifeUnit, settings.unitSystem, actToMci]);
+
     
     const handleSave = () => {
         if (result && selectedNuclide) {
@@ -4699,10 +4710,11 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
             </div>
 
             <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-200 dark:border-slate-700">
-                <div>
-                    <label className="text-xs font-bold mb-1 block">Tissue Atten. Factor</label>
-                    <input type="number" inputMode="decimal" value={attenuation} onChange={e => setAttenuation(e.target.value)} step="0.1" max="1" min="0" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/>
+                                <div>
+                    <label className={`text-xs font-bold mb-1 block ${measuredRate ? 'text-slate-400' : ''}`}>Tissue Atten. Factor</label>
+                    <input type="number" inputMode="decimal" value={attenuation} onChange={e => setAttenuation(e.target.value)} disabled={Boolean(measuredRate)} step="0.1" max="1" min="0" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm disabled:opacity-50"/>
                 </div>
+
                 <div>
                     <label className="text-xs font-bold mb-1 block">Eff. Half-Life (Optional)</label>
                     <div className="flex">
