@@ -873,9 +873,9 @@ const MARSSIM_Statistical_Tests = () => {
                       type: 'Biased'
                   });
               } else if (layer instanceof L.Polygon || layer instanceof L.Rectangle) {
-                  // Recalculate Area using Geodesic (more accurate)
+                  // Recalculate Area using Spherical Excess (utils.js)
                   const latLngs = layer.getLatLngs()[0];
-                  const area = L.GeometryUtil.geodesicArea(latLngs);
+                  const area = calculatePolygonArea(latLngs);
                   setSurveyUnitArea(area);
             
                   const popupContent = `<b>Survey Unit: ${surveyUnitNameRef.current}</b><br>Class: ${surveyClassRef.current}<br>Area: ${area.toFixed(1)} m²`;
@@ -901,9 +901,9 @@ const MARSSIM_Statistical_Tests = () => {
             drawnItemsRef.current.addLayer(layer);
             setSurveyUnitLayer(layer);
             
-            // Use Geodesic Area
+            // Use Spherical Excess Area (utils.js)
             const latLngs = layer.getLatLngs()[0];
-            const area = L.GeometryUtil.geodesicArea(latLngs);
+            const area = calculatePolygonArea(latLngs);
             setSurveyUnitArea(area);
             
             const popupContent = `<b>Survey Unit: ${surveyUnitNameRef.current}</b><br>Class: ${surveyClassRef.current}<br>Area: ${area.toFixed(1)} m²`;
@@ -1086,9 +1086,9 @@ const MARSSIM_Statistical_Tests = () => {
                   drawnItemsRef.current.addLayer(layer);
                   setSurveyUnitLayer(layer);
             
-                  // Use Geodesic
+                  // Use Spherical Excess Area (utils.js)
                   const latLngs = layer.getLatLngs()[0];
-                  const area = L.GeometryUtil.geodesicArea(latLngs);
+                  const area = calculatePolygonArea(latLngs);
                   setSurveyUnitArea(area);
             
                   mapRef.current.fitBounds(layer.getBounds());
