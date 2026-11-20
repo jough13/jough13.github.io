@@ -262,8 +262,6 @@ const WRS_Calculator = ({ dcgl, setDcgl, referenceData, setReferenceData, survey
         
         if (isNaN(dcgl_val)) { setError('DCGL must be a valid number.'); return; }
         if (refData.length < 5 || suData.length < 5) { setError('Need at least 5 data points per area.'); return; }
-        
-        const dcglExceeded = suData.some(val => val > dcgl_val);
 
         let combined = [...refData.map(v => ({ value: v + dcgl_val, group: 'ref' })), ...suData.map(v => ({ value: v, group: 'su' }))].sort((a, b) => a.value - b.value);
         
@@ -304,6 +302,11 @@ const WRS_Calculator = ({ dcgl, setDcgl, referenceData, setReferenceData, survey
         
         const refStats = getStats(refData);
         const suStats = getStats(suData);
+        
+        // Per MARSSIM 8.5.2, gross survey unit measurements in a WRS test are compared 
+        // against (Reference Area Mean + DCGLw) to check if any single point exceeds DCGLw above background.
+        const dcglThreshold = refStats.mean + dcgl_val;
+        const dcglExceeded = suData.some(val => val > dcglThreshold);
         const hotMeasurements = suData.filter(v => v > (refStats.max + dcgl_val)); 
         
         let warningMsg = null;
@@ -316,10 +319,10 @@ const WRS_Calculator = ({ dcgl, setDcgl, referenceData, setReferenceData, survey
         if (wrsTestPassed) {
             if (dcglExceeded) {
                 finalConclusion = 'PASS_EMC';
-                finalReason = `The WRS test passes, but an Elevated Measurement Comparison (EMC) is required because at least one measurement exceeds the DCGL.`;
+                finalReason = `The WRS test passes, but an Elevated Measurement Comparison (EMC) is required because at least one measurement exceeds Ref Mean + DCGLw (${dcglThreshold.toFixed(2)}).`;
             } else {
                 finalConclusion = 'PASS';
-                finalReason = `The rank sum (${W_rs}) is greater than or equal to the critical value (${C_w}), and no measurements exceed the DCGL.`;
+                finalReason = `The rank sum (${W_rs}) is greater than or equal to the critical value (${C_w}), and no measurements exceed Ref Mean + DCGLw (${dcglThreshold.toFixed(2)}).`;
             }
         }
         
@@ -535,7 +538,7 @@ const EMC_Evaluation_Calculator = ({ dcglw, setDcglw, areaFactor, setAreaFactor,
                 </div>
             </div>
             
-            <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate EMC</button>
+            <button onClick={handleSaveToHistory} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Save to Calculations</button>
             
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             
