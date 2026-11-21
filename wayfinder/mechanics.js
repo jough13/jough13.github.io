@@ -740,7 +740,7 @@ function triggerNebulaEvent() {
                 } else {
                     playerShields = 0;
                     logMessage("<span style='color:var(--danger)'>Emitter matrix overloaded! Shields drained to 0.</span>");
-                    if (typeof spawnFloatingText === 'function') spawnFloatingText(playerX, playerY, "SHIELDS DRAINED", "var(--warning)");
+                    if (typeof spawnFloatingText === 'function') spawnFloatingText(playerX, playerY, "SHIELDS DRAINED", getThemeColor('--warning', '#FFAA00'));
                 }
                 if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
             }
