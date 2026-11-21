@@ -1510,24 +1510,24 @@ function renderUIStats() {
     // Also override if the player has active Concord heat!
     if (playerNotoriety > 0) {
         threat = `WANTED (${playerNotoriety})`;
-        threatColor = "var(--warning)";
+        threatColor = getThemeColor('--warning', '#FFAA00');
     }
 
     // 🚨 Stealth UI Override!
-if (isSilentRunning) {
+    if (isSilentRunning) {
         if (stealthHeat <= 3) {
             threat = `SILENT RUNNING (HEAT: ${stealthHeat}/5)`;
             threatColor = "#555555";
         } else if (stealthHeat <= 5) {
             threat = `SILENT RUNNING (HEAT: ${stealthHeat}/5)`;
-            threatColor = "var(--warning)"; // Turns Orange!
+            threatColor = getThemeColor('--warning', '#FFAA00'); // Turns Orange!
         } else {
             threat = `CORE OVERHEATING!`;
-            threatColor = "var(--danger)"; // Turns Red!
+            threatColor = getThemeColor('--danger', '#FF5555'); // Turns Red!
         }
     } else if (stealthHeat > 0) {
         threat = `VENTING HEAT (${stealthHeat})`;
-        threatColor = "var(--warning)";
+        threatColor = getThemeColor('--warning', '#FFAA00');
     }
 
     if (sectorNameStatElement) {
@@ -2491,7 +2491,7 @@ function renderGalacticMap() {
             
             if (useHighGraphics && !isLightMode) { 
                 ctx.shadowBlur = 10;
-                ctx.shadowColor = 'var(--danger)';
+                ctx.shadowColor = getThemeColor('--danger', '#FF5555');
             }
             
             const m = 4; 
@@ -2646,11 +2646,11 @@ function renderGalacticMap() {
 
     if (isAwaitingRescue && rescueTargetStation) {
         targetPoint = { x: rescueTargetStation.x, y: rescueTargetStation.y };
-        targetColor = "var(--warning)";
+        targetColor = getThemeColor('--warning', '#FFAA00');
         targetLabel = "TUG";
     } else if (playerActiveBounty) {
         targetPoint = { x: playerActiveBounty.x, y: playerActiveBounty.y };
-        targetColor = "var(--danger)";
+        targetColor = getThemeColor('--danger', '#FF5555');
         targetLabel = "KILL";
     } else if (typeof mystery_first_nexus_location !== 'undefined' && mystery_first_nexus_location && playerCargo['WAYFINDER_CORE'] > 0) {
         targetPoint = { x: mystery_first_nexus_location.x, y: mystery_first_nexus_location.y, name: "The First Nexus" };
@@ -2660,12 +2660,12 @@ function renderGalacticMap() {
         const destName = playerActiveMission.objectives[0].destinationName;
         if (LOCATIONS_DATA[destName]) {
             targetPoint = { x: LOCATIONS_DATA[destName].coords.x, y: LOCATIONS_DATA[destName].coords.y };
-            targetColor = "var(--gold-text)";
+            targetColor = getThemeColor('--gold-text', '#FFD700');
             targetLabel = "DROP";
         }
     } else if (playerActiveMission && playerActiveMission.isComplete && LOCATIONS_DATA[playerActiveMission.giver]) {
         targetPoint = { x: LOCATIONS_DATA[playerActiveMission.giver].coords.x, y: LOCATIONS_DATA[playerActiveMission.giver].coords.y };
-        targetColor = "var(--success)";
+        targetColor = getThemeColor('--success', '#00FF00');
         targetLabel = "TURN-IN";
     }
 
@@ -3545,25 +3545,25 @@ function handleInteraction() {
         bM = `Arrived at ${location.name}.`;
 
         if ((location.sells && location.sells.length > 0) || (location.buys && location.buys.length > 0)) {
-            availableActions.push({ label: 'Buy', key: 'b', onclick: () => openTradeModal('buy') });
-            availableActions.push({ label: 'Sell', key: 's', onclick: () => openTradeModal('sell') });
+            availableActions.push({ label: 'Buy', onclick: () => openTradeModal('buy') });
+            availableActions.push({ label: 'Sell', onclick: () => openTradeModal('sell') });
         }
 
         if (playerHull < MAX_PLAYER_HULL) {
             const hullToRepair = MAX_PLAYER_HULL - playerHull;
             const repairCost = hullToRepair * HULL_REPAIR_COST_PER_POINT;
-            availableActions.push({ label: `Repair Hull (${formatNumber(repairCost)}c)`, key: 'r', onclick: repairShip });
+            availableActions.push({ label: `Repair Hull (${formatNumber(repairCost)}c)`, onclick: repairShip });
         }
 
         // Mission turn-ins
         if (playerActiveMission && playerActiveMission.type === "DELIVERY" && !playerActiveMission.isComplete && location.name === playerActiveMission.objectives[0].destinationName) {
-            availableActions.push({ label: 'Complete Delivery', key: 'c', onclick: handleCompleteDelivery });
+            availableActions.push({ label: 'Complete Delivery', onclick: handleCompleteDelivery });
         }
         if (playerActiveMission && playerActiveMission.isComplete && location.name === playerActiveMission.giver) {
-            availableActions.push({ label: 'Get Reward', key: 'g', onclick: grantMissionRewards });
+            availableActions.push({ label: 'Get Reward', onclick: grantMissionRewards });
         }
         if (playerActiveMission && playerActiveMission.type === "ACQUIRE" && !playerActiveMission.isComplete && location.name === playerActiveMission.giver) {
-            availableActions.push({ label: 'Turn in Resources', key: 'g', onclick: handleTurnInAcquire });
+            availableActions.push({ label: 'Turn in Resources', onclick: handleTurnInAcquire });
         }
 
         if (!discoveredLocations.has(location.name)) {
@@ -4459,105 +4459,51 @@ function handleCombatInput(key) {
 
  function handleGalacticMapInput(key) {
     // --- 1. DOCKED ACTIONS ---
-    const currentLocation = getCombinedLocationData(playerX, playerY);
-    if (currentLocation) {
-        switch (key) {
-            case 'b':
-                openTradeModal('buy'); 
-                return true;
-            case 's':
-                openTradeModal('sell'); 
-                return true;
-            case 'o':
-                if (currentLocation.isMajorHub) {
-                    openOutfittingUI();
-                    return true;
-                }
-                break;
-            case 'k':
-                if (currentLocation.isMajorHub) {
-                    displayMissionBoard();
-                    return true;
-                }
-                break; 
-            case 'y':
-                if (currentLocation.isMajorHub) {
-                    displayShipyard();
-                    return true;
-                }
-                break; 
-            // Generic Interact Key
-            case 'e': 
-            case 'enter':
-            case ' ': 
-                const currentTileForE = chunkManager.getTile(playerX, playerY);
-                if (!currentTileForE) return true;
-                
-                // --- THE ROUTING ORDER ---
-                if (currentTileForE.name && currentTileForE.name.includes("Xerxes")) {
-                    if (typeof openXerxesView === 'function') openXerxesView();
-                }
-                else if (currentTileForE.isColony) {
-                    if (typeof openColonyManagement === 'function') openColonyManagement(currentTileForE.id);
-                }
-                else if (currentTileForE.isPlayerOwned && currentTileForE.isTinyOutpost) {
-                    if (typeof openPlayerOutpost === 'function') openPlayerOutpost(currentTileForE);
-                }
-                else if (currentTileForE.isPirateBase) {
-                    if (currentTileForE.cleared) logMessage("The outpost is a smoking ruin. Nothing left to salvage.");
-                    else if (typeof startOutpostRaid === 'function') startOutpostRaid(currentTileForE);
-                }
-                else if (currentTileForE.char === 'Ω') {
-                    if (typeof traverseWormhole === 'function') traverseWormhole();
-                }
-                else if (currentTileForE.isMajorHub || currentTileForE.char === OUTPOST_CHAR_VAL) {
-                    if (typeof performCustomsScan === 'function' && currentTileForE.isMajorHub) {
-                        if (!performCustomsScan()) return true; 
+        const currentLocation = getCombinedLocationData(playerX, playerY);
+        if (currentLocation) {
+            switch (key) {
+                // Generic Interact Key
+                case 'e': 
+                case 'enter':
+                    const currentTileForE = chunkManager.getTile(playerX, playerY);
+                    if (!currentTileForE) return true;
+                    
+                    // --- THE ROUTING ORDER ---
+                    if (currentTileForE.name && currentTileForE.name.includes("Xerxes")) {
+                        if (typeof openXerxesView === 'function') openXerxesView();
                     }
-                    openStationView();
-                } 
-                else if (currentTileForE.char === 'O' || (currentTileForE.name && currentTileForE.name.toLowerCase().includes("planet")) || currentTileForE.biome) {
-                    openPlanetView(currentTileForE);
-                }
-                else if (typeof TILE_INTERACTIONS !== 'undefined' && TILE_INTERACTIONS[currentTileForE.char]) {
-                    // 👇 BUG FIX: Support custom interactions like Obsidian Obelisk ('I', 'Ψ', etc.) via hotkey
-                    const customDef = TILE_INTERACTIONS[currentTileForE.char];
-                    const acts = typeof customDef.actions === 'function' ? customDef.actions(currentTileForE) : (customDef.actions || []);
-                    const matched = acts.find(a => a.key && a.key.toLowerCase() === 'e');
-                    if (matched && typeof matched.onclick === 'function') matched.onclick();
-                }
-                return true;
-            case 'c':
-                // Fallback to Delivery Missions
-                if (playerActiveMission && playerActiveMission.type === "DELIVERY") {
-                    if (typeof handleCompleteDelivery === 'function') handleCompleteDelivery();
+                    else if (currentTileForE.isColony) {
+                        if (typeof openColonyManagement === 'function') openColonyManagement(currentTileForE.id);
+                    }
+                    else if (currentTileForE.isPlayerOwned && currentTileForE.isTinyOutpost) {
+                        if (typeof openPlayerOutpost === 'function') openPlayerOutpost(currentTileForE);
+                    }
+                    else if (currentTileForE.isPirateBase) {
+                        if (currentTileForE.cleared) logMessage("The outpost is a smoking ruin. Nothing left to salvage.");
+                        else if (typeof startOutpostRaid === 'function') startOutpostRaid(currentTileForE);
+                    }
+                    else if (currentTileForE.char === 'Ω') {
+                        if (typeof traverseWormhole === 'function') traverseWormhole();
+                    }
+                    else if (currentTileForE.isMajorHub || currentTileForE.char === OUTPOST_CHAR_VAL) {
+                        if (typeof performCustomsScan === 'function' && currentTileForE.isMajorHub) {
+                            if (!performCustomsScan()) return true; 
+                        }
+                        openStationView();
+                    } 
+                    else if (currentTileForE.char === 'O' || (currentTileForE.name && currentTileForE.name.toLowerCase().includes("planet")) || currentTileForE.biome) {
+                        openPlanetView(currentTileForE);
+                    }
+                    else if (typeof TILE_INTERACTIONS !== 'undefined' && TILE_INTERACTIONS[currentTileForE.char]) {
+                        // Support custom interactions like Obsidian Obelisk ('I', 'Ψ', etc.) via hotkey
+                        const customDef = TILE_INTERACTIONS[currentTileForE.char];
+                        const acts = typeof customDef.actions === 'function' ? customDef.actions(currentTileForE) : (customDef.actions || []);
+                        const matched = acts.find(a => a.key && a.key.toLowerCase() === 'e');
+                        if (matched && typeof matched.onclick === 'function') matched.onclick();
+                    }
                     return true;
-                }
-                break;
-            case 'g':
-                if (playerActiveMission && playerActiveMission.isComplete && currentLocation.name === playerActiveMission.giver) {
-                    grantMissionRewards();
-                    return true;
-                }
-                if (playerActiveMission && playerActiveMission.type === "ACQUIRE" && !playerActiveMission.isComplete && currentLocation.name === playerActiveMission.giver) {
-                    handleTurnInAcquire();
-                    return true;
-                }
-                break; 
-            case 'r':
-                if (playerHull < MAX_PLAYER_HULL) {
-                    repairShip();
-                    return true;
-                }
-                break; 
-            case 'v':
-                visitCantina();
-                return true;
-            case 'l':
-                handleInteraction();
-                return true;
+            }
         }
-    }
 
 // --- 2. IN-SPACE & GLOBAL ACTIONS ---
     let dx = 0, dy = 0;
@@ -4892,11 +4838,10 @@ document.addEventListener('keydown', function(event) {
 
     // --- 0. BLOCK INPUT IF TYPING ---
     if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
-        // Allow Enter and Escape to pass through for specific UI handlers (like the Spire hack!)
-        if (event.key === 'Enter' || event.key === 'Escape') {
-            // Let it pass through
+        if (event.key === 'Escape') {
+            // Let Escape pass through to close modals
         } else {
-            return; // Stop game from processing movement/UI keys while typing
+            return; // Stop game from processing movement/UI keys (AND Enter) while typing
         }
     }
     
@@ -4924,27 +4869,31 @@ document.addEventListener('keydown', function(event) {
     let inputHandled = false;
 
     // --- 2. Top-level "Blocking" Contexts (Menus, Overlays, etc.) ---
-    const genericModal = document.getElementById('genericModalOverlay');
+    const isModalOpen = typeof UI !== 'undefined' && typeof UI.isAnyModalOpen === 'function' && UI.isAnyModalOpen();
 
-    if (genericModal && genericModal.style.display === 'flex') {
-        if (key === 'escape') closeGenericModal();
+    if (isModalOpen) {
+        if (typeof codexOverlayElement !== 'undefined' && codexOverlayElement.style.display === 'flex') {
+            handleCodexInput(key);
+        } else if (key === 'escape') {
+            const generic = document.getElementById('genericModalOverlay');
+            if (generic && generic.style.display === 'flex') closeGenericModal();
+            const station = document.getElementById('stationOverlay');
+            if (station && station.style.display === 'flex') { if (typeof closeStationView === 'function') closeStationView(); }
+            const xerxes = document.getElementById('xerxesOverlay');
+            if (xerxes && xerxes.style.display === 'flex') { if (typeof closeXerxesView === 'function') closeXerxesView(); }
+            const codex = document.getElementById('codexOverlay');
+            if (codex && codex.style.display === 'flex') { if (typeof toggleCodex === 'function') toggleCodex(false); }
+            const confirm = document.getElementById('confirmationOverlay');
+            if (confirm && confirm.style.display === 'flex') confirm.style.display = 'none';
+            const cargo = document.getElementById('cargoOverlay');
+            if (cargo && cargo.style.display === 'flex') { if (typeof closeCargoModal === 'function') closeCargoModal(); }
+        }
         event.preventDefault(); // Stop standard browser behaviors
         return; // Halt all game input!
     }
-    if (typeof codexOverlayElement !== 'undefined' && codexOverlayElement.style.display === 'flex') {
-        inputHandled = handleCodexInput(key);
-    } else if (typeof currentOutfitContext !== 'undefined' && currentOutfitContext && currentOutfitContext.step === 'viewingCargo') {
-        if (key === 'escape' || key === 'i') closeCargoModal();
-        inputHandled = true;
-    } else if (typeof currentOutfitContext !== 'undefined' && currentOutfitContext) {
-        inputHandled = handleOutfitInput(key);
-    } else if (typeof currentTradeContext !== 'undefined' && currentTradeContext) {
-        inputHandled = handleTradeInput(key);
-    } 
-    // (Fixed: Deleted the ghost Shipyard context check that was causing errors!)
 
     // --- 3. Game State Contexts ---
-    else if (currentGameState === GAME_STATES.COMBAT) {
+    if (currentGameState === GAME_STATES.COMBAT) {
         inputHandled = handleCombatInput(key);
     } else if (currentGameState === GAME_STATES.GALACTIC_MAP) {
         inputHandled = handleGalacticMapInput(key);
@@ -5759,7 +5708,7 @@ function loadGameData(jsonString) {
                     y: playerActiveBounty.y,
                     name: playerActiveBounty.targetName,
                     
-                    // 👇 BUG FIX: Assign the shipClassKey correctly so startCombat can read it
+                    // Assign the shipClassKey correctly so startCombat can read it
                     shipClassKey: playerActiveBounty.shipClassKey || playerActiveBounty.shipClass || "STRIKER",
                     shipClass: playerActiveBounty.shipClassKey || playerActiveBounty.shipClass || "STRIKER",
                     
@@ -5771,7 +5720,7 @@ function loadGameData(jsonString) {
                     shields: playerActiveBounty.difficulty * 25,
                     maxShields: playerActiveBounty.difficulty * 25,
                     char: 'V', 
-                    color: 'var(--danger)' 
+                    color: getThemeColor('--danger', '#FF5555')
                 });
             }
         }
@@ -6821,8 +6770,8 @@ const LEGENDARY_BOUNTIES = {
         description: "A ruthless Cartel enforcer wanted for the destruction of the orbital shipyards at Ceti Alpha. Highly armored. Approach with extreme caution.",
         reward: 15000,
         exclusiveDrop: "WEAPON_SINGULARITY_CANNON",
-        minLevel: 1, // Kept at 1 so you can test it immediately!
-        color: "var(--danger)"
+        minLevel: 1, 
+        color: "#FF5555"
     },
     "RENEGADE_COMMANDER": {
         id: "RENEGADE_COMMANDER",
@@ -6833,7 +6782,7 @@ const LEGENDARY_BOUNTIES = {
         reward: 12000,
         exclusiveDrop: "WEAPON_VOID_BEAM",
         minLevel: 5,
-        color: "var(--accent-color)"
+        color: "#00E0E0"
     }
 };
 
