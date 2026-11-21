@@ -1966,7 +1966,7 @@ function triggerRandomEvent() {
                 logMessage(`<span style="color:var(--gold-text)">Lucky Find:</span> Decrypted ${formatNumber(amount)} credits.`);
                 
                 // 💸 FLOATING TEXT ON THE MAP!
-                if (typeof spawnFloatingText === 'function') spawnFloatingText(playerX, playerY, `+${amount} CREDITS`, "var(--gold-text)");
+                if (typeof spawnFloatingText === 'function') spawnFloatingText(playerX, playerY, `+${amount} CREDITS`, getThemeColor('--gold-text', '#FFD700'));
             }
         },
         {
