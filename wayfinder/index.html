@@ -661,7 +661,7 @@
                     <!-- Triggers 'N' (Nav Ping) -->
                     <button id="btnMap" class="dpad-btn" title="Nav-Computer Target Ping (N)" style="font-size:12px; font-weight:bold; color: #9933FF;" onclick="document.dispatchEvent(new KeyboardEvent('keydown', {'key': 'n'}))">NAV</button>
                     <button id="btnDown" class="dpad-btn" aria-label="Move South">▼</button>
-                    <button id="btnInteract" class="dpad-btn" title="Dock or Interact (E)" style="font-size:12px; font-weight:bold; color: var(--danger);" onclick="if(typeof reEnterCurrentTile === 'function') reEnterCurrentTile();">ACT</button>
+                    <button id="btnInteract" class="dpad-btn" title="Dock or Interact (E)" style="font-size:12px; font-weight:bold; color: var(--danger);" onclick="document.dispatchEvent(new KeyboardEvent('keydown', {'key': 'e'}))">ACT</button>
                 </div>
             </div>
 
