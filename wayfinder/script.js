@@ -3199,14 +3199,14 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                         for (let i = activeEnemies.length - 1; i >= 0; i--) {
                             const enemy = activeEnemies[i];
                             
-                            // 👇 FIX: Don't shoot probes, and don't snipe legendary quest bosses from across the map!
+                            // Don't shoot probes, and don't snipe legendary quest bosses from across the map!
                             if (enemy.isProbe || enemy.isLegendary || enemy.isBoss) continue;
 
                             const dist = Math.max(Math.abs(enemy.x - sx), Math.abs(enemy.y - sy));
                             if (dist <= 5) {
                                 const dmg = 25;
                                 
-                                // 👇 FIX: Initialize HP for standard pirates spawned by combat.js
+                                // Initialize HP for standard pirates spawned by combat.js
                                 enemy.hp = enemy.hp || 50; 
                                 
                                 if (enemy.shields && enemy.shields > 0) enemy.shields -= dmg; 
@@ -3214,7 +3214,7 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                                 
                                 if (typeof spawnParticles === 'function') spawnParticles(enemy.x, enemy.y, 'explosion');
                                 
-                                // 👇 FIX: Safe evaluation (evaluates exactly against 0 rather than relying on truthiness)
+                                // Safe evaluation (evaluates exactly against 0 rather than relying on truthiness)
                                 if (enemy.hp <= 0 || (enemy.hull !== undefined && enemy.hull <= 0)) {
                                     logMessage(`<span style='color:var(--success); font-weight:bold;'>[ STATION DEFENSE ]</span> ${tile.name} automated turrets destroyed a hostile ${enemy.name || 'vessel'}!`);
                                     activeEnemies.splice(i, 1);
@@ -6797,7 +6797,7 @@ function openLegendaryBounties() {
 
     listEl.innerHTML = `<div class="trade-list-header" style="color:var(--danger); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">MOST WANTED</div>`;
 
-    const playerLevelEstimate = Math.floor(playerXP / 100) + 1;
+    const playerLevelEstimate = typeof playerLevel !== 'undefined' ? playerLevel : 1;
 
     for (const bossId in LEGENDARY_BOUNTIES) {
         const boss = LEGENDARY_BOUNTIES[bossId];
