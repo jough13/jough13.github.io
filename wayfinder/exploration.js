@@ -2239,7 +2239,14 @@ function resolveStrangeSignal(choice) {
             const dmg = 25;
             // Let GameBus handle the hull subtraction and effects!
             resultHtml = `<span style="color:var(--danger); font-weight:bold;">SECURITY TRIGGERED.</span><br>The probe's anti-tamper protocol engages! It detonates, showering your hull in shrapnel. Took <span style="color:var(--danger)">${dmg} damage</span>.`;
-                        // If the blast killed us, abort immediately so the modal doesn't overwrite the death screen
+            
+            if (typeof GameBus !== 'undefined') {
+                GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Derelict Probe Detonation" });
+            } else {
+                playerHull -= dmg;
+            }
+
+            // If the blast killed us, abort immediately so the modal doesn't overwrite the death screen
             if (playerHull <= 0) {
                 closeGenericModal();
                 return;
