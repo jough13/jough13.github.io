@@ -38,7 +38,7 @@
             font-size: 18px;
             line-height: 1.7;
             margin: 0;
-            padding: 2rem 1rem 30vh 1rem;
+            padding: 2rem 1rem;
         }
 
         .container {
@@ -97,7 +97,7 @@
         }
 
         h1 { font-size: 2.5rem; letter-spacing: 2px; text-transform: uppercase; text-align: center; }
-        h2 { font-size: 2rem; color: var(--color-accent-amber); }
+        h2 { font-size: 2rem; color: var(--color-accent-amber); text-align: center; margin-bottom: 2rem; }
 
         p { margin-bottom: 1.5rem; }
 
@@ -113,16 +113,35 @@
             text-decoration: underline;
         }
 
-        .doc-header {
+        .document-header {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 1rem;
+            margin: 1rem 0 2rem 0;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 0.85em;
+            color: #6c757d;
+            line-height: 1.5;
+        }
+
+        .archive-data {
             font-family: var(--font-mono);
             color: var(--color-archive-glitch);
-            font-size: 0.85rem;
-            background-color: rgba(10, 102, 62, 0.05);
-            border: 1px solid rgba(10, 102, 62, 0.2);
-            padding: 1rem;
-            margin-bottom: 2rem;
-            border-radius: 4px;
-            line-height: 1.5;
+            font-style: italic;
+            background-color: rgba(10, 102, 62, 0.1);
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        /* Drop cap for the first letter of the chapter */
+        .drop-cap::first-letter {
+            font-family: var(--font-heading);
+            font-size: 3.5rem;
+            color: var(--color-accent-amber);
+            float: left;
+            line-height: 0.8;
+            margin-right: 0.1em;
         }
 
         .scene-break {
@@ -140,36 +159,37 @@
             font-size: 0.9rem;
         }
 
-        hr {
-            border: none;
+        /* Navigation Button Styles */
+        .nav-chapter-container {
+            margin-top: 4rem;
+            padding-top: 2rem;
             border-top: 1px solid rgba(0, 0, 0, 0.1);
-            margin: 3rem 0;
-        }
-
-        .chapter-nav {
             display: flex;
             justify-content: space-between;
-            align-items: center;
             flex-wrap: wrap;
-            gap: 1rem;
-            padding-top: 1rem;
+            gap: 15px;
+        }
+
+        .nav-btn {
             font-family: var(--font-heading);
+            background-color: var(--color-accent-hud);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 1px;
-            font-size: 0.9rem;
+            transition: background-color 0.3s, transform 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .chapter-nav a {
-            padding: 8px 14px;
-            border: 1px solid rgba(0, 86, 179, 0.25);
-            border-radius: 4px;
-            font-weight: 400;
-            transition: color 0.3s, background-color 0.3s;
-        }
-
-        .chapter-nav a:hover {
-            color: var(--color-content-bg);
-            background-color: var(--color-accent-hud);
+        .nav-btn:hover {
+            background-color: var(--color-accent-amber);
+            color: white;
+            transform: translateY(-3px);
             text-decoration: none;
         }
     </style>
@@ -195,12 +215,12 @@
             <article id="chapter-one">
                 <h2>Chapter One: Listeners of the Far Dark</h2>
 
-                <div class="doc-header">
+                <div class="document-header">
                     <strong>LOCATION:</strong> Station 734, Sol Oort Cloud<br>
-                    <strong>DATE:</strong> <span style="color: var(--color-accent-amber); font-weight: bold;">GSY 2850.5</span> (Objective Sol Time)
+                    <strong>DATE:</strong> <span class="archive-data">GSY 2850.5</span> (Objective Sol Time)
                 </div>
 
-                <p>The silence was always the first thing a newcomer noticed, though it had been decades since anyone new had crossed the airlock to remark upon it.</p>
+                <p class="drop-cap">The silence was always the first thing a newcomer noticed, though it had been decades since anyone new had crossed the airlock to remark upon it.</p>
 
                 <p>It was a physical presence aboard Station 734, a heavy quiet that had seeped into the lattice of the titanium bulkheads over three millennia. To the untrained, it felt like the absence of sound, but Dr. Elizabeth Novak had lived inside it long enough to know its anatomy. It was a silence built of overlapping strata. The lowest layer was the bone-deep thrum of the ancient fusion core and the scientific support arrays, a vibration not heard in the ears, but felt in the molars. Above that rode the wheeze of atmospheric scrubbers cycling air that had been breathed a million times over. Higher still was the ghostly creak of the station’s kilometers-long external truss bars, flexing by micro-millimeters under the minute tidal pull of a distant sun and passing bodies.</p>
 
@@ -333,15 +353,17 @@
                 <p>"Affirmative, Custodian. High-gain lidar confirms a dense, highly anomalous dust wake extending more than twelve million kilometers behind the object's trajectory."</p>
 
                 <p>"Then don't just stand there, Logos," Elizabeth commanded, pulling herself into her flight harness. "Flush the automated bays. Send Maintenance Drones Gamma-3, Gamma-4, and Gamma-6 straight into the particulate wake. I want every nanometer of that alien dust captured in silica aerogel and hauled back to our airlock."</p>
+
+                <div class="nav-chapter-container">
+                    <a href="index.html" class="nav-btn">
+                        <span style="font-size: 1.2em;">&larr;</span> Previous: Foreword
+                    </a>
+
+                    <a href="chapter2.html" class="nav-btn" style="margin-left: auto;">
+                        Next: Chapter Two <span style="font-size: 1.2em;">&rarr;</span>
+                    </a>
+                </div>
             </article>
-
-            <hr>
-
-            <div class="chapter-nav">
-                <a href="index.html">&larr; Foreword</a>
-                <a href="index.html#chapters">All Chapters</a>
-                <a href="chapter2.html">Chapter Two &rarr;</a>
-            </div>
         </main>
     </div>
 </body>
