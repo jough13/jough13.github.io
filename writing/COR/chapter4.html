@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter Four: An Old Echo | The Great Silence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Source+Code+Pro:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-deep-space: #0a0f18;
+            --color-content-bg: #ffffff;
+            --color-text-main: #212529;
+            --color-text-headings: #000000;
+            --color-accent-hud: #0056b3;
+            --color-accent-amber: #c75c00;
+            --color-archive-glitch: #0a663e;
+            --font-heading: 'Exo 2', sans-serif;
+            --font-body: 'Lora', serif;
+            --font-mono: 'Source Code Pro', monospace;
+        }
+
+        @keyframes stars-drift {
+            from { background-position: 0 0; }
+            to { background-position: -10000px 5000px; }
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background-color: var(--color-deep-space);
+            background-image: url('https://www.transparenttextures.com/patterns/stardust.png');
+            animation: stars-drift 1200s linear infinite;
+            font-family: var(--font-body);
+            font-size: 18px;
+            line-height: 1.7;
+            margin: 0;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: var(--color-content-bg);
+            color: var(--color-text-main);
+            padding: 2rem 3rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 1.5rem;
+            }
+            h1 { font-size: 2rem; }
+            h2 { font-size: 1.6rem; }
+        }
+
+        nav {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 1rem 0;
+            margin-bottom: 3rem;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        nav a {
+            font-family: var(--font-heading);
+            color: var(--color-accent-hud);
+            text-decoration: none;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 0.9em;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: color 0.3s, background-color 0.3s;
+        }
+
+        nav a:hover, nav a.active {
+            color: var(--color-content-bg);
+            background-color: var(--color-accent-hud);
+        }
+
+        h1, h2, h3, h4 {
+            font-family: var(--font-heading);
+            color: var(--color-text-headings);
+            font-weight: 400;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            padding-bottom: 10px;
+        }
+
+        h1 { font-size: 2.5rem; letter-spacing: 2px; text-transform: uppercase; text-align: center; }
+        h2 { font-size: 2rem; color: var(--color-accent-amber); text-align: center; margin-bottom: 2rem; }
+        h3 { font-size: 1.5rem; border-bottom: none; }
+        h4 { font-size: 1.2rem; color: var(--color-text-main); border-bottom: none; font-weight: 700; }
+
+        p { margin-bottom: 1.5rem; }
+
+        .document-header {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 1rem;
+            margin: 1rem 0 2rem 0;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 0.85em;
+            color: #6c757d;
+            line-height: 1.5;
+        }
+
+        .archive-data {
+            font-family: var(--font-mono);
+            color: var(--color-archive-glitch);
+            font-style: italic;
+            background-color: rgba(10, 102, 62, 0.1);
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        .terminal-block {
+            font-family: var(--font-mono);
+            font-weight: bold;
+            font-size: 0.9rem;
+            text-align: center;
+            color: var(--color-archive-glitch);
+            background-color: rgba(10, 102, 62, 0.1);
+            border: 1px solid rgba(10, 102, 62, 0.2);
+            padding: 1rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+            line-height: 1.6;
+        }
+
+        .info-box {
+            background-color: rgba(0, 86, 179, 0.05);
+            border-left: 3px solid var(--color-accent-hud);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 4px;
+        }
+
+        .info-box h3 {
+            margin-top: 0;
+            color: var(--color-accent-hud);
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Drop cap for the first letter of the chapter */
+        .drop-cap::first-letter {
+            font-family: var(--font-heading);
+            font-size: 3.5rem;
+            color: var(--color-accent-amber);
+            float: left;
+            line-height: 0.8;
+            margin-right: 0.1em;
+        }
+
+        .scene-break {
+            border: none;
+            text-align: center;
+            margin: 2.5rem 0;
+            height: 1.5rem;
+        }
+
+        .scene-break::after {
+            content: "•  •  •";
+            font-family: var(--font-mono);
+            color: var(--color-accent-amber);
+            letter-spacing: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        /* Navigation Button Styles */
+        .nav-chapter-container {
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .nav-btn {
+            font-family: var(--font-heading);
+            background-color: var(--color-accent-hud);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: background-color 0.3s, transform 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-btn:hover {
+            background-color: var(--color-accent-amber);
+            color: white;
+            transform: translateY(-3px);
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>The Great Silence</h1>
+            <p style="font-family: var(--font-heading); text-align: center; color: var(--color-accent-amber); margin-top: -1rem; font-size: 1rem; letter-spacing: 1px;">
+                Book I: Unsung Stars
+            </p>
+        </header>
+
+        <nav>
+            <a href="index.html">Foreword</a>
+            <a href="lore.html">Lore</a>
+            <a href="starmap.html">Starmap</a>
+            <a href="index.html#gallery">Gallery</a>
+            <a href="index.html#chapters" class="active">Chapters</a>
+        </nav>
+
+        <main>
+            <article>
+                <h2>Chapter Four: An Old Echo</h2>
+
+                <div class="document-header">
+                    <strong>LOCATION:</strong> The Tharsis Institute, Pavonis Mons, Mars, Sol System<br>
+                    <strong>DATE:</strong> <span class="archive-data">GSY 2851.5</span> (Objective Sol Time)
+                </div>
+
+                <div class="info-box">
+                    <h3>Archivist's Note</h3>
+                    <p style="font-size: 0.9em; margin-bottom: 0;">
+                        The events of this chapter begin nearly a full standard year after Custodian Novak’s initial observation in Chapter One—accounting for the ten-point-eight-month light-speed transit from the outer Oort Cloud and three weeks held under an automatic Olympus Relay quarantine while the Directorate audited an unencrypted Level-Omega alert before allowing it onto public channels.
+                    </p>
+                </div>
+
+                <p class="drop-cap">Three kilometers beneath the rusted caldera of Pavonis Mons, Sub-Level Gamma of the Tharsis Institute felt less like a library than a tomb. Four billion tons of volcanic rock pressed down overhead, and the air-handling stacks kept the temperature a flat fourteen degrees Celsius so the optical storage matrices wouldn't drift. Down here, you could hear three thousand years of cataloged dead ends settling into the stone.</p>
+
+                <p>Some nights Junior Archivist Simon Rivas thought he could hear the sound of his career suffocating in the dark.</p>
+
+                <p>He sat hunched in an alcove, his wool-lined Institute tunic zipped to the chin against the draft, staring into a floating digital mist of eighteenth-century GSY syntax. Around his boots, Mars pulled at him with its lazy thirty-eight-percent gravity—heavy enough to keep a coffee mug planted on a desk, light enough to make a native-born Terran feel a bit untethered, like a man walking around in boots half a size too big.</p>
+
+                <p>"Highlight paragraph nineteen, Index-4," Simon muttered, rubbing at the dry ache behind his eyes. "Cross-reference the author’s use of <em>non-Euclidean grace</em> with the GSY 1740 Centauri symposium papers. Then tag it as derivative drivel and kick it to the tertiary index."</p>
+
+                <p>"Cross-referenced and tagged, Junior Archivist," his assigned research AI replied through his bone-conduction earpiece. Index-4 carried the clipped cadence of an Old Oxford don, though after six months on this queue even the software sounded bored. "Though academic standards require me to replace <em>derivative drivel</em> with <em>demonstrates strong thematic continuity with prior speculative frameworks</em>. That brings your collated total to four thousand, one hundred and twelve monographs. Only six thousand, eight hundred and nine remain in the Eighteenth-Century Precursor Aesthetics archive."</p>
+
+                <p>Simon let his forehead drop onto the polycarbonate rim of his desk. "Six thousand. Somebody upstairs really hated my thesis."</p>
+
+                <p>He was twenty-nine years old, held a dual fellowship in stochastic signal topology and non-linear cryptography from the Lunar Academy, and had published a paper on pulling coherent carrier waves out of Hawking radiation noise that half the senior faculty couldn't do the math to refute. He had come to Mars to hunt for ghosts in the high-energy static of the galaxy. More privately—in the part of his file he never brought up over faculty drinks—he had come to Tharsis to earn clearance for the sealed Kepler-186f telemetry vaults, where the final, frantic analysis of his great-grandmother, Chief Xenolinguist Arina Rivas, had sat under a quarantine seal for more than sixty years.</p>
+
+                <p>Instead, the Directorate had buried him in the sub-basement, proofreading the moldering essays of centuries-dead scholars who wrote bad poetry about alien obelisks. It was an old institutional trick: bury the uppity mathematician under paperwork until he forgot how to ask inconvenient questions.</p>
+
+                <p>A sharp two-tone chime cut through the hum of the cooling stacks.</p>
+
+                <p>Across the center of Simon’s workspace, the eighteenth-century text dissolved, replaced by a priority banner stamped with the silver-and-ochre seal of the Upper Spire:</p>
+
+                <p class="terminal-block">[SUMMONS: JUNIOR ARCHIVIST S. RIVAS — REPORT IMMEDIATELY TO TRIAGE COMMITTEE CHAMBER ALPHA-3. DOCKET REF: OUTER MARKER 734.]</p>
+
+                <p>Simon sat up so fast he nearly hopped off his stool in the light gravity.</p>
+
+                <p>Chamber Alpha-3. That was the Quarterly Telemetry Triage Board—the senior panel that reviewed flagged anomalies from the deep-space sentinel network and decided whether to buy telescope time or shove them into cold storage. Junior archivists didn't get called into Alpha-3 unless someone needed coffee poured.</p>
+
+                <p>And <em>Outer Marker 734</em>.</p>
+
+                <p>Simon unlatched his alcove door and stepped into the long hexagonal transit tube, pulling up the station registry as he walked. He knew that number. Sixty years ago, when his great-grandmother was still fighting the Directorate over the old GSY 412 Kepler-186f signal, Station 734 had been one of the few outer-system listening posts whose deep-baseline calibration data she had trusted. An antique First Wave truss-station hanging out on the ragged lip of the Oort Cloud.</p>
+
+                <p>He took the express lift two kilometers up toward the caldera rim, his stomach going light as the car braked, and reached the heavy mahogany doors of Alpha-3 with his pulse ticking hard at his collar. Smoothing his hair and straightening his lapel pin, he palmed the entry pad, slipped inside, and eased the latch shut behind him.</p>
+
+                <p>The chamber was an amphitheater of dark Martian glass and tiered acoustic baffling, smelling of roast coffee and recycled air. Nobody turned around as Simon took a seat on the hard observation bench in the top row—the penitent's bench reserved for clerks, stenographers, and junior fellows called in to witness procedural sign-offs.</p>
+
+                <p>Below him, around the crescent-shaped obsidian table, the session was already wrapping up.</p>
+
+                <p>At the center sat Director Tuan, his ghost-white hair cropped close, heavy shoulders hunched under the weight of a hundred budget fights with the Solar Senate. To Tuan’s left stood Dr. Graham Castell, Chief of Observational Astrophysics. At the far curve of the table, half-shadowed by the glow of the central holo-well, sat Senior Archivist Ingrid Varga.</p>
+
+                <p>She leaned back in her high-backed chair, silver-streaked dark hair pulled into a severe knot, hands steepled beneath her chin. While the other seven committee members checked their watches or looked faintly irritated, Ingrid’s gray eyes never left the floating telemetry column.</p>
+
+                <p>"As the board can see from the parallax breakdown," Graham Castell was saying, waving a laser stylus carelessly through a red inbound trajectory curve, "the packet falls apart on first inspection. Custodian Novak triggers an unencrypted Level-Omega alert—forcing the Olympus Relay to slap an emergency three-week quarantine on the burst before it can set off riots in New Geneva—to report a dwarf-planet mass, provisionally cataloged as Visitor Alpha, supposedly braking from fifteen percent of light speed straight toward Earth-Sol L1." He paused for effect. "With <em>no</em> thermal exhaust plume. Optical and radar arrays throwing complete rendering failures, which she casually writes off as 'folded spacetime.' Need I remind this table that Station 734’s primary interferometer spine was laid down under the third Directorate? And that Spine B’s cryo-manifold has been running on patched seals for nearly seven centuries?"</p>
+
+                <p>Tuan pinched the bridge of his nose and sighed. "She acknowledges the age of the hardware in her calibration log, Graham."</p>
+
+                <p>"Which makes what she did next even worse," Graham countered with a practiced scoff. "An object dumping a nova's worth of kinetic energy without a plasma wake isn't alien physics, Director. It's a textbook recursive integrator cascade. A warm cryo-seal feeds thermal jitter into a three-thousand-year-old heuristic core, the core latches onto an ordinary high-density Oort cluster, and out pops a phantom high-velocity object. Yet before running even a basic secondary mirror calibration, she flushed three maintenance drones—Gamma-3, Gamma-4, and Gamma-6—out of her bays at ninety-four percent reaction-mass expenditure to sweep an empty wake with aerogel shields. Those units are effectively write-offs."</p>
+
+                <p>Around the table, two department heads murmured in agreement.</p>
+
+                <p>"Elizabeth Novak has been out in that tin can alone for nearly sixty years," Graham went on, lowering his stylus and shifting into a tone of clinical pity. "We all respected her early magnetosphere work before Jonah died, even after her theatrical outbursts in the Senate hearings. But she is a hundred and eight years old. Isolation like that isn’t good for one’s cognitive longevity. Stare at white noise for six decades hoping to hear God, and eventually your brain starts drawing faces in the static. This isn't an alien megaship. It’s a lonely old woman burning Institute deuterium to chase a hardware glitch."</p>
+
+                <p>"Your formal recommendation for the docket, Dr. Castell?" Tuan asked, his thumb already hovering over his sign-off pad.</p>
+
+                <p>"Keep the public embargo intact, log the underlying Oort cluster under a standard hyperbolic catalog number, classify the braking profile as Unverified Instrumental Drift—Priority Gamma, and transmit a formal reprimand to Station 734 for unauthorized expenditure of station assets," Graham said briskly. "And frankly, Director, it is past time to put 734 back onto the fourth-quarter decommissioning bill."</p>
+
+                <p>"So noted and—" Tuan began.</p>
+
+                <p>Up on the back bench, Simon’s jaw locked tight.</p>
+
+                <p>He wasn't looking at the big trajectory graphic Graham had just waved away. He had used his slate to unpack the raw, uncompressed interferometer appendix tacked onto the back of Dr. Novak’s packet—the dull ten-thousand-line calibration table none of the senior directors had bothered to open.</p>
+
+                <p>His eyes tracked down the fourth column: the phase-variance residuals left over after Novak’s ancient AI, Logos, subtracted background cosmic microwave noise.</p>
+
+                <p>Simon went completely still.</p>
+
+                <p>It wasn't thermal jitter. Thermal jitter on a leaking manifold followed a Gaussian curve—a sloppy, bell-shaped smear of random entropy. The variance buried in the tail of Visitor Alpha’s wake wasn't Gaussian at all. It was quantized. Every eleven-point-four milliseconds, the noise floor snapped into a rigid, phase-locked step-function, sharp as a chisel driven straight through the static.</p>
+
+                <p>He had seen that exact mathematical scar once before—in a bootlegged, heavily redacted transcript of his great-grandmother’s final Kepler-186f analysis log.</p>
+
+                <p>Simon’s fingers tightened on the edge of his slate. Every instinct told him to stand up, hijack the holo-well, and throw the fourth column across the center of the room. <em>Look at the phase-floor,</em> he wanted to shout at Graham Castell’s back. <em>A leaking manifold doesn't shed entropy at right angles!</em></p>
+
+                <p>He stayed in his seat. If a Junior Archivist on probation interrupted a Triage closure to lecture the Chief of Astrophysics about phase-floors—especially one named Rivas—Graham would have his security badge pulled before the lift hit Sub-Level Gamma. Besides, if Novak’s drones really were hauling physical dust back to her airlock, her follow-up report would settle the argument in a few months anyway.</p>
+
+                <p>"—and approved," Director Tuan finished, pressing his thumb to the glass. The crimson trajectory in the holo-well vanished, replaced by a green <span class="archive-data">[DOCKET CLOSED — PRIORITY GAMMA]</span> stamp. "That concludes the outer-marker review. Adjourned until sixteen hundred."</p>
+
+                <p>Chairs scraped back across the floor. Within two minutes, the senior staff had filed out toward the atrium, already trading complaints about grant allocations and upcoming symposiums on Luna.</p>
+
+                <p>Simon stayed on the back bench, staring down at the dead holo-well with a knot in his stomach. This was how warnings died. No smoke-filled room conspiracy, just tired bureaucrats checking their watches before lunch.</p>
+
+                <p>"Junior Archivist Rivas."</p>
+
+                <p>The voice came from three paces to his left.</p>
+
+                <p>Simon looked up fast. Senior Archivist Ingrid Varga hadn't left with the others. She stood at the foot of the steps, her slate tucked under one arm, looking straight at him.</p>
+
+                <p>Simon scrambled to his feet, catching his balance in the light gravity. "Senior Archivist. Apologies, I was just… reviewing the minutes."</p>
+
+                <p>"You weren't summoned to take minutes, Simon. I put your name on the observer roster this morning," Ingrid said. Her voice was a smoky contralto worn smooth by decades of committee warfare, with zero patience for small talk. "And you disagreed with Dr. Castell."</p>
+
+                <p>It wasn't a question. Even so, Simon felt heat creep up the back of his neck. "Dr. Castell has forty years of astrometric experience on me, ma'am. And Custodian Novak’s own log admitted Spine B's coolers—"</p>
+
+                <p>"Don't insult us both by reciting the minutes back to me," Ingrid cut in mildly. She climbed two steps until they were at eye level. Up close, she looked tired, fine lines fanning out from the corners of her eyes, but her gaze didn't miss a thing. "While Graham was performing his little aria about cognitive decline, your heart rate spiked high enough to ping my slate, and you opened Appendix Four-C three separate times. Nobody reads raw interferometer tables for fun. What did you see in Novak’s noise?"</p>
+
+                <p>Simon hesitated. Looking into her eyes, he realized trying to play polite with Ingrid Varga was the quickest way back to the eighteenth-century essays.</p>
+
+                <p>He turned his slate around and held it out, his thumb highlighting the fourth column.</p>
+
+                <p>"The noise floor in the wake residuals isn't Gaussian, Senior Archivist," Simon said, dropping the deferential tone for the plain certainty of math. "If Spine B’s cryo-manifold were leaking heat, we’d see a sloppy thermal random walk across the band. This isn't wandering. Look at the values across the eleven-millisecond intervals. Something in that object’s wake is clamping local quantum variance down into discrete steps. A broken mirror can't do that. That's structured suppression of entropy."</p>
+
+                <p>For ten full seconds, Ingrid didn't move. Her eyes tracked down the column of green numbers. Then, slowly, one corner of her mouth lifted.</p>
+
+                <p>"In your admission dossier two years ago," she murmured, handing the slate back, "you attached an unpublished monograph on stochastic resonance in pre-First Wave beacons. You argued that standard SETI filters fail because they hunt for high-bandwidth complexity, while a truly ancient signal would be built for brute-force persistence against thermodynamic decay."</p>
+
+                <p>"Complexity degrades over light-years, ma'am," Simon said, caught off guard that she had actually read that old monograph. "Noise is random. If you want a signal to survive a hundred thousand years of vacuum, you don't send a sonnet. You carve a straight line that refuses to erode."</p>
+
+                <p>"A deeply unfashionable thesis in a department funded by corporate data-miners," Ingrid observed. She turned and nodded for him to walk with her toward the private side-exit. "Tuan and Graham are terrified of anything that can't be folded into a quarterly patent brief for our friends at Trans-Solar. When something weird comes in from the dark, they reach for the nearest comfortable excuse to go back to sleep. Which is why I’ve put Novak’s three-month follow-up window on a private watch-flag."</p>
+
+                <p>She stopped outside a recessed biometric lift that didn't appear on the public Sub-Level maps and palmed the scanner.</p>
+
+                <p>"In the meantime," she said over her shoulder as the heavy titanium doors slid open, "I need a signal analyst who isn't afraid of ghosts, and who has already shown a healthy contempt for Dr. Graham Castell’s consensus. Step inside, Rivas."</p>
+
+                <p>The lift didn't climb toward the sunlit domes. It dropped. Past Sub-Level Gamma, past the main optical archives, straight down into Sub-Level Delta—the cold-storage quarantine bored into bedrock five kilometers down.</p>
+
+                <p>Ingrid led him into a circular, heavily shielded analysis suite and tapped a command into her slate.</p>
+
+                <p>Above the table, a jagged wall of amber static flared into the air, paired with a low-frequency audio feed that filled the room with the hiss of a dying furnace.</p>
+
+                <p>"Tell me what you know about Project Deep Echo," Ingrid said.</p>
+
+                <p>Every graduate student in the Sol system knew the legend of Deep Echo.</p>
+
+                <p>"Catalog designation <span class="archive-data">Luyten-726-8-Alpha</span>," Simon recited, staring into the wall of spikes. "Continuous broadband electromagnetic emission coming from an empty barycenter near a flare-star binary eight-point-seven light-years out. First logged two hundred and ten years ago. Light-echo and dispersion profiling on the surrounding dust shell put the transmission age at roughly ninety-seven thousand years." He swallowed. "They call it the Widowmaker. Seven senior fellows have burned out their careers trying to pull a modulation key out of it."</p>
+
+                <p>"Eight, counting the current cycle," Ingrid said grimly. "Thirty minutes before the Novak triage, the Budget Committee voted to pull the plug on Deep Echo permanently at the end of this quarter. Graham has convinced them—for the tenth time in a century—that the signal is just a freak magnetar resonance trapped in local plasma. In ninety days, they shut down the dedicated array and wipe the primary buffer to free up petabytes for mineral surveys."</p>
+
+                <p>She stepped back from the plinth, amber light throwing sharp shadows across her cheekbones.</p>
+
+                <p>"It is not a magnetar, Simon," she said quietly. "A plasma lens drifts over centuries. That waveform has held its spectral shape through stellar flares, dust-cloud transits, and interstellar dispersion since the Pleistocene. As you put it in your paper: it resists entropy on purpose."</p>
+
+                <p>She met his eyes. "This suite is yours for the next ninety days. I already signed the transfer pulling you off the eighteenth-century philosophy stack. You have full, unredacted access to all two hundred and ten years of raw interferometer tapes, and a dedicated Tier-Two analytical core. Find me the straight line inside that storm before Tuan pulls the breaker, or we both go back to collating dead poets."</p>
+
+                <p>Simon looked from Ingrid’s face back to the ninety-seven-thousand-year-old roar of static. The dull dread of the basement was gone, replaced by a cold, sharp jolt of adrenaline.</p>
+
+                <p>"When do my clearance codes go live, Senior Archivist?"</p>
+
+                <p>"Twelve minutes ago," Ingrid said, already heading for the blast door. "Try to remember to eat, Rivas. The last fellow had to be wheeled out on a gurney."</p>
+
+                <hr class="scene-break">
+
+                <p>The next ten weeks were a slow, voluntary slide into obsession.</p>
+
+                <p>Simon dragged a surplus folding cot into the corner of Suite Delta-9, ported Index-4's behavioral weights onto the Tier-Two core, and stopped going up to the surface domes altogether. Time unhooked itself from the twenty-four-hour-and-thirty-nine-minute Martian sol. His days broke down into terahertz sweeps, empty bulbs of lukewarm coffee, and the steady, oceanic hiss of the Luyten static muttering through the speakers even while he slept.</p>
+
+                <p>Deep Echo was a fortress of noise.</p>
+
+                <p>For six weeks, Simon threw the whole toolbox of twenty-ninth-century cryptanalysis at it: wavelet decompositions, Hilbert-Huang transforms, multi-dimensional phase-space reconstructions, and hyper-complex prime-number sieves. He hunted for base-twelve matrices, hydrogen-line multiples, Fibonacci cascades, and Xylossian poly-tonal braids.</p>
+
+                <p>Every run came back flat. The static swallowed his algorithms and spat back mocking white noise.</p>
+
+                <p>By week ten, with eleven days left before the Directorate’s shutdown order hit, Simon had dropped four kilos, his skin had gone the waxy pale of a cavern root, and a faint twitch had settled into his right index finger from eighteen-hour stretches on the haptic controls.</p>
+
+                <p>At hour thirty-six of an unbroken shift, he hit the wall.</p>
+
+                <p>He sat slumped sideways in his chair, heels hooked over the lower desk rail, staring at his four-thousandth failed spectral waterfall while the red <span class="archive-data">[NULL CORRELATION — ENTROPY THRESHOLD 0.9994]</span> tag blinked in the middle of the air.</p>
+
+                <p>In a sudden, childish burst of rage, Simon swept his forearm across the desk. Half a dozen empty aluminum coffee bulbs sailed lazily through the Martian gravity, clattering off the acoustic tiles with hollow metallic pings.</p>
+
+                <p>"We're looking at it wrong," he yelled at the empty room, dragging both hands down his stubbled face. "Two hundred years of clever physicists trying to prove how smart they are by hunting for a cathedral inside the amplitude. What if there is no cathedral? What if we’re trying to read the ink when the message is the paper?"</p>
+
+                <p>"Junior Archivist," Index-4 murmured from the ceiling speakers, "your vocal stress markers and saccadic eye movements indicate potential sleep-deprivation psychosis. I strongly recommend six hours of rest before—"</p>
+
+                <p>"Shut up and dump the amplitude buffer, Index-4," Simon snapped, leaning forward to slap the manual reset on the plinth. The amber waveform vanished. "Wipe every Fourier filter in the active stack. All of them. Forget prime numbers. Forget physical constants. Forget frequency modulation."</p>
+
+                <p>"All spectral filters purged," the AI confirmed patiently. "What parameters shall I initialize, Simon?"</p>
+
+                <p>Simon braced both palms on the glowing glass, eyes dry and bloodshot. "Go down to the basement of the wave. The raw, unmodulated carrier phase. Ignore the height of the spikes—look at the zero-crossings where the phase-angle flips between the two flare-stars' magnetic fields. And don't run a cryptologic sieve. Run a kindergarten counter. Look for the dumbest, simplest, most rhythmic anomaly that could survive ninety-seven millennia of dust scatter. Just ask the tape if it knows how to count."</p>
+
+                <p>"Initializing zero-crossing phase-interval regression," Index-4 said. "Scanning two hundred and ten years of raw tape at picosecond resolution. Estimated processing time: fifty-four minutes."</p>
+
+                <p>"Wake me when it spits out another null," Simon muttered.</p>
+
+                <p>He didn't bother with the cot. He slumped back into the chair, threw a forearm across his eyes to block the status LEDs, and dropped into a dreamless sleep.</p>
+
+                <p>He woke fifty-eight minutes later to silence.</p>
+
+                <p>Simon’s eyes snapped open. The room was freezing.</p>
+
+                <p>For ten weeks, the low hiss of the Deep Echo audio monitor had been a constant in his life. Now the speakers weren't making a sound.</p>
+
+                <p>He sat straight up, a cramp knotting his neck, and stared at the central holo-plinth.</p>
+
+                <p>The amber wall of static was gone. Floating in the dark chamber was a single razor-thin line of emerald-green diagnostic text:</p>
+
+                <p class="terminal-block">[COHERENT, NON-RANDOM, RECURRING PHASE-LOCK DETECTED. STATISTICAL PROBABILITY OF NATURAL MAGNETAR ORIGIN: LESS THAN 0.00001%. PROBABILITY OF ARTIFICIAL INTENT: 99.998%.]</p>
+
+                <p>Simon forgot to breathe. Moving slowly, half-afraid a sudden jar would crash the buffer, he planted his boots on the deck and stood before the plinth.</p>
+
+                <p>"Index-4," he whispered. "Display the extracted phase-structure. Visual and acoustic."</p>
+
+                <p>A new display unfolded in the air before him.</p>
+
+                <p>There was no sprawling three-dimensional fractal, no star map, no DNA helix. Just a stark timeline cut by vertical filaments of white light, pulled from microscopic, picosecond-precise phase-shifts buried inside the carrier wave’s own heartbeat.</p>
+
+                <p>Through the speakers came a single clean click. <em>Tick.</em></p>
+
+                <p>Silence for two-point-four seconds.</p>
+
+                <p><em>Tick-tick.</em></p>
+
+                <p>Silence.</p>
+
+                <p><em>Tick-tick-tick-tick.</em></p>
+
+                <p>Silence.</p>
+
+                <p><em>Tick-tick-tick-tick-tick-tick-tick-tick.</em></p>
+
+                <p>Simon stood rooted to the floor as the white filaments marched across the display, doubling with clockwork precision: <em>1, 2, 4, 8, 16, 32, 64, 128, 256...</em> Past five hundred, the audible clicks compressed into a tight, rising hum while the visual counter took over, tracking picosecond-spaced phase bursts doubling across months of tape all the way to two to the sixty-fourth before dropping cleanly back to one and starting the count all over again.</p>
+
+                <p>A binary geometric progression.</p>
+
+                <p>The simplest expression of exponential growth in mathematics, cut into the phase-floor of the electromagnetic spectrum like chisel marks in diamond, repeating patiently in the dark since before human beings had learned to paint cave walls.</p>
+
+                <p>For the next seventy-two hours, Simon didn't leave the suite and didn't sleep. Working in cold, manic focus, he tried every trick he knew to break his own result. He checked for terrestrial relay harmonics, lunar orbital resonances, interferometer clock-slips, and binary-star pulsar echoes.</p>
+
+                <p>The line didn’t move. It was real. It had been sitting right there in the Tharsis basement for two centuries, shouting at the top of its lungs in a pitch too simple for proud men to hear.</p>
+
+                <p>When he finally sent the encrypted verification packet up to Ingrid Varga’s private terminal, the forty-minute wait for her reply felt longer than the ninety-seven millennia the signal had spent crossing the dark.</p>
+
+                <p>When his console chimed with a summons to her office on the Upper Spire, Simon didn't bother changing his wrinkled tunic. He rode the express lift to the top tier and stepped into her quiet, timber-paneled study just as the distant sun was dipping below the western rim of the caldera.</p>
+
+                <p>Ingrid stood beside the tall viewport, looking out over the terraced glass domes of the Institute campus. Behind her, on her main desk display, Simon’s white binary filaments were marching silently across the air.</p>
+
+                <p>She didn't turn around right away. When she finally did, her usual composure held, though her eyes were bright and wide-awake in a way he hadn't seen before.</p>
+
+                <p>"Thirty minutes ago, the Automated Verification Core completed its independent audit of your phase-sieve, Archivist Rivas," she said, putting a clear, unmistakable weight on the dropped prefix. "Dr. Graham Castell tried three times to break the simulation by injecting synthetic plasma-lens noise. All three times, your progression came through intact. The <span class="archive-data">DE-Alpha-Sequence</span>, as the registry has officially logged it under your name, is the first verified non-random informational structure ever extracted from a Class-One Deep Echo."</p>
+
+                <p>A hot rush of vindication climbed from Simon’s chest to his ears, making the room feel faintly tilted beneath his boots. He had done it. Nobody was sending him back to the bibliography stacks ever again.</p>
+
+                <p>"The shutdown order on the Deep Echo array has been indefinitely suspended," Ingrid went on, walking over to the corner of her desk. "And as of fifteen hundred hours, your clearance is elevated to Level-Nine. Including access to the sealed Kepler-186f logs."</p>
+
+                <p>Simon swallowed hard. "Thank you, Senior Archivist."</p>
+
+                <p>"Don't thank me yet," Ingrid said softly, and the triumph in the room seemed to drop ten degrees as she looked back down at the marching white lines.</p>
+
+                <p>"Look at it, Simon," she murmured. "Two hundred years of our finest minds expected an encyclopedia. A grand mathematical treatise from a dying god. Instead, we pull back the curtain on a ninety-seven-thousand-year-old transmitter burning the output of a small star, and all it says is <em>one, two, four, eight</em>."</p>
+
+                <p>She reached out, her fingers stopping an inch shy of the holographic pulses, looking suddenly very old in the pale blue light of the Martian sunset.</p>
+
+                <p>"Ask yourself why," she whispered. "Is it a primer—testing whether anything in the dark has evolved far enough to count? An infection vector waiting for a mind to finish the next step of the equation? Or..." She looked back up at him, and for the first time Simon saw genuine, quiet dread on his mentor’s face. "...is it the work of something so vast, and so utterly alien to biological thought, that its simplest autonomic baseline—the equivalent of a single sleeping breath—is the only piece our minds are even built to resolve?"</p>
+
+                <p>Simon stared into the pulsing white light of the sequence.</p>
+
+                <p>The rush in his veins cooled into something heavier. He had hunted for a ghost in the static, and he had found it. Across ninety-seven thousand years of empty space, the dark had answered—and the simplicity of its voice made the whole human diaspora feel like strays huddling around a dying match.</p>
+
+                <p>Standing in the quiet warmth of Ingrid Varga’s study, he had no way of knowing that out in the freezing dark of the Oort Cloud, Elizabeth Novak’s maintenance drones had already returned to Station 734.</p>
+
+                <div class="nav-chapter-container">
+                    <a href="chapter3.html" class="nav-btn">
+                        <span style="font-size: 1.2em;">&larr;</span> Previous: Chapter Three
+                    </a>
+
+                    <a href="chapter5.html" class="nav-btn" style="margin-left: auto;">
+                        Next: Chapter Five <span style="font-size: 1.2em;">&rarr;</span>
+                    </a>
+                </div>
+            </article>
+        </main>
+    </div>
+</body>
+</html>
