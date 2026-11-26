@@ -1046,17 +1046,7 @@ function confirmBuyComponent(compId, isOwned = false) {
     const oldCargoBonus = (currentComp && currentComp.stats && currentComp.stats.cargoBonus) ? currentComp.stats.cargoBonus : 0;
     const newCargoBonus = (newComp && newComp.stats && newComp.stats.cargoBonus) ? newComp.stats.cargoBonus : 0;
     const simulatedCapacity = PLAYER_CARGO_CAPACITY - oldCargoBonus + newCargoBonus;
-
-    // Account for cargo load delta when swapping from cargo (-1 for newComp, +1 if oldComp is stowed)
-    const willStowOld = Boolean(
-        currentComp &&
-        currentCompId !== 'UTIL_NONE' &&
-        currentComp.cost < 999999 &&
-        // 👇 FIX: Specifically check if the equipped ID starts with 'PROC_' to safely stow it!
-        (isOwned 
-            ? (currentComp.cost > 0 || currentComp.manufacturer === 'UNKNOWN') 
-            : (currentCompId.startsWith('PROC_') || (currentComp.cost === 0 && currentComp.manufacturer === 'UNKNOWN')))
-    );
+    
     const loadDelta = (isOwned ? -1 : 0) + (willStowOld ? 1 : 0);
     const projectedLoad = (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0) + loadDelta;
     
