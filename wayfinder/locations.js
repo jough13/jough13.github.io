@@ -4,6 +4,15 @@
 // --- INTERNAL LOCATION HELPERS ---
 // ==========================================
 
+function _locEscapeHtml(value) {
+    return String(value === undefined || value === null ? "" : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function _locSafeAddCargo(itemId, qty) {
     if (!itemId || qty <= 0 || typeof playerCargo === 'undefined') return 0;
     const maxCap = typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50;
@@ -19,6 +28,21 @@ function _locSafeAddCargo(itemId, qty) {
         if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
     }
     return actualAdd;
+}
+
+function _locHasPerk(perkId) {
+    if (typeof hasPlayerPerk === 'function') return hasPlayerPerk(perkId);
+    if (typeof playerPerks === 'undefined' || !playerPerks) return false;
+    if (typeof playerPerks.has === 'function') return playerPerks.has(perkId);
+    if (Array.isArray(playerPerks)) return playerPerks.includes(perkId);
+    return false;
+}
+
+function _locBearing(dx, dy) {
+    if (dx === 0 && dy === 0) return "HERE";
+    const dirs = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
+    const idx = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
+    return dirs[(idx + 8) % 8];
 }
 
 function _locRecordDiscovery(name, extraLoreKeys = []) {
@@ -39,6 +63,14 @@ function _locRecordDiscovery(name, extraLoreKeys = []) {
         extraLoreKeys.forEach(k => unlockLoreEntry(k));
     }
 
+    if (newlyDiscovered) {
+        if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
+        if (typeof renderUIStats === 'function') renderUIStats();
+        setTimeout(() => {
+            if (typeof checkLevelUp === 'function') checkLevelUp();
+        }, 50);
+    }
+
     return newlyDiscovered;
 }
 
@@ -49,6 +81,10 @@ function _locRecordDiscovery(name, extraLoreKeys = []) {
 const LOCATIONS_DATA = {
     "Starbase Alpha": {
         name: "Starbase Alpha",
+        region: "Sol Core",
+        securityLevel: "HIGH",
+        portSpecialty: "Trade Exchange, Pioneer Charters & Fleet Logistics",
+        welcomeHail: "Starbase Alpha Traffic Control: Docking clamps locked. Welcome back to Sol Sector, Commander.",
         coords: {
             y: MAP_HEIGHT - 5,
             x: MAP_WIDTH - 7
@@ -105,6 +141,10 @@ const LOCATIONS_DATA = {
 
     "The Rusty Anchor": {
         name: "The Rusty Anchor",
+        region: "Sol Fringe",
+        securityLevel: "LAWLESS",
+        portSpecialty: "Illicit Stims, Discount Cybernetics & Shadow Cantina",
+        welcomeHail: "Anchor Dock-Master: Cut your transponder and pay your bay fee in cash. No Concord badges past airlock three.",
         coords: {
             y: MAP_HEIGHT - 3,
             x: MAP_WIDTH - 15
@@ -141,6 +181,10 @@ const LOCATIONS_DATA = {
 
     "Aegis Dyson Sphere": {
         name: "Aegis Dyson Sphere",
+        region: "Sol Core",
+        securityLevel: "MAXIMUM",
+        portSpecialty: "Megastructure Industrial Bulk & Naval Logistics",
+        welcomeHail: "Aegis Orbital Control: Solar collector aperture cleared. Maintain strict approach corridor, Captain.",
         coords: { y: 7, x: 7 },
         type: PLANET_CHAR_VAL,
         char: PLANET_CHAR_VAL,
@@ -174,14 +218,22 @@ const LOCATIONS_DATA = {
         scanFlavor: "Aegis Dyson Sphere: The glittering crown jewel of the Concord. A breathtaking megastructure encasing a captured G-type star."
     },
 
+    // ==========================================
+    // --- UNIQUE INTERACTIVE DEEP-SPACE LANDMARKS ---
+    // ==========================================
+
     "Alien Obelisk": {
         name: "Obsidian Obelisk",
+        region: "Inner Rim (South-West)",
+        securityLevel: "NONE",
+        portSpecialty: "Precursor Harmonic Monolith",
+        isLandmark: true,
         coords: { x: -20, y: 35 },
         type: 'location',
         char: 'I',
         displayChar: 'Ψ',
         customColor: "#9933FF",
-        scanFlavor: "An ancient, monolithic spire floating in deep space. Its geometric trenches pulse with residual Precursor energy.",
+        scanFlavor: "An ancient, monolithic spire floating in deep space at [-20, -35]. Its geometric trenches pulse with residual Precursor energy.",
         onInteract: function(tileObj) {
             _locRecordDiscovery("Obsidian Obelisk", ["XENO_PRECURSORS", "LOCATION_OBSIDIAN_OBELISK"]);
             if (typeof TILE_INTERACTIONS !== 'undefined' && TILE_INTERACTIONS['I']) {
@@ -197,9 +249,13 @@ const LOCATIONS_DATA = {
 
     "Sanctuary of the Void": {
         name: "Sanctuary of the Void",
+        region: "Core Rim (North-East)",
+        securityLevel: "NONE",
+        portSpecialty: "Precursor Conduit & Nav-Core Cache",
+        isLandmark: true,
         coords: { x: 39, y: -17 }, // Matches Encrypted Engram hint: Sector [39, 17]
         type: 'location',
-        char: 'S', // BUG FIX: Distinct char avoids colliding with generic TILE_INTERACTIONS['Ψ']
+        char: 'S',
         displayChar: 'Ψ',
         customColor: "#00E0E0",
         scanFlavor: "Sanctuary of the Void: A ring of crystalline Precursor pylons at coordinates [39, 17], resonating with subspace telemetry from the ancient hyperlane network.",
@@ -245,11 +301,13 @@ const LOCATIONS_DATA = {
                         logMessage(`<span style='color:var(--success)'>[ CONDUIT SYNCHRONIZED ]</span> Downloaded ancient hyperlane telemetry (+${xp} XP).${lootText}`);
                         if (typeof soundManager !== 'undefined') soundManager.playGain();
                         if (typeof showToast === 'function') showToast("PRECURSOR CACHE UNLOCKED", "success");
+                        if (typeof renderUIStats === 'function') renderUIStats();
 
                         const leveledUp = typeof checkLevelUp === 'function' ? checkLevelUp() : false;
                         if (!leveledUp && typeof renderContextualActions === 'function') {
                             renderContextualActions(LOCATIONS_DATA["Sanctuary of the Void"].getLandmarkActions(tileObj));
                         }
+                        if (typeof autoSaveGame === 'function') autoSaveGame();
                     }
                 }
             ];
@@ -270,12 +328,16 @@ const LOCATIONS_DATA = {
 
     "Choir Spire Alpha": {
         name: "Choir Spire Alpha",
+        region: "Western Frontier",
+        securityLevel: "NONE",
+        portSpecialty: "Children of the Void Pilgrimage Reliquary",
+        isLandmark: true,
         coords: { x: -115, y: 145 },
         type: 'location',
-        char: 'C',
+        char: 'A', // BUG FIX: Distinct unused char avoids colliding with CARGO_CACHE_CHAR_VAL ('C') in config.js
         displayChar: 'Ψ',
         customColor: "#DDA0DD",
-        scanFlavor: "Choir Spire Alpha: A silent, crystal-encrusted pilgrimage reliquary tended by the Children of the Void. Subspace hymns resonate across every open comms frequency.",
+        scanFlavor: "Choir Spire Alpha: A silent, crystal-encrusted pilgrimage reliquary at [-115, -145] tended by the Children of the Void. Subspace hymns resonate across every open comms frequency.",
         getLandmarkActions: function(tileObj) {
             const acts = [];
             if (!tileObj || !tileObj.studied) {
@@ -293,10 +355,12 @@ const LOCATIONS_DATA = {
                         logMessage("<span style='color:#DDA0DD'>[ CHOIR SPIRE ]</span> Harmonic chants wash over your hull. Shields maximized (+160 XP). The High Cantor whispers of a silent relay far to the northeast...");
                         if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
                         if (typeof showToast === 'function') showToast("VOID COMMUNION (+160 XP)", "success");
+                        if (typeof renderUIStats === 'function') renderUIStats();
                         const leveledUp = typeof checkLevelUp === 'function' ? checkLevelUp() : false;
                         if (!leveledUp && typeof renderContextualActions === 'function') {
                             renderContextualActions(LOCATIONS_DATA["Choir Spire Alpha"].getLandmarkActions(tileObj));
                         }
+                        if (typeof autoSaveGame === 'function') autoSaveGame();
                     }
                 });
             }
@@ -320,12 +384,16 @@ const LOCATIONS_DATA = {
                     const giftId = Math.random() < 0.55 ? 'ENCRYPTED_ENGRAM' : 'PRECURSOR_CIPHER';
                     const added = _locSafeAddCargo(giftId, 1);
                     const giftName = (typeof COMMODITIES !== 'undefined' && COMMODITIES[giftId]) ? COMMODITIES[giftId].name : giftId;
+                    const giftNote = added > 0
+                        ? ` and bestowed <b>1x ${giftName}</b>`
+                        : ` <span style="color:var(--warning)">(cargo bay over capacity — return gift could not be stowed)</span>`;
 
-                    logMessage(`<span style='color:#DDA0DD; font-weight:bold;'>[ OFFERING ACCEPTED ]</span> The Spire flares violet! Hull & Shields fully restored (+200 XP)${added > 0 ? ` and bestowed <b>1x ${giftName}</b>` : ''}.`);
+                    logMessage(`<span style='color:#DDA0DD; font-weight:bold;'>[ OFFERING ACCEPTED ]</span> The Spire flares violet! Hull & Shields fully restored (+200 XP)${giftNote}.`);
                     if (typeof soundManager !== 'undefined') soundManager.playGain();
                     if (typeof showToast === 'function') showToast("CHOIR BLESSING GRANTED", "success");
-                    if (typeof checkLevelUp === 'function') checkLevelUp();
                     if (typeof renderUIStats === 'function') renderUIStats();
+                    if (typeof checkLevelUp === 'function') checkLevelUp();
+                    if (typeof autoSaveGame === 'function') autoSaveGame();
                 }
             });
             acts.push({
@@ -335,7 +403,8 @@ const LOCATIONS_DATA = {
                     const clues = [
                         "\"The Archivist watches from the hull graveyard at [-240, -260].\"",
                         "\"A crystalline Precursor conduit still sings at [39, 17].\"",
-                        "\"At the edge of the Silentium Expanse [280, 240], Relay Zero remembers the First Chord.\""
+                        "\"At the edge of the Silentium Expanse [280, 240], Relay Zero remembers the First Chord.\"",
+                        "\"South of here at [-85, -220], the Whispering Prism bends starlight into harmonic glass.\""
                     ];
                     const msg = clues[Math.floor(Math.random() * clues.length)];
                     logMessage(`<span style='color:#DDA0DD'>[ CHOIR WHISPER ]</span> <i>${msg}</i>`);
@@ -355,12 +424,16 @@ const LOCATIONS_DATA = {
 
     "Silentium Relay Zero": {
         name: "Silentium Relay Zero",
+        region: "Silentium Approach (North-East)",
+        securityLevel: "NONE",
+        portSpecialty: "Precursor Deep-Rim Warning Buoy",
+        isLandmark: true,
         coords: { x: 280, y: -240 },
         type: 'location',
         char: 'R',
         displayChar: 'Ψ',
         customColor: "#40E0D0",
-        scanFlavor: "Silentium Relay Zero: The outermost automated Precursor warning buoy bordering the Silentium Expanse. Its harmonic core pulses with coordinates from before human history.",
+        scanFlavor: "Silentium Relay Zero: The outermost automated Precursor warning buoy bordering the Silentium Expanse at [280, 240]. Its harmonic core pulses with coordinates from before human history.",
         getLandmarkActions: function(tileObj) {
             const acts = [];
             if (!tileObj || !tileObj.studied) {
@@ -385,11 +458,13 @@ const LOCATIONS_DATA = {
                         logMessage(`<span style='color:#40E0D0; font-weight:bold;'>[ RELAY ZERO DECODED ]</span> Final Precursor telemetry before the Great Silence downloaded (+${xp} XP)${lootParts.length > 0 ? `. Recovered ${lootParts.join(' & ')}` : ''}!`);
                         if (typeof soundManager !== 'undefined') soundManager.playGain();
                         if (typeof showToast === 'function') showToast("SILENTIUM ARCHIVE SECURED", "success");
+                        if (typeof renderUIStats === 'function') renderUIStats();
 
                         const leveledUp = typeof checkLevelUp === 'function' ? checkLevelUp() : false;
                         if (!leveledUp && typeof renderContextualActions === 'function') {
                             renderContextualActions(LOCATIONS_DATA["Silentium Relay Zero"].getLandmarkActions(tileObj));
                         }
+                        if (typeof autoSaveGame === 'function') autoSaveGame();
                     }
                 });
             }
@@ -427,8 +502,264 @@ const LOCATIONS_DATA = {
         }
     },
 
+    "The Sleeping Ark": {
+        name: "The Sleeping Ark (CSS Hesperia)",
+        region: "North-West Outer Rim",
+        securityLevel: "NONE",
+        portSpecialty: "2144 CE Terran Diaspora Generation Ark",
+        isLandmark: true,
+        coords: { x: -145, y: -185 }, // HUD [-145, 185]
+        type: 'location',
+        char: 'K',
+        displayChar: '❖',
+        customColor: "#AADDFF",
+        scanFlavor: "The Sleeping Ark (CSS Hesperia): A colossal, pre-Concord 2144 CE colony sleeper ship drifting silently at [-145, 185]. Its original folded-spacetime motivator sits cold, while archival beacons ping in archaic binary.",
+        getLandmarkActions: function(tileObj) {
+            const acts = [];
+            if (!tileObj || !tileObj.studied) {
+                acts.push({
+                    label: 'Download 2144 CE Diaspora Logs',
+                    key: 'e',
+                    onclick: () => {
+                        if (tileObj && tileObj.studied) return;
+                        const xp = 250;
+                        playerXP += xp;
+                        const gotWine = _locSafeAddCargo('ANCIENT_WINE', 1);
+                        const gotPod = _locSafeAddCargo('CRYO_STASIS_POD', 1);
+                        const gotCharts = gotPod === 0 ? _locSafeAddCargo('NAVIGATION_CHARTS', 1) : 0;
+                        const finds = [];
+                        if (gotWine > 0) finds.push("<b>1x Ancient Wine</b>");
+                        if (gotPod > 0) finds.push("<b>1x Recovered Cryo-Pod</b>");
+                        if (gotCharts > 0) finds.push("<b>1x Nav-Charts</b>");
+
+                        if (typeof updateWorldState === 'function') {
+                            updateWorldState(playerX, playerY, { studied: true, isUnique: true, lastInteraction: typeof currentGameDate !== 'undefined' ? currentGameDate : 0 });
+                        }
+                        if (tileObj) tileObj.studied = true;
+
+                        logMessage(`<span style='color:#AADDFF; font-weight:bold;'>[ CSS HESPERIA ARCHIVES ]</span> Recovered 2144 CE diaspora flight telemetry (+${xp} XP)${finds.length > 0 ? ` and salvaged ${finds.join(' & ')} from Vault Bay 1` : ''}!`);
+                        if (typeof soundManager !== 'undefined') soundManager.playGain();
+                        if (typeof showToast === 'function') showToast("DIASPORA ARCHIVES RECOVERED", "success");
+                        if (typeof renderUIStats === 'function') renderUIStats();
+
+                        const leveledUp = typeof checkLevelUp === 'function' ? checkLevelUp() : false;
+                        if (!leveledUp && typeof renderContextualActions === 'function') {
+                            renderContextualActions(LOCATIONS_DATA["The Sleeping Ark"].getLandmarkActions(tileObj));
+                        }
+                        if (typeof autoSaveGame === 'function') autoSaveGame();
+                    }
+                });
+            }
+            if (!tileObj || !tileObj.beaconRepaired) {
+                acts.push({
+                    label: 'Repair Distress Beacon (2x Tech Parts)',
+                    key: 'x',
+                    onclick: () => {
+                        if (tileObj && tileObj.beaconRepaired) return;
+                        if (typeof playerCargo === 'undefined' || (playerCargo['TECH_PARTS'] || 0) < 2) {
+                            if (typeof showToast === 'function') showToast("REQUIRES 2x TECH PARTS", "warning");
+                            if (typeof soundManager !== 'undefined') soundManager.playError();
+                            return;
+                        }
+                        playerCargo['TECH_PARTS'] -= 2;
+                        if (playerCargo['TECH_PARTS'] <= 0) delete playerCargo['TECH_PARTS'];
+                        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+
+                        playerCredits += 1200;
+                        playerXP += 150;
+                        if (typeof playerFactionStanding !== 'undefined') {
+                            playerFactionStanding['CONCORD'] = (playerFactionStanding['CONCORD'] || 0) + 10;
+                        }
+                        if (typeof updateWorldState === 'function') {
+                            updateWorldState(playerX, playerY, { beaconRepaired: true, isUnique: true, lastInteraction: typeof currentGameDate !== 'undefined' ? currentGameDate : 0 });
+                        }
+                        if (tileObj) tileObj.beaconRepaired = true;
+
+                        logMessage("<span style='color:var(--success); font-weight:bold;'>[ HISTORICAL PRESERVATION ]</span> Repaired CSS Hesperia's relay! Concord Historical Survey wired <b>1,200c</b> (+150 XP, +10 Concord Rep).");
+                        if (typeof soundManager !== 'undefined') soundManager.playBuy();
+                        if (typeof showToast === 'function') showToast("+1,200c & +10 CONCORD REP", "success");
+                        if (typeof renderUIStats === 'function') renderUIStats();
+
+                        const leveledUp = typeof checkLevelUp === 'function' ? checkLevelUp() : false;
+                        if (!leveledUp && typeof renderContextualActions === 'function') {
+                            renderContextualActions(LOCATIONS_DATA["The Sleeping Ark"].getLandmarkActions(tileObj));
+                        }
+                        if (typeof autoSaveGame === 'function') autoSaveGame();
+                    }
+                });
+            }
+            return acts;
+        },
+        onInteract: function(tileObj) {
+            _locRecordDiscovery("The Sleeping Ark (CSS Hesperia)", ["TECH_FTL_DRIVES", "XENO_DERELICTS"]);
+            logMessage("<span style='color:#AADDFF; font-weight:bold;'>[ THE SLEEPING ARK ]</span> The weathered kilometer-long hull of the 2144 CE colony ark 'CSS Hesperia' drifts silently in the dark.");
+            if (typeof renderContextualActions === 'function') {
+                renderContextualActions(this.getLandmarkActions(tileObj));
+            }
+        }
+    },
+
+    "K'tharr Blood-Cairn": {
+        name: "K'tharr Blood-Cairn",
+        region: "Eastern Frontier",
+        securityLevel: "LOW",
+        portSpecialty: "K'tharr Warrior Memorial Shrine",
+        isLandmark: true,
+        coords: { x: 310, y: 210 }, // HUD [310, -210]
+        type: 'location',
+        char: 'G',
+        displayChar: '◈',
+        customColor: "#4CAF50",
+        scanFlavor: "K'tharr Blood-Cairn: A ring of scorched warship prows welded into an orbital warrior monument at [310, -210]. Border clans leave ceremonial blades here to honor the fallen.",
+        getLandmarkActions: function(tileObj) {
+            const acts = [];
+            if (!tileObj || !tileObj.studied) {
+                acts.push({
+                    label: 'Transmit Honor Salute (+K\'tharr Rep)',
+                    key: 'e',
+                    onclick: () => {
+                        if (tileObj && tileObj.studied) return;
+                        playerXP += 175;
+                        if (typeof playerFactionStanding !== 'undefined') {
+                            playerFactionStanding['KTHARR'] = (playerFactionStanding['KTHARR'] || 0) + 8;
+                        }
+                        if (typeof updateWorldState === 'function') {
+                            updateWorldState(playerX, playerY, { studied: true, isUnique: true, lastInteraction: typeof currentGameDate !== 'undefined' ? currentGameDate : 0 });
+                        }
+                        if (tileObj) tileObj.studied = true;
+
+                        logMessage("<span style='color:#4CAF50; font-weight:bold;'>[ BLOOD-CAIRN ]</span> You dip your running lights and transmit the ancient K'tharr warrior cadence. Passing Hegemony relays acknowledge your respect (+8 K'tharr Rep, +175 XP).");
+                        if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+                        if (typeof showToast === 'function') showToast("+8 K'THARR STANDING", "success");
+                        if (typeof renderUIStats === 'function') renderUIStats();
+
+                        const leveledUp = typeof checkLevelUp === 'function' ? checkLevelUp() : false;
+                        if (!leveledUp && typeof renderContextualActions === 'function') {
+                            renderContextualActions(LOCATIONS_DATA["K'tharr Blood-Cairn"].getLandmarkActions(tileObj));
+                        }
+                        if (typeof autoSaveGame === 'function') autoSaveGame();
+                    }
+                });
+            }
+            acts.push({
+                label: 'Return 1x Ancestral Blade',
+                key: 'x',
+                onclick: () => {
+                    if (typeof playerCargo === 'undefined' || (playerCargo['KTHARR_ANCESTRAL_BLADE'] || 0) < 1) {
+                        if (typeof showToast === 'function') showToast("REQUIRES 1x K'THARR ANCESTRAL BLADE", "warning");
+                        if (typeof soundManager !== 'undefined') soundManager.playError();
+                        return;
+                    }
+                    playerCargo['KTHARR_ANCESTRAL_BLADE'] -= 1;
+                    if (playerCargo['KTHARR_ANCESTRAL_BLADE'] <= 0) delete playerCargo['KTHARR_ANCESTRAL_BLADE'];
+                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+
+                    playerCredits += 1500;
+                    playerXP += 300;
+                    if (typeof playerFactionStanding !== 'undefined') {
+                        playerFactionStanding['KTHARR'] = (playerFactionStanding['KTHARR'] || 0) + 25;
+                    }
+                    if (typeof MAX_PLAYER_HULL !== 'undefined') playerHull = MAX_PLAYER_HULL;
+                    if (typeof MAX_SHIELDS !== 'undefined') playerShields = MAX_SHIELDS;
+
+                    logMessage("<span style='color:#4CAF50; font-weight:bold;'>[ SACRED RELIC RESTORED ]</span> You anchor the Ancestral Blade into the cairn! K'tharr Void-Priests transmit a blood-tithe of <b>1,500c</b>, <b>+25 K'tharr Standing</b>, and +300 XP (Hull & Shields restored)!");
+                    if (typeof soundManager !== 'undefined') soundManager.playGain();
+                    if (typeof showToast === 'function') showToast("+25 K'THARR REP & +1,500c", "success");
+                    if (typeof renderUIStats === 'function') renderUIStats();
+                    if (typeof checkLevelUp === 'function') checkLevelUp();
+                    if (typeof autoSaveGame === 'function') autoSaveGame();
+                }
+            });
+            return acts;
+        },
+        onInteract: function(tileObj) {
+            _locRecordDiscovery("K'tharr Blood-Cairn", ["FACTION_KTHARR", "COMMODITY_KTHARR_ANCESTRAL_BLADE"]);
+            logMessage("<span style='color:#4CAF50; font-weight:bold;'>[ K'THARR BLOOD-CAIRN ]</span> Scorched hull prows orbit a quiet emerald beacon—a sacred K'tharr memorial shrine.");
+            if (typeof renderContextualActions === 'function') {
+                renderContextualActions(this.getLandmarkActions(tileObj));
+            }
+        }
+    },
+
+    "Whispering Prism": {
+        name: "Whispering Prism",
+        region: "Southern Rim",
+        securityLevel: "NONE",
+        portSpecialty: "Precursor Optical Lattice",
+        isLandmark: true,
+        coords: { x: -85, y: 220 }, // HUD [-85, -220]
+        type: 'location',
+        char: 'J',
+        displayChar: '✧',
+        customColor: "#FF66FF",
+        scanFlavor: "Whispering Prism: A kilometer-wide octahedral crystal suspended at [-85, -220], splitting starlight into coherent subspace harmonics. Astrometrists swear it amplifies optical arrays.",
+        getLandmarkActions: function(tileObj) {
+            const acts = [];
+            if (!tileObj || !tileObj.studied) {
+                acts.push({
+                    label: 'Align Spectral Optics',
+                    key: 'e',
+                    onclick: () => {
+                        if (tileObj && tileObj.studied) return;
+                        const hasOptics = _locHasPerk('ASTROMETRIC_SAVANT') ||
+                            (typeof playerShip !== 'undefined' && playerShip.components && playerShip.components.scanner === 'SCANNER_NEXSTAR_4SE');
+                        const xp = hasOptics ? 350 : 220;
+                        playerXP += xp;
+
+                        const gotLens = _locSafeAddCargo('QUANTUM_LENS', 1);
+                        const gotPulsar = _locSafeAddCargo('DATA_PULSAR', 1);
+                        const loot = [];
+                        if (gotLens > 0) loot.push("<b>1x Quantum Lens</b>");
+                        if (gotPulsar > 0) loot.push("<b>1x Pulsar Timing Data</b>");
+
+                        if (typeof updateWorldState === 'function') {
+                            updateWorldState(playerX, playerY, { studied: true, isUnique: true, lastInteraction: typeof currentGameDate !== 'undefined' ? currentGameDate : 0 });
+                        }
+                        if (tileObj) tileObj.studied = true;
+
+                        logMessage(`<span style='color:#FF66FF; font-weight:bold;'>[ PRISM REFRACTION LOGGED ]</span> ${hasOptics ? 'Precision optics resolved deep Precursor overtones! ' : ''}Gained +${xp} XP${loot.length > 0 ? ` and recovered ${loot.join(' & ')}` : ''}!`);
+                        if (typeof soundManager !== 'undefined') soundManager.playGain();
+                        if (typeof showToast === 'function') showToast(`OPTICAL TELEMETRY (+${xp} XP)`, "success");
+                        if (typeof renderUIStats === 'function') renderUIStats();
+
+                        const leveledUp = typeof checkLevelUp === 'function' ? checkLevelUp() : false;
+                        if (!leveledUp && typeof renderContextualActions === 'function') {
+                            renderContextualActions(LOCATIONS_DATA["Whispering Prism"].getLandmarkActions(tileObj));
+                        }
+                        if (typeof autoSaveGame === 'function') autoSaveGame();
+                    }
+                });
+            }
+            acts.push({
+                label: 'Harmonize Deflectors (+125% Shields)',
+                key: 'v',
+                onclick: () => {
+                    if (typeof MAX_SHIELDS !== 'undefined') {
+                        playerShields = Math.max(playerShields, Math.floor(MAX_SHIELDS * 1.25));
+                    }
+                    if (typeof stealthHeat !== 'undefined') stealthHeat = 0;
+                    logMessage("<span style='color:#FF66FF'>[ WHISPERING PRISM ]</span> Coherent light washes over your hull—Shields overcharged to 125% and thermal sinks flushed.");
+                    if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+                    if (typeof renderUIStats === 'function') renderUIStats();
+                }
+            });
+            return acts;
+        },
+        onInteract: function(tileObj) {
+            _locRecordDiscovery("Whispering Prism", ["PHENOMENON_VOID_CRYSTALS", "XENO_ANOMALIES"]);
+            logMessage("<span style='color:#FF66FF; font-weight:bold;'>[ WHISPERING PRISM ]</span> A towering violet crystal octahedron turns lazily before you, refracting starlight across your sensors.");
+            if (typeof renderContextualActions === 'function') {
+                renderContextualActions(this.getLandmarkActions(tileObj));
+            }
+        }
+    },
+
     "Planet Xerxes": {
         name: "Planet Xerxes",
+        region: "Sol Fringe",
+        securityLevel: "LAWLESS",
+        portSpecialty: "The Precursor Spire & Shadow Network Vault",
+        welcomeHail: "Xerxes Spire Automated Relay: Toxic atmosphere confirmed. Decrypt Layer 1 to access inner market vaults.",
         coords: {
             y: 3,
             x: MAP_WIDTH - 5
@@ -462,6 +793,10 @@ const LOCATIONS_DATA = {
 
     "Karak-Tor": {
         name: "Karak-Tor",
+        region: "K'tharr Heartworld (South-East)",
+        securityLevel: "HIGH (K'THARR)",
+        portSpecialty: "Magma Forges, Blood-Barges & Proving Grounds",
+        welcomeHail: "Karak-Tor Forge Control: Outlander hull recognized. Keep weapons cold in the docking pit—save blood for the arena.",
         coords: {
             y: 485,
             x: 420
@@ -497,6 +832,10 @@ const LOCATIONS_DATA = {
 
     "Fortress Drakon": {
         name: "Fortress Drakon",
+        region: "K'tharr Border (East)",
+        securityLevel: "HIGH (K'THARR)",
+        portSpecialty: "Eastern War-Bastion & Relic Redemption",
+        welcomeHail: "Fortress Drakon Garrison: State your clan or your cargo, outlander. Alloys and lost Ancestral Blades earn respect here.",
         coords: {
             y: -75,
             x: 195
@@ -533,6 +872,10 @@ const LOCATIONS_DATA = {
 
     "Station Umbra": {
         name: "Station Umbra",
+        region: "Eclipse Deep Rim (West)",
+        securityLevel: "LAWLESS",
+        portSpecialty: "Cartel Flagship Hub, Shadow Brokers & Night-Runners",
+        welcomeHail: "Station Umbra Encrypted Relay: Cloaking veil parted for docking bay 9. Welcome to the Shadow Network.",
         coords: {
             y: -150,
             x: -450
@@ -571,6 +914,10 @@ const LOCATIONS_DATA = {
 
     "Port Erebus": {
         name: "Port Erebus",
+        region: "Eclipse Border (South-West)",
+        securityLevel: "LAWLESS",
+        portSpecialty: "Smuggler Staging Port, Identity Forger & Contraband Fence",
+        welcomeHail: "Port Erebus Shadow-Tower: Dust cloud masks our approach. Watch your credits in the lower alleys.",
         coords: {
             y: 80,
             x: -175
@@ -608,6 +955,10 @@ const LOCATIONS_DATA = {
 
     "Cygnus Prime": {
         name: "Cygnus Prime",
+        region: "Core Academic Belt (North-East)",
+        securityLevel: "HIGH",
+        portSpecialty: "Astrophysics Grants, Spectroscopy & Xeno-Archaeology",
+        welcomeHail: "University of Cygnus Prime: Welcome, scholar. Submit fresh pulsar, quasar, or Precursor telemetry at the science desk.",
         coords: {
             y: -65,
             x: 85
@@ -647,6 +998,10 @@ const LOCATIONS_DATA = {
 
     "Kepler Listening Post": {
         name: "Kepler Listening Post",
+        region: "Kepler Approaches (North-West)",
+        securityLevel: "MODERATE",
+        portSpecialty: "SEC-COM Recon Gear & Intelligence Bounties",
+        welcomeHail: "Kepler Signal Relay: Transponder verified. Report any Eclipse Cartel movements along the nebula fringe.",
         coords: {
             y: -42,
             x: -68
@@ -682,6 +1037,10 @@ const LOCATIONS_DATA = {
 
     "Ceti Alpha Shipyards": {
         name: "Ceti Alpha Shipyards",
+        region: "Northern Concord Rim",
+        securityLevel: "HIGH",
+        portSpecialty: "Heavy Drydocks, Drones & Alloy Fabrication",
+        welcomeHail: "Ceti Alpha Yardmaster: Slipway 4 open. Watch the welding arcs—our cranes run round the clock.",
         coords: {
             y: -130,
             x: -90
@@ -717,6 +1076,10 @@ const LOCATIONS_DATA = {
 
     "Helios Refinery": {
         name: "Helios Refinery",
+        region: "Southern Concord Rim",
+        securityLevel: "MODERATE",
+        portSpecialty: "Xy-Corp Smelting, Refined Alloy & Colony Prefabs",
+        welcomeHail: "Helios Corporate Automated Greeting: Xy-Corp welcomes you—Progress Through Profit. Please clear ore bays promptly.",
         coords: {
             y: 110,
             x: -55
@@ -748,8 +1111,52 @@ const LOCATIONS_DATA = {
         scanFlavor: "Helios Corporate Refinery: A sprawling Xy-Corp orbital smelting facility. Tagline broadcast on all frequencies: 'Progress Through Profit.' Ideal supply depot for colony builders and industrial haulers."
     },
 
+    "Solitude Research Platform": {
+        name: "Solitude Research Platform",
+        region: "South-East Frontier",
+        securityLevel: "MODERATE",
+        portSpecialty: "Outer-Rim Xeno-Biology & Cryo-Medicine",
+        welcomeHail: "Solitude Bio-Dome Control: Decontamination mist active in bay 2. Welcome to the outer-rim frontier, Commander.",
+        coords: {
+            y: 175,
+            x: 165
+        },
+        type: OUTPOST_CHAR_VAL,
+        char: OUTPOST_CHAR_VAL,
+        displayChar: "H",
+        customColor: "#00FFFF",
+        faction: "CONCORD",
+        isMajorHub: false,
+        sells: [
+            { id: "MEDICAL_SUPPLIES", priceMod: 0.75, stock: 60 },
+            { id: "GENETIC_SAMPLES", priceMod: 0.85, stock: 30 },
+            { id: "MINING_DRONE", priceMod: 0.9, stock: 15 },
+            { id: "OVERCLOCK_CELL", priceMod: 0.95, stock: 12 },
+            { id: "FUEL_CELLS", priceMod: 1.0, stock: 80 }
+        ],
+        buys: [
+            { id: "SENTIENT_MYCELIUM", priceMod: 1.6, stock: 20 },
+            { id: "KTHARR_SPICES", priceMod: 1.5, stock: 30 },
+            { id: "DATA_SUPERNOVA", priceMod: 1.7, stock: 8 },
+            { id: "DATA_MAGNETAR", priceMod: 1.6, stock: 10 },
+            { id: "WATER", priceMod: 1.4, stock: 80 },
+            { id: "FOOD_SUPPLIES", priceMod: 1.4, stock: 80 }
+        ],
+        factory: {
+            consumes: "GENETIC_SAMPLES",
+            produces: "MEDICAL_SUPPLIES",
+            consumeQty: 2,
+            produceQty: 3
+        },
+        scanFlavor: "Solitude Research Platform: A quiet Concord xeno-biology outpost perched between independent asteroid belts and K'tharr border lanes. Synthesizes trauma kits from alien flora and pays generous grants for mycelium and magnetar telemetry."
+    },
+
     "Valkyrie Drift": {
         name: "Valkyrie Drift",
+        region: "Eastern Asteroid Belt",
+        securityLevel: "LOW",
+        portSpecialty: "Raw Ores, Crystalline Geodes & Prospector Trade",
+        welcomeHail: "Valkyrie Drift Ore-Boss: Clamp onto pylon 6 and watch the conveyor belts. Got fresh ale or droid servos aboard?",
         coords: {
             y: 120,
             x: 135
@@ -784,8 +1191,54 @@ const LOCATIONS_DATA = {
         scanFlavor: "Valkyrie Drift: A sprawling independent rock-hopper barge lashed to a fractured ferric asteroid. Roughneck miners sell uncracked geodes and raw platinum while paying handsome premiums for fresh ale, rations, and droid servos."
     },
 
+    "The Sunken Compass": {
+        name: "The Sunken Compass",
+        region: "Western Rim Corridor",
+        securityLevel: "LAWLESS",
+        portSpecialty: "Scrap Bazaar, Repair Kits & Deep-Rim Salvage",
+        welcomeHail: "Sunken Compass Salvage-Chief: Tie down to the stern ribs, spacer. We trade parts, geodes, and quiet favors—no questions asked.",
+        coords: {
+            y: -95,
+            x: -290
+        },
+        type: OUTPOST_CHAR_VAL,
+        char: OUTPOST_CHAR_VAL,
+        displayChar: "§",
+        customColor: "#FFAA66",
+        faction: "INDEPENDENT",
+        isMajorHub: false,
+        isBlackMarket: true,
+        sells: [
+            { id: "MINERAL_GEODE", priceMod: 0.85, stock: 15 },
+            { id: "TECH_PARTS", priceMod: 0.85, stock: 70 },
+            { id: "NANO_REPAIR_KIT", priceMod: 0.8, stock: 25 },
+            { id: "SENSOR_DECOY", priceMod: 0.9, stock: 10 },
+            { id: "OBSIDIAN_TEAR_PLATING", priceMod: 1.05, stock: 4 },
+            { id: "FUEL_CELLS", priceMod: 0.95, stock: 100 }
+        ],
+        buys: [
+            { id: "PRECURSOR_ARTIFACT", priceMod: 1.9, stock: 4 },
+            { id: "XENO_ANTIQUES", priceMod: 1.7, stock: 15 },
+            { id: "ARTIFACT_SHARDS", priceMod: 1.6, stock: 30 },
+            { id: "REFINED_ALLOY", priceMod: 1.4, stock: 60 },
+            { id: "WATER", priceMod: 1.5, stock: 80 },
+            { id: "FROTHY_MOON_ALE", priceMod: 1.7, stock: 35 }
+        ],
+        factory: {
+            consumes: "MINERALS",
+            produces: "NANO_REPAIR_KIT",
+            consumeQty: 6,
+            produceQty: 2
+        },
+        scanFlavor: "The Sunken Compass: A ramshackle salvage bazaar welded inside the cracked spine of an ancient colony freighter at [-290, 95]. Serves as the last neutral refueling and black-market stop before Station Umbra."
+    },
+
     "Frothy Moon Outpost": {
         name: "Frothy Moon Outpost",
+        region: "Sol Outer Ridge (East)",
+        securityLevel: "LOW",
+        portSpecialty: "Lunar Observatory, Craft Synth-Ale & Star Charts",
+        welcomeHail: "Frothy Moon Taproom & Observatory: Clear skies tonight, Commander! Fresh dark synth-ale is on tap up on the dome deck.",
         coords: {
             y: MAP_HEIGHT - 14,
             x: MAP_WIDTH + 18
@@ -820,6 +1273,10 @@ const LOCATIONS_DATA = {
 
     "Port Nomad": {
         name: "Port Nomad",
+        region: "Northern Frontier",
+        securityLevel: "NEUTRAL SANCTUARY",
+        portSpecialty: "Fuel Rats Collective HQ, Discount Fuel & Stargates",
+        welcomeHail: "Port Nomad Dispatch: Fuel Rats Sanctuary welcomes all hulls. Top off your tanks, grab a hot coffee, and fly safe.",
         coords: {
             y: -210,
             x: 15
@@ -854,6 +1311,10 @@ const LOCATIONS_DATA = {
 
     "The Archivist's Vault": {
         name: "The Archivist's Vault",
+        region: "South-West Hull Graveyard",
+        securityLevel: "LAWLESS",
+        portSpecialty: "Forbidden Histories, Engrams & Precursor Relics",
+        welcomeHail: "The Archivist: Ah, a curious mind enters the graveyard of iron. What forgotten light have you brought to trade?",
         coords: {
             y: 260,
             x: -240
@@ -917,12 +1378,35 @@ function _rebuildStaticChunkIndex() {
     }
 }
 
+function _isXerxesLocked() {
+    return typeof xerxesPuzzleLevel === 'undefined' || xerxesPuzzleLevel < 1;
+}
+
 const LocationUtils = {
-    getLocation(name) {
-        return LOCATIONS_DATA[name] || null;
+    getLocation(nameOrKey) {
+        if (!nameOrKey) return null;
+        if (LOCATIONS_DATA[nameOrKey]) return LOCATIONS_DATA[nameOrKey];
+        for (const k in LOCATIONS_DATA) {
+            if (LOCATIONS_DATA[k] && LOCATIONS_DATA[k].name === nameOrKey) return LOCATIONS_DATA[k];
+        }
+        return null;
     },
     getByFaction(faction) {
-        return Object.values(LOCATIONS_DATA).filter(loc => loc && loc.faction === faction);
+        return Object.values(LOCATIONS_DATA).filter(loc => loc && !loc.isProcedural && loc.faction === faction);
+    },
+    getLandmarks() {
+        return Object.values(LOCATIONS_DATA).filter(loc => loc && !loc.isProcedural && loc.isLandmark);
+    },
+    getTradePorts() {
+        return Object.values(LOCATIONS_DATA).filter(loc => loc && !loc.isProcedural && !loc.isLandmark && (Array.isArray(loc.sells) || Array.isArray(loc.buys)));
+    },
+    getDistanceAndBearing(fromX, fromY, toX, toY) {
+        const dx = toX - fromX;
+        const dy = toY - fromY;
+        return {
+            distance: Math.floor(Math.sqrt(dx * dx + dy * dy)),
+            bearing: _locBearing(dx, dy)
+        };
     },
     getNearest(x, y, filterFn = null) {
         let best = null;
@@ -936,14 +1420,16 @@ const LocationUtils = {
             const dSq = dx * dx + dy * dy;
             if (dSq < bestDistSq) {
                 bestDistSq = dSq;
-                best = { key, location: loc, distance: Math.floor(Math.sqrt(dSq)) };
+                best = { key, location: loc, distance: Math.floor(Math.sqrt(dSq)), bearing: _locBearing(dx, dy) };
             }
         }
         return best;
     },
-    findBestBuyer(itemId) {
+    findBestBuyer(itemId, options = {}) {
+        const includeLockedXerxes = Boolean(options.includeLockedXerxes);
         let best = null;
         for (const key in LOCATIONS_DATA) {
+            if (!includeLockedXerxes && key === "Planet Xerxes" && _isXerxesLocked()) continue;
             const loc = LOCATIONS_DATA[key];
             if (!loc || !Array.isArray(loc.buys)) continue;
             const entry = loc.buys.find(b => (b.id === itemId) || (b === itemId));
@@ -956,9 +1442,11 @@ const LocationUtils = {
         }
         return best;
     },
-    findBestSeller(itemId) {
+    findBestSeller(itemId, options = {}) {
+        const includeLockedXerxes = Boolean(options.includeLockedXerxes);
         let best = null;
         for (const key in LOCATIONS_DATA) {
+            if (!includeLockedXerxes && key === "Planet Xerxes" && _isXerxesLocked()) continue;
             const loc = LOCATIONS_DATA[key];
             if (!loc || !Array.isArray(loc.sells)) continue;
             const entry = loc.sells.find(s => (s.id === itemId) || (s === itemId));
@@ -970,6 +1458,77 @@ const LocationUtils = {
             }
         }
         return best;
+    },
+    findBestTradeRoutes(options = {}) {
+        if (typeof COMMODITIES === 'undefined') return [];
+        const limit = options.limit || 6;
+        const onlyDiscovered = Boolean(options.onlyDiscovered);
+        const includeIllegal = options.includeIllegal !== false;
+
+        const ports = [];
+        for (const key in LOCATIONS_DATA) {
+            const loc = LOCATIONS_DATA[key];
+            if (!loc || loc.isProcedural || loc.isLandmark || !loc.coords) continue;
+            if (key === "Planet Xerxes" && _isXerxesLocked()) continue;
+            if (onlyDiscovered && typeof discoveredLocations !== 'undefined' && discoveredLocations.has) {
+                if (key !== "Starbase Alpha" && !discoveredLocations.has(loc.name || key) && !discoveredLocations.has(key)) {
+                    continue;
+                }
+            }
+            ports.push(loc);
+        }
+
+        const routes = [];
+        for (let i = 0; i < ports.length; i++) {
+            const seller = ports[i];
+            if (!Array.isArray(seller.sells)) continue;
+
+            for (let s = 0; s < seller.sells.length; s++) {
+                const sellEntry = seller.sells[s];
+                const itemId = sellEntry.id || sellEntry;
+                const itemDef = COMMODITIES[itemId];
+                if (!itemDef || itemDef.isTroop || itemDef.isComponent || !itemDef.basePrice) continue;
+                if (!includeIllegal && itemDef.illegal) continue;
+                if (['COLONY_CHARTER', 'STATION_CORE', 'WORMHOLE_STABILIZER', 'WAYFINDER_CORE', 'PREFAB_COLONY_CORE'].includes(itemId)) continue;
+
+                const buyCost = Math.max(1, Math.floor(itemDef.basePrice * (sellEntry.priceMod || 1.0)));
+
+                for (let j = 0; j < ports.length; j++) {
+                    if (i === j) continue;
+                    const buyer = ports[j];
+                    if (!Array.isArray(buyer.buys)) continue;
+                    const buyEntry = buyer.buys.find(b => (b.id === itemId) || (b === itemId));
+                    if (!buyEntry) continue;
+
+                    const buyerAlsoSells = Array.isArray(buyer.sells) && buyer.sells.some(e => (e.id === itemId) || (e === itemId));
+                    const illegalMult = (itemDef.illegal && !buyerAlsoSells) ? 2.5 : 1.0;
+                    const sellRevenue = Math.max(1, Math.floor(itemDef.basePrice * 0.5 * (buyEntry.priceMod || 1.0) * illegalMult));
+                    const profitPerUnit = sellRevenue - buyCost;
+
+                    if (profitPerUnit > 0) {
+                        const dx = buyer.coords.x - seller.coords.x;
+                        const dy = buyer.coords.y - seller.coords.y;
+                        const dist = Math.floor(Math.sqrt(dx * dx + dy * dy));
+                        routes.push({
+                            itemId,
+                            itemName: itemDef.name,
+                            illegal: Boolean(itemDef.illegal),
+                            from: seller.name,
+                            fromCoords: seller.coords,
+                            to: buyer.name,
+                            toCoords: buyer.coords,
+                            buyCost,
+                            sellRevenue,
+                            profitPerUnit,
+                            distance: dist
+                        });
+                    }
+                }
+            }
+        }
+
+        routes.sort((a, b) => b.profitPerUnit - a.profitPerUnit);
+        return routes.slice(0, limit);
     },
     registerLocation(key, def) {
         if (!key || !def || !def.coords) return false;
@@ -1001,10 +1560,163 @@ const LocationUtils = {
 window.LocationUtils = LocationUtils;
 
 // ==========================================
+// --- COMMANDER DATAPAD: STAR ATLAS TAB ---
+// ==========================================
+
+window._atlasFilterMode = window._atlasFilterMode || 'ALL';
+
+window.setStarAtlasFilter = function(mode) {
+    window._atlasFilterMode = mode || 'ALL';
+    if (typeof soundManager !== 'undefined' && typeof soundManager.playUIHover === 'function') {
+        soundManager.playUIHover();
+    }
+    if (typeof window.displayCommanderProfile === 'function') {
+        window.displayCommanderProfile('ATLAS');
+    }
+};
+
+function _renderStarAtlasTabHtml() {
+    const activeFilter = window._atlasFilterMode || 'ALL';
+    const px = typeof playerX !== 'undefined' ? playerX : 0;
+    const py = typeof playerY !== 'undefined' ? playerY : 0;
+
+    const staticEntries = Object.keys(LOCATIONS_DATA)
+        .filter(k => LOCATIONS_DATA[k] && !LOCATIONS_DATA[k].isProcedural && LOCATIONS_DATA[k].coords)
+        .map(k => ({ key: k, loc: LOCATIONS_DATA[k] }));
+
+    const isKnown = (entry) => {
+        if (entry.key === "Starbase Alpha") return true;
+        if (typeof discoveredLocations === 'undefined' || !discoveredLocations.has) return false;
+        return discoveredLocations.has(entry.loc.name) || discoveredLocations.has(entry.key);
+    };
+
+    const totalCount = staticEntries.length;
+    const discoveredCount = staticEntries.filter(isKnown).length;
+
+    const filters = ['ALL', 'CONCORD', 'ECLIPSE', 'KTHARR', 'INDEPENDENT', 'LANDMARKS', 'ROUTES'];
+    const filterBarHtml = `
+        <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:12px;">
+            ${filters.map(f => {
+                const selected = activeFilter === f;
+                return `<button type="button" onclick="setStarAtlasFilter('${f}')" style="padding:4px 7px; font-size:9px; font-family:var(--title-font); cursor:pointer; border-radius:3px; font-weight:bold; background:${selected ? 'rgba(0,224,224,0.16)' : 'rgba(0,0,0,0.35)'}; border:1px solid ${selected ? 'var(--accent-color)' : '#444'}; color:${selected ? 'var(--accent-color)' : 'var(--item-desc-color)'};">${f}</button>`;
+            }).join('')}
+        </div>
+    `;
+
+    let bodyHtml = '';
+
+    if (activeFilter === 'ROUTES') {
+        const routes = LocationUtils.findBestTradeRoutes({ limit: 8, onlyDiscovered: true, includeIllegal: true });
+        if (routes.length === 0) {
+            bodyHtml = `<div style="padding:20px; text-align:center; color:var(--item-desc-color); font-size:12px; font-style:italic;">Discover more trade ports across the galaxy to triangulate profitable trade lanes.</div>`;
+        } else {
+            bodyHtml = `
+                <div style="font-size:10px; color:var(--item-desc-color); margin-bottom:8px;">
+                    Estimated margins across charted ports (before perks, crew bonuses, or active sector booms):
+                </div>
+                ${routes.map(r => `
+                    <div style="background:rgba(0,0,0,0.35); border-left:3px solid ${r.illegal ? 'var(--danger)' : 'var(--gold-text)'}; padding:8px 10px; margin-bottom:8px; border-radius:0 4px 4px 0; font-size:11px;">
+                        <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                            <span style="color:var(--item-name-color);">${_locEscapeHtml(r.itemName)} ${r.illegal ? '<span style="color:var(--danger); font-size:9px;">[ILLEGAL]</span>' : ''}</span>
+                            <span style="color:var(--success);">+${typeof formatNumber === 'function' ? formatNumber(r.profitPerUnit) : r.profitPerUnit}c / u</span>
+                        </div>
+                        <div style="color:var(--text-color); margin-top:4px;">
+                            Buy: <b>${_locEscapeHtml(r.from)}</b> [${r.fromCoords.x}, ${-r.fromCoords.y}] (${r.buyCost}c) → Sell: <b>${_locEscapeHtml(r.to)}</b> [${r.toCoords.x}, ${-r.toCoords.y}] (${r.sellRevenue}c)
+                        </div>
+                        <div style="color:var(--item-desc-color); font-size:10px; margin-top:2px;">Lane Distance: ${r.distance}u</div>
+                    </div>
+                `).join('')}
+            `;
+        }
+    } else {
+        let filtered = staticEntries.filter(entry => {
+            if (activeFilter === 'LANDMARKS') return Boolean(entry.loc.isLandmark);
+            if (activeFilter === 'CONCORD' || activeFilter === 'ECLIPSE' || activeFilter === 'KTHARR' || activeFilter === 'INDEPENDENT') {
+                return !entry.loc.isLandmark && entry.loc.faction === activeFilter;
+            }
+            return true;
+        });
+
+        // Sort discovered first, then nearest distance
+        filtered.sort((a, b) => {
+            const ka = isKnown(a) ? 1 : 0;
+            const kb = isKnown(b) ? 1 : 0;
+            if (ka !== kb) return kb - ka;
+            const da = Math.pow(a.loc.coords.x - px, 2) + Math.pow(a.loc.coords.y - py, 2);
+            const db = Math.pow(b.loc.coords.x - px, 2) + Math.pow(b.loc.coords.y - py, 2);
+            return da - db;
+        });
+
+        bodyHtml = filtered.map(entry => {
+            const loc = entry.loc;
+            const known = isKnown(entry);
+            const nav = LocationUtils.getDistanceAndBearing(px, py, loc.coords.x, loc.coords.y);
+
+            let facColor = 'var(--accent-color)';
+            if (loc.isLandmark) facColor = loc.customColor || '#DDA0DD';
+            else if (loc.faction === 'CONCORD') facColor = '#00AAFF';
+            else if (loc.faction === 'ECLIPSE' || loc.isBlackMarket) facColor = '#9933FF';
+            else if (loc.faction === 'KTHARR') facColor = '#4CAF50';
+            else facColor = 'var(--warning)';
+
+            if (!known) {
+                return `
+                    <div style="background:rgba(0,0,0,0.22); border-left:3px solid #444; padding:8px 10px; margin-bottom:7px; border-radius:0 4px 4px 0; opacity:0.65; font-size:11px;">
+                        <div style="display:flex; justify-content:space-between; color:var(--item-desc-color); font-weight:bold;">
+                            <span>🔒 UNCHARTED ${loc.isLandmark ? 'DEEP-SPACE LANDMARK' : 'PORT'}</span>
+                            <span>${_locEscapeHtml(loc.region || 'Frontier')}</span>
+                        </div>
+                        <div style="font-size:10px; color:#666; margin-top:3px;">
+                            Bearing: ~${nav.bearing} · Explore or eavesdrop on Cantina rumors to chart coordinates.
+                        </div>
+                    </div>
+                `;
+            }
+
+            let refineryLine = '';
+            if (loc.factory && typeof COMMODITIES !== 'undefined') {
+                const inName = COMMODITIES[loc.factory.consumes] ? COMMODITIES[loc.factory.consumes].name : loc.factory.consumes;
+                const outName = COMMODITIES[loc.factory.produces] ? COMMODITIES[loc.factory.produces].name : loc.factory.produces;
+                refineryLine = `<div style="font-size:10px; color:var(--success); margin-top:3px;">⚙️ Refinery: ${inName} → ${outName}</div>`;
+            }
+
+            return `
+                <div style="background:rgba(0,0,0,0.35); border-left:3px solid ${facColor}; padding:8px 10px; margin-bottom:7px; border-radius:0 4px 4px 0; font-size:11px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                        <span style="color:${facColor}; font-weight:bold; font-size:12px;">${_locEscapeHtml(loc.name)}</span>
+                        <span style="color:var(--accent-color); font-weight:bold;">[${loc.coords.x}, ${-loc.coords.y}] · ${nav.distance}u ${nav.bearing}</span>
+                    </div>
+                    <div style="color:var(--item-desc-color); font-size:10px; margin-top:3px;">
+                        ${_locEscapeHtml(loc.region || 'Deep Space')} · Security: <b>${_locEscapeHtml(loc.securityLevel || 'UNKNOWN')}</b>${loc.isBlackMarket ? ' · <span style="color:#DDA0DD;">SHADOW NODE</span>' : ''}
+                    </div>
+                    ${loc.portSpecialty ? `<div style="color:var(--text-color); font-size:10px; margin-top:3px;">${_locEscapeHtml(loc.portSpecialty)}</div>` : ''}
+                    ${refineryLine}
+                </div>
+            `;
+        }).join('');
+    }
+
+    return `
+        <div style="padding:4px 0;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:1px solid #333; padding-bottom:10px; margin-bottom:12px;">
+                <h3 style="color:var(--accent-color); margin:0;">GALACTIC STAR ATLAS</h3>
+                <span style="font-size:10px; color:var(--gold-text); letter-spacing:1px;">${discoveredCount} / ${totalCount} CHARTED</span>
+            </div>
+            ${filterBarHtml}
+            <div style="max-height:330px; overflow-y:auto; padding-right:4px;">
+                ${bodyHtml}
+            </div>
+        </div>
+    `;
+}
+
+// ==========================================
 // --- SELF-CONTAINED LOCATION PATCHES ---
 // ==========================================
 
 (function initLocationFixes() {
+    let _lastWelcomePortKey = "";
+
     // 1. Ensure missing commodities referenced by colonies, locations, or dev tools exist with clean V8 shapes
     function ensureLocationCommodities() {
         if (typeof COMMODITIES === 'undefined') return;
@@ -1035,7 +1747,7 @@ window.LocationUtils = LocationUtils;
 
     ensureLocationCommodities();
 
-    // 2. Register Codex Lore Entries for All Static Locations (Zero duplicate aliases!)
+    // 2. Register Codex Lore Entries for All Static Locations (Zero duplicate aliases)
     function syncLocationLoreEntries() {
         if (typeof LORE_DATABASE === 'undefined') return;
 
@@ -1065,6 +1777,17 @@ window.LocationUtils = LocationUtils;
         }
         if (typeof window.cachedTotalLore !== 'undefined') {
             window.cachedTotalLore = null;
+        }
+
+        // Register Star Atlas tab cleanly into Commander Datapad via ui.js API
+        if (typeof window.UI !== 'undefined' && typeof window.UI.registerProfileTab === 'function' && !window._locAtlasTabRegistered) {
+            window.UI.registerProfileTab({
+                id: 'ATLAS',
+                name: 'Star Atlas',
+                icon: '🗺️',
+                render: _renderStarAtlasTabHtml
+            });
+            window._locAtlasTabRegistered = true;
         }
 
         // 3. O(1) Chunk-Indexed Persistence of worldStateDeltas on Static Locations
@@ -1130,7 +1853,7 @@ window.LocationUtils = LocationUtils;
             window._locCustomsPatched = true;
         }
 
-        // 6. Prevent Planet Xerxes Enter-Key Bypass & Inject Mission Turn-In Buttons at Stations
+        // 6. Prevent Planet Xerxes Enter-Key Bypass, Enrich Port Telemetry & Inject Mission Turn-In Buttons
         if (typeof window.openStationView === 'function' && !window._locStationPatched) {
             const origOpenStation = window.openStationView;
             window.openStationView = function() {
@@ -1145,7 +1868,39 @@ window.LocationUtils = LocationUtils;
 
                 origOpenStation.apply(this, arguments);
 
-                if (!location || typeof playerActiveMission === 'undefined' || !playerActiveMission) return;
+                if (!location) return;
+
+                // Append structured Port Security & Refinery Telemetry cleanly into #stationDescText
+                const staticDef = LocationUtils.getLocation(location.name);
+                const descEl = document.getElementById('stationDescText');
+                if (descEl && staticDef) {
+                    const metaLines = [];
+                    if (staticDef.region || staticDef.securityLevel) {
+                        metaLines.push(`[${staticDef.region || 'Frontier'} · SEC: ${staticDef.securityLevel || 'UNKNOWN'}]`);
+                    }
+                    if (staticDef.portSpecialty) {
+                        metaLines.push(`Specialty: ${staticDef.portSpecialty}`);
+                    }
+                    if (staticDef.factory && typeof COMMODITIES !== 'undefined') {
+                        const inN = COMMODITIES[staticDef.factory.consumes] ? COMMODITIES[staticDef.factory.consumes].name : staticDef.factory.consumes;
+                        const outN = COMMODITIES[staticDef.factory.produces] ? COMMODITIES[staticDef.factory.produces].name : staticDef.factory.produces;
+                        metaLines.push(`Refinery: ${inN} → ${outN}`);
+                    }
+                    if (metaLines.length > 0) {
+                        descEl.textContent = `${descEl.textContent}\n\n${metaLines.join('\n')}`;
+                    }
+                }
+
+                // Log station welcome hail once per docking visit
+                if (staticDef && staticDef.welcomeHail && typeof logMessage === 'function') {
+                    const visitKey = `${staticDef.name}_${Math.floor(typeof currentGameDate !== 'undefined' ? currentGameDate : 0)}`;
+                    if (_lastWelcomePortKey !== visitKey) {
+                        _lastWelcomePortKey = visitKey;
+                        logMessage(`<span style="color:var(--accent-color)">[ PORT COMMS ]</span> <i>"${_locEscapeHtml(staticDef.welcomeHail)}"</i>`);
+                    }
+                }
+
+                if (typeof playerActiveMission === 'undefined' || !playerActiveMission) return;
 
                 const menuGrid = document.getElementById('dynamicStationMenu');
                 if (!menuGrid) return;
@@ -1169,7 +1924,7 @@ window.LocationUtils = LocationUtils;
                         <div class="btn-icon">📦</div>
                         <div>
                             <div class="btn-label" style="color:${borderCol};">Complete Contract Delivery</div>
-                            <span class="btn-sub" style="color:var(--text-color);">Deliver ${obj.count}x ${itemName} (Hold: ${haveQty}/${obj.count})</span>
+                            <span class="btn-sub" style="color:var(--text-color);">Deliver ${obj.count}x ${_locEscapeHtml(itemName)} (Hold: ${haveQty}/${obj.count})</span>
                         </div>
                     `;
                     delivBtn.onclick = () => {
@@ -1196,7 +1951,7 @@ window.LocationUtils = LocationUtils;
                         <div class="btn-icon">💎</div>
                         <div>
                             <div class="btn-label" style="color:${borderCol};">Turn In Contract Resources</div>
-                            <span class="btn-sub" style="color:var(--text-color);">Deliver ${obj.count}x ${itemName} (Hold: ${haveQty}/${obj.count})</span>
+                            <span class="btn-sub" style="color:var(--text-color);">Deliver ${obj.count}x ${_locEscapeHtml(itemName)} (Hold: ${haveQty}/${obj.count})</span>
                         </div>
                     `;
                     acqBtn.onclick = () => {
@@ -1221,7 +1976,7 @@ window.LocationUtils = LocationUtils;
                         <div class="btn-icon">🏆</div>
                         <div>
                             <div class="btn-label" style="color:var(--success);">Claim Contract Reward (${formatNumber(playerActiveMission.rewards.credits)}c)</div>
-                            <span class="btn-sub" style="color:var(--text-color);">${playerActiveMission.title}</span>
+                            <span class="btn-sub" style="color:var(--text-color);">${_locEscapeHtml(playerActiveMission.title)}</span>
                         </div>
                     `;
                     rewardBtn.onclick = () => {
@@ -1246,20 +2001,23 @@ window.LocationUtils = LocationUtils;
                 const maxDist = (typeof playerLevel !== 'undefined' && playerLevel < 3) ? 300 : Infinity;
                 const maxDistSq = maxDist === Infinity ? Infinity : maxDist * maxDist;
 
-                let candidates = allKeys.filter(key => {
-                    if (key === currentStationName || key === "Planet Xerxes") return false;
+                const isValidDest = (key) => {
                     const loc = LOCATIONS_DATA[key];
-                    if (!loc || !loc.coords || !loc.buys || loc.buys.length === 0) return false;
+                    if (!loc || !loc.coords || loc.isLandmark) return false;
+                    if (key === currentStationName || loc.name === currentStationName || key === "Planet Xerxes") return false;
+                    return Array.isArray(loc.buys) && loc.buys.length > 0;
+                };
+
+                let candidates = allKeys.filter(key => {
+                    if (!isValidDest(key)) return false;
+                    const loc = LOCATIONS_DATA[key];
                     const dx = loc.coords.x - playerX;
                     const dy = loc.coords.y - playerY;
                     return (dx * dx + dy * dy) <= maxDistSq;
                 });
 
                 if (candidates.length === 0) {
-                    candidates = allKeys.filter(key => {
-                        const loc = LOCATIONS_DATA[key];
-                        return key !== currentStationName && key !== "Planet Xerxes" && loc && loc.coords && loc.buys && loc.buys.length > 0;
-                    });
+                    candidates = allKeys.filter(isValidDest);
                 }
                 if (candidates.length === 0) return null;
 
@@ -1269,7 +2027,7 @@ window.LocationUtils = LocationUtils;
                 const secY = typeof SECTOR_SIZE !== 'undefined' ? Math.floor(destData.coords.y / SECTOR_SIZE) : 0;
 
                 return {
-                    name: destKey,
+                    name: destData.name || destKey,
                     key: `${secX},${secY}`,
                     coords: destData.coords
                 };
