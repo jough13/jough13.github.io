@@ -4320,16 +4320,18 @@ function tipFuelRats() {
     if (playerCredits >= 100) {
         playerCredits -= 100;
         
-        // Future proofing: Increase faction rep here later!
-        // playerFactionStanding["FUEL_RATS"] = (playerFactionStanding["FUEL_RATS"] || 0) + 1;
+        // Activate the reputation gain!
+        if (typeof playerFactionStanding !== 'undefined') {
+            playerFactionStanding["FUEL_RATS"] = (playerFactionStanding["FUEL_RATS"] || 0) + 1;
+        }
         
         if (typeof soundManager !== 'undefined') soundManager.playBuy();
-        showToast("TIPPED FUEL RATS", "success");
+        showToast("TIPPED FUEL RATS (+1 Rep)", "success");
         
         const detailEl = document.getElementById('genericDetailContent');
         detailEl.innerHTML += `
             <div style="margin: 15px; padding: 10px; background: rgba(0, 255, 0, 0.1); border-left: 3px solid var(--success); color: var(--success); font-size: 13px; animation: fadeIn 0.5s;">
-                > Tip transferred. "Thanks for the creds, Commander. Fly safe out there."
+                > Tip transferred. "Thanks for the creds, Commander. Fly safe out there." (+1 Rep)
             </div>
         `;
         
@@ -7037,6 +7039,9 @@ function resolvePhenomenon(type) {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
     let resultHtml = "";
+    
+    // Calculate total available space
+    const spaceLeft = (typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50) - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0);
 
     // Original 3 (Pulsar, Magnetar, Singularity)
     if (type === 'PULSAR') {
@@ -7051,8 +7056,7 @@ function resolvePhenomenon(type) {
         }
         playerXP += 100;
         
-        // 👇 BUG FIX: Check cargo space
-        if (currentCargoLoad + 1 <= PLAYER_CARGO_CAPACITY) {
+        if (spaceLeft >= 1) {
             playerCargo['DATA_PULSAR'] = (playerCargo['DATA_PULSAR'] || 0) + 1;
             resultHtml += `<span style="color:var(--success)">DATA ACQUIRED.</span> Gained <span style="color:var(--gold-text)">1x Pulsar Timing Data</span> and <span style="color:var(--success)">+100 XP</span>!`;
         } else {
@@ -7061,44 +7065,73 @@ function resolvePhenomenon(type) {
     }
     else if (type === 'MAGNETAR') {
         const dmg = 15 + Math.floor(Math.random() * 20);
-        // FIX: Removed playerHull -= dmg;
         resultHtml += `<span style="color:var(--danger)">STARQUAKE!</span> Hull takes <span style="color:var(--danger)">${dmg} damage</span>.<br><br>`;
         if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Magnetic Shear" });
-        playerCargo['DATA_MAGNETAR'] = (playerCargo['DATA_MAGNETAR'] || 0) + 1;
         playerXP += 150;
-        resultHtml += `<span style="color:var(--success)">HARMONICS RECORDED.</span> Gained <span style="color:var(--gold-text)">1x Magnetar Harmonics</span> and <span style="color:var(--success)">+150 XP</span>!`;
+        
+        if (spaceLeft >= 1) {
+            playerCargo['DATA_MAGNETAR'] = (playerCargo['DATA_MAGNETAR'] || 0) + 1;
+            resultHtml += `<span style="color:var(--success)">HARMONICS RECORDED.</span> Gained <span style="color:var(--gold-text)">1x Magnetar Harmonics</span> and <span style="color:var(--success)">+150 XP</span>!`;
+        } else {
+            resultHtml += `<span style="color:var(--warning)">HARMONICS RECORDED.</span> Cargo hold full! Data discarded. Gained <span style="color:var(--success)">+150 XP</span>!`;
+        }
     }
     else if (type === 'SINGULARITY') {
         if (playerFuel < 50) {
-            // FIX: Removed playerHull -= 50;
             resultHtml += `<span style="color:var(--danger)">INSUFFICIENT THRUST!</span> Took <span style="color:var(--danger)">50 damage</span>.<br><br>`;
             if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 50, reason: "Gravitational Shear" });
         } else {
             playerFuel -= 50;
-            playerCargo['DATA_SINGULARITY'] = (playerCargo['DATA_SINGULARITY'] || 0) + 1;
             playerXP += 300;
-            resultHtml += `<span style="color:var(--success)">TELEMETRY SECURED.</span> Gained <span style="color:#FF33FF">1x Singularity Telemetry</span> and <span style="color:var(--success)">+300 XP</span>!`;
+            if (spaceLeft >= 1) {
+                playerCargo['DATA_SINGULARITY'] = (playerCargo['DATA_SINGULARITY'] || 0) + 1;
+                resultHtml += `<span style="color:var(--success)">TELEMETRY SECURED.</span> Gained <span style="color:#FF33FF">1x Singularity Telemetry</span> and <span style="color:var(--success)">+300 XP</span>!`;
+            } else {
+                resultHtml += `<span style="color:var(--warning)">TELEMETRY SECURED.</span> Cargo hold full! Data discarded. Gained <span style="color:var(--success)">+300 XP</span>!`;
+            }
         }
     }
     // NEW 3 (Quasar, Supernova, White Dwarf)
     else if (type === 'QUASAR') {
         if (Math.random() < 0.5) {
-            // FIX: Removed playerHull -= 40;
             resultHtml += `<span style="color:var(--danger)">MISALIGNMENT!</span> The jet scorches your hull for <span style="color:var(--danger)">40 damage</span>.<br><br>`;
             if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 40, reason: "Relativistic Jet" });
         } else {
-            playerCargo['DATA_QUASAR'] = (playerCargo['DATA_QUASAR'] || 0) + 1;
             playerXP += 400;
-            resultHtml += `<span style="color:var(--success)">PERFECT ALIGNMENT.</span> Gained <span style="color:var(--gold-text)">1x Quasar Spectrography</span> and <span style="color:var(--success)">+400 XP</span>!`;
+            if (spaceLeft >= 1) {
+                playerCargo['DATA_QUASAR'] = (playerCargo['DATA_QUASAR'] || 0) + 1;
+                resultHtml += `<span style="color:var(--success)">PERFECT ALIGNMENT.</span> Gained <span style="color:var(--gold-text)">1x Quasar Spectrography</span> and <span style="color:var(--success)">+400 XP</span>!`;
+            } else {
+                resultHtml += `<span style="color:var(--warning)">PERFECT ALIGNMENT.</span> Cargo hold full! Data discarded. Gained <span style="color:var(--success)">+400 XP</span>!`;
+            }
         }
     }
     else if (type === 'SUPERNOVA') {
-        // FIX: Removed playerHull -= 20;
-        playerCargo['DATA_SUPERNOVA'] = (playerCargo['DATA_SUPERNOVA'] || 0) + 1;
-        playerCargo['RARE_METALS'] = (playerCargo['RARE_METALS'] || 0) + 3;
         playerXP += 200;
         if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 20, reason: "Thermal Overload" });
-        resultHtml += `<span style="color:var(--warning)">THERMAL OVERLOAD.</span> You scoop the plasma but take <span style="color:var(--danger)">20 damage</span>.<br>Gained <span style="color:var(--gold-text)">1x Supernova Data</span> and <span style="color:var(--accent-color)">3x Rare Metals</span>!`;
+        resultHtml += `<span style="color:var(--warning)">THERMAL OVERLOAD.</span> You scoop the plasma but take <span style="color:var(--danger)">20 damage</span>.<br>`;
+        
+        let obtainedSupernova = false;
+        let obtainedMetals = 0;
+        let tempSpace = spaceLeft;
+
+        if (tempSpace >= 1) {
+            playerCargo['DATA_SUPERNOVA'] = (playerCargo['DATA_SUPERNOVA'] || 0) + 1;
+            obtainedSupernova = true;
+            tempSpace--;
+        }
+        if (tempSpace >= 1) {
+            obtainedMetals = Math.min(3, tempSpace);
+            playerCargo['RARE_METALS'] = (playerCargo['RARE_METALS'] || 0) + obtainedMetals;
+        }
+
+        if (obtainedSupernova && obtainedMetals === 3) {
+            resultHtml += `Gained <span style="color:var(--gold-text)">1x Supernova Data</span> and <span style="color:var(--accent-color)">3x Rare Metals</span>!`;
+        } else if (obtainedSupernova || obtainedMetals > 0) {
+            resultHtml += `Gained ${obtainedSupernova ? '<span style="color:var(--gold-text)">1x Supernova Data</span>' : ''}${obtainedSupernova && obtainedMetals > 0 ? ' and ' : ''}${obtainedMetals > 0 ? `<span style="color:var(--accent-color)">${obtainedMetals}x Rare Metals</span>` : ''}! (Hold full, lost remainder).`;
+        } else {
+            resultHtml += `Cargo hold full! Salvage discarded.`;
+        }
     }
     else if (type === 'WHITE_DWARF') {
         playerXP += 250;
