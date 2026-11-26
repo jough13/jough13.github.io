@@ -4463,6 +4463,16 @@ function handleCombatInput(key) {
     // --- 1. DOCKED ACTIONS ---
         const currentLocation = getCombinedLocationData(playerX, playerY);
         if (currentLocation) {
+            const isDockable = (currentLocation.isMajorHub || currentLocation.char === OUTPOST_CHAR_VAL || currentLocation.isBlackMarket);
+            if (isDockable) {
+                if (key === 'b') { if (typeof openTradeModal === 'function') openTradeModal('buy'); return true; }
+                if (key === 's') { if (typeof openTradeModal === 'function') openTradeModal('sell'); return true; }
+                if (key === 'r') { if (typeof repairShip === 'function') { repairShip(); openStationView(); } return true; }
+                if (key === 'k') { if (typeof displayMissionBoard === 'function') displayMissionBoard(); return true; }
+                if (key === 'y' && currentLocation.isMajorHub) { if (typeof displayShipyard === 'function') displayShipyard(); return true; }
+                if (key === 'v') { if (typeof visitCantina === 'function') visitCantina(); return true; }
+            }
+
             switch (key) {
                 // Generic Interact Key
                 case 'e': 
@@ -4890,6 +4900,17 @@ document.addEventListener('keydown', function(event) {
             const cargo = document.getElementById('cargoOverlay');
             if (cargo && cargo.style.display === 'flex') { if (typeof closeCargoModal === 'function') closeCargoModal(); }
         }
+
+        const station = document.getElementById('stationOverlay');
+        if (station && station.style.display === 'flex') {
+            if (key === 'b') { if (typeof openTradeModal === 'function') openTradeModal('buy'); }
+            else if (key === 's') { if (typeof openTradeModal === 'function') openTradeModal('sell'); }
+            else if (key === 'r') { if (typeof repairShip === 'function') { repairShip(); openStationView(); } }
+            else if (key === 'k') { if (typeof displayMissionBoard === 'function') displayMissionBoard(); }
+            else if (key === 'y') { if (typeof displayShipyard === 'function') displayShipyard(); }
+            else if (key === 'v') { if (typeof visitCantina === 'function') visitCantina(); }
+        }
+
         event.preventDefault(); // Stop standard browser behaviors
         return; // Halt all game input!
     }
@@ -5838,14 +5859,14 @@ function checkSaveStateAndRenderTitle(forceMenu = false) {
         console.log("Auto-login enabled. Loading most recent commander...");
         try {
             initializeGame();
-            loadGameData(allSaves[0].raw); // Load the newest one
+            loadGameData(allSaves[0].raw); 
             if (titleOverlay) {
                 titleOverlay.style.display = 'none';
                 titleOverlay.style.opacity = '0';
             }
             return; 
         } catch (e) {
-            console.error("Auto-login failed. Disabling.", e);
+            console.warn("Auto-login failed. Disabling.", e);
             localStorage.setItem('wayfinderAutoLogin', 'false');
         }
     }
