@@ -1401,8 +1401,7 @@ function landOnPlanet(index) {
 function returnToOrbit() {
      logMessage("Leaving planetary surface. Returning to orbit.");
      
-     // If it's a standalone rogue planet, return to deep space!
-     if (currentSystemData && currentSystemData.name.includes("Rogue Planet")) {
+     if (currentSystemData && (currentSystemData.isStandalone || currentSystemData.name.includes("Rogue Planet"))) {
          changeGameState(GAME_STATES.GALACTIC_MAP);
          handleInteraction();
      } else {
@@ -2401,6 +2400,9 @@ function renderGalacticMap() {
                         ctx.shadowColor = starColor;
                         ctx.fillText(tileChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
                         ctx.restore(); // Instantly wipe the shadow state clean
+
+                        ctx.globalAlpha = 1.0;
+
                         continue; // Skip the standard text rendering below since we just drew it!
                     } 
                     break;
@@ -5426,11 +5428,11 @@ function performSave(saveType) {
                 localStorage.setItem(slotPrefix + currentCampaignId, JSON.stringify(saveFile));
                 logMessage("<span style='color:var(--success)'>Emergency purge successful. Game saved.</span>");
             } catch (e) {
-                console.error("Emergency save failed:", e);
+                console.warn("Emergency save failed:", e);
                 logMessage("<span style='color:var(--danger)'>CRITICAL ERROR: Save failed. Storage completely full.</span>");
             }
         } else {
-            console.error("Save failed:", error);
+            console.warn("Save failed:", error);
             logMessage("<span style='color:var(--danger)'>Save Failed: Unknown Error</span>");
         }
     }
@@ -5763,8 +5765,8 @@ function loadGameData(jsonString) {
         if (typeof autoSaveInterval !== 'undefined' && autoSaveInterval) clearInterval(autoSaveInterval);
         window.autoSaveInterval = setInterval(autoSaveGame, typeof AUTOSAVE_DELAY !== 'undefined' ? AUTOSAVE_DELAY : 60000);
 
-    } catch (error) {
-        console.error("Load failed:", error);
+     } catch (error) {
+        console.warn("Load failed:", error);
         logMessage("Error loading save file.");
     }
 }
