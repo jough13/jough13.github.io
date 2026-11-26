@@ -9,14 +9,21 @@ html {
     /* --- CORE SURFACE & TEXT TOKENS --- */
     --bg-color: #050510;
     --panel-bg: #070714;
+    --header-bg: rgba(0, 20, 24, 0.94);
+    --station-bg: #080815;
+    --btn-bg: #151526;
+    --btn-hover-bg: #23233c;
+    --modal-backdrop: rgba(0, 0, 0, 0.85);
     --surface-1: rgba(0, 0, 0, 0.35);
     --surface-2: rgba(0, 0, 0, 0.55);
     --surface-hover: rgba(255, 255, 255, 0.06);
     --border-color: #2a2a45;
+    --scrollbar-thumb: rgba(0, 224, 224, 0.28);
 
     /* --- ACCENT & STATUS TOKENS --- */
     --accent-color: #00E0E0;
     --accent-glow: rgba(0, 224, 224, 0.25);
+    --accent-soft: rgba(0, 224, 224, 0.12);
     --text-color: #a0a0c0;
     --success: #00AAAA;
     --danger: #FF4444;
@@ -25,7 +32,7 @@ html {
     --item-desc-color: #888888;
     --gold-text: #FFD700;
 
-    /* --- FACTION PALETTE TOKENS (Expandability) --- */
+    /* --- FACTION PALETTE TOKENS --- */
     --concord-color: #00AAFF;
     --eclipse-color: #9933FF;
     --ktharr-color: #4CAF50;
@@ -55,6 +62,11 @@ html {
 
 *, *::before, *::after {
     box-sizing: border-box;
+}
+
+::selection {
+    background: var(--accent-color);
+    color: #000;
 }
 
 /* Explicitly catch the XP and Cargo bars if they use standard classes */
@@ -90,7 +102,7 @@ textarea:focus-visible {
 input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.14);
     height: 5px;
     border-radius: 3px;
     cursor: pointer;
@@ -314,18 +326,26 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     justify-content: space-between;
     position: relative;
     align-items: center;
+    gap: 10px;
     padding: 0 15px;
     z-index: var(--z-header);
 }
 
-.hud-group { display: flex; align-items: center; gap: 15px; }
+.hud-group { display: flex; align-items: center; gap: 15px; flex-shrink: 0; }
+.hud-group.center {
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: center;
+    overflow: hidden;
+    gap: 6px;
+}
 
 .hud-stat { display: flex; flex-direction: column; width: 80px; }
 .hud-stat.compact { width: auto; text-align: right; }
 
 .label {
     font-size: 11px;
-    color: #777;
+    color: var(--item-desc-color);
     font-weight: bold;
     letter-spacing: 1px;
 }
@@ -340,8 +360,8 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 .bar-container {
     height: 6px;
-    background: #222;
-    border: 1px solid #444;
+    background: #1b1b26;
+    border: 1px solid var(--border-color);
     width: 100%;
     margin-top: 2px;
     border-radius: 1px;
@@ -356,16 +376,20 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 .bar-fill.fuel { background: var(--warning); }
 
 .sector-title {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: bold;
-    color: #FFF;
-    text-shadow: 0 0 5px var(--accent-color);
+    color: var(--item-name-color);
+    text-shadow: 0 0 6px var(--accent-glow);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .coords {
-    font-size: 14px;
-    color: #888;
-    margin-left: 10px;
+    font-size: 13px;
+    color: var(--item-desc-color);
+    margin-left: 6px;
     font-family: var(--main-font);
+    flex-shrink: 0;
 }
 
 .icon-btn {
@@ -415,7 +439,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     flex-direction: column;
     gap: 5px;
     z-index: var(--z-sysmenu);
-    width: 215px;
+    width: 220px;
     max-height: calc(100vh - 60px);
     overflow-y: auto;
     box-shadow: -5px 8px 25px rgba(0, 0, 0, 0.6);
@@ -439,6 +463,12 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 .system-planet-grid > div {
     position: relative;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.system-planet-grid > div:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px var(--accent-glow);
 }
 
 .sys-header {
@@ -452,8 +482,8 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 .sys-btn {
-    background: #1a1a28;
-    color: #b0b0c8;
+    background: var(--btn-bg);
+    color: var(--text-color);
     border: 1px solid transparent;
     padding: 10px 12px;
     cursor: pointer;
@@ -464,9 +494,9 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     transition: all 0.15s ease;
 }
 .sys-btn:hover:not(:disabled) {
-    background: #282840;
+    background: var(--btn-hover-bg);
     border-color: var(--accent-color);
-    color: #FFF;
+    color: var(--item-name-color);
 }
 .sys-btn:active:not(:disabled) { transform: translateY(1px); }
 
@@ -510,13 +540,13 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 /* Log Panel - Terminal Style */
 .log-panel {
     background: #000;
-    border: 1px solid #333;
+    border: 1px solid var(--border-color);
     padding: 10px;
     font-size: 14px;
     line-height: 1.55;
     font-family: var(--main-font);
     color: var(--accent-color);
-    text-shadow: 0 0 2px rgba(0, 224, 224, 0.35);
+    text-shadow: 0 0 2px var(--accent-glow);
     overflow-y: auto;
     height: 100%;
     opacity: 0.96;
@@ -534,19 +564,21 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 #context-panel {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 6px;
     overflow: hidden;
+    min-height: 0;
 }
 
 .mission-box {
     border: 1px solid var(--border-color);
-    background: rgba(0, 0, 0, 0.25);
+    background: var(--surface-1);
     padding: 5px 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 8px;
     border-radius: 2px;
+    flex-shrink: 0;
 }
 #mission-tracker .value {
     font-size: 13px;
@@ -558,17 +590,20 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 .action-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
+    align-content: flex-start;
+    gap: 6px;
     overflow-y: auto;
+    padding-right: 2px;
+    min-height: 0;
 }
 
 .control-button {
     flex: 1;
     min-width: 120px;
-    background: #1a1a28;
+    background: var(--btn-bg);
     border: 1px solid var(--border-color);
     color: var(--accent-color);
-    padding: 12px;
+    padding: 11px 12px;
     font-size: 13px;
     cursor: pointer;
     font-family: var(--title-font);
@@ -602,13 +637,13 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     padding: 15px;
     font-size: 14px;
     background: #330000;
-    border: 1px solid #FF5555;
-    color: #FF5555;
+    border: 1px solid var(--danger);
+    color: var(--danger);
     cursor: pointer;
     font-family: var(--title-font);
     transition: all 0.15s ease;
 }
-.combat-action-btn:hover:not(:disabled) { background: #FF5555; color: #000; }
+.combat-action-btn:hover:not(:disabled) { background: var(--danger); color: #000; }
 .combat-action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .nexus-char {
@@ -626,12 +661,17 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     position: fixed;
     top: 0; left: 0; bottom: 0; right: 0;
     background:
-        linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.04) 50%),
+        linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.045) 50%),
         linear-gradient(90deg, rgba(255, 0, 0, 0.012), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.012));
     z-index: var(--z-crt);
     background-size: 100% 2px, 3px 100%;
     pointer-events: none;
     contain: strict;
+}
+
+/* Subtle CRT scanline softening in Light Mode so white surfaces stay crisp */
+body.light-mode.crt::before {
+    opacity: 0.35;
 }
 
 /* --- TITLE SCREEN --- */
@@ -643,6 +683,8 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     display: flex;
     justify-content: center;
     align-items: center;
+    padding: 16px;
+    overflow-y: auto;
     transition: opacity 0.45s ease;
 }
 #titleContainer { text-align: center; width: 420px; max-width: 92vw; }
@@ -653,22 +695,23 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     font-size: 48px;
     color: var(--accent-color);
     margin: 0;
-    text-shadow: 0 0 15px var(--accent-color), 0 0 30px rgba(0, 224, 224, 0.4);
+    text-shadow: 0 0 15px var(--accent-color), 0 0 30px var(--accent-glow);
 }
-.subtitle { color: #778; margin-bottom: 24px; letter-spacing: 3px; }
+.subtitle { color: var(--item-desc-color); margin-bottom: 24px; letter-spacing: 3px; }
 .seed-input {
     width: 100%;
     padding: 10px;
     margin: 10px 0;
     background: #000;
-    border: 1px solid #444;
-    color: #FFF;
+    border: 1px solid var(--border-color);
+    color: var(--item-name-color);
     text-align: center;
     border-radius: 3px;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 .seed-input:focus {
     border-color: var(--accent-color);
+    box-shadow: 0 0 8px var(--accent-glow);
 }
 .title-button {
     width: 100%;
@@ -692,7 +735,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 /* --- SCI-FI BUTTONS & PLANET VIEW --- */
 .action-button {
-    background: rgba(0, 20, 20, 0.9);
+    background: var(--header-bg);
     border: 1px solid var(--accent-color);
     color: var(--accent-color);
     padding: 12px 20px;
@@ -705,7 +748,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     width: 100%;
     margin-bottom: 10px;
     border-radius: 3px;
-    box-shadow: 0 0 5px rgba(0, 224, 224, 0.2);
+    box-shadow: 0 0 5px var(--accent-glow);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -729,13 +772,13 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 /* --- TRADE ROW ACTION BUTTONS (.trade-btn in trade.js) --- */
 .trade-btn {
-    background: rgba(0, 20, 25, 0.85);
+    background: var(--header-bg);
     border: 1px solid var(--accent-color);
     color: var(--accent-color);
     font-family: var(--title-font);
     border-radius: 3px;
     transition: all 0.15s ease;
-    box-shadow: 0 0 5px rgba(0, 224, 224, 0.15);
+    box-shadow: 0 0 5px var(--accent-glow);
 }
 .trade-btn.buy {
     border-color: var(--accent-color);
@@ -767,14 +810,14 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 /* Planet View Container */
 .planet-view-content {
-    max-width: 620px;
-    margin: 30px auto;
+    max-width: 640px;
+    margin: 24px auto;
     padding: 28px;
-    background: rgba(11, 11, 24, 0.95);
+    background: var(--panel-bg);
     border: 1px solid var(--border-color);
     border-left: 4px solid var(--accent-color);
     border-radius: 4px;
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.75);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -782,8 +825,8 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 .planet-header {
-    margin-bottom: 24px;
-    border-bottom: 1px solid #333;
+    margin-bottom: 22px;
+    border-bottom: 1px solid var(--border-color);
     padding-bottom: 18px;
     width: 100%;
 }
@@ -793,7 +836,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     width: 128px;
     height: 128px;
     image-rendering: pixelated;
-    border: 2px solid #333;
+    border: 2px solid var(--border-color);
     border-radius: 50%;
     margin-bottom: 15px;
     background: #000;
@@ -802,13 +845,13 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 .planet-title {
     font-size: 24px;
-    color: #FFF;
-    text-shadow: 0 0 10px var(--accent-color);
+    color: var(--item-name-color);
+    text-shadow: 0 0 10px var(--accent-glow);
     margin: 0 0 10px 0;
 }
 
 .planet-desc {
-    color: #aaa;
+    color: var(--text-color);
     font-size: 15px;
     line-height: 1.6;
     max-width: 520px;
@@ -827,13 +870,13 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 .full-width-btn {
     grid-column: span 2;
     margin-top: 8px;
-    border-color: #FFaa00;
-    color: #FFaa00;
+    border-color: var(--warning);
+    color: var(--warning);
 }
 .full-width-btn:hover:not(:disabled) {
-    background: #FFaa00;
-    color: #000;
-    box-shadow: 0 0 15px #FFaa00;
+    background: var(--warning);
+    color: #000 !important;
+    box-shadow: 0 0 15px var(--warning);
 }
 
 /* --- SYSTEM MAP ICONS --- */
@@ -845,11 +888,11 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     margin: 10px auto;
     display: block;
     background-color: #000;
-    border: 1px solid #333;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
 }
 
-/* --- ULTRA-MINIMAL SCROLLBARS (Global Base) --- */
+/* --- ULTRA-MINIMAL SCROLLBARS (Theme-Adaptive) --- */
 ::-webkit-scrollbar {
     width: 5px;
     height: 5px;
@@ -858,7 +901,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-    background: rgba(0, 224, 224, 0.25);
+    background: var(--scrollbar-thumb);
     border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -867,14 +910,14 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 * {
     scrollbar-width: thin;
-    scrollbar-color: #4A4A6A var(--bg-color);
+    scrollbar-color: var(--border-color) var(--bg-color);
 }
 
 /* --- TRADE & GENERIC MODAL STYLES --- */
 #tradeOverlay, #cargoOverlay, #stationOverlay, #genericModalOverlay, #derelictOverlay, #xerxesOverlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.85);
+    background: var(--modal-backdrop);
     z-index: var(--z-modal);
     display: flex;
     justify-content: center;
@@ -890,7 +933,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     max-height: 90vh;
     background: var(--panel-bg);
     border: 1px solid var(--accent-color);
-    box-shadow: 0 0 25px rgba(0, 224, 224, 0.2);
+    box-shadow: 0 0 25px var(--accent-glow);
     display: flex;
     flex-direction: column;
     border-radius: 4px;
@@ -900,13 +943,17 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 /* Ensure #genericModalOverlay has a consistent flex height so child 100% layouts scroll cleanly */
 #genericModalOverlay .trade-window {
-    max-width: 840px;
-    height: 82vh;
-    max-height: 750px;
+    max-width: 860px;
+    height: 84vh;
+    max-height: 760px;
+}
+
+#genericModalContent {
+    min-height: 0;
 }
 
 .trade-header {
-    background: rgba(0, 20, 20, 0.92);
+    background: var(--header-bg);
     padding: 14px 16px;
     border-bottom: 1px solid var(--border-color);
     display: flex;
@@ -914,7 +961,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     align-items: center;
     font-family: var(--title-font);
     font-size: 16px;
-    color: #FFF;
+    color: var(--item-name-color);
     flex-shrink: 0;
 }
 
@@ -928,6 +975,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 /* Left List */
 .trade-list-container {
     width: 45%;
+    min-height: 0;
     border-right: 1px solid var(--border-color);
     overflow-y: auto;
     contain: layout style;
@@ -935,7 +983,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 .trade-item-row {
     padding: 12px;
-    border-bottom: 1px solid #2b2b40;
+    border-bottom: 1px solid var(--border-color);
     cursor: pointer;
     display: flex;
     justify-content: space-between;
@@ -944,15 +992,16 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 .trade-item-row:hover { background: var(--surface-hover); }
 .trade-item-row.selected {
-    background: rgba(0, 224, 224, 0.15);
+    background: var(--accent-soft);
     border-left: 3px solid var(--accent-color);
-    color: #FFF;
+    color: var(--item-name-color);
 }
 
 .trade-panel-right {
     display: flex;
     flex-direction: column;
     width: 55%;
+    min-height: 0;
     padding: 20px;
     height: 100%;
     max-height: 75vh;
@@ -962,7 +1011,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 .trade-panel-right::-webkit-scrollbar { width: 6px; }
-.trade-panel-right::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+.trade-panel-right::-webkit-scrollbar-track { background: var(--surface-1); }
 .trade-panel-right::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 3px; }
 
 #tradeItemName {
@@ -975,8 +1024,8 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 .trade-math-area {
     margin: 10px 0;
     padding: 10px 12px;
-    background: rgba(0, 0, 0, 0.65);
-    border: 1px solid #333;
+    background: var(--surface-2);
+    border: 1px solid var(--border-color);
     border-radius: 4px;
 }
 
@@ -986,7 +1035,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     gap: 8px;
     margin-bottom: 5px;
     font-size: 13px;
-    color: #888;
+    color: var(--item-desc-color);
 }
 
 /* Controls */
@@ -1008,9 +1057,9 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 .qty-btn {
-    background: #222;
-    border: 1px solid #444;
-    color: #FFF;
+    background: var(--btn-bg);
+    border: 1px solid var(--border-color);
+    color: var(--item-name-color);
     width: 30px;
     cursor: pointer;
     font-weight: bold;
@@ -1022,9 +1071,9 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     font-size: 16px;
     text-align: right;
     margin-bottom: 15px;
-    color: #FFF;
+    color: var(--item-name-color);
     font-weight: bold;
-    border-top: 1px solid #444;
+    border-top: 1px solid var(--border-color);
     padding-top: 10px;
 }
 
@@ -1032,7 +1081,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 .trade-btn-group {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     margin-top: auto;
 }
 
@@ -1044,7 +1093,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     margin-bottom: 10px;
     letter-spacing: 2px;
     text-align: left;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--border-color);
     padding-bottom: 5px;
 }
 
@@ -1055,7 +1104,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 .save-slot-card {
-    background: rgba(0, 0, 0, 0.4);
+    background: var(--surface-1);
     border: 1px solid var(--border-color);
     border-radius: 6px;
     padding: 10px;
@@ -1071,7 +1120,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 .save-slot-card:hover {
     border-color: var(--accent-color);
-    background: rgba(0, 224, 224, 0.05);
+    background: var(--accent-soft);
 }
 
 .save-info {
@@ -1083,7 +1132,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 .save-name {
-    color: #FFF;
+    color: var(--item-name-color);
     font-weight: bold;
     font-size: 16px;
     font-family: var(--title-font);
@@ -1098,10 +1147,10 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 .save-type-badge {
     font-size: 10px;
-    background: #333;
+    background: var(--btn-bg);
     padding: 2px 6px;
     border-radius: 4px;
-    color: #AAA;
+    color: var(--text-color);
     margin-left: 8px;
     text-transform: uppercase;
     vertical-align: middle;
@@ -1136,7 +1185,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     margin-bottom: 12px;
     cursor: pointer;
     font-size: 14px;
-    color: #888;
+    color: var(--item-desc-color);
     user-select: none;
 }
 
@@ -1154,13 +1203,13 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     left: 0;
     height: 20px;
     width: 20px;
-    background-color: #111;
-    border: 1px solid #444;
+    background-color: var(--btn-bg);
+    border: 1px solid var(--border-color);
     border-radius: 2px;
 }
 
 .checkbox-container:hover input ~ .checkmark {
-    background-color: #222;
+    background-color: var(--btn-hover-bg);
     border-color: var(--accent-color);
 }
 
@@ -1235,7 +1284,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 .ship-class-label {
-    color: #666;
+    color: var(--item-desc-color);
     font-size: 12px;
     margin-bottom: 15px;
     text-transform: uppercase;
@@ -1246,7 +1295,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     display: flex;
     justify-content: space-between;
     font-size: 11px;
-    color: #888;
+    color: var(--item-desc-color);
     margin-top: 8px;
     margin-bottom: 2px;
 }
@@ -1281,7 +1330,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 .save-card-content:hover {
-    background: rgba(0, 224, 224, 0.1);
+    background: var(--accent-soft);
 }
 
 .save-delete-btn {
@@ -1313,7 +1362,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 #confirmationOverlay {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.85);
+    background: var(--modal-backdrop);
     display: none;
     justify-content: center;
     align-items: center;
@@ -1434,7 +1483,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     border-color: var(--accent-color);
     border-left-color: var(--accent-color);
     color: var(--accent-color);
-    box-shadow: 0 0 10px rgba(0, 224, 224, 0.2);
+    box-shadow: 0 0 10px var(--accent-glow);
 }
 
 .toast.error {
@@ -1456,7 +1505,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 .cantina-header {
-    color: #ffaa00;
+    color: var(--warning);
     font-weight: bold;
 }
 
@@ -1473,10 +1522,15 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     opacity: 0.82;
 }
 
-/* BUG FIX: Automatically hide mobile D-Pad when not on Galactic Map */
+/* Automatically hide mobile D-Pad when not on Galactic Map or while modals are open */
 #main-view:has(#systemView[style*="block"]) #mobileControls,
 #main-view:has(#planetView[style*="block"]) #mobileControls,
-#main-view:has(#combatView[style*="flex"]) #mobileControls {
+#main-view:has(#combatView[style*="flex"]) #mobileControls,
+body:has(#genericModalOverlay[style*="flex"]) #mobileControls,
+body:has(#stationOverlay[style*="flex"]) #mobileControls,
+body:has(#xerxesOverlay[style*="flex"]) #mobileControls,
+body:has(#codexOverlay[style*="flex"]) #mobileControls,
+body:has(#levelUpOverlay[style*="flex"]) #mobileControls {
     display: none !important;
 }
 
@@ -1485,7 +1539,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 .dpad-btn {
     width: 50px;
     height: 50px;
-    background: rgba(0, 20, 20, 0.9);
+    background: var(--header-bg);
     border: 1px solid var(--accent-color);
     color: var(--accent-color);
     border-radius: 8px;
@@ -1496,11 +1550,20 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     cursor: pointer;
     user-select: none;
     touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .dpad-btn:active {
     background: var(--accent-color);
     color: #000;
+}
+
+/* --- TABLET / COMPACT LAPTOP HUD SCALING --- */
+@media (max-width: 1180px) and (min-width: 769px) {
+    .hud-group { gap: 10px; }
+    .hud-stat { width: 66px; }
+    .sector-title { font-size: 14px; letter-spacing: 1px; }
+    .coords { font-size: 12px; }
 }
 
 /* --- UNIFIED MOBILE OPTIMIZATIONS --- */
@@ -1521,7 +1584,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
         flex-grow: 1;
         align-items: center;
         padding: 0;
-        background: #050510;
+        background: var(--bg-color);
     }
 
     #gameCanvas {
@@ -1548,7 +1611,6 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
         padding: 6px;
     }
 
-    /* BUG FIX: Removed !important so script.js & view guards can hide D-Pad cleanly */
     #mobileControls {
         display: flex;
         bottom: 16px;
@@ -1559,13 +1621,13 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
         opacity: 0.82;
     }
 
-    #top-hud { padding: 0 6px; font-size: 10px; }
+    #top-hud { padding: 0 6px; font-size: 10px; gap: 4px; }
     .hud-group { gap: 6px; }
     .hud-stat { width: auto; }
     .label { display: none; }
     .bar-container { width: 35px; }
-    .sector-title { font-size: 12px; }
-    .coords { font-size: 10px; margin-left: 5px; }
+    .sector-title { font-size: 12px; letter-spacing: 0.5px; }
+    .coords { font-size: 10px; margin-left: 4px; }
 
     .trade-window, .confirm-window { width: 96%; max-height: 90dvh; }
     #genericModalOverlay .trade-window { height: 90dvh; max-height: 92dvh; }
@@ -1605,6 +1667,16 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
         padding-right: 10px !important;
         flex: 1 1 50% !important;
         min-height: 0 !important;
+    }
+
+    /* Prevent top-edge clipping when 3 perk cards stack vertically on mobile */
+    #levelUpOverlay {
+        justify-content: flex-start;
+        padding-top: 28px;
+    }
+    .perk-card {
+        width: 100%;
+        max-width: 320px;
     }
 
     /* Mobile Codex Stacking */
@@ -1668,9 +1740,15 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 body.phosphor-mode {
     --bg-color: #020a04;
     --panel-bg: #041208;
+    --header-bg: rgba(4, 24, 10, 0.94);
+    --station-bg: #06180b;
+    --btn-bg: #0c2614;
+    --btn-hover-bg: #154022;
     --border-color: #164824;
+    --scrollbar-thumb: rgba(51, 255, 102, 0.30);
     --accent-color: #33FF66;
     --accent-glow: rgba(51, 255, 102, 0.25);
+    --accent-soft: rgba(51, 255, 102, 0.12);
     --text-color: #88cc99;
     --item-name-color: #ccffdd;
     --item-desc-color: #559966;
@@ -1682,9 +1760,15 @@ body.phosphor-mode {
 body.amber-mode {
     --bg-color: #0a0602;
     --panel-bg: #140c04;
+    --header-bg: rgba(28, 16, 6, 0.94);
+    --station-bg: #180e05;
+    --btn-bg: #261608;
+    --btn-hover-bg: #3b220d;
     --border-color: #4d2f12;
+    --scrollbar-thumb: rgba(255, 176, 0, 0.32);
     --accent-color: #FFB000;
     --accent-glow: rgba(255, 176, 0, 0.25);
+    --accent-soft: rgba(255, 176, 0, 0.12);
     --text-color: #d9a760;
     --item-name-color: #ffe2b3;
     --item-desc-color: #9e7540;
@@ -1700,19 +1784,26 @@ body.amber-mode {
 body.light-mode, .light-mode {
     --bg-color: #f4f4f9;
     --panel-bg: #ffffff;
+    --header-bg: #e8ecef;
+    --station-bg: #f8f9fb;
+    --btn-bg: #f4f6f8;
+    --btn-hover-bg: #e6f4f4;
+    --modal-backdrop: rgba(15, 25, 35, 0.55);
     --surface-1: rgba(0, 0, 0, 0.04);
-    --surface-2: rgba(0, 0, 0, 0.07);
+    --surface-2: rgba(0, 0, 0, 0.06);
     --surface-hover: rgba(0, 119, 119, 0.06);
     --border-color: #cccccc;
+    --scrollbar-thumb: rgba(0, 119, 119, 0.32);
     --text-color: #222233;
     --item-name-color: #000000;
     --item-desc-color: #555566;
     --accent-color: #007777;
     --accent-glow: rgba(0, 119, 119, 0.18);
+    --accent-soft: rgba(0, 119, 119, 0.10);
     --concord-color: #0055aa;
-    --gold-text: #aa7700;
+    --gold-text: #996600;
     --success: #007700;
-    --warning: #cc7700;
+    --warning: #b86600;
     --danger: #cc0000;
 }
 
@@ -1725,30 +1816,26 @@ body.light-mode .panel {
     border-color: #E0E0E0 !important;
 }
 
+body.light-mode #main-view {
+    border: none;
+}
+
 body.light-mode #game-log {
     background-color: #F9F9F9;
     color: #111111;
 }
 
 /* 1. Main Backgrounds & Modals */
-body.light-mode #main-view {
-    background-color: #FFFFFF !important;
-    border: none;
-}
-body.light-mode #titleOverlay,
 body.light-mode #titleScreenOverlay,
 body.light-mode .trade-window,
 body.light-mode .confirm-window,
 body.light-mode #codexOverlay .codex-window {
     background-color: #FFFFFF;
 }
-body.light-mode #tradeOverlay,
-body.light-mode #cargoOverlay,
-body.light-mode #stationOverlay,
-body.light-mode #genericModalOverlay,
-body.light-mode #derelictOverlay,
-body.light-mode #codexOverlay {
-    background: rgba(15, 25, 35, 0.55);
+body.light-mode #titleOverlay {
+    background: linear-gradient(120deg, #FFFFFF 0%, #F0F0F5 50%, #FFFFFF 100%);
+    background-size: 200% 200%;
+    animation: paper-drift 15s ease infinite;
 }
 body.light-mode #systemMenu {
     box-shadow: -5px 8px 20px rgba(0, 0, 0, 0.14);
@@ -1767,16 +1854,14 @@ body.light-mode input[type="range"] {
 /* 2. The Log Panel */
 body.light-mode .log-panel {
     background: #FFFFFF;
-    color: #000000;
-    border-color: #E0E0E0;
+    color: #111111;
+    border-color: #DCDCE4;
     box-shadow: none;
     text-shadow: none;
 }
 
 /* 3. Buttons */
 body.light-mode .action-button,
-body.light-mode .sys-btn,
-body.light-mode .control-button,
 body.light-mode .title-button,
 body.light-mode .trade-btn {
     background: #FFFFFF;
@@ -1792,7 +1877,18 @@ body.light-mode .trade-btn:hover:not(:disabled) {
     color: var(--accent-color) !important;
 }
 
-/* BUG FIX: Preserve crisp white text on red hover for danger buttons in Light Mode */
+body.light-mode .full-width-btn {
+    border-color: var(--warning);
+    color: var(--warning);
+}
+body.light-mode .full-width-btn:hover:not(:disabled) {
+    background: var(--warning) !important;
+    border-color: var(--warning) !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 0 12px rgba(184, 102, 0, 0.25);
+}
+
+/* Preserve crisp white text on red hover for danger buttons in Light Mode */
 body.light-mode .danger-btn {
     border-color: var(--danger);
     color: var(--danger);
@@ -1802,6 +1898,29 @@ body.light-mode .danger-btn:hover:not(:disabled) {
     border-color: var(--danger) !important;
     color: #FFFFFF !important;
     box-shadow: 0 0 12px rgba(204, 0, 0, 0.25);
+}
+
+body.light-mode .sys-btn {
+    background: #F8F8F8;
+    color: #333;
+    border: 1px solid #CCC;
+    box-shadow: 0 2px 0 #EEE;
+}
+body.light-mode .sys-btn:hover:not(:disabled) {
+    background: #FFF;
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+body.light-mode .control-button {
+    background: #F8F8F8;
+    color: var(--accent-color);
+    border: 1px solid #CCC;
+    box-shadow: 0 2px 0 #EEE;
+}
+body.light-mode .control-button:hover:not(:disabled) {
+    background: var(--accent-color);
+    color: #FFF;
 }
 
 body.light-mode .pfp-arrow-btn {
@@ -1873,13 +1992,20 @@ body.light-mode #saveVaultInput::placeholder {
     color: #999;
 }
 
-/* 6. Checkbox & Labels */
+/* 6. Checkbox, Labels & Title Animations */
 body.light-mode .checkbox-container { color: #444; }
 body.light-mode .checkmark { background-color: #FFF; border: 1px solid #999; }
 body.light-mode .subtitle { color: #555; font-weight: bold; }
 body.light-mode .game-title {
-    text-shadow: 0 4px 0 rgba(0, 0, 0, 0.1);
     color: #007777;
+    text-shadow: 0 4px 0 rgba(0, 0, 0, 0.1);
+    animation: ink-pulse 4s ease-in-out infinite;
+}
+body.light-mode #systemBoot {
+    border-right: 3px solid var(--accent-color);
+    padding-right: 5px;
+    display: inline-block;
+    animation: cursor-blink 1s step-end infinite;
 }
 
 /* --- LIGHT MODE: SHARP HEADER TEXT --- */
@@ -1900,20 +2026,15 @@ body.light-mode .sys-title-large {
     text-shadow: none;
 }
 
-/* --- LIGHT MODE: DYNAMIC BACKGROUND & ANIMATIONS --- */
-body.light-mode #titleOverlay {
-    background: linear-gradient(120deg, #FFFFFF 0%, #F0F0F5 50%, #FFFFFF 100%);
-    background-size: 200% 200%;
-    animation: paper-drift 15s ease infinite;
+/* --- LIGHT MODE: SYSTEM MAP PLANET CARDS --- */
+body.light-mode .system-planet-grid > div {
+    background: #F8FAFC !important;
+    border-color: #CCCCCC !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
 }
-body.light-mode .game-title {
-    animation: ink-pulse 4s ease-in-out infinite;
-}
-body.light-mode #systemBoot {
-    border-right: 3px solid var(--accent-color);
-    padding-right: 5px;
-    display: inline-block;
-    animation: cursor-blink 1s step-end infinite;
+body.light-mode .system-planet-grid > div:hover {
+    border-color: var(--accent-color) !important;
+    box-shadow: 0 6px 16px rgba(0, 119, 119, 0.15);
 }
 
 /* --- LIGHT MODE: TOAST NOTIFICATIONS --- */
@@ -1979,7 +2100,7 @@ body.light-mode .trade-header {
     text-shadow: none;
 }
 body.light-mode .trade-math-area {
-    background: #F9F9F9 !important;
+    background: #F7F9FA !important;
     border: 1px solid #DDD !important;
     color: #333;
 }
@@ -2032,25 +2153,6 @@ body.light-mode #confirmMessage {
 body.light-mode .confirm-header {
     background: #CC0000;
     color: #FFFFFF;
-}
-body.light-mode .sys-btn {
-    background: #F8F8F8;
-    color: #333;
-    border: 1px solid #CCC;
-}
-body.light-mode .sys-btn:hover {
-    background: #FFF;
-    border-color: var(--accent-color);
-    color: var(--accent-color);
-}
-body.light-mode .control-button {
-    background: #F8F8F8;
-    color: var(--accent-color);
-    border: 1px solid #CCC;
-}
-body.light-mode .control-button:hover:not(:disabled) {
-    background: var(--accent-color);
-    color: #FFF;
 }
 
 /* --- LIGHT MODE: CODEX --- */
@@ -2129,41 +2231,47 @@ body.light-mode .trade-item-row.selected {
 }
 
 .perk-card {
-    width: 210px;
+    width: 240px;
     padding: 20px;
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
     text-align: center;
     font-family: var(--main-font);
-    background: #111;
-    border: 1px solid #444;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 .perk-card:hover {
-    border-color: #FFD700;
-    background: #1c1c28;
+    border-color: var(--gold-text);
+    background: var(--btn-hover-bg);
     transform: translateY(-5px);
     box-shadow: 0 8px 20px rgba(255, 215, 0, 0.18);
 }
-.perk-icon { font-size: 40px; margin-bottom: 10px; }
+.perk-icon { font-size: 38px; margin-bottom: 10px; }
 .perk-title {
     color: var(--accent-color);
-    margin: 0 0 10px 0;
+    margin: 0 0 8px 0;
     font-family: var(--title-font);
-    font-size: 16px;
+    font-size: 15px;
 }
 .perk-desc {
-    color: #999;
+    color: var(--text-color);
     font-size: 12px;
     line-height: 1.45;
+    margin: 0;
 }
 .perk-category {
-    margin-top: 15px;
+    margin-top: auto;
+    padding-top: 12px;
     font-size: 10px;
-    color: #666;
+    color: var(--gold-text);
     text-transform: uppercase;
     letter-spacing: 1px;
+    font-weight: bold;
 }
 
 /* --- LIGHT MODE: LEVEL UP OVERRIDES --- */
@@ -2188,7 +2296,7 @@ body.light-mode .perk-desc {
     font-weight: 600;
 }
 body.light-mode .perk-category {
-    color: #888;
+    color: var(--gold-text);
 }
 body.light-mode #levelUpOverlay h1 {
     color: var(--accent-color) !important;
@@ -2204,7 +2312,7 @@ body.light-mode #levelUpOverlay p {
     display: flex;
     flex-direction: row;
     height: 500px;
-    background: #050510;
+    background: var(--bg-color);
 }
 
 .station-visual-panel {
@@ -2214,23 +2322,23 @@ body.light-mode #levelUpOverlay p {
     display: flex;
     flex-direction: column;
     align-items: center;
-    background: #080815;
+    background: var(--station-bg);
     overflow-y: auto;
 }
 
 #stationCanvas {
     width: 180px;
     height: 180px;
-    border: 2px solid #333;
+    border: 2px solid var(--border-color);
     border-radius: 8px;
     background: #000;
     margin-bottom: 15px;
     image-rendering: pixelated;
-    box-shadow: 0 0 15px rgba(0, 224, 224, 0.1);
+    box-shadow: 0 0 15px var(--accent-glow);
 }
 
 .station-badge {
-    background: #222;
+    background: var(--btn-bg);
     color: var(--accent-color);
     padding: 5px 10px;
     border-radius: 4px;
@@ -2242,7 +2350,7 @@ body.light-mode #levelUpOverlay p {
 
 .station-desc {
     font-size: 12px;
-    color: #888;
+    color: var(--item-desc-color);
     text-align: center;
     line-height: 1.5;
     font-style: italic;
@@ -2260,9 +2368,9 @@ body.light-mode #levelUpOverlay p {
 }
 
 .station-action-btn {
-    background: #11111e;
-    border: 1px solid #333;
-    border-left: 3px solid #333;
+    background: var(--btn-bg);
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--border-color);
     border-radius: 3px;
     padding: 14px;
     display: flex;
@@ -2274,7 +2382,7 @@ body.light-mode #levelUpOverlay p {
 }
 
 .station-action-btn:hover:not(:disabled) {
-    background: #1a1a2a;
+    background: var(--btn-hover-bg);
     border-color: var(--accent-color);
     transform: translateX(4px);
 }
@@ -2289,14 +2397,14 @@ body.light-mode #levelUpOverlay p {
 .btn-icon { font-size: 24px; flex-shrink: 0; }
 .btn-label {
     font-family: var(--title-font);
-    color: #FFF;
+    color: var(--item-name-color);
     font-size: 13px;
 }
 .btn-sub {
     display: block;
     font-family: var(--main-font);
     font-size: 10px;
-    color: #777;
+    color: var(--item-desc-color);
     margin-top: 3px;
 }
 
@@ -2305,9 +2413,11 @@ body.light-mode #levelUpOverlay p {
 .leave-btn:hover:not(:disabled) { border-color: var(--danger); }
 
 /* --- LIGHT MODE STATION OVERRIDES --- */
-body.light-mode .station-body,
+body.light-mode .station-body {
+    background: #F4F6F8;
+}
 body.light-mode .station-badge {
-    background: #F0F0F0;
+    background: #F0F4F6;
     color: var(--accent-color);
     border-color: #CCC;
     font-weight: 900;
@@ -2322,7 +2432,7 @@ body.light-mode .btn-label { color: #222; }
 /* Responsive Station View */
 @media (max-width: 768px) {
     .station-body { flex-direction: column; height: auto; max-height: 80dvh; }
-    .station-visual-panel { width: 100%; border-right: none; border-bottom: 1px solid #333; flex-direction: row; gap: 15px; padding: 10px; }
+    .station-visual-panel { width: 100%; border-right: none; border-bottom: 1px solid var(--border-color); flex-direction: row; gap: 15px; padding: 10px; }
     #stationCanvas { width: 80px; height: 80px; margin-bottom: 0; }
     .station-menu-grid { width: 100%; grid-template-columns: 1fr; }
 }
@@ -2347,7 +2457,7 @@ body.light-mode #genericDetailContent p {
     font-size: 10px;
     color: var(--accent-color);
     padding: 8px 15px;
-    background: rgba(0, 0, 0, 0.25);
+    background: var(--surface-1);
     border-bottom: 1px solid var(--border-color);
     letter-spacing: 1px;
 }
@@ -2360,7 +2470,7 @@ body.light-mode .trade-list-header {
 
 /* --- MODAL INFO BAR (PLAYER STATS OVERLAY) --- */
 .modal-info-bar {
-    background: rgba(0, 0, 0, 0.45);
+    background: var(--surface-2);
     border-bottom: 1px solid var(--border-color);
     padding: 8px 15px;
     display: flex;
@@ -2370,7 +2480,7 @@ body.light-mode .trade-list-header {
     gap: 8px;
     font-family: var(--main-font);
     font-size: 11px;
-    color: #888;
+    color: var(--item-desc-color);
     flex-shrink: 0;
 }
 
@@ -2400,7 +2510,7 @@ body.light-mode .modal-info-bar {
 }
 
 .info-credits { color: var(--gold-text); }
-.info-ship { color: #FFF; }
+.info-ship { color: var(--item-name-color); }
 body.light-mode .info-ship { color: #222; }
 
 /* --- DERELICT MODAL OVERRIDES --- */
@@ -2515,15 +2625,15 @@ body.light-mode #spireInput::placeholder {
     z-index: var(--z-header);
     box-sizing: border-box;
     text-align: left;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .sys-title-large {
     font-family: var(--title-font);
     font-size: 28px;
-    color: #FFF;
+    color: var(--item-name-color);
     margin: 0;
-    text-shadow: 0 0 10px rgba(0, 224, 224, 0.3);
+    text-shadow: 0 0 10px var(--accent-glow);
 }
 
 .sys-meta-row {
@@ -2540,7 +2650,7 @@ body.light-mode #spireInput::placeholder {
 .sys-flavor-text {
     font-family: var(--main-font);
     font-size: 13px;
-    color: #888;
+    color: var(--item-desc-color);
     font-style: italic;
     margin-top: 10px;
     max-width: 80%;
@@ -2601,7 +2711,7 @@ body.light-mode #spireInput::placeholder {
 /* --- GENERIC LIST ITEM (Cantina, Job Board, Dev Menu) --- */
 .generic-list-item {
     padding: 14px 15px;
-    border-bottom: 1px solid #2b2b40;
+    border-bottom: 1px solid var(--border-color);
     transition: background 0.15s ease;
 }
 
@@ -2610,7 +2720,7 @@ body.light-mode #spireInput::placeholder {
 }
 
 .generic-list-item.active {
-    background: rgba(0, 224, 224, 0.15);
+    background: var(--accent-soft);
     border-left: 3px solid var(--accent-color);
 }
 
@@ -2629,7 +2739,7 @@ body.light-mode .generic-list-item.active {
 #codexOverlay {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.85);
+    background: var(--modal-backdrop);
     display: none;
     justify-content: center;
     align-items: center;
@@ -2643,7 +2753,7 @@ body.light-mode .generic-list-item.active {
     height: 82vh;
     background: var(--bg-color);
     border: 1px solid var(--border-color);
-    box-shadow: 0 0 30px rgba(0, 224, 224, 0.15);
+    box-shadow: 0 0 30px var(--accent-glow);
     display: flex;
     flex-direction: column;
     border-radius: 6px;
@@ -2652,7 +2762,7 @@ body.light-mode .generic-list-item.active {
 }
 
 .codex-header {
-    background: #0a0a1a;
+    background: var(--header-bg);
     border-bottom: 1px solid var(--border-color);
     padding: 14px 20px;
     display: flex;
@@ -2679,7 +2789,7 @@ body.light-mode .generic-list-item.active {
 /* --- THE 3 PANES --- */
 #codexCategories {
     flex: 0 0 230px;
-    background: rgba(0, 0, 0, 0.22);
+    background: var(--surface-1);
     border-right: 1px solid var(--border-color);
     overflow-y: auto;
     contain: layout style;
@@ -2687,7 +2797,7 @@ body.light-mode .generic-list-item.active {
 
 #codexEntries {
     flex: 0 0 265px;
-    background: rgba(0, 0, 0, 0.38);
+    background: var(--surface-2);
     border-right: 1px solid var(--border-color);
     overflow-y: auto;
     contain: layout style;
@@ -2711,7 +2821,7 @@ body.light-mode .generic-list-item.active {
 
 .active-cat {
     border-left: 3px solid var(--accent-color);
-    background: rgba(0, 224, 224, 0.08);
+    background: var(--accent-soft);
 }
 
 .active-entry {
@@ -2786,7 +2896,7 @@ body.light-mode .generic-list-item.active {
     width: fit-content;
     margin: 30px auto;
     padding: 15px 40px;
-    background: rgba(0, 224, 224, 0.05);
+    background: var(--accent-soft);
     border: 2px solid var(--accent-color);
     color: var(--accent-color);
     font-family: var(--title-font);
@@ -2796,7 +2906,7 @@ body.light-mode .generic-list-item.active {
     text-transform: uppercase;
     cursor: pointer;
     border-radius: 4px;
-    box-shadow: inset 0 0 10px rgba(0, 224, 224, 0.1), 0 0 15px rgba(0, 224, 224, 0.2);
+    box-shadow: inset 0 0 10px var(--accent-glow), 0 0 15px var(--accent-glow);
     transition: all 0.2s ease-in-out;
 }
 
@@ -2818,6 +2928,47 @@ body.light-mode .generic-list-item.active {
     font-weight: bold;
 }
 
+.badge-faction,
+.badge-rarity {
+    display: inline-block;
+    font-family: var(--title-font);
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 1px;
+    font-weight: bold;
+    border: 1px solid var(--border-color);
+    background: var(--surface-1);
+    color: var(--accent-color);
+}
+
+.stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    background: var(--surface-1);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.progress-track {
+    width: 100%;
+    height: 6px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--accent-color);
+    transition: width 0.3s ease;
+}
+
 .panel-card {
     background: var(--surface-1);
     border: 1px solid var(--border-color);
@@ -2830,6 +2981,13 @@ body.light-mode .generic-list-item.active {
     border-top: 1px dashed var(--border-color);
     margin: 12px 0;
 }
+
+.text-accent { color: var(--accent-color); }
+.text-gold { color: var(--gold-text); }
+.text-success { color: var(--success); }
+.text-warning { color: var(--warning); }
+.text-danger { color: var(--danger); }
+.text-muted { color: var(--item-desc-color); }
 
 /* --- ACCESSIBILITY: REDUCED MOTION SUPPORT --- */
 @media (prefers-reduced-motion: reduce) {
