@@ -307,12 +307,13 @@ function visitCantina() {
 
     const listEl = document.getElementById('genericModalList');
 
+    // Replaced string assignments with actual executable arrow functions
     const actions = [
-        { name: "Buy a Drink", desc: "Restores 10 Hull.", cost: "15c", icon: "🥃", fn: "cantinaAction('DRINK')" },
-        { name: "Eavesdrop on Rumors", desc: "Listen to local chatter for clues.", cost: "FREE", icon: "👂", fn: "listenToRumors()" },
-        { name: "Trade Intel", desc: "Buy the latest market trend data.", cost: "50c", icon: "📈", fn: "cantinaAction('RUMOR')" },
-        { name: "Play Pazaak", desc: "Gamble with the locals.", cost: "100c", icon: "🃏", fn: "cantinaAction('GAMBLE')" },
-        { name: "Crew Recruitment", desc: "Hire specialized crew members.", cost: "VARIES", icon: "🧑‍🚀", fn: "openRecruitmentBoard()" }
+        { name: "Buy a Drink", desc: "Restores 10 Hull.", cost: "15c", icon: "🥃", fn: () => cantinaAction('DRINK') },
+        { name: "Eavesdrop on Rumors", desc: "Listen to local chatter for clues.", cost: "FREE", icon: "👂", fn: () => listenToRumors() },
+        { name: "Trade Intel", desc: "Buy the latest market trend data.", cost: "50c", icon: "📈", fn: () => cantinaAction('RUMOR') },
+        { name: "Play Pazaak", desc: "Gamble with the locals.", cost: "100c", icon: "🃏", fn: () => cantinaAction('GAMBLE') },
+        { name: "Crew Recruitment", desc: "Hire specialized crew members.", cost: "VARIES", icon: "🧑‍🚀", fn: () => openRecruitmentBoard() }
     ];
 
     actions.forEach(act => {
