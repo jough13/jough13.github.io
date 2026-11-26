@@ -1035,6 +1035,9 @@ bindState('playerLevel', 'player', 'level', true);
 bindState('playerNotoriety', 'player', 'notoriety', true);
 bindState('currentCargoLoad', 'ship', 'cargoLoad', true);
 
+bindState('playerNotorietyTitle', 'player', 'notorietyTitle', true);
+bindState('lastNotorietyDecayTime', 'player', 'lastNotorietyDecayTime');
+
 // 2. Position & World
 bindState('playerX', 'player', 'x');
 bindState('playerY', 'player', 'y');
