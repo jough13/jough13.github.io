@@ -361,7 +361,7 @@ function handleCombatAction(action) {
             combatLog += "(Enemy Braced) ";
         }
 
-        // 👇 BUG FIX: Use the aggregated PLAYER_HIT_CHANCE instead of raw weaponStats
+        // Use the aggregated PLAYER_HIT_CHANCE instead of raw weaponStats
         let hitChance = typeof PLAYER_HIT_CHANCE !== 'undefined' ? PLAYER_HIT_CHANCE : weaponStats.hitChance;
 
         if (currentCombatContext.playerGuaranteedHit) {
@@ -369,9 +369,12 @@ function handleCombatAction(action) {
             currentCombatContext.playerGuaranteedHit = false; 
         }
         
+        // Only apply the evasion penalty if the enemy's engines are actually online!
         if (currentCombatContext.nextMove && currentCombatContext.nextMove.type === 'EVADE') {
-            hitChance -= 0.25;
-            combatLog += "(Enemy Evading) ";
+            if (currentCombatContext.subsystems.engines.status === 'ONLINE') {
+                hitChance -= 0.25;
+                combatLog += "(Enemy Evading) ";
+            }
         }
         
         // 🎯 SUBSYSTEM PENALTY
@@ -379,7 +382,6 @@ function handleCombatAction(action) {
             hitChance -= 0.15; // Harder to hit a specific part
             combatLog += `[Aiming at ${window.playerTargeting}] `;
         }
-
         if (Math.random() < hitChance) {
             if (typeof soundManager !== 'undefined') soundManager.playLaser();
             
@@ -900,8 +902,9 @@ function renderCombatView() {
         </div>
     `;
 
+    // Added null-check for playerShip.forces to prevent legacy save TypeErrors
     // TACTICAL BOARDING BUTTON
-    const boardingBtnHtml = (playerShip.forces.marines > 0 && currentCombatContext.pirateShields <= 0) ? `
+    const boardingBtnHtml = (playerShip.forces && playerShip.forces.marines > 0 && currentCombatContext.pirateShields <= 0) ? `
         <button class="action-button danger-btn" style="grid-column: 1 / -1; padding: 18px; font-size: 16px; letter-spacing: 2px; box-shadow: 0 0 15px rgba(255,0,0,0.4);" onclick="handleCombatAction('board')">
             🪖 INITIATE BOARDING ACTION (Risk Marines for 3x Salvage)
         </button>
