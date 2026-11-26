@@ -891,10 +891,30 @@ const COMMODITIES = {
                 return false;
             }
             const col = localCols[0];
-            col.population = (col.population || 50) + 100;
-            logMessage(`<span style='color:var(--success)'>[ COLONISTS AWAKENED ]</span> 100 new pioneers joined <b>${col.name}</b>!`);
+            
+            // Calculate PopCap to prevent over-populating with cryo-pods
+            let popCap = 0;
+            if (typeof COLONY_BUILDINGS !== 'undefined') {
+                for (const [bId, count] of Object.entries(col.buildings)) {
+                    if (COLONY_BUILDINGS[bId] && COLONY_BUILDINGS[bId].effects.popCap) {
+                        popCap += COLONY_BUILDINGS[bId].effects.popCap * count;
+                    }
+                }
+            } else {
+                popCap = 999999; // Fallback
+            }
+            
+            if ((col.population || 50) >= popCap) {
+                if (typeof showToast === 'function') showToast("COLONY AT MAXIMUM POPULATION", "error");
+                return false;
+            }
+            
+            const toAdd = Math.min(100, popCap - (col.population || 50));
+            col.population = (col.population || 50) + toAdd;
+            
+            logMessage(`<span style='color:var(--success)'>[ COLONISTS AWAKENED ]</span> ${toAdd} new pioneers joined <b>${col.name}</b>!`);
             if (typeof soundManager !== 'undefined') soundManager.playGain();
-            if (typeof showToast === 'function') showToast("+100 COLONISTS", "success");
+            if (typeof showToast === 'function') showToast(`+${toAdd} COLONISTS`, "success");
             _refreshItemUI();
             return true;
         }
@@ -1424,7 +1444,7 @@ const COMMODITIES = {
             const count = playerCargo['PRECURSOR_STAR_MAP_FRAGMENT'] || 0;
             if (count < 3) {
                 if (typeof showToast === 'function') showToast(`NEED 3 FRAGMENTS TO ASSEMBLE (${count}/3)`, "info");
-                logMessage(`<span style='color:var(--accent-color)'>[ STAR MAP FRAGMENT ]</span> The holographic shardprojects a partial vector toward [39, 17]. Collect ${3 - count} more fragment(s) to assemble a full Wayfinder Core.`);
+                logMessage(`<span style='color:var(--accent-color)'>[ STAR MAP FRAGMENT ]</span> The holographic shard projects a partial vector toward [39, 17]. Collect ${3 - count} more fragment(s) to assemble a full Wayfinder Core.`);
                 return false;
             }
             // Deduct 2 here, and return true so ui.js deducts the 3rd!
