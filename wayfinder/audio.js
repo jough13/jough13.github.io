@@ -1,5 +1,18 @@
 // --- START OF FILE audio.js ---
 
+// ==========================================
+// --- INTERNAL AUDIO HELPERS ---
+// ==========================================
+
+function _audioEscapeHtml(value) {
+    return String(value === undefined || value === null ? "" : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 class SoundManager {
     constructor() {
         this.ctx = null;
@@ -15,14 +28,14 @@ class SoundManager {
 
         this.masterVolume = 0.30;
         this.musicVolume = 0.30;
+        this.sfxVolume = 1.0;
 
         // Voice polyphony limiter to prevent distortion or CPU spikes during heavy combat
         this._activeVoices = 0;
         this._maxVoices = 24;
 
         // --- SUBSPACE RADIO STATIONS (Multi-Track & Procedural Architecture) ---
-        // Add as many tracks as you want to any MUSIC station's `tracks` array,
-        // or call soundManager.registerStation({...}) to add custom channels at runtime.
+        // Existing MP3 stations preserved verbatim; procedural stations use pure Web Audio synthesis.
         this.radioStations = [
             {
                 freq: "101.5 FM",
@@ -68,10 +81,22 @@ class SoundManager {
                 title: "Generative Deep-Space Arpeggiator"
             },
             {
+                freq: "94.8 FM",
+                name: "PULSAR TELEMETRY (PROCEDURAL)",
+                type: "PULSAR",
+                title: "Radio-Astronomy Chimes & Solar Wind"
+            },
+            {
                 freq: "1620 AM",
                 name: "CONCORD NEWS NETWORK",
                 type: "NEWS",
                 title: "Live Sector Telemetry & Market Feed"
+            },
+            {
+                freq: "66.6 AM",
+                name: "ECLIPSE SHADOW DISPATCH",
+                type: "SHADOW",
+                title: "Encrypted Cartel Wire & Contraband Tips"
             },
             {
                 freq: "74.4 AM",
@@ -96,14 +121,19 @@ class SoundManager {
         this.currentStationIndex = 0;
         this.newsTimer = null;
         this.newsInitialTimeout = null;
+        this.shadowTimer = null;
+        this.shadowInitialTimeout = null;
         this.synthTimer = null;
+        this.pulsarTimer = null;
         this.signalTimer = null;
         this.signalInitialTimeout = null;
 
         this._synthStep = 0;
         this._synthChordIndex = 0;
+        this._pulsarStep = 0;
         this._lastFactionTone = null;
         this._recentNews = [];
+        this._recentShadow = [];
         this._recentSignals = [];
 
         this.bgMusic = null;
@@ -128,10 +158,18 @@ class SoundManager {
             try {
                 const savedMaster = parseFloat(localStorage.getItem('wayfinder_master_vol'));
                 const savedMusic = parseFloat(localStorage.getItem('wayfinder_music_vol'));
+                const savedSfx = parseFloat(localStorage.getItem('wayfinder_sfx_vol'));
+                const savedFreq = localStorage.getItem('wayfinder_radio_freq');
                 const savedStation = parseInt(localStorage.getItem('wayfinder_radio_station'), 10);
+
                 if (!isNaN(savedMaster)) this.masterVolume = Math.max(0, Math.min(1, savedMaster));
                 if (!isNaN(savedMusic)) this.musicVolume = Math.max(0, Math.min(1, savedMusic));
-                if (!isNaN(savedStation) && savedStation >= 0 && savedStation < this.radioStations.length) {
+                if (!isNaN(savedSfx)) this.sfxVolume = Math.max(0, Math.min(1, savedSfx));
+
+                if (savedFreq) {
+                    const matchedIdx = this.radioStations.findIndex(s => s.freq === savedFreq);
+                    if (matchedIdx !== -1) this.currentStationIndex = matchedIdx;
+                } else if (!isNaN(savedStation) && savedStation >= 0 && savedStation < this.radioStations.length) {
                     this.currentStationIndex = savedStation;
                 }
             } catch (e) {}
@@ -147,11 +185,10 @@ class SoundManager {
             this.masterGain.gain.value = this.masterVolume;
 
             this.sfxGain = this.ctx.createGain();
-            this.sfxGain.gain.value = 1.0;
+            this.sfxGain.gain.value = this.sfxVolume;
 
             this.ambientGain = this.ctx.createGain();
-            // Bind initial procedural ambient volume to saved slider state (clamped cleanly)
-            this.ambientGain.gain.value = Math.max(0, Math.min(2.5, this.musicVolume / 0.30));
+            this.ambientGain.gain.value = Math.max(0, Math.min(1.6, this.musicVolume / 0.30));
 
             this.sfxGain.connect(this.masterGain);
             this.ambientGain.connect(this.masterGain);
@@ -193,9 +230,14 @@ class SoundManager {
     // Expandability: Dynamically register a new radio station at runtime
     registerStation(stationConfig) {
         if (!stationConfig || !stationConfig.freq || !stationConfig.name || !stationConfig.type) return false;
+        const activeFreq = this.radioStations[this.currentStationIndex]?.freq;
         const offIdx = this.radioStations.findIndex(s => s.type === "OFF");
         const insertIdx = offIdx !== -1 ? offIdx : this.radioStations.length;
         this.radioStations.splice(insertIdx, 0, stationConfig);
+        if (activeFreq) {
+            const newIdx = this.radioStations.findIndex(s => s.freq === activeFreq);
+            if (newIdx !== -1) this.currentStationIndex = newIdx;
+        }
         return true;
     }
 
@@ -219,6 +261,14 @@ class SoundManager {
         if (musicEl) musicEl.value = String(this.musicVolume);
     }
 
+    _saveStationPref() {
+        try {
+            const st = this.radioStations[this.currentStationIndex];
+            if (st) localStorage.setItem('wayfinder_radio_freq', st.freq);
+            localStorage.setItem('wayfinder_radio_station', String(this.currentStationIndex));
+        } catch (e) {}
+    }
+
     _ensureContextRunning() {
         if (!this.enabled) return;
         if (!this.initialized) this.init();
@@ -230,14 +280,23 @@ class SoundManager {
         const st = this.radioStations[this.currentStationIndex];
         if (!st || st.type === "OFF" || document.hidden) return;
 
-        if (st.type === "DRONE" || st.type === "NEWS") {
+        if (st.type === "DRONE") {
             if (!this.ambientNodes) this.startProceduralDrone();
+        } else if (st.type === "NEWS") {
+            if (!this.ambientNodes) this.startProceduralDrone();
+            if (!this.newsTimer && !this.newsInitialTimeout) this.startNewsBroadcast();
+        } else if (st.type === "SHADOW") {
+            if (!this.ambientNodes) this.startProceduralDrone();
+            if (!this.shadowTimer && !this.shadowInitialTimeout) this.startShadowDispatch();
         } else if (st.type === "SYNTH") {
             if (!this.ambientNodes) this.startProceduralDrone();
             if (!this.synthTimer) this.startGenerativeSynth();
+        } else if (st.type === "PULSAR") {
+            if (!this.ambientNodes) this.startProceduralDrone();
+            if (!this.pulsarTimer) this.startPulsarAmbient();
         } else if (st.type === "SIGNAL") {
             if (!this.ambientNodes) this.startProceduralDrone();
-            if (!this.signalTimer) this.startNumbersStation();
+            if (!this.signalTimer && !this.signalInitialTimeout) this.startNumbersStation();
         } else if (st.type === "MUSIC") {
             if (this.bgMusic && !this.bgMusicFailed && this.bgMusic.paused) {
                 this.bgMusic.play().catch(() => {});
@@ -253,7 +312,6 @@ class SoundManager {
             this.masterGain.gain.setTargetAtTime(this.masterVolume, this.ctx.currentTime, 0.05);
         }
 
-        // Force the MP3 player and ambient mix to adapt instantly
         this.updateAdaptiveMix();
         this._syncVolumeSliders();
 
@@ -268,21 +326,58 @@ class SoundManager {
         try { localStorage.setItem('wayfinder_music_vol', String(this.musicVolume)); } catch (e) {}
     }
 
+    setSfxVolume(val) {
+        this.sfxVolume = Math.max(0, Math.min(1, Number(val) || 0));
+        if (this.sfxGain && this.ctx) {
+            this.sfxGain.gain.setTargetAtTime(this.sfxVolume, this.ctx.currentTime, 0.04);
+        }
+        try { localStorage.setItem('wayfinder_sfx_vol', String(this.sfxVolume)); } catch (e) {}
+    }
+
     _getFactionDroneProfile() {
         let faction = "INDEPENDENT";
+        let envMod = { cutoffOffset: 0, q: 1.5, tag: "" };
+
         if (typeof getFactionAt === 'function' && typeof playerX !== 'undefined' && typeof playerY !== 'undefined') {
             faction = getFactionAt(playerX, playerY) || "INDEPENDENT";
         }
+
+        // Subtle environmental acoustic coloration (Nebula / Black Market / Singularity proximity)
+        if (typeof chunkManager !== 'undefined' && typeof playerX !== 'undefined' && typeof playerY !== 'undefined') {
+            const tile = chunkManager.getTile(playerX, playerY);
+            const ch = typeof getTileChar === 'function' ? getTileChar(tile) : tile;
+            if (ch === '~') {
+                envMod = { cutoffOffset: -35, q: 3.2, tag: "NEBULA" };
+            } else if (tile && tile.isBlackMarket) {
+                envMod = { cutoffOffset: -25, q: 2.2, tag: "SHADOW" };
+            }
+        }
+
+        let base;
         switch (faction) {
             case "CONCORD":
-                return { key: "CONCORD", root: 55.0, fifth: 82.41, sub: 27.5, cutoff: 210 };   // Warm A1 / E2
+                base = { key: "CONCORD", root: 55.0, fifth: 82.41, sub: 27.5, cutoff: 210 };   // Warm A1 / E2
+                break;
             case "KTHARR":
-                return { key: "KTHARR", root: 46.25, fifth: 69.30, sub: 23.12, cutoff: 175 };  // Deep F#1 / C#2
+                base = { key: "KTHARR", root: 46.25, fifth: 69.30, sub: 23.12, cutoff: 175 };  // Deep F#1 / C#2
+                break;
             case "ECLIPSE":
-                return { key: "ECLIPSE", root: 51.91, fifth: 77.78, sub: 25.96, cutoff: 165 }; // Mysterious G#1 / D#2
+                base = { key: "ECLIPSE", root: 51.91, fifth: 77.78, sub: 25.96, cutoff: 165 }; // Mysterious G#1 / D#2
+                break;
             default:
-                return { key: "INDEPENDENT", root: 55.0, fifth: 82.41, sub: 27.5, cutoff: 195 };
+                base = { key: "INDEPENDENT", root: 55.0, fifth: 82.41, sub: 27.5, cutoff: 195 };
+                break;
         }
+
+        return {
+            key: base.key + (envMod.tag ? `_${envMod.tag}` : ""),
+            faction: base.key,
+            root: base.root,
+            fifth: base.fifth,
+            sub: base.sub,
+            cutoff: Math.max(95, base.cutoff + envMod.cutoffOffset),
+            q: envMod.q
+        };
     }
 
     updateAdaptiveMix() {
@@ -291,17 +386,14 @@ class SoundManager {
         const inCombat = typeof currentGameState !== 'undefined' && currentGameState === 'combat';
 
         const stateDuck = isStealthed ? 0.45 : (inCombat ? 0.75 : 1.0);
-        let targetMusicVol = this.musicVolume * stateDuck;
-
-        // Multiply by the master volume (normalized against the 0.30 default base)
-        targetMusicVol = targetMusicVol * (this.masterVolume / 0.30);
+        let targetMusicVol = this.musicVolume * stateDuck * (this.masterVolume / 0.30);
 
         if (this.bgMusic && !this.bgMusicFailed) {
             this.bgMusic.volume = Math.max(0, Math.min(1, targetMusicVol));
         }
 
         if (this.ambientGain && this.ctx) {
-            const targetAmbient = Math.max(0, Math.min(2.5, (this.musicVolume / 0.30) * stateDuck));
+            const targetAmbient = Math.max(0, Math.min(1.6, (this.musicVolume / 0.30) * stateDuck));
             this.ambientGain.gain.setTargetAtTime(targetAmbient, this.ctx.currentTime, 0.15);
         }
 
@@ -309,6 +401,7 @@ class SoundManager {
             const profile = this._getFactionDroneProfile();
             const targetCutoff = isStealthed ? 105 : (inCombat ? 290 : profile.cutoff);
             this.ambientNodes.filter.frequency.setTargetAtTime(targetCutoff, this.ctx.currentTime, 0.3);
+            this.ambientNodes.filter.Q.setTargetAtTime(isStealthed ? 1.0 : profile.q, this.ctx.currentTime, 0.3);
 
             // Smoothly glide hull drone pitch when crossing faction territory borders
             if (this._lastFactionTone !== profile.key && this.ambientNodes.osc1 && this.ambientNodes.osc2) {
@@ -327,26 +420,14 @@ class SoundManager {
     // ==========================================
 
     _stopAllStationTimers() {
-        if (this.newsInitialTimeout) {
-            clearTimeout(this.newsInitialTimeout);
-            this.newsInitialTimeout = null;
-        }
-        if (this.newsTimer) {
-            clearInterval(this.newsTimer);
-            this.newsTimer = null;
-        }
-        if (this.synthTimer) {
-            clearInterval(this.synthTimer);
-            this.synthTimer = null;
-        }
-        if (this.signalInitialTimeout) {
-            clearTimeout(this.signalInitialTimeout);
-            this.signalInitialTimeout = null;
-        }
-        if (this.signalTimer) {
-            clearInterval(this.signalTimer);
-            this.signalTimer = null;
-        }
+        if (this.newsInitialTimeout) { clearTimeout(this.newsInitialTimeout); this.newsInitialTimeout = null; }
+        if (this.newsTimer) { clearInterval(this.newsTimer); this.newsTimer = null; }
+        if (this.shadowInitialTimeout) { clearTimeout(this.shadowInitialTimeout); this.shadowInitialTimeout = null; }
+        if (this.shadowTimer) { clearInterval(this.shadowTimer); this.shadowTimer = null; }
+        if (this.synthTimer) { clearInterval(this.synthTimer); this.synthTimer = null; }
+        if (this.pulsarTimer) { clearInterval(this.pulsarTimer); this.pulsarTimer = null; }
+        if (this.signalInitialTimeout) { clearTimeout(this.signalInitialTimeout); this.signalInitialTimeout = null; }
+        if (this.signalTimer) { clearInterval(this.signalTimer); this.signalTimer = null; }
     }
 
     initBackgroundMusic() {
@@ -355,7 +436,6 @@ class SoundManager {
 
     playRadioTuningEffect() {
         if (!this.enabled) return;
-        // Static burst + frequency sweep just like tuning a stereo dial
         this.playNoise(0.14, 0.22, 1800, 0, 'bandpass', true);
         this.playTone(1400, 'sine', 55, 0.08, 620, 20);
         this.playTone(620, 'sine', 65, 0.08, 1180, 75);
@@ -363,20 +443,23 @@ class SoundManager {
 
     getCurrentStationInfo() {
         const station = this.radioStations[this.currentStationIndex];
-        if (!station) return { freq: "OFF", name: "OFFLINE", trackTitle: "Muted", type: "OFF" };
+        if (!station) return { index: 0, freq: "OFF", name: "OFFLINE", trackTitle: "Muted", type: "OFF", trackIndex: 0, trackCount: 0, tracks: [] };
 
         let trackTitle = station.title || "";
+        let trackIndex = 0;
         if (station.type === "MUSIC" && station.tracks && station.tracks.length > 0) {
-            const idx = (station.trackIndex || 0) % station.tracks.length;
-            trackTitle = station.tracks[idx].title;
+            trackIndex = (station.trackIndex || 0) % station.tracks.length;
+            trackTitle = station.tracks[trackIndex].title;
         }
         return {
             index: this.currentStationIndex,
             freq: station.freq,
             name: station.name,
             type: station.type,
+            trackIndex: trackIndex,
             trackTitle: trackTitle,
-            trackCount: (station.tracks && station.tracks.length) || 0
+            trackCount: (station.tracks && station.tracks.length) || 0,
+            tracks: station.tracks ? station.tracks.slice() : []
         };
     }
 
@@ -390,17 +473,21 @@ class SoundManager {
             if (soundBtn) soundBtn.textContent = "Mute Audio";
         }
         this.currentStationIndex = index;
-        try {
-            localStorage.setItem('wayfinder_radio_station', String(this.currentStationIndex));
-        } catch (e) {}
+        this._saveStationPref();
         this.playCurrentStation(showNotification);
+    }
+
+    selectTrack(stationIndex, trackIndex) {
+        const station = this.radioStations[stationIndex];
+        if (!station || station.type !== "MUSIC" || !station.tracks || !station.tracks[trackIndex]) return;
+        station.trackIndex = trackIndex;
+        this.tuneToStation(stationIndex, true);
     }
 
     playCurrentStation(showNotification = false) {
         const station = this.radioStations[this.currentStationIndex];
         if (!station) return;
 
-        // Cleanly stop any active MP3, procedural drone, or scheduled broadcast timers
         if (this.bgMusic) {
             this.bgMusic.pause();
         }
@@ -408,7 +495,6 @@ class SoundManager {
         this._stopAllStationTimers();
         this.bgMusicFailed = false;
 
-        // Determine current track title and file path if it's a playlist station
         let currentTrackTitle = station.title || "";
         let currentTrackSrc = null;
 
@@ -419,7 +505,6 @@ class SoundManager {
             currentTrackSrc = trackObj.src;
         }
 
-        // Sync System Menu button text and hover tooltip
         const radioBtn = document.getElementById('radioStationButton');
         if (radioBtn) {
             radioBtn.textContent = `\uD83D\uDCFB Radio: ${station.freq}`;
@@ -429,10 +514,10 @@ class SoundManager {
         if (showNotification) {
             this.playRadioTuningEffect();
             if (typeof showToast === 'function') {
-                showToast(`\uD83D\uDCFB [${station.freq}] ${station.name}<br><span style="font-size:11px; opacity:0.85;">\u266A ${currentTrackTitle}</span>`, "info");
+                showToast(`\uD83D\uDCFB [${_audioEscapeHtml(station.freq)}] ${_audioEscapeHtml(station.name)}<br><span style="font-size:11px; opacity:0.85;">\u266A ${_audioEscapeHtml(currentTrackTitle)}</span>`, "info");
             }
             if (typeof logMessage === 'function' && typeof currentGameState !== 'undefined' && currentGameState !== 'title_screen') {
-                logMessage(`<span style="color:var(--accent-color)">[ SUBSPACE RADIO ]</span> Tuned to <b>${station.freq} - ${station.name}</b> (${currentTrackTitle})`);
+                logMessage(`<span style="color:var(--accent-color)">[ SUBSPACE RADIO ]</span> Tuned to <b>${_audioEscapeHtml(station.freq)} - ${_audioEscapeHtml(station.name)}</b> (${_audioEscapeHtml(currentTrackTitle)})`);
             }
         }
 
@@ -449,6 +534,12 @@ class SoundManager {
             return;
         }
 
+        if (station.type === "PULSAR") {
+            this.startProceduralDrone();
+            this.startPulsarAmbient();
+            return;
+        }
+
         if (station.type === "SIGNAL") {
             this.startProceduralDrone();
             this.startNumbersStation();
@@ -458,6 +549,12 @@ class SoundManager {
         if (station.type === "NEWS") {
             this.startProceduralDrone();
             this.startNewsBroadcast();
+            return;
+        }
+
+        if (station.type === "SHADOW") {
+            this.startProceduralDrone();
+            this.startShadowDispatch();
             return;
         }
 
@@ -487,8 +584,8 @@ class SoundManager {
         }
     }
 
-    // Cycles stations on 'R', or skips tracks within the current playlist on 'Shift + R'
-    nextRadioStation(skipTrackOnly = false) {
+    // Cycles stations on 'R', skips tracks on 'Shift + R', or steps backward with step = -1
+    nextRadioStation(skipTrackOnly = false, step = 1) {
         if (!this.initialized) this.init();
         if (!this.enabled) this.setMuteState(true);
 
@@ -500,10 +597,9 @@ class SoundManager {
             return;
         }
 
-        this.currentStationIndex = (this.currentStationIndex + 1) % this.radioStations.length;
-        try {
-            localStorage.setItem('wayfinder_radio_station', String(this.currentStationIndex));
-        } catch (e) {}
+        const total = this.radioStations.length;
+        this.currentStationIndex = (this.currentStationIndex + step + total) % total;
+        this._saveStationPref();
 
         this.playCurrentStation(true);
     }
@@ -512,10 +608,15 @@ class SoundManager {
         const station = this.radioStations[this.currentStationIndex];
         if (!station || station.type !== "MUSIC" || !station.tracks || station.tracks.length === 0) return;
 
-        // Advance to the next track in the current station's playlist
-        const hadMultipleTracks = station.tracks.length > 1;
+        // BUG FIX: Seamlessly loop 1-track stations without resetting bgMusic.src or re-fetching the MP3
+        if (station.tracks.length === 1 && this.bgMusic && !this.bgMusicFailed) {
+            this.bgMusic.currentTime = 0;
+            this.bgMusic.play().catch(() => {});
+            return;
+        }
+
         station.trackIndex = ((station.trackIndex || 0) + 1) % station.tracks.length;
-        this.playCurrentStation(hadMultipleTracks);
+        this.playCurrentStation(true);
     }
 
     // ==========================================
@@ -545,13 +646,11 @@ class SoundManager {
             const stepInBar = this._synthStep % 8;
             const musicScale = Math.max(0.02, (this.musicVolume / 0.30) * (isStealthed ? 0.35 : 0.75));
 
-            // Warm filtered bass root at start of each 8-step measure
             if (stepInBar === 0) {
                 this._playAmbientNote(chord[0] * 0.5, 'triangle', 3.4, 0.09 * musicScale, 320);
                 this._playAmbientNote(chord[1], 'sine', 3.2, 0.045 * musicScale, 600);
             }
 
-            // Starlight arpeggio plucks (sparser during stealth, tighter in combat)
             const noteDensity = isStealthed ? 0.35 : (inCombat ? 0.90 : 0.65);
             if (Math.random() < noteDensity) {
                 const noteIdx = (stepInBar + Math.floor(Math.random() * 2)) % chord.length;
@@ -572,8 +671,53 @@ class SoundManager {
         this.synthTimer = setInterval(playSynthPulse, 550);
     }
 
+    // ==========================================
+    // --- 94.8 FM: PULSAR TELEMETRY AMBIENT ---
+    // ==========================================
+
+    startPulsarAmbient() {
+        if (this.pulsarTimer) return;
+
+        // C Lydian shimmering astrometric intervals (Hz)
+        const lydianScale = [261.63, 293.66, 329.63, 369.99, 392.00, 440.00, 493.88, 523.25, 587.33, 659.25];
+
+        const playPulsarStep = () => {
+            if (!this.enabled || document.hidden || !this.ctx || this.ctx.state !== 'running') return;
+            const st = this.radioStations[this.currentStationIndex];
+            if (!st || st.type !== "PULSAR") return;
+
+            const isStealthed = typeof isSilentRunning !== 'undefined' && isSilentRunning;
+            const inCombat = typeof currentGameState !== 'undefined' && currentGameState === 'combat';
+            const scale = Math.max(0.02, (this.musicVolume / 0.30) * (isStealthed ? 0.35 : 0.70));
+
+            // Soft rhythmic pulsar radio-tick every beat (inspired by PSR B0329+54 sonification)
+            if (!isStealthed && (this._pulsarStep % 2 === 0 || inCombat)) {
+                this._playAmbientNote(inCombat ? 196.0 : 130.81, 'triangle', 0.11, 0.032 * scale, 520);
+            }
+
+            // Glassy Lydian starlight chimes
+            if (this._pulsarStep % 4 === 0 || Math.random() < (isStealthed ? 0.20 : 0.45)) {
+                const note = lydianScale[Math.floor(Math.random() * lydianScale.length)];
+                const oct = Math.random() < 0.30 ? 2 : 1;
+                this._playAmbientNote(note * oct, 'sine', 2.4, 0.048 * scale, 1400);
+            }
+
+            // Occasional harmonic fifth pad swell
+            if (this._pulsarStep % 12 === 0) {
+                this._playAmbientNote(130.81, 'sine', 4.5, 0.06 * scale, 360);
+                this._playAmbientNote(196.00, 'triangle', 4.2, 0.035 * scale, 480);
+            }
+
+            this._pulsarStep++;
+        };
+
+        playPulsarStep();
+        this.pulsarTimer = setInterval(playPulsarStep, 720);
+    }
+
     _playAmbientNote(freq, type, durSec, vol, cutoffFreq = 700) {
         if (!this.ctx || this.ctx.state !== 'running' || this._activeVoices >= this._maxVoices) return;
+        let voiceCounted = false;
         try {
             const now = this.ctx.currentTime;
             const osc = this.ctx.createOscillator();
@@ -597,6 +741,7 @@ class SoundManager {
             gain.connect(this.ambientGain || this.masterGain);
 
             this._activeVoices++;
+            voiceCounted = true;
             osc.onended = () => {
                 this._activeVoices = Math.max(0, this._activeVoices - 1);
                 try { osc.disconnect(); filter.disconnect(); gain.disconnect(); } catch (e) {}
@@ -604,7 +749,9 @@ class SoundManager {
 
             osc.start(now);
             osc.stop(now + durSec + 0.02);
-        } catch (e) {}
+        } catch (e) {
+            if (voiceCounted) this._activeVoices = Math.max(0, this._activeVoices - 1);
+        }
     }
 
     // ==========================================
@@ -627,13 +774,16 @@ class SoundManager {
 
         const transmissions = [
             `"39... 17... 39... 17... HARMONIC CONDUIT OPEN... BRING THE COMPASS..."`,
-            `"ZERO-FOUR-SEVEN... SILENTIUM VECTOR SHIFTING... THE FIRST CHORD ENDURES..."`,
+            `"ZERO-FOUR-SEVEN... SILENTIUM RELAY [280, 240]... THE FIRST CHORD ENDURES..."`,
             `"THREE SHARDS MAKE ONE SEXTANT... DO NOT SELL THE GLASS... ASSEMBLE IN TRANSIT..."`,
             `"XERXES LAYER ONE... RULED BY WHAT HAS NO WEIGHT... SPIRE RESONANCE DOUBLES MEMORY..."`,
-            `"OBSIDIAN RELAY INTERCEPT: [REDACTED] ARTIFACT DETECTED BEYOND SECTOR 25..."`,
+            `"OBSIDIAN MONOLITH [-20, -35]... DO NOT TOUCH THE CORE WITHOUT VOID-EYES..."`,
+            `"CHOIR SPIRE ALPHA [-115, -145]... OFFER ONE CRYSTAL TO HEAR THE HYMN..."`,
+            `"WHISPERING PRISM [-85, -220]... ALIGN PRIME-FOCUS OPTICS TO SPLIT THE VOID..."`,
+            `"CALLSIGN HESPERIA [-145, 185]... 2144 CE MOTIVATOR COLD... ARCHIVE INTACT..."`,
             `"WARNING: GRAVIMETRIC WELLS OBEY THE NAV-CORE... RIDE THE ERGOSPHERE..."`,
             `"CALLSIGN ARCHIVIST... HULL GRAVEYARD [-240, -260]... WE TRADE IN FORGOTTEN LIGHT..."`,
-            `"PORT NOMAD BEACON 15-210... PROMETHIUM RESERVES NOMINAL... NO PILOT LEFT BEHIND..."`,
+            `"PORT NOMAD BEACON [15, 210]... PROMETHIUM RESERVES NOMINAL... NO PILOT LEFT BEHIND..."`,
             `"SIGNAL ECHO: MACHINE WORLD ICE-WALLS REQUIRE QUANTUM SLICERS... PROCEED WITH CAUTION..."`
         ];
 
@@ -642,16 +792,85 @@ class SoundManager {
         const picked = pool[Math.floor(Math.random() * pool.length)];
 
         this._recentSignals.push(picked);
-        if (this._recentSignals.length > 5) this._recentSignals.shift();
+        if (this._recentSignals.length > 6) this._recentSignals.shift();
+
+        // Subtle immersion reward: occasionally decrypts Precursor lore on intercept
+        if (typeof unlockLoreEntry === 'function' && Math.random() < 0.25) {
+            if (picked.includes("FIRST CHORD")) unlockLoreEntry("PRECURSOR_ORIGINS");
+            else unlockLoreEntry("XENO_PRECURSORS");
+        }
 
         if (typeof logMessage === 'function') {
-            logMessage(`<span style="color:#DDA0DD">[ 74.4 AM BEACON ]</span> <i>${picked}</i>`);
+            logMessage(`<span style="color:#DDA0DD">[ 74.4 AM BEACON ]</span> <i>${_audioEscapeHtml(picked)}</i>`);
         }
     }
 
     startNumbersStation() {
         this.signalInitialTimeout = setTimeout(() => this.triggerNumbersTransmission(false), 3500);
         this.signalTimer = setInterval(() => this.triggerNumbersTransmission(false), 38000);
+    }
+
+    // ==========================================
+    // --- 66.6 AM: ECLIPSE SHADOW DISPATCH ---
+    // ==========================================
+
+    triggerShadowDispatch(forceLog = false) {
+        if (!this.enabled || document.hidden) return;
+        const st = this.radioStations[this.currentStationIndex];
+        if (!forceLog && (!st || st.type !== "SHADOW")) return;
+        if (!forceLog && (typeof currentGameState === 'undefined' || currentGameState !== 'galactic_map')) return;
+
+        // Low encrypted cipher handshake blip
+        this.playTone(311.13, 'sawtooth', 75, 0.08, 233.08, 0);
+        this.playTone(466.16, 'triangle', 95, 0.08, 311.13, 85);
+
+        const dispatches = [
+            `"Shadow Network Advisory: Port Erebus [-175, -80] Forger terminal online. Clean slates cheaper than SEC-COM fines."`,
+            `"Dead-drop chatter: The Sunken Compass [-290, 95] is buying Xeno-Antiques and selling cheap Nano-Repair Kits."`,
+            `"Blockade Runner Tip: Toggle Silent Running [Q] before entering Concord lanes—vent heat before hitting 5."`,
+            `"Station Umbra [-450, 150] engineers are converting salvaged Tech Parts into Obsidian Tear Plating around the clock."`,
+            `"Cartel Protocol: Earn 50+ Eclipse Standing and roaming Void Vultures will stand down and salute your hull."`,
+            `"Black Market Wire: Foreign contraband fenced at Shadow Brokers fetches triple base value—never flip local stock."`,
+            `"Rumor out of The Rusty Anchor: An Unshackled AI core is still sitting in bay three for any captain with nerve."`
+        ];
+
+        // Live Contraband Trade Route Tip via LocationUtils
+        if (typeof LocationUtils !== 'undefined' && typeof LocationUtils.findBestTradeRoutes === 'function') {
+            const hotRoutes = LocationUtils.findBestTradeRoutes({ limit: 4, onlyDiscovered: false, includeIllegal: true })
+                .filter(r => r.illegal);
+            if (hotRoutes.length > 0) {
+                const r = hotRoutes[Math.floor(Math.random() * hotRoutes.length)];
+                dispatches.push(`"HOT ROUTE: Move ${r.itemName} from ${r.from} [${r.fromCoords.x}, ${-r.fromCoords.y}] to ${r.to} [${r.toCoords.x}, ${-r.toCoords.y}] for ~+${r.profitPerUnit}c/unit."`);
+            }
+        }
+
+        if (typeof playerNotoriety !== 'undefined' && playerNotoriety >= 10) {
+            dispatches.push(`"HEAT WARNING: Your warrant count sits at ${playerNotoriety}. Pop a Sensor Decoy or visit The Forger before docking at Concord hubs."`);
+        }
+
+        if (typeof playerCargo !== 'undefined' && (playerCargo['HOT_CARGO'] || 0) > 0) {
+            dispatches.push(`"PRIORITY BURST: Tracked Concord cores detected in your hold! Stay dark [Q]—Aegis interceptors are sweeping your vector."`);
+        }
+
+        const fresh = dispatches.filter(d => !this._recentShadow.includes(d));
+        const pool = fresh.length > 0 ? fresh : dispatches;
+        const msg = pool[Math.floor(Math.random() * pool.length)];
+
+        this._recentShadow.push(msg);
+        if (this._recentShadow.length > 5) this._recentShadow.shift();
+
+        if (typeof unlockLoreEntry === 'function' && Math.random() < 0.20) {
+            unlockLoreEntry("FACTION_SHADOW_NETWORK");
+        }
+
+        if (typeof logMessage === 'function') {
+            logMessage(`<span style="color:#9933FF">[ 66.6 AM SHADOW WIRE ]</span> <i>${_audioEscapeHtml(msg)}</i>`);
+        }
+    }
+
+    startShadowDispatch() {
+        this.shadowInitialTimeout = setTimeout(() => this.triggerShadowDispatch(false), 3800);
+        this.shadowTimer = setInterval(() => this.triggerShadowDispatch(false), 42000);
     }
 
     // ==========================================
@@ -674,9 +893,13 @@ class SoundManager {
             `"Fuel Rats Collective reports record rescues this cycle. Broadcast [Z] if stranded—and tip your tug pilot!"`,
             `"Astrometric Advisory: High gravimetric shear detected near deep-space singularities."`,
             `"Aegis Command warns independent haulers to avoid unmarked syndicate wagering buoys."`,
-            `"University of Cygnus Prime announces open grants for Pulsar, Magnetar, and Quasar spectroscopy."`,
-            `"Frothy Moon Outpost reports clear skies and fresh dark synth-ale on tap for deep-sky astronomers."`,
-            `"Xy-Corp's Helios Refinery posts record alloy smelting yields—Water and Food imports in high demand."`,
+            `"University of Cygnus Prime [85, 65] announces open grants for Pulsar, Magnetar, and Quasar spectroscopy."`,
+            `"Frothy Moon Outpost [58, -8] reports clear skies and fresh dark synth-ale on tap for deep-sky astronomers."`,
+            `"Xy-Corp's Helios Refinery [-55, -110] posts record alloy smelting yields—Water and Food imports in high demand."`,
+            `"Kepler Listening Post [-68, 42] offers priority payouts for recovered Syndicate Ledgers and Encrypted Data."`,
+            `"Valkyrie Drift [135, -120] miners report rich platinum seams—fresh ale and droid servos trading at steep premiums."`,
+            `"Solitude Research Platform [165, -175] opens bio-dome trade bays for outer-rim geneticists and couriers."`,
+            `"Ceti Alpha Shipyards [-90, 130] drydocks operating at peak output—raw Platinum Ore and Rare Metals wanted."`,
             `"SEC-COM Advisory: Automated Terran War mines remain active in outer-rim trade corridors."`
         ];
 
@@ -688,6 +911,9 @@ class SoundManager {
         }
         if (typeof playerActiveBounty !== 'undefined' && playerActiveBounty) {
             headlines.push(`"SEC-COM BOLO: High-value target ${playerActiveBounty.targetName} last tracked near [${playerActiveBounty.x}, ${-playerActiveBounty.y}]."`);
+        }
+        if (typeof playerActiveMission !== 'undefined' && playerActiveMission && !playerActiveMission.isComplete) {
+            headlines.push(`"DISPATCH REMINDER: Contract '${playerActiveMission.title}' remains open on regional boards."`);
         }
         if (typeof playerNotoriety !== 'undefined' && playerNotoriety > 15) {
             const shipTitle = (typeof playerShip !== 'undefined' && playerShip.name) ? playerShip.name : 'an unidentified vessel';
@@ -729,7 +955,7 @@ class SoundManager {
         if (this._recentNews.length > 6) this._recentNews.shift();
 
         if (typeof logMessage === 'function') {
-            logMessage(`<span style="color:var(--gold-text)">[ 1620 AM NEWS ]</span> <i>${msg}</i>`);
+            logMessage(`<span style="color:var(--gold-text)">[ 1620 AM NEWS ]</span> <i>${_audioEscapeHtml(msg)}</i>`);
         }
     }
 
@@ -775,7 +1001,7 @@ class SoundManager {
 
             filter.type = 'lowpass';
             filter.frequency.setValueAtTime(profile.cutoff, now);
-            filter.Q.setValueAtTime(1.5, now);
+            filter.Q.setValueAtTime(profile.q || 1.5, now);
 
             lfo.type = 'sine';
             lfo.frequency.setValueAtTime(0.125, now);
@@ -809,13 +1035,18 @@ class SoundManager {
         this.ambientNodes = null;
 
         try {
+            const isRunning = this.ctx && this.ctx.state === 'running';
             const now = this.ctx ? this.ctx.currentTime : 0;
-            const stopAt = now + 0.045;
+            const stopAt = isRunning ? (now + 0.045) : now;
 
             if (this.ctx && nodes.padGain) {
                 nodes.padGain.gain.cancelScheduledValues(now);
-                nodes.padGain.gain.setValueAtTime(Math.max(0.0001, nodes.padGain.gain.value || 0.01), now);
-                nodes.padGain.gain.exponentialRampToValueAtTime(0.0001, stopAt);
+                if (isRunning) {
+                    nodes.padGain.gain.setValueAtTime(Math.max(0.0001, nodes.padGain.gain.value || 0.01), now);
+                    nodes.padGain.gain.exponentialRampToValueAtTime(0.0001, stopAt);
+                } else {
+                    nodes.padGain.gain.setValueAtTime(0.0001, now);
+                }
             }
 
             nodes.osc1.stop(stopAt + 0.005);
@@ -856,14 +1087,18 @@ class SoundManager {
         if (!listEl || !detailEl || !actionsEl) return;
 
         const info = this.getCurrentStationInfo();
+        const profile = this._getFactionDroneProfile();
+        const isStealthed = typeof isSilentRunning !== 'undefined' && isSilentRunning;
+        const inCombat = typeof currentGameState !== 'undefined' && currentGameState === 'combat';
+        const mixState = !this.enabled ? "MUTED" : (isStealthed ? "SILENT DUCKING (45%)" : (inCombat ? "COMBAT MIX (75%)" : "NOMINAL (100%)"));
 
-        listEl.innerHTML = `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; border-bottom:1px solid #333;">AVAILABLE FREQUENCIES</div>`;
+        listEl.innerHTML = `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; border-bottom:1px solid #333;">AVAILABLE FREQUENCIES (${this.radioStations.length})</div>`;
 
         this.radioStations.forEach((st, idx) => {
             const isActive = idx === this.currentStationIndex;
             const subLabel = (st.type === "MUSIC" && st.tracks && st.tracks.length > 0)
                 ? `${st.tracks.length} Track${st.tracks.length > 1 ? 's' : ''}`
-                : st.type;
+                : (st.type === "PULSAR" || st.type === "SYNTH" ? "PROCEDURAL SYNTH" : st.type);
 
             const row = document.createElement('div');
             row.className = 'trade-item-row';
@@ -874,8 +1109,8 @@ class SoundManager {
             }
             row.innerHTML = `
                 <div>
-                    <div style="color:${isActive ? 'var(--accent-color)' : 'var(--item-name-color)'}; font-weight:bold; font-size:12px;">${isActive ? '▶ ' : ''}${st.freq} — ${st.name}</div>
-                    <div style="color:var(--item-desc-color); font-size:10px; margin-top:3px;">${subLabel}</div>
+                    <div style="color:${isActive ? 'var(--accent-color)' : 'var(--item-name-color)'}; font-weight:bold; font-size:12px;">${isActive ? '▶ ' : ''}${_audioEscapeHtml(st.freq)} — ${_audioEscapeHtml(st.name)}</div>
+                    <div style="color:var(--item-desc-color); font-size:10px; margin-top:3px;">${_audioEscapeHtml(subLabel)}</div>
                 </div>
             `;
             row.onclick = () => {
@@ -885,12 +1120,33 @@ class SoundManager {
             listEl.appendChild(row);
         });
 
+        // Multi-track playlist selector for MUSIC stations with 2+ tracks
+        let trackListHtml = '';
+        if (info.type === "MUSIC" && info.tracks.length > 1) {
+            trackListHtml = `
+                <div class="trade-math-area" style="text-align:left; margin-top:10px;">
+                    <div style="font-size:10px; color:var(--gold-text); letter-spacing:1px; margin-bottom:6px; border-bottom:1px solid #333; padding-bottom:4px;">STATION PLAYLIST</div>
+                    ${info.tracks.map((tr, tIdx) => {
+                        const playing = tIdx === info.trackIndex;
+                        return `<div onclick="soundManager.selectTrack(${info.index}, ${tIdx}); soundManager.openRadioTuner();" style="cursor:pointer; padding:5px 6px; font-size:11px; border-radius:3px; margin-bottom:3px; background:${playing ? 'rgba(0,224,224,0.12)' : 'transparent'}; color:${playing ? 'var(--accent-color)' : 'var(--text-color)'}; font-weight:${playing ? 'bold' : 'normal'};">
+                            ${playing ? '▶ ' : `${tIdx + 1}. `}${_audioEscapeHtml(tr.title)}
+                        </div>`;
+                    }).join('')}
+                </div>
+            `;
+        }
+
         detailEl.innerHTML = `
-            <div style="text-align:center; padding: 15px 10px;">
-                <div style="font-size:46px; margin-bottom:10px; filter: drop-shadow(0 0 12px var(--accent-color));">\uD83D\uDCFB</div>
+            <div style="text-align:center; padding: 12px 10px;">
+                <div style="font-size:42px; margin-bottom:8px; filter: drop-shadow(0 0 12px var(--accent-color));">\uD83D\uDCFB</div>
                 <div style="font-size:10px; color:var(--accent-color); letter-spacing:2px; margin-bottom:4px;">ACTIVE FREQUENCY</div>
-                <h3 style="color:var(--item-name-color); margin:0 0 6px 0;">${info.freq} — ${info.name}</h3>
-                <div style="font-size:12px; color:var(--gold-text); margin-bottom:16px;">\u266A ${info.trackTitle}</div>
+                <h3 style="color:var(--item-name-color); margin:0 0 6px 0;">${_audioEscapeHtml(info.freq)} — ${_audioEscapeHtml(info.name)}</h3>
+                <div style="font-size:12px; color:var(--gold-text); margin-bottom:12px;">\u266A ${_audioEscapeHtml(info.trackTitle)}</div>
+
+                <div style="display:flex; justify-content:space-between; font-size:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); padding:6px 10px; border-radius:4px; margin-bottom:12px;">
+                    <span style="color:var(--item-desc-color);">CARRIER: <b style="color:var(--accent-color);">${_audioEscapeHtml(profile.faction)}</b></span>
+                    <span style="color:var(--item-desc-color);">MIX: <b style="color:${this.enabled ? 'var(--success)' : 'var(--danger)'};">${mixState}</b></span>
+                </div>
 
                 <div class="trade-math-area" style="text-align:left;">
                     <div style="font-size:10px; color:var(--accent-color); letter-spacing:1px; margin-bottom:8px; border-bottom:1px solid #333; padding-bottom:4px;">AUDIO MIXER</div>
@@ -902,24 +1158,44 @@ class SoundManager {
                         <span>Radio / Ambient (${Math.round(this.musicVolume * 100)}%):</span>
                         <input type="range" min="0" max="1" step="0.05" value="${this.musicVolume}" style="width:120px; accent-color:var(--accent-color); cursor:pointer;" oninput="soundManager.setMusicVolume(this.value); this.previousElementSibling.textContent='Radio / Ambient ('+Math.round(this.value*100)+'%):';">
                     </div>
+                    <div class="trade-stat-row" style="align-items:center; margin-top:8px;">
+                        <span>SFX Gain (${Math.round(this.sfxVolume * 100)}%):</span>
+                        <input type="range" min="0" max="1" step="0.05" value="${this.sfxVolume}" style="width:120px; accent-color:var(--accent-color); cursor:pointer;" oninput="soundManager.setSfxVolume(this.value); this.previousElementSibling.textContent='SFX Gain ('+Math.round(this.value*100)+'%):';">
+                    </div>
                 </div>
 
-                <p style="font-size:11px; color:var(--item-desc-color); line-height:1.5; margin-top:12px; text-align:left;">
+                ${trackListHtml}
+
+                <p style="font-size:11px; color:var(--item-desc-color); line-height:1.5; margin-top:10px; text-align:left;">
                     Tip: Press <b>R</b> during flight to cycle stations, <b>Shift+R</b> to skip tracks, or <b>Alt+R</b> to open this receiver.
                 </p>
             </div>
         `;
 
-        let btns = '';
+        let btns = `
+            <div style="display:flex; gap:8px; margin-bottom:8px;">
+                <button class="action-button" style="flex:1; margin:0; padding:8px; font-size:11px; border-color:var(--accent-color); color:var(--accent-color);" onclick="soundManager.nextRadioStation(false, -1); soundManager.openRadioTuner();">◀ PREV</button>
+                <button class="action-button" style="flex:1; margin:0; padding:8px; font-size:11px; border-color:var(--accent-color); color:var(--accent-color);" onclick="soundManager.nextRadioStation(false, 1); soundManager.openRadioTuner();">NEXT ▶</button>
+            </div>
+        `;
+
         if (info.type === "MUSIC" && info.trackCount > 1) {
-            btns += `<button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color);" onclick="soundManager.nextRadioStation(true); soundManager.openRadioTuner();">⏭ SKIP TRACK</button>`;
+            btns += `<button class="action-button" style="border-color:var(--gold-text); color:var(--gold-text);" onclick="soundManager.nextRadioStation(true); soundManager.openRadioTuner();">⏭ SKIP TRACK</button>`;
         } else if (info.type === "NEWS") {
             btns += `<button class="action-button" style="border-color:var(--gold-text); color:var(--gold-text);" onclick="soundManager.triggerNewsBulletin(true);">📡 REQUEST LIVE BULLETIN</button>`;
+        } else if (info.type === "SHADOW") {
+            btns += `<button class="action-button" style="border-color:#9933FF; color:#DDA0DD;" onclick="soundManager.triggerShadowDispatch(true);">🕶️ DECRYPT SHADOW WIRE</button>`;
         } else if (info.type === "SIGNAL") {
             btns += `<button class="action-button" style="border-color:#DDA0DD; color:#DDA0DD;" onclick="soundManager.triggerNumbersTransmission(true);">🌀 INTERCEPT SUBSPACE BURST</button>`;
         }
-        btns += `<button class="action-button" onclick="soundManager.toggleMute(); soundManager.openRadioTuner();">${this.enabled ? '🔇 MUTE ALL AUDIO' : '🔊 ENABLE AUDIO'}</button>`;
-        btns += `<button class="action-button" style="border-color:#888; color:#888;" onclick="closeGenericModal()">CLOSE RECEIVER</button>`;
+
+        btns += `
+            <div style="display:flex; gap:8px; margin-bottom:8px;">
+                <button class="action-button" style="flex:1; margin:0; padding:8px; font-size:11px;" onclick="soundManager.playSuccessChime();">🔊 TEST SFX</button>
+                <button class="action-button" style="flex:1; margin:0; padding:8px; font-size:11px;" onclick="soundManager.toggleMute(); soundManager.openRadioTuner();">${this.enabled ? '🔇 MUTE ALL' : '🔊 UNMUTE'}</button>
+            </div>
+            <button class="action-button" style="border-color:#888; color:#888;" onclick="closeGenericModal()">CLOSE RECEIVER</button>
+        `;
 
         actionsEl.innerHTML = btns;
     }
@@ -980,10 +1256,11 @@ class SoundManager {
         if (!this.ctx) return;
         this._ensureContextRunning();
 
-        // BUG FIX: Never queue oscillators onto a suspended context (prevents burst replay on first click)
+        // Never queue oscillators onto a suspended context (prevents burst replay on first click)
         if (this.ctx.state !== 'running') return;
         if (this._activeVoices >= this._maxVoices) return;
 
+        let voiceCounted = false;
         try {
             let durMs = Number(duration) || 100;
             if (durMs > 0 && durMs < 10) durMs *= 1000;
@@ -1014,6 +1291,7 @@ class SoundManager {
             gain.connect(this.sfxGain || this.masterGain);
 
             this._activeVoices++;
+            voiceCounted = true;
             osc.onended = () => {
                 this._activeVoices = Math.max(0, this._activeVoices - 1);
                 try { osc.disconnect(); gain.disconnect(); } catch (e) {}
@@ -1021,7 +1299,9 @@ class SoundManager {
 
             osc.start(startTime);
             osc.stop(stopTime + 0.005);
-        } catch (err) {}
+        } catch (err) {
+            if (voiceCounted) this._activeVoices = Math.max(0, this._activeVoices - 1);
+        }
     }
 
     playNoise(duration, vol = 1, cutoffFreq = 800, delayMs = 0, filterType = 'lowpass', usePink = false) {
@@ -1034,6 +1314,7 @@ class SoundManager {
         if (this.ctx.state !== 'running') return;
         if (this._activeVoices >= this._maxVoices) return;
 
+        let voiceCounted = false;
         try {
             const durSec = Math.min(2.0, Math.max(0.02, Number(duration) || 0.2));
             const delaySec = Math.max(0, (Number(delayMs) || 0) / 1000);
@@ -1060,6 +1341,7 @@ class SoundManager {
             gain.connect(this.sfxGain || this.masterGain);
 
             this._activeVoices++;
+            voiceCounted = true;
             noise.onended = () => {
                 this._activeVoices = Math.max(0, this._activeVoices - 1);
                 try { noise.disconnect(); filter.disconnect(); gain.disconnect(); } catch (e) {}
@@ -1067,7 +1349,9 @@ class SoundManager {
 
             noise.start(startTime, randomOffset, durSec);
             noise.stop(stopTime + 0.005);
-        } catch (err) {}
+        } catch (err) {
+            if (voiceCounted) this._activeVoices = Math.max(0, this._activeVoices - 1);
+        }
     }
 
     // --- CORE SFX LIBRARY ---
@@ -1182,7 +1466,7 @@ class SoundManager {
 
     // --- EXPANDED PROCEDURAL SFX ---
     playAirlock() {
-        if (!this._canPlay('airlock', 200)) return;
+        if (!this._canPlay('airlock', 250)) return;
         this.playNoise(0.28, 0.24, 1500, 0, 'bandpass', true);
         this.playTone(140, 'triangle', 120, 0.22, 65, 190);
     }
@@ -1213,6 +1497,16 @@ class SoundManager {
         this.playTone(659.25, 'sine', 120, 0.14, null, 90);
         this.playTone(783.99, 'sine', 240, 0.16, null, 180);
     }
+    playShieldRecharge() {
+        if (!this._canPlay('shieldRecharge', 250)) return;
+        this.playTone(320, 'sine', 240, 0.12, 740, 0);
+        this.playTone(640, 'triangle', 200, 0.08, 1280, 90);
+    }
+    playDatapad() {
+        if (!this._canPlay('datapad', 120)) return;
+        this.playTone(1040, 'sine', 45, 0.09, 1320, 0);
+        this.playTone(1320, 'sine', 65, 0.08, 1560, 50);
+    }
 }
 
 const soundManager = new SoundManager();
@@ -1223,7 +1517,12 @@ window.soundManager = soundManager;
 // ==========================================
 
 (function initAudioHooks() {
+    let _lastSilentRunningState = false;
+
     function hasBlockingOverlayOpen() {
+        if (typeof window.UI !== 'undefined' && typeof window.UI.isAnyModalOpen === 'function') {
+            return window.UI.isAnyModalOpen();
+        }
         const ids = [
             'genericModalOverlay',
             'stationOverlay',
@@ -1240,6 +1539,16 @@ window.soundManager = soundManager;
         return false;
     }
 
+    function checkSilentRunningAudioTransition() {
+        if (typeof isSilentRunning === 'undefined') return;
+        const current = Boolean(isSilentRunning);
+        if (current !== _lastSilentRunningState) {
+            _lastSilentRunningState = current;
+            if (current) soundManager.playPowerDown();
+            else soundManager.playPowerUp();
+        }
+    }
+
     if (typeof GameBus !== 'undefined') {
         GameBus.on('HULL_DAMAGED', (data) => {
             if (data && data.amount > 0) soundManager.playHullHit();
@@ -1248,10 +1557,12 @@ window.soundManager = soundManager;
             if (amount > 0) soundManager.playRepair();
         });
         GameBus.on('TICK_PROCESSED', (tick) => {
+            checkSilentRunningAudioTransition();
             soundManager.updateAdaptiveMix();
             if (tick && tick.isMovement && !tick.interrupt) soundManager.playThruster();
         });
         GameBus.on('UI_REFRESH_REQUESTED', () => {
+            checkSilentRunningAudioTransition();
             soundManager.updateAdaptiveMix();
             if (typeof currentGameState !== 'undefined' &&
                 currentGameState !== 'galactic_map' &&
@@ -1331,7 +1642,59 @@ window.soundManager = soundManager;
             window._radioHelpPatched = true;
         }
 
-        // 3. Hover & Typing SFX + 'R' / 'Alt+R' Radio Hotkey Listener
+        // 3. Self-contained gameplay audio polish (Airlocks, Level-Up Fanfare, Wormhole Arrival, Datapad)
+        if (typeof window.openStationView === 'function' && !window._audioDockHooked) {
+            const origOpenStation = window.openStationView;
+            window.openStationView = function() {
+                const stationOverlay = document.getElementById('stationOverlay');
+                const wasClosed = !stationOverlay || stationOverlay.style.display !== 'flex';
+                origOpenStation.apply(this, arguments);
+                if (wasClosed && stationOverlay && stationOverlay.style.display === 'flex') {
+                    soundManager.playAirlock();
+                }
+            };
+            window._audioDockHooked = true;
+        }
+
+        if (typeof window.closeStationView === 'function' && !window._audioUndockHooked) {
+            const origCloseStation = window.closeStationView;
+            window.closeStationView = function() {
+                const stationOverlay = document.getElementById('stationOverlay');
+                const wasOpen = stationOverlay && stationOverlay.style.display === 'flex';
+                origCloseStation.apply(this, arguments);
+                if (wasOpen) soundManager.playAirlock();
+            };
+            window._audioUndockHooked = true;
+        }
+
+        if (typeof window.renderLevelUpScreen === 'function' && !window._audioLevelUpHooked) {
+            const origRenderLvl = window.renderLevelUpScreen;
+            window.renderLevelUpScreen = function() {
+                origRenderLvl.apply(this, arguments);
+                soundManager.playLevelUp();
+            };
+            window._audioLevelUpHooked = true;
+        }
+
+        if (typeof window.executeWormholeJump === 'function' && !window._audioWormholeHooked) {
+            const origJump = window.executeWormholeJump;
+            window.executeWormholeJump = function() {
+                origJump.apply(this, arguments);
+                setTimeout(() => soundManager.playJumpComplete(), 550);
+            };
+            window._audioWormholeHooked = true;
+        }
+
+        if (typeof window.interactWithNPC === 'function' && !window._audioHailHooked) {
+            const origInteractNpc = window.interactWithNPC;
+            window.interactWithNPC = function() {
+                soundManager.playHail();
+                return origInteractNpc.apply(this, arguments);
+            };
+            window._audioHailHooked = true;
+        }
+
+        // 4. Hover & Typing SFX + 'R' / 'Alt+R' Radio Hotkey Listener
         let lastHoveredTarget = null;
         document.addEventListener('mouseover', (e) => {
             if (!soundManager.enabled || !e.target || typeof e.target.closest !== 'function') return;
