@@ -961,7 +961,8 @@ window.ENCOUNTER_DATABASE = ENCOUNTER_DATABASE;
         if (typeof window.resolveUniversalEncounter === 'function' && !window._loreResolveEncounterPatched) {
             const origResolveEncounter = window.resolveUniversalEncounter;
             window.resolveUniversalEncounter = function(encounterId, choiceIndex) {
-                const encounter = ENCOUNTER_DATABASE[encounterId];
+                // Explicitly use window.ENCOUNTER_DATABASE to catch merged mechanics.js entries!
+                const encounter = window.ENCOUNTER_DATABASE[encounterId]; 
                 const choice = encounter && encounter.choices ? encounter.choices[choiceIndex] : null;
 
                 origResolveEncounter.apply(this, arguments);
