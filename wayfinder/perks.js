@@ -357,10 +357,6 @@ window.hasPlayerPerk = hasPlayerPerk;
 
     // 2. HOOK ENGINE FUNCTIONS ON DOM LOAD (Using document so it runs before script.js auto-login!)
     function attachPerkWrappers() {
-        // Guarded the orphaned function call so it doesn't throw a ReferenceError
-        if (typeof bindFieldDecryptionHandlers === 'function') {
-            bindFieldDecryptionHandlers();
-        }
 
         // A. Wrap applyPlayerShipStats to inject passive stat perks without clamping current vitals
         if (typeof window.applyPlayerShipStats === 'function' && !window._perksStatsHooked) {
