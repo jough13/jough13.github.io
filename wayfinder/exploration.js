@@ -124,14 +124,13 @@ function landOnStandalonePlanet() {
     if (!location) return;
 
     const biomeId = location.biome || 'BARREN_ROCK';
-    
-    // Fetch any saved data so rocks don't infinitely respawn if you leave and come back
     const sysKey = `${playerX},${playerY}_p0`;
     const savedState = worldStateDeltas[sysKey] || {};
 
     // Generate a temporary 1-planet system in memory
     currentSystemData = {
         name: location.name || "Deep Space Rogue Planet",
+        isStandalone: true,
         x: playerX,
         y: playerY,
         planets: [{
