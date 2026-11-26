@@ -566,15 +566,18 @@ function openColonyManagement(colonyId) {
         let storageHtml = `<table style="width:100%; text-align:left; font-size:12px; border-collapse: collapse;">`;
         const allItems = new Set([...Object.keys(playerCargo), ...Object.keys(colony.storage)]);
         
-        if (playerShip.forces.marines >= 10 || colony.storage['MERCENARY_PLATOON']) allItems.add('MERCENARY_PLATOON');
-        if (playerShip.forces.heavyMechs >= 1 || colony.storage['ASSAULT_MECH']) allItems.add('ASSAULT_MECH');
+        // Guarded legacy checks
+        if ((playerShip.forces && playerShip.forces.marines >= 10) || colony.storage['MERCENARY_PLATOON']) allItems.add('MERCENARY_PLATOON');
+        if ((playerShip.forces && playerShip.forces.heavyMechs >= 1) || colony.storage['ASSAULT_MECH']) allItems.add('ASSAULT_MECH');
 
         allItems.forEach(item => {
             let shipQty = playerCargo[item] || 0;
-            if (item === 'MERCENARY_PLATOON') shipQty = Math.floor((playerShip.forces.marines || 0) / 10);
-            if (item === 'ASSAULT_MECH') shipQty = playerShip.forces.heavyMechs || 0;
+            // Guarded legacy checks
+            if (item === 'MERCENARY_PLATOON') shipQty = Math.floor(((playerShip.forces && playerShip.forces.marines) || 0) / 10);
+            if (item === 'ASSAULT_MECH') shipQty = (playerShip.forces && playerShip.forces.heavyMechs) || 0;
+            
             const colQty = colony.storage[item] || 0;
-            if (shipQty === 0 && colQty === 0) return; 
+            if (shipQty === 0 && colQty === 0) return;
             
             const itemName = typeof COMMODITIES !== 'undefined' && COMMODITIES[item] ? COMMODITIES[item].name : item;
             storageHtml += `
@@ -825,8 +828,8 @@ function transferItem(colonyId, itemId, direction) {
     if (!colony) return;
 
     let playerHas = playerCargo[itemId] || 0;
-    if (itemId === 'MERCENARY_PLATOON') playerHas = Math.floor((playerShip.forces.marines || 0) / 10);
-    else if (itemId === 'ASSAULT_MECH') playerHas = playerShip.forces.heavyMechs || 0;
+    if (itemId === 'MERCENARY_PLATOON') playerHas = Math.floor(((playerShip.forces && playerShip.forces.marines) || 0) / 10);
+    else if (itemId === 'ASSAULT_MECH') playerHas = (playerShip.forces && playerShip.forces.heavyMechs) || 0;
 
     if (direction === 'TO_COLONY') {
         if (playerHas > 0) {
@@ -847,9 +850,14 @@ function transferItem(colonyId, itemId, direction) {
             colony.storage[itemId] = (colony.storage[itemId] || 0) + 1;
             if (typeof soundManager !== 'undefined') soundManager.playUIClick();
         }
-    } else if (direction === 'TO_SHIP') {
+        } else if (direction === 'TO_SHIP') {
         if ((colony.storage[itemId] || 0) > 0) {
             
+            if (itemId === 'MERCENARY_PLATOON' || itemId === 'ASSAULT_MECH') {
+                // Ensure the forces object exists before trying to add to it!
+                if (!playerShip.forces) playerShip.forces = { marines: 0, heavyMechs: 0, dropDropships: 0, maxTroops: 20 };
+            }
+
             if (itemId === 'MERCENARY_PLATOON') {
                 if ((playerShip.forces.marines || 0) + 10 > (playerShip.forces.maxTroops || 20)) {
                     if (typeof showToast === 'function') showToast("BARRACKS FULL", "error"); return;
@@ -1108,54 +1116,72 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                     // C. Advanced Logistics (Consumes specific multi-inputs)
                     if (!isStorageFull && eff > 0) {
                         let wProd = Math.floor(stats.weaponProd * eff * stats.omniProd);
+                        if (currentStorage + wProd > stats.storageCap) wProd = Math.max(0, stats.storageCap - currentStorage);
                         let wAlloy = Math.floor((stats.consume.weapons?.REFINED_ALLOY || 0) * eff);
                         let wMin = Math.floor((stats.consume.weapons?.MINERALS || 0) * eff);
                         if (wProd > 0 && (colony.storage['REFINED_ALLOY']||0) >= wAlloy && (colony.storage['MINERALS']||0) >= wMin) {
                             if (wAlloy > 0) colony.storage['REFINED_ALLOY'] -= wAlloy; 
                             if (wMin > 0) colony.storage['MINERALS'] -= wMin;
                             colony.storage['WEAPONS'] = (colony.storage['WEAPONS'] || 0) + wProd;
+                            currentStorage += wProd;
                         }
                         
                         let trProd = Math.floor(stats.troopProd * eff * stats.omniProd);
+                        if (currentStorage + trProd > stats.storageCap) trProd = Math.max(0, stats.storageCap - currentStorage);
                         let trFood = Math.floor((stats.consume.troops?.FOOD_SUPPLIES || 0) * eff);
                         let trAlloy = Math.floor((stats.consume.troops?.REFINED_ALLOY || 0) * eff);
                         if (trProd > 0 && (colony.storage['REFINED_ALLOY']||0) >= trAlloy && (colony.storage['FOOD_SUPPLIES']||0) >= trFood) {
                             if (trAlloy > 0) colony.storage['REFINED_ALLOY'] -= trAlloy; 
                             if (trFood > 0) colony.storage['FOOD_SUPPLIES'] -= trFood;
                             colony.storage['MERCENARY_PLATOON'] = (colony.storage['MERCENARY_PLATOON'] || 0) + trProd;
+                            currentStorage += trProd;
                         }
                         
                         let meProd = Math.floor(stats.mechProd * eff * stats.omniProd);
+                        if (currentStorage + meProd > stats.storageCap) meProd = Math.max(0, stats.storageCap - currentStorage);
                         let meAlloy = Math.floor((stats.consume.mechs?.REFINED_ALLOY || 0) * eff);
                         let meTech = Math.floor((stats.consume.mechs?.TECH_PARTS || 0) * eff);
                         if (meProd > 0 && (colony.storage['REFINED_ALLOY']||0) >= meAlloy && (colony.storage['TECH_PARTS']||0) >= meTech) {
                             if (meAlloy > 0) colony.storage['REFINED_ALLOY'] -= meAlloy; 
                             if (meTech > 0) colony.storage['TECH_PARTS'] -= meTech;
                             colony.storage['ASSAULT_MECH'] = (colony.storage['ASSAULT_MECH'] || 0) + meProd;
+                            currentStorage += meProd;
                         }
                         
                         let stProd = Math.floor(stats.stimProd * eff * stats.omniProd);
+                        if (currentStorage + stProd > stats.storageCap) stProd = Math.max(0, stats.storageCap - currentStorage);
                         let stMed = Math.floor((stats.consume.stims?.MEDICAL_SUPPLIES || 0) * eff);
                         let stMin = Math.floor((stats.consume.stims?.MINERALS || 0) * eff);
                         if (stProd > 0 && (colony.storage['MEDICAL_SUPPLIES']||0) >= stMed && (colony.storage['MINERALS']||0) >= stMin) {
                             if (stMed > 0) colony.storage['MEDICAL_SUPPLIES'] -= stMed; 
                             if (stMin > 0) colony.storage['MINERALS'] -= stMin;
                             colony.storage['PROHIBITED_STIMS'] = (colony.storage['PROHIBITED_STIMS'] || 0) + stProd;
+                            currentStorage += stProd;
                         }
                         
                         let vProd = Math.floor(stats.voidProd * eff * stats.omniProd);
-                        if (vProd > 0) colony.storage['VOID_CRYSTALS'] = (colony.storage['VOID_CRYSTALS'] || 0) + vProd;
+                        if (currentStorage + vProd > stats.storageCap) vProd = Math.max(0, stats.storageCap - currentStorage);
+                        if (vProd > 0) {
+                            colony.storage['VOID_CRYSTALS'] = (colony.storage['VOID_CRYSTALS'] || 0) + vProd;
+                            currentStorage += vProd;
+                        }
                         
                         let mdProd = Math.floor(stats.medProd * eff * stats.omniProd);
-                        if (mdProd > 0) colony.storage['MEDICAL_SUPPLIES'] = (colony.storage['MEDICAL_SUPPLIES'] || 0) + mdProd;
+                        if (currentStorage + mdProd > stats.storageCap) mdProd = Math.max(0, stats.storageCap - currentStorage);
+                        if (mdProd > 0) {
+                            colony.storage['MEDICAL_SUPPLIES'] = (colony.storage['MEDICAL_SUPPLIES'] || 0) + mdProd;
+                            currentStorage += mdProd;
+                        }
                         
                         let luxProd = Math.floor(stats.luxuryProd * eff * stats.omniProd);
+                        if (currentStorage + luxProd > stats.storageCap) luxProd = Math.max(0, stats.storageCap - currentStorage);
                         let luxWat = Math.floor((stats.consume.luxury?.WATER || 0) * eff);
                         let luxMin = Math.floor((stats.consume.luxury?.MINERALS || 0) * eff);
                         if (luxProd > 0 && (colony.storage['WATER']||0) >= luxWat && (colony.storage['MINERALS']||0) >= luxMin) {
                             if (luxWat > 0) colony.storage['WATER'] -= luxWat; 
                             if (luxMin > 0) colony.storage['MINERALS'] -= luxMin;
                             colony.storage['LUXURY_GOODS'] = (colony.storage['LUXURY_GOODS'] || 0) + luxProd;
+                            currentStorage += luxProd;
                         }
                     }
                     
