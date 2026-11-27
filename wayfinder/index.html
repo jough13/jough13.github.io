@@ -1267,6 +1267,7 @@
                 if (restored === 0) throw new Error("No valid wayfinder_* entries found in archive.");
                 if (status) { status.style.color = 'var(--success)'; status.textContent = `Restored ${restored} entries! Reloading terminal...`; }
                 if (typeof showToast === 'function') showToast(`RESTORED ${restored} SAVE KEYS`, "success");
+                window._skipSaveOnUnload = true;
                 setTimeout(() => location.reload(), 900);
             } catch (err) {
                 if (status) { status.style.color = 'var(--danger)'; status.textContent = "Import error: " + err.message; }
