@@ -549,7 +549,12 @@ const PLANET_BIOMES = {
     }
 };
 
-// Normalize and freeze the database to optimize V8 memory lookups
+// Fast O(1) name index & frozen individual records (outer dictionary stays extensible via BiomeUtils.registerBiome)
+const _biomeByName = new Map();
+const _HABITABLE_BIOME_IDS = new Set(['TERRAN', 'BIOLUMINESCENT', 'OCEANIC', 'TOXIC', 'MYCELIAL', 'TIDAL_LOCKED']);
+const _GIANT_BIOME_IDS = new Set(['GAS_GIANT', 'ICE_GIANT']);
+const _customSpecialBiomeActions = new Map();
+
 for (const bKey in PLANET_BIOMES) {
     const b = PLANET_BIOMES[bKey];
     if (!b) continue;
@@ -558,8 +563,9 @@ for (const bKey in PLANET_BIOMES) {
     if (b.telemetry) Object.freeze(b.telemetry);
     if (b.expeditionData) Object.freeze(b.expeditionData);
     Object.freeze(b);
+    if (b.name) _biomeByName.set(b.name, b);
 }
-Object.freeze(PLANET_BIOMES);
+
 window.PLANET_BIOMES = PLANET_BIOMES;
 
 if (typeof GameRegistry !== 'undefined') {
@@ -571,12 +577,19 @@ if (typeof GameRegistry !== 'undefined') {
 // ==========================================
 
 function _biomeEscapeHtml(str) {
+    if (typeof UI !== 'undefined' && typeof UI.escapeHtml === 'function') return UI.escapeHtml(str);
     return String(str === undefined || str === null ? "" : str)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+function _biomeEscapeJsArg(str) {
+    return String(str === undefined || str === null ? "" : str)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'");
 }
 
 function _biomeHasPerk(perkId) {
@@ -619,6 +632,65 @@ function _savePlanetDelta(x, y, idx, patch) {
     });
 }
 
+function _computePlanetSurveyProgress(planet, starX, starY, idx) {
+    if (!planet || !planet.biome) return { done: 0, total: 1, complete: false };
+    const saved = _getPlanetDelta(starX, starY, idx);
+    const bId = planet.biome.id || 'BARREN_ROCK';
+
+    if (!planet.biome.landable && _GIANT_BIOME_IDS.has(bId)) {
+        const skimmed = Boolean(planet.skimmedThisVisit || saved.skimmed);
+        return { done: skimmed ? 1 : 0, total: 1, complete: skimmed };
+    }
+    if (!planet.biome.landable) return { done: 0, total: 0, complete: false };
+
+    const bioRes = (planet.biome.resources || []).filter(r => typeof BIOLOGICAL_RESOURCES !== 'undefined' && BIOLOGICAL_RESOURCES.has(r));
+    const minRes = (planet.biome.resources || []).filter(r => typeof BIOLOGICAL_RESOURCES === 'undefined' || !BIOLOGICAL_RESOURCES.has(r));
+
+    let total = 0;
+    let done = 0;
+
+    if (minRes.length > 0) {
+        total++;
+        if (planet.minedThisVisit || saved.mined) done++;
+    }
+    if (bioRes.length > 0) {
+        total++;
+        if (planet.scannedThisVisit || saved.scanned) done++;
+    }
+    // Expedition
+    total++;
+    if (planet.exploredThisVisit || saved.explored) done++;
+
+    // Special Biome Operation or Machine World Hack
+    if (bId === 'MACHINE_WORLD') {
+        total++;
+        if (planet.hackedThisVisit || saved.hacked) done++;
+    } else if (_getSpecialBiomeActionMeta(bId)) {
+        total++;
+        if (planet.specialUsedThisVisit || saved.specialUsed) done++;
+    }
+
+    return { done, total, complete: total > 0 && done >= total };
+}
+
+function _checkFullPlanetarySurveyBonus(planet, starX, starY, idx) {
+    if (!planet) return;
+    const saved = _getPlanetDelta(starX, starY, idx);
+    if (saved.fullSurveyAwarded) return;
+
+    const prog = _computePlanetSurveyProgress(planet, starX, starY, idx);
+    if (prog.complete) {
+        _savePlanetDelta(starX, starY, idx, { fullSurveyAwarded: true });
+        const bonusXP = 120;
+        if (typeof playerXP !== 'undefined') playerXP += bonusXP;
+        if (typeof logMessage === 'function') {
+            logMessage(`<span style="color:var(--gold-text); font-weight:bold;">★ FULL PLANETARY SURVEY COMPLETE ★</span> Every surface operation on <b>${_biomeEscapeHtml(planet.name || 'this world')}</b> (${_biomeEscapeHtml(planet.biome.name)}) is logged! Awarded <b>+${bonusXP} Bonus XP</b>.`);
+        }
+        if (typeof showToast === 'function') showToast(`100% PLANET SURVEY (+${bonusXP} XP)`, "success");
+        if (typeof soundManager !== 'undefined') soundManager.playGain();
+    }
+}
+
 // ==========================================
 // --- BIOME UTILITY API ---
 // ==========================================
@@ -627,14 +699,14 @@ const BiomeUtils = {
     getBiome(idOrName) {
         if (!idOrName) return PLANET_BIOMES.BARREN_ROCK;
         if (PLANET_BIOMES[idOrName]) return PLANET_BIOMES[idOrName];
-        const foundKey = Object.keys(PLANET_BIOMES).find(k => PLANET_BIOMES[k].name === idOrName);
-        return foundKey ? PLANET_BIOMES[foundKey] : PLANET_BIOMES.BARREN_ROCK;
+        const byName = _biomeByName.get(idOrName);
+        return byName || PLANET_BIOMES.BARREN_ROCK;
     },
     isHabitableBiome(id) {
-        return ['TERRAN', 'BIOLUMINESCENT', 'OCEANIC', 'TOXIC', 'MYCELIAL', 'TIDAL_LOCKED'].includes(id);
+        return _HABITABLE_BIOME_IDS.has(id);
     },
     isGiantBiome(id) {
-        return ['GAS_GIANT', 'ICE_GIANT'].includes(id);
+        return _GIANT_BIOME_IDS.has(id);
     },
     getBiomesByResource(itemId) {
         return Object.values(PLANET_BIOMES).filter(b => Array.isArray(b.resources) && b.resources.includes(itemId));
@@ -658,8 +730,47 @@ const BiomeUtils = {
             explored: Boolean(d.explored),
             hacked: Boolean(d.hacked),
             specialUsed: Boolean(d.specialUsed),
-            skimmed: Boolean(d.skimmed)
+            skimmed: Boolean(d.skimmed),
+            fullSurveyAwarded: Boolean(d.fullSurveyAwarded)
         };
+    },
+    getBiomeDistribution() {
+        const list = Object.values(PLANET_BIOMES);
+        const totalWeight = list.reduce((sum, b) => sum + (b.weight || 10), 0);
+        return list.map(b => ({
+            id: b.id,
+            name: b.name,
+            weight: b.weight || 10,
+            chancePct: parseFloat((((b.weight || 10) / Math.max(1, totalWeight)) * 100).toFixed(2))
+        }));
+    },
+    registerBiome(id, def) {
+        if (!id || !def || !def.name) return false;
+        const normalized = {
+            id,
+            landable: true,
+            weight: 10,
+            hazard: "NONE",
+            colonyBonusDesc: "Standard baseline output",
+            description: "",
+            resources: ['MINERALS'],
+            image: 'assets/barren_rock.png',
+            ...def
+        };
+        if (Array.isArray(normalized.resources)) Object.freeze(normalized.resources);
+        if (normalized.telemetry) Object.freeze(normalized.telemetry);
+        if (normalized.expeditionData) Object.freeze(normalized.expeditionData);
+        Object.freeze(normalized);
+        PLANET_BIOMES[id] = normalized;
+        _biomeByName.set(normalized.name, normalized);
+        if (def.isHabitable) _HABITABLE_BIOME_IDS.add(id);
+        if (def.isGiant) _GIANT_BIOME_IDS.add(id);
+        return true;
+    },
+    registerSpecialAction(biomeId, meta, handlerFn) {
+        if (!biomeId || !meta || !meta.label || typeof handlerFn !== 'function') return false;
+        _customSpecialBiomeActions.set(biomeId, { meta, handler: handlerFn });
+        return true;
     }
 };
 window.BiomeUtils = BiomeUtils;
@@ -734,9 +845,20 @@ function skimGasGiantAtmosphere(planetIndex) {
 }
 window.skimGasGiantAtmosphere = skimGasGiantAtmosphere;
 
-// Helper describing each biome's unique surface operation button
+// Helper describing each landable biome's unique surface operation button (100% coverage of all 21 landable biomes)
 function _getSpecialBiomeActionMeta(bId) {
+    if (_customSpecialBiomeActions.has(bId)) {
+        return _customSpecialBiomeActions.get(bId).meta;
+    }
     switch (bId) {
+        case 'BARREN_ROCK':
+            return { label: '☄️ DEEP-CRATER IMPACT ASSAY', done: '✓ IMPACT RIM ASSAYED', color: 'var(--accent-color)', glow: 'rgba(0,224,224,0.25)' };
+        case 'TIDAL_LOCKED':
+            return { label: '🌅 HARVEST TERMINATOR SOLAR-CONDENSATE', done: '✓ TWILIGHT BELT TAPPED', color: '#FFCC66', glow: 'rgba(255,204,102,0.28)' };
+        case 'TOXIC':
+            return { label: '🌿 EXTRACT CANOPY ALKALOID RESIN', done: '✓ CANOPY GROVE HARVESTED', color: '#44DD66', glow: 'rgba(68,221,102,0.28)' };
+        case 'SULFURIC_MIRE':
+            return { label: '🧪 SIPHON FUMAROLE CATALYTIC GEL', done: '✓ FUMAROLE VENT DRAINED', color: '#DDCC33', glow: 'rgba(221,204,51,0.28)' };
         case 'TOMB_WORLD':
         case 'ARCHIVE_WORLD':
             return { label: '🏛️ EXCAVATE PRECURSOR SANCTUM', done: '✓ SANCTUM EXCAVATED', color: '#DDA0DD', glow: 'rgba(153,51,255,0.3)' };
@@ -769,7 +891,7 @@ function _getSpecialBiomeActionMeta(bId) {
     }
 }
 
-// 2. Special Biome Surface Action Dispatcher (12 Biome Archetypes)
+// 2. Special Biome Surface Action Dispatcher (All 21 Landable Biomes + Custom Registry)
 function executeBiomeSpecialAction() {
     if (!currentSystemData || !currentSystemData.planets) return;
     const planet = currentSystemData.planets[selectedPlanetIndex];
@@ -784,30 +906,123 @@ function executeBiomeSpecialAction() {
 
     if (typeof advanceGameTime === 'function') advanceGameTime(0.20);
 
+    // Custom registered action handler hook
+    if (_customSpecialBiomeActions.has(bId)) {
+        try {
+            _customSpecialBiomeActions.get(bId).handler(planet, currentSystemData, selectedPlanetIndex);
+        } catch (e) {
+            console.warn("Custom biome special action error:", e);
+        }
+        _checkFullPlanetarySurveyBonus(planet, currentSystemData.x, currentSystemData.y, selectedPlanetIndex);
+        if (typeof renderPlanetView === 'function') renderPlanetView();
+        if (typeof checkLevelUp === 'function') checkLevelUp();
+        if (typeof autoSaveGame === 'function') autoSaveGame();
+        return;
+    }
+
     const hasHealthPhysicist = _biomeHasPerk('HEALTH_PHYSICIST') ||
         (typeof playerShip !== 'undefined' && playerShip.components && playerShip.components.utility === 'UTIL_DOSIMETRY_ARRAY');
     const hasThermalShield = _biomeHasPerk('QUANTUM_NAVIGATOR') ||
         (typeof playerShip !== 'undefined' && playerShip.components && playerShip.components.utility === 'UTIL_THERMAL_BAFFLES');
+    const hasHeavyArmor = _biomeHasPerk('EMERGENCY_BULKHEADS') || _biomeHasPerk('NANO_HULL_WEAVE');
+    const hasCryoAdapt = _biomeHasPerk('CRYO_ADAPTATION');
 
+    // 0. BARREN_ROCK: Deep-Crater Impact Assay
+    if (bId === 'BARREN_ROCK') {
+        const dropId = Math.random() < 0.35 ? 'PLATINUM_ORE' : 'MINERALS';
+        const wantQty = dropId === 'PLATINUM_ORE' ? 2 : (4 + Math.floor(Math.random() * 4));
+        const added = _biomeSafeAddCargo(dropId, wantQty);
+        const dropName = (typeof COMMODITIES !== 'undefined' && COMMODITIES[dropId]) ? COMMODITIES[dropId].name : dropId;
+        const credFind = 120 + Math.floor(Math.random() * 140);
+        if (typeof playerCredits !== 'undefined') playerCredits += credFind;
+        if (typeof playerXP !== 'undefined') playerXP += 75;
+        if (typeof soundManager !== 'undefined') soundManager.playMining();
+        if (typeof showToast === 'function') showToast("IMPACT RIM ASSAYED", "success");
+        if (typeof logMessage === 'function') {
+            logMessage(`<span style="color:var(--accent-color); font-weight:bold;">[ CRATER ASSAY ]</span> Core-drilled primordial impact ejecta for${added > 0 ? ` <b>+${added}x ${dropName}</b> and` : ''} <b>+${formatNumber(credFind)}c</b> (+75 XP).`);
+        }
+    }
+    // 0.25 TIDAL_LOCKED: Harvest Terminator Solar-Condensate
+    else if (bId === 'TIDAL_LOCKED') {
+        let galeNote = "";
+        if (!hasHeavyArmor && Math.random() < 0.20) {
+            if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 7, reason: "Terminator Katabatic Gale" });
+            if (typeof playerHull !== 'undefined' && playerHull <= 0) return;
+            galeNote = ` <span style="color:var(--danger)">(-7 Hull wind shear)</span>`;
+        }
+        const fuelGain = 25;
+        if (typeof playerFuel !== 'undefined' && typeof MAX_FUEL !== 'undefined') {
+            playerFuel = Math.min(MAX_FUEL, Math.round((playerFuel + fuelGain) * 10) / 10);
+        }
+        if (typeof playerShields !== 'undefined' && typeof MAX_SHIELDS !== 'undefined') {
+            playerShields = MAX_SHIELDS;
+        }
+        const addedWater = _biomeSafeAddCargo('WATER', 3);
+        const addedMetal = Math.random() < 0.45 ? _biomeSafeAddCargo('RARE_METALS', 1) : 0;
+        if (typeof playerXP !== 'undefined') playerXP += 110;
+        if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+        if (typeof showToast === 'function') showToast("TERMINATOR HARVEST COMPLETE", "success");
+        if (typeof logMessage === 'function') {
+            logMessage(`<span style="color:#FFCC66; font-weight:bold;">[ TERMINATOR CONDENSATE ]</span> Harvested perpetual twilight runoff (+${fuelGain} Fuel, 100% Shields${addedWater > 0 ? `, +${addedWater}x Purified Water` : ''}${addedMetal > 0 ? `, +${addedMetal}x Rare Metals` : ''}, +110 XP).${galeNote}`);
+        }
+    }
+    // 0.5 TOXIC: Extract Canopy Alkaloid Resin
+    else if (bId === 'TOXIC') {
+        let acidNote = "";
+        if (!hasHeavyArmor && Math.random() < 0.22) {
+            if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 8, reason: "Toxic Canopy Sap" });
+            if (typeof playerHull !== 'undefined' && playerHull <= 0) return;
+            acidNote = ` <span style="color:var(--danger)">(-8 Hull caustic sap)</span>`;
+        }
+        const addedSpice = _biomeSafeAddCargo('KTHARR_SPICES', 2 + Math.floor(Math.random() * 2));
+        const addedBio = _biomeSafeAddCargo('GENETIC_SAMPLES', 2);
+        if (typeof playerXP !== 'undefined') playerXP += 115;
+        if (typeof soundManager !== 'undefined') soundManager.playGain();
+        if (typeof showToast === 'function') showToast("ALKALOID RESIN EXTRACTED", "success");
+        if (typeof logMessage === 'function') {
+            logMessage(`<span style="color:#44DD66; font-weight:bold;">[ CANOPY EXTRACTION ]</span> Tapped high-alkaloid jungle vines${(addedSpice + addedBio) > 0 ? ` for <b>+${addedSpice}x K'tharr Spices & +${addedBio}x Genetic Samples</b>` : ' (hold full)'} (+115 XP).${acidNote}`);
+        }
+    }
+    // 0.75 SULFURIC_MIRE: Siphon Fumarole Catalytic Gel
+    else if (bId === 'SULFURIC_MIRE') {
+        let mireNote = "";
+        if (!hasHeavyArmor && Math.random() < 0.25) {
+            if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 9, reason: "Sulfuric Fumarole Plume" });
+            if (typeof playerHull !== 'undefined' && playerHull <= 0) return;
+            mireNote = ` <span style="color:var(--danger)">(-9 Hull sulfuric mist)</span>`;
+        }
+        const addedQF = _biomeSafeAddCargo('QUANTUM_FLUID', 1 + Math.floor(Math.random() * 2));
+        const addedMed = _biomeSafeAddCargo('MEDICAL_SUPPLIES', 2);
+        if (typeof playerXP !== 'undefined') playerXP += 125;
+        if (typeof soundManager !== 'undefined') soundManager.playGain();
+        if (typeof showToast === 'function') showToast("FUMAROLE GEL SIPHONED", "success");
+        if (typeof logMessage === 'function') {
+            logMessage(`<span style="color:#DDCC33; font-weight:bold;">[ FUMAROLE SIPHON ]</span> Collected extremophile vent gels${(addedQF + addedMed) > 0 ? ` (<b>+${addedQF}x Quantum Fluid, +${addedMed}x Medical Supplies</b>)` : ' (hold full)'} (+125 XP).${mireNote}`);
+        }
+    }
     // A. TOMB_WORLD or ARCHIVE_WORLD: Subterranean Precursor Excavation
-    if (bId === 'TOMB_WORLD' || bId === 'ARCHIVE_WORLD') {
+    else if (bId === 'TOMB_WORLD' || bId === 'ARCHIVE_WORLD') {
         if (typeof unlockLoreEntry === 'function') {
             unlockLoreEntry('XENO_TOMB_WORLDS');
             unlockLoreEntry('XENO_PRECURSORS');
+            if (bId === 'ARCHIVE_WORLD') unlockLoreEntry('PRECURSOR_ORIGINS');
         }
         if (typeof enterPrecursorVault === 'function' && Math.random() < 0.45) {
             if (typeof logMessage === 'function') {
                 logMessage("<span style='color:#9933FF; font-weight:bold;'>[ TOMB UNSEALED ]</span> Your excavation charges breached a subterranean Precursor Vault!");
             }
+            _checkFullPlanetarySurveyBonus(planet, currentSystemData.x, currentSystemData.y, selectedPlanetIndex);
             if (typeof renderPlanetView === 'function') renderPlanetView();
             if (typeof autoSaveGame === 'function') autoSaveGame();
             enterPrecursorVault();
             return;
         }
 
-        const dropPool = ['PRECURSOR_DATACUBE', 'ENCRYPTED_ENGRAM', 'PRECURSOR_STAR_MAP_FRAGMENT', 'ANCIENT_RELICS'];
+        const dropPool = bId === 'ARCHIVE_WORLD'
+            ? ['ANCIENT_ARCHIVE', 'PRECURSOR_STAR_MAP_FRAGMENT', 'PRECURSOR_DATACUBE', 'ENCRYPTED_ENGRAM']
+            : ['PRECURSOR_DATACUBE', 'ENCRYPTED_ENGRAM', 'PRECURSOR_STAR_MAP_FRAGMENT', 'ANCIENT_RELICS'];
         const picked = dropPool[Math.floor(Math.random() * dropPool.length)];
-        const xp = 220;
+        const xp = bId === 'ARCHIVE_WORLD' ? 280 : 220;
         if (typeof playerXP !== 'undefined') playerXP += xp;
 
         const added = _biomeSafeAddCargo(picked, 1);
@@ -880,7 +1095,7 @@ function executeBiomeSpecialAction() {
     }
     // E. GLACIAL: Melt Sub-Glacial Deuterium Pocket
     else if (bId === 'GLACIAL') {
-        const fuelGain = 40 + Math.floor(Math.random() * 26);
+        const fuelGain = 40 + Math.floor(Math.random() * 26) + (hasCryoAdapt ? 10 : 0);
         if (typeof playerFuel !== 'undefined' && typeof MAX_FUEL !== 'undefined') {
             playerFuel = Math.min(MAX_FUEL, Math.round((playerFuel + fuelGain) * 10) / 10);
         }
@@ -1000,6 +1215,7 @@ function executeBiomeSpecialAction() {
         }
     }
 
+    _checkFullPlanetarySurveyBonus(planet, currentSystemData.x, currentSystemData.y, selectedPlanetIndex);
     if (typeof renderPlanetView === 'function') renderPlanetView();
     if (typeof checkLevelUp === 'function') checkLevelUp();
     if (typeof autoSaveGame === 'function') autoSaveGame();
@@ -1041,7 +1257,7 @@ window.executeBiomeSpecialAction = executeBiomeSpecialAction;
             window._biomeGenSystemPatched = true;
         }
 
-        // 0.5 ENHANCE SYSTEM MAP CARDS (ATMO-SKIM, COLONY BADGES & RARITY TAGS)
+        // 0.5 ENHANCE SYSTEM MAP CARDS (ATMO-SKIM, COLONY BADGES, 100% SURVEY BADGE & RARITY TAGS)
         if (typeof window.renderSystemMap === 'function' && !window._biomeSysMapPatched) {
             const origRenderSystemMap = window.renderSystemMap;
             window.renderSystemMap = function() {
@@ -1056,6 +1272,7 @@ window.executeBiomeSpecialAction = executeBiomeSpecialAction;
                     if (!planet || !planet.biome) return;
                     const saved = _getPlanetDelta(currentSystemData.x, currentSystemData.y, idx);
                     const isSkimmed = Boolean(planet.skimmedThisVisit || saved.skimmed);
+                    const surveyProg = _computePlanetSurveyProgress(planet, currentSystemData.x, currentSystemData.y, idx);
 
                     // Add Colony indicator badge if player has a settlement on this world
                     const colId = `${currentSystemData.x}_${currentSystemData.y}_p${idx}`;
@@ -1065,6 +1282,18 @@ window.executeBiomeSpecialAction = executeBiomeSpecialAction;
                         colBadge.style.cssText = 'position:absolute; top:-10px; left:-10px; background:var(--gold-text); color:#000; font-size:9px; font-weight:bold; padding:2px 6px; border-radius:10px; box-shadow:0 0 8px var(--gold-text);';
                         colBadge.textContent = '🏛️ COLONY';
                         card.appendChild(colBadge);
+                    }
+
+                    // Upgrade the top-right status badge to 100% SURVEYED when all operations are complete
+                    if (surveyProg.complete) {
+                        const existingBadges = card.querySelectorAll('div');
+                        existingBadges.forEach(div => {
+                            if (div.textContent && div.textContent.trim() === 'SCANNED') {
+                                div.textContent = '★ 100%';
+                                div.style.background = 'var(--gold-text)';
+                                div.style.boxShadow = '0 0 10px var(--gold-text)';
+                            }
+                        });
                     }
 
                     // Show Subtle Telemetry Rarity / Gravity line inside card
@@ -1117,18 +1346,18 @@ window.executeBiomeSpecialAction = executeBiomeSpecialAction;
                     ${t ? `
                         <div class="trade-math-area" style="margin-bottom:12px;">
                             <div style="font-size:10px; color:var(--accent-color); letter-spacing:1.5px; margin-bottom:8px; border-bottom:1px solid #333; padding-bottom:4px;">ORBITAL SPECTROSCOPY</div>
-                            <div class="trade-stat-row"><span>Atmosphere:</span> <span style="color:var(--text-color); font-weight:bold;">${t.atmosphere}</span></div>
-                            <div class="trade-stat-row"><span>Surface Gravity:</span> <span style="color:var(--text-color); font-weight:bold;">${t.gravity}</span></div>
-                            <div class="trade-stat-row"><span>Temperature:</span> <span style="color:var(--text-color); font-weight:bold;">${t.tempRange}</span></div>
-                            <div class="trade-stat-row"><span>Habitability:</span> <span style="color:${habColor}; font-weight:bold;">${t.habitability}</span></div>
-                            <div class="trade-stat-row"><span>Surface Hazard:</span> <span style="color:${hazColor}; font-weight:bold;">${biome.hazard || 'NONE'}</span></div>
-                            <div class="trade-stat-row"><span>Colony Trait:</span> <span style="color:var(--gold-text); font-weight:bold;">${biome.colonyBonusDesc || 'Standard'}</span></div>
+                            <div class="trade-stat-row"><span>Atmosphere:</span> <span style="color:var(--text-color); font-weight:bold;">${_biomeEscapeHtml(t.atmosphere)}</span></div>
+                            <div class="trade-stat-row"><span>Surface Gravity:</span> <span style="color:var(--text-color); font-weight:bold;">${_biomeEscapeHtml(t.gravity)}</span></div>
+                            <div class="trade-stat-row"><span>Temperature:</span> <span style="color:var(--text-color); font-weight:bold;">${_biomeEscapeHtml(t.tempRange)}</span></div>
+                            <div class="trade-stat-row"><span>Habitability:</span> <span style="color:${habColor}; font-weight:bold;">${_biomeEscapeHtml(t.habitability)}</span></div>
+                            <div class="trade-stat-row"><span>Surface Hazard:</span> <span style="color:${hazColor}; font-weight:bold;">${_biomeEscapeHtml(biome.hazard || 'NONE')}</span></div>
+                            <div class="trade-stat-row"><span>Colony Trait:</span> <span style="color:var(--gold-text); font-weight:bold;">${_biomeEscapeHtml(biome.colonyBonusDesc || 'Standard')}</span></div>
                         </div>
                     ` : ''}
                     ${biome.fieldNote ? `
                         <div style="background:rgba(0,224,224,0.06); border-left:3px solid var(--accent-color); padding:10px 12px; border-radius:0 4px 4px 0; font-size:12px; color:var(--item-desc-color); font-style:italic; line-height:1.5;">
                             <strong style="color:var(--accent-color); font-style:normal; font-size:10px; letter-spacing:1px; display:block; margin-bottom:4px;">CYGNUS SURVEY FIELD NOTE</strong>
-                            "${biome.fieldNote}"
+                            "${_biomeEscapeHtml(biome.fieldNote)}"
                         </div>
                     ` : ''}
                 `;
@@ -1173,15 +1402,15 @@ window.executeBiomeSpecialAction = executeBiomeSpecialAction;
                         <div style="margin-top: 12px; padding: 12px; border-left: 3px solid var(--accent-color); background: rgba(0, 224, 224, 0.08); font-size: 12px; color: var(--text-color); animation: fadeIn 0.35s;">
                             <div style="color: var(--accent-color); font-weight: bold; margin-bottom: 6px; letter-spacing:1px;">SPECTROMETRY TELEMETRY:</div>
                             <div style="line-height:1.6;">
-                                • <b>Classification:</b> ${biomeObj.name}${t ? ` (${t.rarityTier})` : ''}<br>
-                                ${t ? `• <b>Atmosphere / Gravity:</b> ${t.atmosphere} · ${t.gravity}<br>` : ''}
-                                ${t ? `• <b>Surface Temp:</b> ${t.tempRange}<br>` : ''}
-                                • <b>Surface Hazard:</b> <span style="color:${hazColor}; font-weight:bold;">${biomeObj.hazard || 'NONE'}</span><br>
-                                • <b>Detected Signatures:</b> <span style="color:var(--gold-text);">${resNames || 'Silicates'}</span><br>
-                                • <b>Colony Suitability:</b> ${biomeObj.colonyBonusDesc || 'Standard'}<br>
+                                • <b>Classification:</b> ${_biomeEscapeHtml(biomeObj.name)}${t ? ` (${_biomeEscapeHtml(t.rarityTier)})` : ''}<br>
+                                ${t ? `• <b>Atmosphere / Gravity:</b> ${_biomeEscapeHtml(t.atmosphere)} · ${_biomeEscapeHtml(t.gravity)}<br>` : ''}
+                                ${t ? `• <b>Surface Temp:</b> ${_biomeEscapeHtml(t.tempRange)}<br>` : ''}
+                                • <b>Surface Hazard:</b> <span style="color:${hazColor}; font-weight:bold;">${_biomeEscapeHtml(biomeObj.hazard || 'NONE')}</span><br>
+                                • <b>Detected Signatures:</b> <span style="color:var(--gold-text);">${_biomeEscapeHtml(resNames || 'Silicates')}</span><br>
+                                • <b>Colony Suitability:</b> ${_biomeEscapeHtml(biomeObj.colonyBonusDesc || 'Standard')}<br>
                                 • <b>Orbital Survey:</b> ${oreStatus}
                             </div>
-                            ${biomeObj.fieldNote ? `<div style="margin-top:8px; padding-top:6px; border-top:1px dashed var(--border-color); font-size:11px; color:var(--item-desc-color); font-style:italic;">"${biomeObj.fieldNote}"</div>` : ''}
+                            ${biomeObj.fieldNote ? `<div style="margin-top:8px; padding-top:6px; border-top:1px dashed var(--border-color); font-size:11px; color:var(--item-desc-color); font-style:italic;">"${_biomeEscapeHtml(biomeObj.fieldNote)}"</div>` : ''}
                         </div>
                     `;
                 }
@@ -1189,7 +1418,7 @@ window.executeBiomeSpecialAction = executeBiomeSpecialAction;
             window._biomeSurfaceScanPatched = true;
         }
 
-        // 2. PREVENT INFINITE BIO-SCAN EXPLOIT & PERSIST DELTAS
+        // 2. PREVENT INFINITE BIO-SCAN EXPLOIT, PERSIST DELTAS & CHECK 100% SURVEY
         if (typeof window.scanPlanetForLife === 'function' && !window._biomeBioScanPatched) {
             const origScanLife = window.scanPlanetForLife;
             window.scanPlanetForLife = function() {
@@ -1215,17 +1444,23 @@ window.executeBiomeSpecialAction = executeBiomeSpecialAction;
                     if (typeof soundManager !== 'undefined') soundManager.playScan();
                     if (typeof showToast === 'function') showToast("BIO-SAMPLES COLLECTED", "success");
                     _savePlanetDelta(currentSystemData.x, currentSystemData.y, selectedPlanetIndex, { scanned: true });
+                    _checkFullPlanetarySurveyBonus(planet, currentSystemData.x, currentSystemData.y, selectedPlanetIndex);
                     if (typeof renderPlanetView === 'function') renderPlanetView();
+                    if (typeof checkLevelUp === 'function') checkLevelUp();
                 }
             };
             window._biomeBioScanPatched = true;
         }
 
-        // 3. REFRESH PLANET VIEW AFTER SURFACE MINING
+        // 3. REFRESH PLANET VIEW & CHECK 100% SURVEY AFTER SURFACE MINING
         if (typeof window.minePlanet === 'function' && !window._biomeMinePlanetPatched) {
             const origMinePlanet = window.minePlanet;
             window.minePlanet = function() {
                 origMinePlanet.apply(this, arguments);
+                if (currentSystemData && currentSystemData.planets && currentSystemData.planets[selectedPlanetIndex]) {
+                    _checkFullPlanetarySurveyBonus(currentSystemData.planets[selectedPlanetIndex], currentSystemData.x, currentSystemData.y, selectedPlanetIndex);
+                    if (typeof checkLevelUp === 'function') checkLevelUp();
+                }
                 if (typeof currentGameState !== 'undefined' && currentGameState === GAME_STATES.PLANET_VIEW && typeof renderPlanetView === 'function') {
                     renderPlanetView();
                 }
@@ -1233,7 +1468,7 @@ window.executeBiomeSpecialAction = executeBiomeSpecialAction;
             window._biomeMinePlanetPatched = true;
         }
 
-        // 4. DATA-DRIVEN SURFACE EXPEDITION ENGINE (WITH HAZARDS, MITIGATION & FIELD DISCOVERIES)
+        // 4. DATA-DRIVEN SURFACE EXPEDITION ENGINE (WITH HAZARDS, MITIGATION & 6 FIELD DISCOVERIES)
         window.startSurfaceExpedition = function() {
             if (!currentSystemData || !currentSystemData.planets) return;
             const planet = currentSystemData.planets[selectedPlanetIndex];
@@ -1319,25 +1554,33 @@ window.executeBiomeSpecialAction = executeBiomeSpecialAction;
                 creditFind = (150 + Math.floor(Math.random() * 250)) * (hasScavenger ? 2 : 1);
             }
 
-            // 4. Bonus Surface Field Discovery (35% chance for evocative micro-find)
-            if (Math.random() < 0.35) {
-                const dRoll = Math.random();
-                if (dRoll < 0.25) {
+            // 4. Bonus Surface Field Discovery (40% chance across 6 evocative micro-finds)
+            if (Math.random() < 0.40) {
+                const dRoll = Math.floor(Math.random() * 6);
+                if (dRoll === 0) {
                     const bonusC = (200 + Math.floor(Math.random() * 300)) * (hasScavenger ? 2 : 1);
                     creditFind += bonusC;
                     lootItems.push({ id: 'NAVIGATION_CHARTS', qty: 1 });
                     discoveryMsg = `<br><span style="color:var(--accent-color)">🧭 FIELD FIND:</span> Located an abandoned Concord survey marker with intact star-charts!`;
-                } else if (dRoll < 0.50) {
+                } else if (dRoll === 1) {
                     lootItems.push({ id: 'NANO_REPAIR_KIT', qty: 1 });
                     discoveryMsg = `<br><span style="color:var(--success)">🧰 FIELD FIND:</span> Uncovered a weather-sealed emergency supply drop containing a Nano-Repair Kit!`;
-                } else if (dRoll < 0.75) {
+                } else if (dRoll === 2) {
                     lootItems.push({ id: 'MINERAL_GEODE', qty: 1 });
                     discoveryMsg = `<br><span style="color:var(--gold-text)">💎 FIELD FIND:</span> Exposed an uncracked Crystalline Geode tucked inside a fault line!`;
-                } else {
+                } else if (dRoll === 3) {
                     const extraXp = hasBio ? 120 : 60;
                     xpGain += extraXp;
                     lootItems.push({ id: 'ARTIFACT_SHARDS', qty: 1 });
                     discoveryMsg = `<br><span style="color:#DDA0DD">🗿 FIELD FIND:</span> Photographed weathered Precursor bas-relief glyphs buried in the sediment (+${extraXp} bonus XP)!`;
+                } else if (dRoll === 4) {
+                    const bonusC = (250 + Math.floor(Math.random() * 300)) * (hasScavenger ? 2 : 1);
+                    creditFind += bonusC;
+                    lootItems.push({ id: 'PROHIBITED_STIMS', qty: 1 });
+                    discoveryMsg = `<br><span style="color:#FF66AA">🛸 FIELD FIND:</span> Discovered a half-buried Eclipse smuggler skiff with an intact credit chit and stim canister!`;
+                } else {
+                    lootItems.push({ id: 'EMERGENCY_COOLANT_CELL', qty: 1 });
+                    discoveryMsg = `<br><span style="color:#66DDFF">🧊 FIELD FIND:</span> Pulled an intact Cryo-Coolant Cartridge from a wrecked survey lander's reactor bay!`;
                 }
             }
 
@@ -1369,6 +1612,7 @@ window.executeBiomeSpecialAction = executeBiomeSpecialAction;
             }
             if (typeof showToast === 'function') showToast("EXPEDITION COMPLETE", "success");
 
+            _checkFullPlanetarySurveyBonus(planet, currentSystemData.x, currentSystemData.y, selectedPlanetIndex);
             if (typeof renderPlanetView === 'function') renderPlanetView();
             if (typeof checkLevelUp === 'function') checkLevelUp();
             if (typeof autoSaveGame === 'function') autoSaveGame();
@@ -1425,6 +1669,7 @@ window.executeBiomeSpecialAction = executeBiomeSpecialAction;
                 if (typeof playerHull !== 'undefined' && playerHull <= 0) return;
             }
 
+            _checkFullPlanetarySurveyBonus(planet, currentSystemData.x, currentSystemData.y, selectedPlanetIndex);
             if (typeof renderPlanetView === 'function') renderPlanetView();
             if (typeof checkLevelUp === 'function') checkLevelUp();
             if (typeof autoSaveGame === 'function') autoSaveGame();
@@ -1446,7 +1691,7 @@ window.executeBiomeSpecialAction = executeBiomeSpecialAction;
             if (savedState.hacked) planet.hackedThisVisit = true;
             if (savedState.specialUsed) planet.specialUsedThisVisit = true;
 
-            const bId = planet.biome.id || Object.keys(PLANET_BIOMES).find(key => PLANET_BIOMES[key].name === planet.biome.name) || 'BARREN_ROCK';
+            const bId = planet.biome.id || (_biomeByName.get(planet.biome.name) ? _biomeByName.get(planet.biome.name).id : 'BARREN_ROCK');
 
             // Unlock biome-specific lore on landing
             if (typeof unlockLoreEntry === 'function') {
@@ -1486,14 +1731,14 @@ window.executeBiomeSpecialAction = executeBiomeSpecialAction;
 
             if (isColonyHere) {
                 colonyButtonHtml = `
-                    <button class="action-button" onclick="openColonyManagement('${colId}')" style="border-color: var(--success); color: var(--success); box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);">
+                    <button class="action-button" onclick="openColonyManagement('${_biomeEscapeJsArg(colId)}')" style="border-color: var(--success); color: var(--success); box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);">
                         🏢 MANAGE COLONY (${_biomeEscapeHtml(colonyHere.name.toUpperCase())})
                     </button>`;
             } else if (hasCharterInCargo) {
                 if (planet.biome.landable) {
-                    const safePlanetArg = String(planet.name || 'Planet').replace(/'/g, "\\'");
+                    const safePlanetArg = _biomeEscapeJsArg(planet.name || 'Planet');
                     colonyButtonHtml = `
-                        <button class="action-button" onclick="surveyForColony('${safePlanetArg}', '${bId}', ${currentSystemData.x}, ${currentSystemData.y})" style="border-color: var(--gold-text); color: var(--gold-text); box-shadow: 0 0 10px rgba(255,215,0,0.2);">
+                        <button class="action-button" onclick="surveyForColony('${safePlanetArg}', '${_biomeEscapeJsArg(bId)}', ${currentSystemData.x}, ${currentSystemData.y})" style="border-color: var(--gold-text); color: var(--gold-text); box-shadow: 0 0 10px rgba(255,215,0,0.2);">
                             🚩 ESTABLISH COLONY
                         </button>`;
                 } else {
@@ -1509,7 +1754,7 @@ window.executeBiomeSpecialAction = executeBiomeSpecialAction;
                     </button>`;
             }
 
-            // --- SPECIAL WORLD INTERACTIONS (12 BIOME ARCHETYPES) ---
+            // --- SPECIAL WORLD INTERACTIONS (ALL 21 LANDABLE BIOMES) ---
             let specialActionHtml = '';
             if (bId === 'MACHINE_WORLD') {
                 const canHack = !planet.hackedThisVisit;
@@ -1531,17 +1776,32 @@ window.executeBiomeSpecialAction = executeBiomeSpecialAction;
             }
 
             const hazardText = planet.biome.hazard && planet.biome.hazard !== 'NONE'
-                ? `<span style="color:var(--danger); font-weight:bold;">⚠️ HAZARD: ${planet.biome.hazard}</span>`
+                ? `<span style="color:var(--danger); font-weight:bold;">⚠️ HAZARD: ${_biomeEscapeHtml(planet.biome.hazard)}</span>`
                 : `<span style="color:var(--success);">ENVIRONMENT: STABLE</span>`;
+
+            // Planetary Survey Progress Bar
+            const surveyProg = _computePlanetSurveyProgress(planet, currentSystemData.x, currentSystemData.y, selectedPlanetIndex);
+            const surveyPct = surveyProg.total > 0 ? Math.round((surveyProg.done / surveyProg.total) * 100) : 0;
+            const surveyStripHtml = surveyProg.total > 0 ? `
+                <div style="max-width:340px; margin:8px auto 10px auto;">
+                    <div style="display:flex; justify-content:space-between; font-size:9px; letter-spacing:1.5px; color:${surveyProg.complete ? 'var(--gold-text)' : 'var(--item-desc-color)'}; margin-bottom:4px; font-weight:bold;">
+                        <span>${surveyProg.complete ? '★ FULL PLANETARY SURVEY COMPLETE' : 'SURFACE SURVEY PROGRESS'}</span>
+                        <span>${surveyProg.done} / ${surveyProg.total} (${surveyPct}%)</span>
+                    </div>
+                    <div style="height:4px; background:var(--surface-2); border-radius:2px; overflow:hidden;">
+                        <div style="height:100%; width:${surveyPct}%; background:${surveyProg.complete ? 'var(--gold-text)' : 'var(--accent-color)'}; transition:width 0.3s;"></div>
+                    </div>
+                </div>
+            ` : '';
 
             // Planetary Telemetry Strip
             const t = planet.biome.telemetry;
             const telemetryStripHtml = t ? `
                 <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin:10px 0 12px 0; font-size:10px;">
-                    <span style="background:rgba(0,0,0,0.35); border:1px solid var(--border-color); padding:3px 8px; border-radius:3px; color:var(--text-color);">⚖️ ${t.gravity}</span>
-                    <span style="background:rgba(0,0,0,0.35); border:1px solid var(--border-color); padding:3px 8px; border-radius:3px; color:var(--text-color);">🌡️ ${t.tempRange}</span>
-                    <span style="background:rgba(0,0,0,0.35); border:1px solid var(--border-color); padding:3px 8px; border-radius:3px; color:var(--text-color);">💨 ${t.atmosphere}</span>
-                    <span style="background:rgba(0,0,0,0.35); border:1px solid ${BiomeUtils.getHabitabilityColor(t.habitability)}; padding:3px 8px; border-radius:3px; color:${BiomeUtils.getHabitabilityColor(t.habitability)}; font-weight:bold;">${t.habitability}</span>
+                    <span style="background:var(--surface-1); border:1px solid var(--border-color); padding:3px 8px; border-radius:3px; color:var(--text-color);">⚖️ ${_biomeEscapeHtml(t.gravity)}</span>
+                    <span style="background:var(--surface-1); border:1px solid var(--border-color); padding:3px 8px; border-radius:3px; color:var(--text-color);">🌡️ ${_biomeEscapeHtml(t.tempRange)}</span>
+                    <span style="background:var(--surface-1); border:1px solid var(--border-color); padding:3px 8px; border-radius:3px; color:var(--text-color);">💨 ${_biomeEscapeHtml(t.atmosphere)}</span>
+                    <span style="background:var(--surface-1); border:1px solid ${BiomeUtils.getHabitabilityColor(t.habitability)}; padding:3px 8px; border-radius:3px; color:${BiomeUtils.getHabitabilityColor(t.habitability)}; font-weight:bold;">${_biomeEscapeHtml(t.habitability)}</span>
                 </div>
             ` : '';
 
@@ -1550,28 +1810,29 @@ window.executeBiomeSpecialAction = executeBiomeSpecialAction;
                 const cDef = (typeof COMMODITIES !== 'undefined' && COMMODITIES[rId]) ? COMMODITIES[rId] : { name: rId, icon: '📦' };
                 const isBio = typeof BIOLOGICAL_RESOURCES !== 'undefined' && BIOLOGICAL_RESOURCES.has(rId);
                 const pillColor = isBio ? 'var(--success)' : 'var(--gold-text)';
-                return `<span style="display:inline-block; font-size:10px; color:${pillColor}; border:1px solid ${pillColor}; background:rgba(0,0,0,0.4); padding:2px 8px; border-radius:12px; margin:2px 4px;">${cDef.icon || ''} ${cDef.name}</span>`;
+                return `<span style="display:inline-block; font-size:10px; color:${pillColor}; border:1px solid ${pillColor}; background:var(--surface-1); padding:2px 8px; border-radius:12px; margin:2px 4px;">${cDef.icon || ''} ${_biomeEscapeHtml(cDef.name)}</span>`;
             }).join('');
 
             const colonyTraitHtml = planet.biome.colonyBonusDesc
-                ? `<div style="font-size:11px; color:var(--item-desc-color); margin-top:8px;">Colony Trait: <span style="color:var(--text-color); font-weight:bold;">${planet.biome.colonyBonusDesc}</span></div>`
+                ? `<div style="font-size:11px; color:var(--item-desc-color); margin-top:8px;">Colony Trait: <span style="color:var(--text-color); font-weight:bold;">${_biomeEscapeHtml(planet.biome.colonyBonusDesc)}</span></div>`
                 : '';
 
             const fieldNoteHtml = planet.biome.fieldNote
-                ? `<div style="font-size:11px; color:var(--item-desc-color); font-style:italic; margin-top:8px; padding-top:8px; border-top:1px dashed var(--border-color); max-width:520px; margin-left:auto; margin-right:auto; line-height:1.45;">"${planet.biome.fieldNote}"</div>`
+                ? `<div style="font-size:11px; color:var(--item-desc-color); font-style:italic; margin-top:8px; padding-top:8px; border-top:1px dashed var(--border-color); max-width:520px; margin-left:auto; margin-right:auto; line-height:1.45;">"${_biomeEscapeHtml(planet.biome.fieldNote)}"</div>`
                 : '';
 
             let html = `
                 <div class="planet-view-content">
                     
                     <div class="planet-header">
-                        <img src="${planet.biome.image}" alt="${planet.biome.name}" class="planet-large-img" onerror="this.onerror=null; this.src='assets/barren_rock.png';">
+                        <img src="${planet.biome.image}" alt="${_biomeEscapeHtml(planet.biome.name)}" class="planet-large-img" onerror="this.onerror=null; this.src='assets/barren_rock.png';">
                         <h2 class="planet-title">${_biomeEscapeHtml(currentSystemData.name.toUpperCase())} : ${_biomeEscapeHtml(planet.name.toUpperCase())}</h2>
                         <div style="font-size:11px; letter-spacing:2px; margin-bottom:6px; color:var(--accent-color);">
-                            CLASS: ${planet.biome.name.toUpperCase()} &nbsp;|&nbsp; ${hazardText}
+                            CLASS: ${_biomeEscapeHtml(planet.biome.name.toUpperCase())} &nbsp;|&nbsp; ${hazardText}
                         </div>
+                        ${surveyStripHtml}
                         ${telemetryStripHtml}
-                        <p class="planet-desc">"${planet.biome.description}"</p>
+                        <p class="planet-desc">"${_biomeEscapeHtml(planet.biome.description)}"</p>
                         <div style="margin-top:12px;">
                             ${resourcePillsHtml}
                         </div>
