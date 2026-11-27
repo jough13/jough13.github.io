@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
     <meta charset="UTF-8">
-    <!-- BUG FIX: Added maximum-scale and user-scalable to prevent annoying double-tap zooming on mobile! -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="description" content="Wayfinder: Echoes of the Void — A retro ASCII deep-space exploration, trade, colony, and tactical combat simulation.">
     <meta name="theme-color" id="metaThemeColor" content="#050510">
@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="style.css">
 
     <script>
-        // --- FLIGHT RECORDER v4.5 (The Diagnostician - Telemetry, Safe Escaping & Export API) ---
+        // --- FLIGHT RECORDER v4.6 (The Diagnostician - Telemetry, Safe Escaping & Local-Safe Export API) ---
         (function initFlightRecorder() {
             const consoleHistory = [];
             const MAX_LOGS = 60;
@@ -33,6 +33,22 @@
                     .replace(/>/g, '&gt;')
                     .replace(/"/g, '&quot;')
                     .replace(/'/g, '&#39;');
+            }
+
+            function copyTextFallback(text) {
+                try {
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.cssText = 'position:fixed; top:-9999px; left:-9999px; opacity:0;';
+                    document.body.appendChild(ta);
+                    ta.focus();
+                    ta.select();
+                    const ok = document.execCommand('copy');
+                    ta.remove();
+                    return ok;
+                } catch (e) {
+                    return false;
+                }
             }
 
             function serializeArg(arg) {
@@ -74,7 +90,7 @@
                     if (typeof original === 'function') original.apply(console, args);
 
                     // C. Trigger the massive Red Crash Screen on actual code errors
-                    if (method === 'error' && !isRenderingCrash) {
+                    if (method === 'error' && !isRenderingCrash && !document.getElementById('criticalSystemFailureScreen')) {
                         const stack = new Error().stack || "No stack trace";
                         if (typeof window.showCriticalErrorScreen === 'function') {
                             window.showCriticalErrorScreen("CONSOLE.ERROR TRIGGERED", msg, "Invoked via console", stack);
@@ -89,7 +105,10 @@
                 isRenderingCrash = true;
 
                 const mountScreen = () => {
-                    if (document.getElementById('criticalSystemFailureScreen')) return;
+                    if (document.getElementById('criticalSystemFailureScreen')) {
+                        isRenderingCrash = false;
+                        return;
+                    }
 
                     const safeType = escapeHtml(errorType || "Runtime Error");
                     const safeMessage = escapeHtml(exactMessage || "Unknown system fault");
@@ -181,16 +200,21 @@
 
             // Public FlightRecorder API for debugging & future expansion
             window.FlightRecorder = {
-                version: "4.5",
+                version: "4.6",
                 getLogs: () => consoleHistory.slice(),
                 clearLogs: () => { consoleHistory.length = 0; },
                 getReport: () => lastCrashReport,
+                copyText: copyTextFallback,
                 copyReport: (btnEl) => {
                     if (!lastCrashReport) return;
                     if (navigator.clipboard && navigator.clipboard.writeText) {
                         navigator.clipboard.writeText(lastCrashReport).then(() => {
                             if (btnEl) btnEl.textContent = "REPORT COPIED!";
-                        }).catch(() => {});
+                        }).catch(() => {
+                            if (copyTextFallback(lastCrashReport) && btnEl) btnEl.textContent = "REPORT COPIED!";
+                        });
+                    } else if (copyTextFallback(lastCrashReport) && btnEl) {
+                        btnEl.textContent = "REPORT COPIED!";
                     }
                 },
                 downloadReport: () => {
@@ -343,10 +367,30 @@
     </script>
 
     <style>
-        /* Smooth boot reveal + compact inline controls for System Menu sliders */
+        /* Smooth boot reveal + compact inline controls for System Menu & HUD shortcuts */
         body.loaded {
             opacity: 1;
             visibility: visible;
+        }
+        .hud-clickable {
+            cursor: pointer;
+            border-radius: 3px;
+            padding: 2px 4px;
+            transition: background 0.15s ease;
+        }
+        .hud-clickable:hover {
+            background: var(--surface-hover, rgba(255, 255, 255, 0.06));
+        }
+        .sys-quick-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            margin-bottom: 4px;
+        }
+        .sys-quick-grid .sys-btn {
+            text-align: center;
+            padding: 7px 4px;
+            font-size: 10px;
         }
         .sys-slider-group {
             padding: 6px 8px;
@@ -399,6 +443,12 @@
             text-align: left;
             background: rgba(0, 0, 0, 0.2);
             font-style: italic;
+            cursor: pointer;
+            user-select: none;
+            transition: border-color 0.15s ease;
+        }
+        .title-dispatch:hover {
+            border-left-color: var(--gold-text);
         }
         body.light-mode .sys-slider-group,
         body.light-mode .title-dispatch {
@@ -423,17 +473,23 @@
     </script>
 
     <script>
-    // 1. Immediate Theme & CRT Curtain Check (Run before visual render)
+    // 1. Immediate Theme, Palette & CRT Curtain Check (Run before visual render to eliminate theme flashes)
     (function() {
         try {
             const savedTheme = localStorage.getItem('wayfinderTheme');
-            const systemLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+            const savedPalette = localStorage.getItem('wayfinder_crt_palette') || 'dark';
 
-            let isLight = false;
-            if (savedTheme === 'light') isLight = true;
-            else if (!savedTheme && systemLight) isLight = true;
+            let curtainColor = '#050510';
+            if (savedTheme === 'light') {
+                curtainColor = '#FFFFFF';
+            } else if (savedPalette === 'phosphor') {
+                curtainColor = '#020a04';
+                document.body.classList.add('phosphor-mode');
+            } else if (savedPalette === 'amber') {
+                curtainColor = '#0a0602';
+                document.body.classList.add('amber-mode');
+            }
 
-            const curtainColor = isLight ? '#FFFFFF' : '#050510';
             document.documentElement.style.backgroundColor = curtainColor;
 
             const metaTheme = document.getElementById('metaThemeColor');
@@ -456,10 +512,10 @@
                 <span id="bootText" style="animation: blink 1s infinite;">SYSTEM INITIALIZING...</span>
             </div>
 
-            <div id="titleDispatch" class="title-dispatch" aria-live="polite"></div>
+            <div id="titleDispatch" class="title-dispatch" aria-live="polite" title="Click to cycle subspace dispatches"></div>
 
             <script>
-                // IMMERSION: Scoped Animated Boot Sequence & Subspace Dispatch Ticker
+                // IMMERSION: Scoped Animated Boot Sequence & Interactive Subspace Dispatch Ticker
                 (function initTitleBootSequence() {
                     const bootPhrases = [
                         "WAKING NAV-COMP...",
@@ -489,11 +545,23 @@
                         "[SHADOW NETWORK] Unmarked Eclipse Cartel relays detected west of the Core. Customs immunity not guaranteed.",
                         "[ASTRO-SURVEY] High-velocity cryogenic comets reported across frontier sectors. Intercept vectors yield Tritium.",
                         "[XERXES WARNING] Rogue world Xerxes Prime exhibits severe gravimetric shear and lethal Spire encryption countermeasures.",
-                        "[UNIVERSITY OF CYGNUS] Open academic grants posted for Pulsar, Magnetar, Singularity, and Quasar spectroscopy."
+                        "[UNIVERSITY OF CYGNUS] Open academic grants posted for Pulsar, Magnetar, Singularity, and Quasar spectroscopy.",
+                        "[VALKYRIE DRIFT] Independent rock-hoppers reporting rich ferric seams; Frothy Moon Ale trading at rim premiums.",
+                        "[DIASPORA LOG 2144] Long-range echoes detected from pre-warp sleeper ark CSS Hesperia along the outer rim.",
+                        "[74.4 AM BEACON] '...39... 17... harmonic conduit open... bring three shards of glass...'",
+                        "[SEC-COM BOLO] High-value warrants active for Dread Pirate Voss and Renegade Commander Elias Thorne."
                     ];
+                    let dispatchIdx = Math.floor(Math.random() * dispatches.length);
                     const dispatchEl = document.getElementById('titleDispatch');
                     if (dispatchEl) {
-                        dispatchEl.textContent = dispatches[Math.floor(Math.random() * dispatches.length)];
+                        dispatchEl.textContent = dispatches[dispatchIdx];
+                        dispatchEl.addEventListener('click', () => {
+                            dispatchIdx = (dispatchIdx + 1) % dispatches.length;
+                            dispatchEl.textContent = dispatches[dispatchIdx];
+                            if (window.soundManager && typeof window.soundManager.playUIHover === 'function') {
+                                window.soundManager.playUIHover();
+                            }
+                        });
                     }
                 })();
             </script>
@@ -578,7 +646,7 @@
 
             <div class="hud-group right">
 
-                <div class="hud-stat compact">
+                <div class="hud-stat compact hud-clickable" title="Open Commander Datapad" onclick="triggerHudShortcut('PROFILE')">
                     <span class="label">LVL <span id="hudLevelStat">1</span></span>
                     <span id="hudXpStat" class="value-text" style="color:#00FF00">0 / 0</span>
                 </div>
@@ -588,7 +656,7 @@
                     <span id="creditsStat" class="value-text gold">0</span>
                 </div>
 
-                <div class="hud-stat compact">
+                <div class="hud-stat compact hud-clickable" title="Open Cargo Manifest (I)" onclick="triggerHudShortcut('CARGO')">
                     <span class="label">CARGO</span>
                     <span id="cargoStat" class="value-text">0/50</span>
                 </div>
@@ -605,6 +673,13 @@
                    REP: <span id="menuRep">Neutral</span>
                 </div>
 
+                <div class="sys-quick-grid">
+                    <button class="sys-btn" title="Open Cargo Manifest (I)" onclick="triggerMenuShortcut('CARGO')">📦 Cargo</button>
+                    <button class="sys-btn" title="Open Galactic Codex (J)" onclick="triggerMenuShortcut('CODEX')">📘 Codex</button>
+                    <button class="sys-btn" title="Engineering Workbench (U)" onclick="triggerMenuShortcut('CRAFT')">⚗️ Craft</button>
+                    <button class="sys-btn" title="Astrometric Observatory (O)" onclick="triggerMenuShortcut('ASTRO')">🔭 Astro</button>
+                </div>
+
                 <button id="profileButton" class="sys-btn" onclick="displayCommanderProfile()">Commander Profile</button>
                 <button id="crewButton" class="sys-btn" onclick="displayCrewRoster()">Crew Roster</button>
                 <button id="saveButton" class="sys-btn">Manual Save</button>
@@ -615,6 +690,7 @@
                 <button class="sys-btn" onclick="openHelpMenu()">Command Reference</button>
                 <button id="navToggleButton" class="sys-btn">Disable Nav-Assist</button>
                 <button id="crtToggleButton" class="sys-btn" onclick="toggleCRTFilter()">CRT Scanlines: ON</button>
+                <!-- NOTE: config.js dynamically injects #paletteToggleButton directly after #crtToggleButton -->
                 <button id="themeButton" class="sys-btn">Toggle Theme</button>
 
                 <div class="sys-slider-group" title="Adjust Web Audio Synthesizer & Subspace Radio Levels">
@@ -625,6 +701,10 @@
                     <div class="sys-slider-row">
                         <label for="musicVolSlider">RADIO</label>
                         <input type="range" id="musicVolSlider" min="0" max="1" step="0.05" value="0.30" oninput="if(window.soundManager) soundManager.setMusicVolume(this.value)">
+                    </div>
+                    <div class="sys-slider-row">
+                        <label for="sfxVolSlider">SFX</label>
+                        <input type="range" id="sfxVolSlider" min="0" max="1" step="0.05" value="1.00" oninput="if(window.soundManager && typeof soundManager.setSfxVolume === 'function') soundManager.setSfxVolume(this.value)">
                     </div>
                 </div>
 
@@ -649,7 +729,6 @@
                 <div class="dpad-row">
                     <button id="btnScan" class="dpad-btn" title="Active Sensor Ping (P)" style="font-size:12px; font-weight:bold; color: var(--success);" onclick="if(typeof fireSensorPing === 'function') fireSensorPing();">PING</button>
                     <button id="btnUp" class="dpad-btn" aria-label="Move North">▲</button>
-                    <!-- Triggers 'V' (Deep Scan) by mimicking the keydown event handled in script.js -->
                     <button id="btnDeepScan" class="dpad-btn" title="Deep Stellar Scan (V)" style="font-size:12px; font-weight:bold; color: var(--gold-text);" onclick="document.dispatchEvent(new KeyboardEvent('keydown', {'key': 'v'}))">SCAN</button>
                 </div>
                 <div class="dpad-row">
@@ -658,7 +737,6 @@
                     <button id="btnRight" class="dpad-btn" aria-label="Move East">▶</button>
                 </div>
                 <div class="dpad-row">
-                    <!-- Triggers 'N' (Nav Ping) -->
                     <button id="btnMap" class="dpad-btn" title="Nav-Computer Target Ping (N)" style="font-size:12px; font-weight:bold; color: #9933FF;" onclick="document.dispatchEvent(new KeyboardEvent('keydown', {'key': 'n'}))">NAV</button>
                     <button id="btnDown" class="dpad-btn" aria-label="Move South">▼</button>
                     <button id="btnInteract" class="dpad-btn" title="Dock or Interact (E)" style="font-size:12px; font-weight:bold; color: var(--danger);" onclick="document.dispatchEvent(new KeyboardEvent('keydown', {'key': 'e'}))">ACT</button>
@@ -693,6 +771,7 @@
                         <span id="stationNameTitle">STATION NAME</span>
                         <button onclick="closeStationView()" class="icon-btn" aria-label="Undock from Station">X</button>
                     </div>
+                    <div id="stationInfoBar" class="modal-info-bar"></div>
                     <div class="station-body">
                         <div class="station-visual-panel">
                             <canvas id="stationCanvas" width="200" height="200"></canvas>
@@ -753,7 +832,6 @@
                         <h2>GALACTIC ARCHIVES</h2>
                         <button id="codexCloseButton" class="action-button danger-btn" style="padding: 5px 15px; width: auto; margin: 0;">CLOSE</button>
                     </div>
-                    <!-- BUG FIX: Restored #codexInfoBar expected by ui.js toggleCodex() -->
                     <div id="codexInfoBar" class="modal-info-bar"></div>
                     <div class="codex-body">
                         <div id="codexCategories"></div>
@@ -767,7 +845,7 @@
         <footer id="bottom-deck">
             <div id="messageArea" class="log-panel" aria-live="polite">System Initialized...</div>
             <div id="context-panel">
-                <div id="mission-tracker" class="mission-box">
+                <div id="mission-tracker" class="mission-box hud-clickable" title="Click to ping Nav-Computer (N)" onclick="triggerHudShortcut('NAV')">
                     <span class="label">MISSION</span>
                     <span id="missionText" class="value">No Active Mission</span>
                 </div>
@@ -797,8 +875,34 @@
 
     <div id="toastContainer" aria-live="polite"></div>
 
-    <!-- SELF-CONTAINED UI HELPERS: Command Reference, Lore Primer, CRT Toggle, Curated Seeds & Save Vault -->
+    <!-- SELF-CONTAINED UI HELPERS: HUD Shortcuts, Command Reference, CRT Toggle, Curated Seeds & Save Vault -->
     <script>
+        function triggerHudShortcut(action) {
+            if (typeof currentGameState === 'undefined' || currentGameState === 'title_screen' || currentGameState === 'game_over') return;
+            if (window.activeHostileEncounter) return;
+
+            if (action === 'CARGO' && typeof openCargoModal === 'function') {
+                openCargoModal();
+            } else if (action === 'PROFILE' && typeof displayCommanderProfile === 'function') {
+                displayCommanderProfile();
+            } else if (action === 'NAV' && currentGameState === 'galactic_map') {
+                if (typeof window.UI !== 'undefined' && typeof window.UI.isAnyModalOpen === 'function' && window.UI.isAnyModalOpen()) return;
+                document.dispatchEvent(new KeyboardEvent('keydown', { key: 'n' }));
+            }
+        }
+
+        function triggerMenuShortcut(action) {
+            const sysMenu = document.getElementById('systemMenu');
+            if (sysMenu) sysMenu.classList.add('hidden');
+            if (typeof currentGameState === 'undefined' || currentGameState === 'title_screen' || currentGameState === 'game_over') return;
+            if (window.activeHostileEncounter) return;
+
+            if (action === 'CARGO' && typeof openCargoModal === 'function') openCargoModal();
+            else if (action === 'CODEX' && typeof toggleCodex === 'function') toggleCodex(true);
+            else if (action === 'CRAFT' && typeof openCraftingMenu === 'function') openCraftingMenu();
+            else if (action === 'ASTRO' && typeof openObservatory === 'function') openObservatory();
+        }
+
         function rollCuratedLoreSeed() {
             const curatedSeeds = [
                 "SOL-PRIME",
@@ -812,7 +916,13 @@
                 "OBSIDIAN-DRIFT",
                 "VOID-VULTURE",
                 "FROTHY-MOON",
-                "PORT-NOMAD"
+                "PORT-NOMAD",
+                "ARCHIVIST-7",
+                "KARAK-TOR",
+                "VALKYRIE-BELT",
+                "FIRST-CHORD",
+                "UMBRA-VEIL",
+                "HESPERIA-2144"
             ];
             const input = document.getElementById('seedInput');
             if (!input) return;
@@ -843,7 +953,7 @@
             if (!detailEl) return;
 
             const tabBtnStyle = (active) => `
-                flex: 1; padding: 7px 4px; font-size: 10px; font-family: var(--title-font);
+                flex: 1; padding: 7px 4px; font-size: 9px; font-family: var(--title-font);
                 cursor: pointer; border-radius: 3px; font-weight: bold; letter-spacing: 1px;
                 background: ${active ? 'rgba(0, 224, 224, 0.15)' : 'rgba(0, 0, 0, 0.35)'};
                 border: 1px solid ${active ? 'var(--accent-color)' : 'var(--border-color)'};
@@ -851,10 +961,11 @@
             `;
 
             const navHtml = `
-                <div style="display:flex; gap:6px; margin-bottom:15px;">
+                <div style="display:flex; gap:5px; margin-bottom:14px;">
                     <button type="button" style="${tabBtnStyle(tab === 'BRIEFING')}" onclick="renderHelpDetailTab('BRIEFING')">BRIEFING</button>
                     <button type="button" style="${tabBtnStyle(tab === 'LEGEND')}" onclick="renderHelpDetailTab('LEGEND')">ASCII MAP</button>
                     <button type="button" style="${tabBtnStyle(tab === 'FACTIONS')}" onclick="renderHelpDetailTab('FACTIONS')">FACTIONS</button>
+                    <button type="button" style="${tabBtnStyle(tab === 'SYSTEMS')}" onclick="renderHelpDetailTab('SYSTEMS')">SYSTEMS</button>
                 </div>
             `;
 
@@ -864,7 +975,8 @@
                     ['@', '#FFFFFF', 'Your Vessel (Dims in Silent Running)'],
                     ['#', '#00FFFF', 'Major Starbase / Faction Hub'],
                     ['H / h', '#AADD99', 'Frontier Outpost / Player Waystation'],
-                    ['O', '#88CCFF', 'Planet (Orbit, Scan, Mine, or Land)'],
+                    ['§', '#9C27B0', 'Black Market / Shadow Network Port'],
+                    ['O', '#88CCFF', 'Planet / Megastructure (Orbit, Scan, Land)'],
                     ['*', '#FFDD00', 'Star System (Enter [E], Deep Scan [V], Scoop [H])'],
                     ['%', '#FFAA66', 'Asteroid Field (Mine [M] for Ores & Geodes)'],
                     ['~', '#DD99FF', 'Gas Nebula (Scoop Fuel [H] & Slip Pursuers)'],
@@ -872,18 +984,20 @@
                     ['W / Ω', '#FFB800', 'Wormhole / Stabilized Stargate (Jump [T])'],
                     ['?', '#FF33FF', 'Spatial Anomaly (Containment / Astrometrics)'],
                     ['D', '#88AACC', 'Derelict Ship (Scan, Salvage, or Breach)'],
-                    ['Ψ', '#9933FF', 'Precursor Monolith / Sanctuary Relay'],
+                    ['Ψ', '#9933FF', 'Precursor Monolith / Unique Landmark'],
                     ['^', '#FF4444', 'Hidden Cartel Outpost (Marine Ground Raid)'],
                     ['&', '#40E0D0', 'The First Nexus (Precursor Endgame Site)'],
-                    ['P / C / $ / M / N', '#00FFAA', 'Deep-Space POIs: Pod, Cache, Relay, Mine, Buoy'],
+                    ['P C $ M N', '#00FFAA', 'POIs: Pod, Cache, Relay, Space Mine, Nav-Buoy'],
+                    ['¤ F T + ! E', '#40E0D0', 'POIs: Sat, Fuel Barge, Capsule, Repair, Drop, Echo'],
+                    ['✧ / ❄️', '#00FFFF', 'Unidentified Signal Source / Cryo-Comet'],
                     ['V / ☠️ / ⚔️', '#FF5555', 'Hostiles, Legendary Bosses & Active Warzones']
                 ];
                 bodyHtml = `
                     <div style="font-size:11px; color:var(--accent-color); letter-spacing:2px; margin-bottom:10px; font-weight:bold;">OPTICAL &amp; RADAR SYMBOL KEY</div>
-                    <div style="display:flex; flex-direction:column; gap:6px; text-align:left; font-size:12px;">
+                    <div style="display:flex; flex-direction:column; gap:5px; text-align:left; font-size:11px;">
                         ${legendRows.map(([sym, col, desc]) => `
-                            <div style="display:flex; gap:10px; align-items:center; padding:5px 8px; background:rgba(0,0,0,0.28); border-left:2px solid ${col}; border-radius:2px;">
-                                <span style="min-width:52px; text-align:center; font-weight:bold; color:${col}; font-family:var(--main-font);">${sym}</span>
+                            <div style="display:flex; gap:10px; align-items:center; padding:4px 8px; background:rgba(0,0,0,0.28); border-left:2px solid ${col}; border-radius:2px;">
+                                <span style="min-width:62px; text-align:center; font-weight:bold; color:${col}; font-family:var(--main-font);">${sym}</span>
                                 <span style="color:var(--text-color); line-height:1.35;">${desc}</span>
                             </div>
                         `).join('')}
@@ -895,19 +1009,41 @@
                     <div style="display:flex; flex-direction:column; gap:10px; text-align:left; font-size:12px; line-height:1.5;">
                         <div style="padding:10px; background:rgba(0,170,255,0.08); border-left:3px solid #00AAFF; border-radius:3px;">
                             <div style="color:#00AAFF; font-weight:bold; letter-spacing:1px;">CONCORD DOMINION (CORE SECTORS)</div>
-                            <div style="color:var(--text-color); margin-top:4px;">Governs Sol Sector and the inner trade lanes from Starbase Alpha and the Aegis Dyson Sphere. Enforces strict customs scans; high standing unlocks Aegis Armory hardware and military hulls.</div>
+                            <div style="color:var(--text-color); margin-top:4px;">Governs Sol Sector and inner trade lanes from Starbase Alpha and Aegis Dyson Sphere. 20+ Rep unlocks Aegis Armory; 30+ Gunship; 50+ Dreadnought &amp; 15% discount.</div>
                         </div>
                         <div style="padding:10px; background:rgba(153,51,255,0.08); border-left:3px solid #9933FF; border-radius:3px;">
                             <div style="color:#DDA0DD; font-weight:bold; letter-spacing:1px;">ECLIPSE CARTEL (WESTERN RIM)</div>
-                            <div style="color:var(--text-color); margin-top:4px;">Controls the encrypted Shadow Network, Identity Forgers, and Black Market fences. Reaching 50+ Standing earns a Cartel Truce with roaming raiders.</div>
+                            <div style="color:var(--text-color); margin-top:4px;">Controls the encrypted Shadow Network, Identity Forgers, and Black Market fences. 30+ Rep unlocks the Night-Runner; 50+ earns a Cartel Pirate Truce.</div>
                         </div>
                         <div style="padding:10px; background:rgba(76,175,80,0.08); border-left:3px solid #4CAF50; border-radius:3px;">
                             <div style="color:#4CAF50; font-weight:bold; letter-spacing:1px;">K'THARR ASCENDANCY (EASTERN FRONTIER)</div>
-                            <div style="color:var(--text-color); margin-top:4px;">A martial warrior empire forged around Karak-Tor and Fortress Drakon. Respect is earned in the Proving Grounds, warzones, and the lethal Rite of Combat.</div>
+                            <div style="color:var(--text-color); margin-top:4px;">A martial warrior empire forged around Karak-Tor and Fortress Drakon. 30+ Rep unlocks the Blood-Barge; 50+ unlocks Living Hull Biotech.</div>
                         </div>
                         <div style="padding:10px; background:rgba(255,170,0,0.08); border-left:3px solid #FFAA00; border-radius:3px;">
                             <div style="color:#FFAA00; font-weight:bold; letter-spacing:1px;">THE FUEL RATS COLLECTIVE (NOMADIC)</div>
-                            <div style="color:var(--text-color); margin-top:4px;">Neutral deep-space rescuers operating out of Port Nomad. Broadcast [Z] if stranded without fuel; tipping rescue tugs unlocks VIP hull repairs and their custom Salvage Tug.</div>
+                            <div style="color:var(--text-color); margin-top:4px;">Neutral deep-space rescuers operating out of Port Nomad. Broadcast [Z] if stranded; 5+ Rep grants free VIP hull repairs and 10+ unlocks their Salvage Tug.</div>
+                        </div>
+                    </div>
+                `;
+            } else if (tab === 'SYSTEMS') {
+                bodyHtml = `
+                    <div style="font-size:11px; color:var(--accent-color); letter-spacing:2px; margin-bottom:10px; font-weight:bold;">ADVANCED SHIP &amp; EMPIRE SYSTEMS</div>
+                    <div style="display:flex; flex-direction:column; gap:10px; text-align:left; font-size:12px; line-height:1.5;">
+                        <div style="padding:10px; background:rgba(0,0,0,0.28); border-left:3px solid var(--gold-text); border-radius:3px;">
+                            <div style="color:var(--gold-text); font-weight:bold; font-size:11px;">★ MANUFACTURER SET SYNERGIES (3 MODULES)</div>
+                            <div style="color:var(--text-color); margin-top:4px;">Concord: +20 Shields · K'tharr: +5 Weapon Damage · Eclipse: +15% Evasion · Frontier: +50 Max Fuel.</div>
+                        </div>
+                        <div style="padding:10px; background:rgba(0,0,0,0.28); border-left:3px solid var(--accent-color); border-radius:3px;">
+                            <div style="color:var(--accent-color); font-weight:bold; font-size:11px;">⭐ DISCIPLINE MASTERY DOCTRINES (3+ PERKS)</div>
+                            <div style="color:var(--text-color); margin-top:4px;">Acquiring 3 perks in Combat, Industrial, Trade, Social, Science, Exploration, or Survival unlocks a permanent Mastery bonus. View progress in Commander Profile &gt; Captain Perks.</div>
+                        </div>
+                        <div style="padding:10px; background:rgba(0,0,0,0.28); border-left:3px solid var(--success); border-radius:3px;">
+                            <div style="color:var(--success); font-weight:bold; font-size:11px;">🏛️ 4-PHASE FRONTIER COLONIES</div>
+                            <div style="color:var(--text-color); margin-top:4px;">Purchase a Pioneer Charter at Starbase Alpha to settle habitable worlds. Grow from Outpost → Settlement → Metropolis → Capital; populations above 250 launch automated Trade Convoys.</div>
+                        </div>
+                        <div style="padding:10px; background:rgba(0,0,0,0.28); border-left:3px solid #DDA0DD; border-radius:3px;">
+                            <div style="color:#DDA0DD; font-weight:bold; font-size:11px;">📻 SUBSPACE RADIO RECEIVER (R / ALT+R)</div>
+                            <div style="color:var(--text-color); margin-top:4px;">Tune music stations, procedural Void Synthwave (91.2 FM), Pulsar Telemetry (94.8 FM), live Concord News (1620 AM), Eclipse Shadow Wire (66.6 AM), or the Precursor Numbers Station (74.4 AM).</div>
                         </div>
                     </div>
                 `;
@@ -921,9 +1057,9 @@
                         </p>
                         <div style="margin-top:12px; text-align:left; font-size:12px; line-height:1.6; background:rgba(0,0,0,0.25); border:1px solid var(--border-color); padding:10px; border-radius:4px;">
                             <div style="color:var(--gold-text); font-weight:bold; font-size:10px; letter-spacing:1px; margin-bottom:6px;">SURVIVAL PROTOCOLS</div>
-                            • <b>Fuel Running Low?</b> Scoop Stars (<b>H</b>) or Nebulae, or broadcast a Fuel Rats beacon (<b>Z</b>).<br>
-                            • <b>Hauling Contraband?</b> Toggle Silent Running (<b>Q</b>) near patrols, watch your Heat, and fence goods via Shadow Brokers.<br>
-                            • <b>Manufacturer Synergies:</b> Equip 3 modules from the same manufacturer (Concord, K'tharr, Eclipse, Frontier) for a passive Set Bonus.<br>
+                            • <b>Fuel Running Low?</b> Scoop Stars (<b>H</b>) or Nebulae, skim Gas Giants, or broadcast a Fuel Rats beacon (<b>Z</b>).<br>
+                            • <b>Hauling Contraband?</b> Toggle Silent Running (<b>Q</b>) near patrols, watch your Heat (max 5), and fence foreign goods via Shadow Brokers.<br>
+                            • <b>Endgame Mysteries:</b> Assemble 3 Star Map Fragments into a Wayfinder Core to locate The First Nexus, or crack all 4 Spire layers on Planet Xerxes.<br>
                             • <b>Deep-Space Synthesis:</b> Press <b>U</b> anywhere to smelt ore, craft drones, or install permanent hull/shield upgrades.
                         </div>
                     </div>
@@ -963,8 +1099,9 @@
                         <span style="color:var(--success); font-weight:bold;">T</span> : Traverse Wormhole / Stargate<br>
                         <span style="color:var(--success); font-weight:bold;">I</span> : Cargo Manifest &nbsp;|&nbsp; <span style="color:var(--success); font-weight:bold;">J</span> : Galactic Codex<br>
                         <span style="color:var(--success); font-weight:bold;">U</span> : Engineering Workbench (Crafting)<br>
-                        <span style="color:var(--success); font-weight:bold;">Z</span> : Fuel Rats Distress Beacon<br>
-                        <span style="color:var(--success); font-weight:bold;">F6 / F7</span> : Quick Manual Save / Load
+                        <span style="color:var(--success); font-weight:bold;">Z / X</span> : Distress Beacon / Self-Destruct<br>
+                        <span style="color:var(--success); font-weight:bold;">F6 / F7</span> : Quick Manual Save / Load<br>
+                        <span style="color:var(--success); font-weight:bold;">ESC / L</span> : Close Modal / Leave System
                     </div>
 
                     <div class="trade-list-header" style="color:var(--danger); font-size:10px; letter-spacing:2px; margin-top: 8px; margin-bottom:6px; border-bottom:1px solid #333; padding-bottom: 5px;">COMBAT &amp; DOCKED</div>
@@ -983,7 +1120,22 @@
             }
         }
 
-        // Self-Contained Save Vault (Export / Import all wayfinder_* localStorage saves as JSON)
+        // Self-Contained Save Vault (Export / Copy / Import all wayfinder_* localStorage saves as JSON)
+        function _collectWayfinderBackupPayload() {
+            const payload = { app: "Wayfinder", exportedAt: new Date().toISOString(), keys: {} };
+            let saveCount = 0;
+            try {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && k.startsWith('wayfinder')) {
+                        payload.keys[k] = localStorage.getItem(k);
+                        if (k.includes('manual_') || k.includes('auto_') || k.includes('Save')) saveCount++;
+                    }
+                }
+            } catch (e) {}
+            return { payload, saveCount };
+        }
+
         function openSaveBackupModal() {
             const sysMenu = document.getElementById('systemMenu');
             if (sysMenu) sysMenu.classList.add('hidden');
@@ -994,29 +1146,22 @@
             const detailEl = document.getElementById('genericDetailContent');
             const actionsEl = document.getElementById('genericModalActions');
 
-            const backupObj = { exportedAt: new Date().toISOString(), keys: {} };
-            let saveCount = 0;
-            try {
-                for (let i = 0; i < localStorage.length; i++) {
-                    const k = localStorage.key(i);
-                    if (k && k.startsWith('wayfinder')) {
-                        backupObj.keys[k] = localStorage.getItem(k);
-                        if (k.includes('manual_') || k.includes('auto_') || k.includes('Save')) saveCount++;
-                    }
-                }
-            } catch (e) {}
-
-            const totalBytes = new Blob([JSON.stringify(backupObj)]).size;
+            const { payload, saveCount } = _collectWayfinderBackupPayload();
+            const totalBytes = new Blob([JSON.stringify(payload)]).size;
             const kbUsed = (totalBytes / 1024).toFixed(1);
+            const quotaPct = Math.min(100, Math.round((totalBytes / (5 * 1024 * 1024)) * 100));
 
             if (listEl) {
                 listEl.innerHTML = `
                     <div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px;">STORAGE DIAGNOSTICS</div>
                     <div style="padding:14px; font-size:12px; line-height:1.7; color:var(--text-color);">
                         <div class="trade-math-area">
-                            <div class="trade-stat-row"><span>Wayfinder Keys:</span> <span style="color:var(--accent-color); font-weight:bold;">${Object.keys(backupObj.keys).length}</span></div>
+                            <div class="trade-stat-row"><span>Wayfinder Keys:</span> <span style="color:var(--accent-color); font-weight:bold;">${Object.keys(payload.keys).length}</span></div>
                             <div class="trade-stat-row"><span>Campaign Slots:</span> <span style="color:var(--gold-text); font-weight:bold;">${saveCount}</span></div>
-                            <div class="trade-stat-row"><span>Archive Size:</span> <span style="color:var(--success); font-weight:bold;">${kbUsed} KB</span></div>
+                            <div class="trade-stat-row"><span>Archive Size:</span> <span style="color:var(--success); font-weight:bold;">${kbUsed} KB / 5,120 KB (${quotaPct}%)</span></div>
+                            <div style="height:4px; background:#222; border-radius:2px; overflow:hidden; margin-top:6px;">
+                                <div style="height:100%; width:${Math.max(2, quotaPct)}%; background:${quotaPct > 80 ? 'var(--danger)' : 'var(--accent-color)'};"></div>
+                            </div>
                         </div>
                         <p style="font-size:11px; color:var(--item-desc-color); margin-top:12px;">
                             Export a portable JSON backup to transfer your commanders between browsers or protect campaigns before clearing browser cache.
@@ -1038,7 +1183,10 @@
 
             if (actionsEl) {
                 actionsEl.innerHTML = `
-                    <button class="action-button" style="border-color:var(--success); color:var(--success);" onclick="downloadWayfinderBackup()">⬇ EXPORT BACKUP (.JSON)</button>
+                    <div style="display:flex; gap:8px; margin-bottom:6px;">
+                        <button class="action-button" style="flex:1; margin:0; padding:10px 6px; font-size:11px; border-color:var(--success); color:var(--success);" onclick="downloadWayfinderBackup()">⬇ EXPORT .JSON</button>
+                        <button class="action-button" style="flex:1; margin:0; padding:10px 6px; font-size:11px; border-color:var(--gold-text); color:var(--gold-text);" onclick="copyWayfinderBackup()">📋 COPY JSON</button>
+                    </div>
                     <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color);" onclick="document.getElementById('saveVaultFileInput').click()">⬆ LOAD BACKUP FILE</button>
                     <button class="action-button" style="border-color:var(--warning); color:var(--warning);" onclick="importWayfinderBackupFromText()">⚡ RESTORE FROM TEXT</button>
                     <button class="action-button" style="border-color:#888; color:#888;" onclick="closeGenericModal()">CLOSE VAULT</button>
@@ -1046,15 +1194,26 @@
             }
         }
 
+        function copyWayfinderBackup() {
+            const { payload } = _collectWayfinderBackupPayload();
+            const jsonText = JSON.stringify(payload, null, 2);
+            const status = document.getElementById('saveVaultStatus');
+            const onCopied = () => {
+                if (status) { status.style.color = 'var(--success)'; status.textContent = "Backup JSON copied to clipboard."; }
+                if (typeof showToast === 'function') showToast("SAVE ARCHIVE COPIED", "success");
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(jsonText).then(onCopied).catch(() => {
+                    if (window.FlightRecorder && window.FlightRecorder.copyText(jsonText)) onCopied();
+                });
+            } else if (window.FlightRecorder && window.FlightRecorder.copyText(jsonText)) {
+                onCopied();
+            }
+        }
+
         function downloadWayfinderBackup() {
-            const payload = { app: "Wayfinder", exportedAt: new Date().toISOString(), keys: {} };
+            const { payload } = _collectWayfinderBackupPayload();
             try {
-                for (let i = 0; i < localStorage.length; i++) {
-                    const k = localStorage.key(i);
-                    if (k && k.startsWith('wayfinder')) {
-                        payload.keys[k] = localStorage.getItem(k);
-                    }
-                }
                 const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -1081,6 +1240,7 @@
                 const ta = document.getElementById('saveVaultInput');
                 if (ta) ta.value = e.target.result || '';
                 importWayfinderBackupFromText();
+                if (inputEl) inputEl.value = '';
             };
             reader.readAsText(file);
         }
@@ -1094,7 +1254,7 @@
             }
             try {
                 const parsed = JSON.parse(ta.value.trim());
-                if (!parsed || typeof parsed.keys !== 'object') {
+                if (!parsed || typeof parsed.keys !== 'object' || Array.isArray(parsed.keys) || parsed.keys === null) {
                     throw new Error("Invalid Wayfinder backup format (missing keys object).");
                 }
                 let restored = 0;
@@ -1113,7 +1273,7 @@
             }
         }
 
-        // Sync CRT toggle label, audio volume sliders, and mobile theme-color after DOM load
+        // Sync CRT toggle label, audio volume sliders, #stationInfoBar & mobile theme-color after DOM load
         window.addEventListener('DOMContentLoaded', () => {
             try {
                 const crtBtn = document.getElementById('crtToggleButton');
@@ -1123,10 +1283,25 @@
 
                 const masterSlider = document.getElementById('masterVolSlider');
                 const musicSlider = document.getElementById('musicVolSlider');
+                const sfxSlider = document.getElementById('sfxVolSlider');
                 const savedMaster = parseFloat(localStorage.getItem('wayfinder_master_vol'));
                 const savedMusic = parseFloat(localStorage.getItem('wayfinder_music_vol'));
+                const savedSfx = parseFloat(localStorage.getItem('wayfinder_sfx_vol'));
                 if (masterSlider && !isNaN(savedMaster)) masterSlider.value = savedMaster;
                 if (musicSlider && !isNaN(savedMusic)) musicSlider.value = savedMusic;
+                if (sfxSlider && !isNaN(savedSfx)) sfxSlider.value = savedSfx;
+
+                // Keep #stationInfoBar populated whenever Station Concourse opens
+                if (typeof window.openStationView === 'function' && !window._indexStationBarHooked) {
+                    const origOpenStation = window.openStationView;
+                    window.openStationView = function() {
+                        origOpenStation.apply(this, arguments);
+                        if (typeof updateModalInfoBar === 'function') {
+                            updateModalInfoBar('stationInfoBar');
+                        }
+                    };
+                    window._indexStationBarHooked = true;
+                }
 
                 // Keep mobile browser address bar color synced when toggling light/dark theme
                 const themeBtn = document.getElementById('themeButton');
