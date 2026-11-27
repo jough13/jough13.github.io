@@ -1498,7 +1498,9 @@ if (typeof GameBus !== 'undefined' && !window._coloniesTickRegistered) {
                             if (colony.growthProgress >= 100) {
                                 colony.growthProgress = 0;
                                 const phaseIndex = COLONY_PHASES.indexOf(colony.phase);
-                                const newCitizens = Math.floor((Math.random() * 50 * (phaseIndex + 1)) + 10);
+                                const flatInflux = Math.floor((Math.random() * 50 * (phaseIndex + 1)) + 10);
+                                const proportionalInflux = Math.floor(colony.population * (0.04 + Math.random() * 0.03));
+                                const newCitizens = Math.max(flatInflux, proportionalInflux);
                                 colony.population = Math.min(stats.popCap, colony.population + newCitizens);
                             }
                         }
