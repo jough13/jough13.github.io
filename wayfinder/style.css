@@ -6,6 +6,8 @@ html {
 }
 
 :root {
+    color-scheme: dark;
+
     /* --- CORE SURFACE & TEXT TOKENS --- */
     --bg-color: #050510;
     --panel-bg: #070714;
@@ -14,11 +16,18 @@ html {
     --btn-bg: #151526;
     --btn-hover-bg: #23233c;
     --modal-backdrop: rgba(0, 0, 0, 0.85);
+    --title-radial: #0c1228;
     --surface-1: rgba(0, 0, 0, 0.35);
     --surface-2: rgba(0, 0, 0, 0.55);
+    --surface-3: rgba(255, 255, 255, 0.03);
     --surface-hover: rgba(255, 255, 255, 0.06);
     --border-color: #2a2a45;
     --scrollbar-thumb: rgba(0, 224, 224, 0.28);
+    --shadow-elevated: 0 8px 28px rgba(0, 0, 0, 0.7);
+
+    /* --- RADII TOKENS --- */
+    --radius-sm: 3px;
+    --radius-md: 6px;
 
     /* --- ACCENT & STATUS TOKENS --- */
     --accent-color: #00E0E0;
@@ -50,6 +59,7 @@ html {
     --z-header: 150;
     --z-status: 1000;
     --z-modal: 2000;
+    --z-submodal: 2020;
     --z-codex: 2100;
     --z-confirm: 3500;
     --z-gameover: 4000;
@@ -98,13 +108,25 @@ textarea:focus-visible {
     outline-offset: 2px;
 }
 
+/* Eliminate mobile 300ms tap delay on interactive controls */
+button,
+.action-button,
+.control-button,
+.station-action-btn,
+.trade-btn,
+.sys-btn,
+.icon-btn {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
 /* --- CUSTOM STARSHIP RANGE SLIDERS (Audio Mixers & Anomaly Tuning) --- */
 input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
     background: rgba(255, 255, 255, 0.14);
     height: 5px;
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
 }
 input[type="range"]::-webkit-slider-thumb {
@@ -142,7 +164,8 @@ input[type="range"]::-moz-range-thumb {
 /* Automatically hide side borders when not on the Galactic Map */
 #main-view:has(#systemView[style*="block"]) .side-border,
 #main-view:has(#planetView[style*="block"]) .side-border,
-#main-view:has(#combatView[style*="flex"]) .side-border {
+#main-view:has(#combatView[style*="flex"]) .side-border,
+body:has(#gameOverOverlay[style*="flex"]) .side-border {
     opacity: 0;
     visibility: hidden;
 }
@@ -360,7 +383,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 .bar-container {
     height: 6px;
-    background: #1b1b26;
+    background: var(--surface-2);
     border: 1px solid var(--border-color);
     width: 100%;
     margin-top: 2px;
@@ -378,7 +401,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 .sector-title {
     font-size: 18px;
     font-weight: bold;
-    color: var(--item-name-color);
+    color: var(--accent-color);
     text-shadow: 0 0 6px var(--accent-glow);
     white-space: nowrap;
     overflow: hidden;
@@ -429,7 +452,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 #systemMenu {
     position: absolute;
-    top: 50px;
+    top: 100%;
     right: 0;
     background: var(--panel-bg);
     border: 1px solid var(--border-color);
@@ -442,6 +465,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     width: 220px;
     max-height: calc(100vh - 60px);
     overflow-y: auto;
+    overscroll-behavior: contain;
     box-shadow: -5px 8px 25px rgba(0, 0, 0, 0.6);
 }
 
@@ -525,6 +549,12 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     padding: 20px;
     display: none;
     overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+#combatView {
+    flex-direction: column;
+    align-items: center;
 }
 
 /* --- BOTTOM DECK --- */
@@ -548,6 +578,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     color: var(--accent-color);
     text-shadow: 0 0 2px var(--accent-glow);
     overflow-y: auto;
+    overscroll-behavior: contain;
     height: 100%;
     opacity: 0.96;
     contain: layout style;
@@ -593,6 +624,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     align-content: flex-start;
     gap: 6px;
     overflow-y: auto;
+    overscroll-behavior: contain;
     padding-right: 2px;
     min-height: 0;
 }
@@ -654,7 +686,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     z-index: 5;
 }
 
-/* --- CRT Scanline Effect (Fixed Full-Viewport Overlay) --- */
+/* --- CRT Scanline Effect (Fixed Full-Viewport Composited Layer) --- */
 .crt::before {
     content: " ";
     display: block;
@@ -667,6 +699,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     background-size: 100% 2px, 3px 100%;
     pointer-events: none;
     contain: strict;
+    transform: translateZ(0);
 }
 
 /* Subtle CRT scanline softening in Light Mode so white surfaces stay crisp */
@@ -678,13 +711,14 @@ body.light-mode.crt::before {
 #titleOverlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: radial-gradient(circle at 50% 35%, #0c1228 0%, var(--bg-color) 70%);
+    background: radial-gradient(circle at 50% 35%, var(--title-radial) 0%, var(--bg-color) 70%);
     z-index: var(--z-modal);
     display: flex;
     justify-content: center;
     align-items: center;
     padding: 16px;
     overflow-y: auto;
+    overscroll-behavior: contain;
     transition: opacity 0.45s ease;
 }
 #titleContainer { text-align: center; width: 420px; max-width: 92vw; }
@@ -706,7 +740,7 @@ body.light-mode.crt::before {
     border: 1px solid var(--border-color);
     color: var(--item-name-color);
     text-align: center;
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 .seed-input:focus {
@@ -723,7 +757,7 @@ body.light-mode.crt::before {
     cursor: pointer;
     margin-top: 10px;
     font-family: var(--title-font);
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
     transition: all 0.15s ease;
 }
 .title-button:hover { background: #FFF; }
@@ -747,7 +781,7 @@ body.light-mode.crt::before {
     transition: all 0.18s ease;
     width: 100%;
     margin-bottom: 10px;
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
     box-shadow: 0 0 5px var(--accent-glow);
     display: flex;
     justify-content: center;
@@ -776,7 +810,7 @@ body.light-mode.crt::before {
     border: 1px solid var(--accent-color);
     color: var(--accent-color);
     font-family: var(--title-font);
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
     transition: all 0.15s ease;
     box-shadow: 0 0 5px var(--accent-glow);
 }
@@ -817,7 +851,7 @@ body.light-mode.crt::before {
     border: 1px solid var(--border-color);
     border-left: 4px solid var(--accent-color);
     border-radius: 4px;
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.75);
+    box-shadow: var(--shadow-elevated);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -902,7 +936,7 @@ body.light-mode.crt::before {
 }
 ::-webkit-scrollbar-thumb {
     background: var(--scrollbar-thumb);
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
 }
 ::-webkit-scrollbar-thumb:hover {
     background: var(--accent-color);
@@ -924,6 +958,13 @@ body.light-mode.crt::before {
     align-items: center;
     padding: 10px;
     backdrop-filter: blur(3px);
+}
+
+/* Sub-modals always stack cleanly above station/Xerxes concourses regardless of DOM order */
+#genericModalOverlay,
+#tradeOverlay,
+#cargoOverlay {
+    z-index: var(--z-submodal);
 }
 
 .trade-window {
@@ -978,6 +1019,7 @@ body.light-mode.crt::before {
     min-height: 0;
     border-right: 1px solid var(--border-color);
     overflow-y: auto;
+    overscroll-behavior: contain;
     contain: layout style;
 }
 
@@ -1007,12 +1049,13 @@ body.light-mode.crt::before {
     max-height: 75vh;
     overflow-y: auto;
     overflow-x: hidden;
+    overscroll-behavior: contain;
     border-left: 1px solid var(--border-color);
 }
 
 .trade-panel-right::-webkit-scrollbar { width: 6px; }
 .trade-panel-right::-webkit-scrollbar-track { background: var(--surface-1); }
-.trade-panel-right::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 3px; }
+.trade-panel-right::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: var(--radius-sm); }
 
 #tradeItemName {
     color: var(--accent-color);
@@ -1100,13 +1143,14 @@ body.light-mode.crt::before {
 .save-list {
     max-height: 45vh;
     overflow-y: auto;
+    overscroll-behavior: contain;
     padding-right: 4px;
 }
 
 .save-slot-card {
     background: var(--surface-1);
     border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     padding: 10px;
     margin-bottom: 12px;
     display: flex;
@@ -1449,7 +1493,7 @@ body.light-mode.crt::before {
     padding: 14px 18px;
     min-width: 260px;
     max-width: 90vw;
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.75);
     font-family: var(--title-font);
     font-size: 13px;
@@ -1522,7 +1566,7 @@ body.light-mode.crt::before {
     opacity: 0.82;
 }
 
-/* Automatically hide mobile D-Pad when not on Galactic Map or while modals are open */
+/* Automatically hide mobile D-Pad when not on Galactic Map or while overlays are open */
 #main-view:has(#systemView[style*="block"]) #mobileControls,
 #main-view:has(#planetView[style*="block"]) #mobileControls,
 #main-view:has(#combatView[style*="flex"]) #mobileControls,
@@ -1530,7 +1574,9 @@ body:has(#genericModalOverlay[style*="flex"]) #mobileControls,
 body:has(#stationOverlay[style*="flex"]) #mobileControls,
 body:has(#xerxesOverlay[style*="flex"]) #mobileControls,
 body:has(#codexOverlay[style*="flex"]) #mobileControls,
-body:has(#levelUpOverlay[style*="flex"]) #mobileControls {
+body:has(#levelUpOverlay[style*="flex"]) #mobileControls,
+body:has(#gameOverOverlay[style*="flex"]) #mobileControls,
+body:has(#confirmationOverlay[style*="flex"]) #mobileControls {
     display: none !important;
 }
 
@@ -1628,6 +1674,20 @@ body:has(#levelUpOverlay[style*="flex"]) #mobileControls {
     .bar-container { width: 35px; }
     .sector-title { font-size: 12px; letter-spacing: 0.5px; }
     .coords { font-size: 10px; margin-left: 4px; }
+
+    #toastContainer {
+        top: 58px;
+        right: 12px;
+        left: 12px;
+        align-items: flex-end;
+    }
+    .toast {
+        min-width: 0;
+        width: 100%;
+        max-width: 340px;
+        padding: 11px 14px;
+        font-size: 12px;
+    }
 
     .trade-window, .confirm-window { width: 96%; max-height: 90dvh; }
     #genericModalOverlay .trade-window { height: 90dvh; max-height: 92dvh; }
@@ -1734,16 +1794,18 @@ body:has(#levelUpOverlay[style*="flex"]) #mobileControls {
 
 /* ==========================================
    --- EXPANDABLE RETRO CRT THEME PALETTES ---
-   (Toggleable via body.phosphor-mode / body.amber-mode)
+   (Toggleable via body.phosphor-mode / body.amber-mode / body.high-contrast-mode)
    ========================================== */
 
 body.phosphor-mode {
+    color-scheme: dark;
     --bg-color: #020a04;
     --panel-bg: #041208;
     --header-bg: rgba(4, 24, 10, 0.94);
     --station-bg: #06180b;
     --btn-bg: #0c2614;
     --btn-hover-bg: #154022;
+    --title-radial: #082412;
     --border-color: #164824;
     --scrollbar-thumb: rgba(51, 255, 102, 0.30);
     --accent-color: #33FF66;
@@ -1758,12 +1820,14 @@ body.phosphor-mode {
 }
 
 body.amber-mode {
+    color-scheme: dark;
     --bg-color: #0a0602;
     --panel-bg: #140c04;
     --header-bg: rgba(28, 16, 6, 0.94);
     --station-bg: #180e05;
     --btn-bg: #261608;
     --btn-hover-bg: #3b220d;
+    --title-radial: #261506;
     --border-color: #4d2f12;
     --scrollbar-thumb: rgba(255, 176, 0, 0.32);
     --accent-color: #FFB000;
@@ -1777,11 +1841,35 @@ body.amber-mode {
     --gold-text: #FFD700;
 }
 
+body.high-contrast-mode {
+    color-scheme: dark;
+    --bg-color: #000000;
+    --panel-bg: #050505;
+    --header-bg: #000000;
+    --station-bg: #050505;
+    --btn-bg: #111111;
+    --btn-hover-bg: #222222;
+    --title-radial: #101018;
+    --border-color: #777777;
+    --scrollbar-thumb: #00FFFF;
+    --accent-color: #00FFFF;
+    --accent-glow: rgba(0, 255, 255, 0.35);
+    --accent-soft: rgba(0, 255, 255, 0.18);
+    --text-color: #FFFFFF;
+    --item-name-color: #FFFFFF;
+    --item-desc-color: #CCCCCC;
+    --success: #00FF66;
+    --warning: #FFDD00;
+    --danger: #FF5555;
+    --gold-text: #FFEE33;
+}
+
 /* ==========================================
    --- LIGHT MODE GLOBAL VARIABLES & OVERRIDES ---
    ========================================== */
 
 body.light-mode, .light-mode {
+    color-scheme: light;
     --bg-color: #f4f4f9;
     --panel-bg: #ffffff;
     --header-bg: #e8ecef;
@@ -1789,11 +1877,14 @@ body.light-mode, .light-mode {
     --btn-bg: #f4f6f8;
     --btn-hover-bg: #e6f4f4;
     --modal-backdrop: rgba(15, 25, 35, 0.55);
+    --title-radial: #ffffff;
     --surface-1: rgba(0, 0, 0, 0.04);
     --surface-2: rgba(0, 0, 0, 0.06);
+    --surface-3: rgba(0, 0, 0, 0.025);
     --surface-hover: rgba(0, 119, 119, 0.06);
     --border-color: #cccccc;
     --scrollbar-thumb: rgba(0, 119, 119, 0.32);
+    --shadow-elevated: 0 10px 28px rgba(0, 0, 0, 0.12);
     --text-color: #222233;
     --item-name-color: #000000;
     --item-desc-color: #555566;
@@ -1820,13 +1911,7 @@ body.light-mode #main-view {
     border: none;
 }
 
-body.light-mode #game-log {
-    background-color: #F9F9F9;
-    color: #111111;
-}
-
 /* 1. Main Backgrounds & Modals */
-body.light-mode #titleScreenOverlay,
 body.light-mode .trade-window,
 body.light-mode .confirm-window,
 body.light-mode #codexOverlay .codex-window {
@@ -1845,14 +1930,24 @@ body.light-mode .bar-container {
     border-color: #CCCCCC;
 }
 body.light-mode .mission-box {
-    background: #F7F9FB;
+    background: #F0F3F7;
+    border-color: #C4CCD4;
+}
+body.light-mode #hudXpStat {
+    color: var(--success) !important;
+}
+body.light-mode #missionText[style*="255, 215, 0"],
+body.light-mode #missionText[style*="FFD700"] {
+    color: var(--gold-text) !important;
+    font-weight: bold;
 }
 body.light-mode input[type="range"] {
     background: rgba(0, 0, 0, 0.15);
 }
 
 /* 2. The Log Panel */
-body.light-mode .log-panel {
+body.light-mode .log-panel,
+body.light-mode #messageArea {
     background: #FFFFFF;
     color: #111111;
     border-color: #DCDCE4;
@@ -1871,10 +1966,29 @@ body.light-mode .trade-btn {
 }
 
 body.light-mode .action-button:hover:not(:disabled),
-body.light-mode .trade-btn:hover:not(:disabled) {
+body.light-mode .trade-btn:hover:not(:disabled),
+body.light-mode .title-button:hover:not(:disabled) {
     background: #F0FAFA;
     border-color: var(--accent-color);
     color: var(--accent-color) !important;
+}
+
+/* Explicit disabled button contrast in Light Mode (higher specificity than base Light Mode button rule) */
+body.light-mode .action-button:disabled,
+body.light-mode .trade-btn:disabled,
+body.light-mode .trade-btn.locked {
+    background: #F2F3F5 !important;
+    border-color: #D5D7DC !important;
+    color: #99A0AA !important;
+    box-shadow: none !important;
+    cursor: not-allowed;
+}
+
+body.light-mode .icon-btn:hover:not(:disabled),
+body.light-mode #startButton:hover,
+body.light-mode #bootButton:hover {
+    background: var(--accent-color);
+    color: #FFFFFF !important;
 }
 
 body.light-mode .full-width-btn {
@@ -2228,6 +2342,7 @@ body.light-mode .trade-item-row.selected {
     justify-content: center;
     padding: 20px;
     overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 .perk-card {
@@ -2324,6 +2439,7 @@ body.light-mode #levelUpOverlay p {
     align-items: center;
     background: var(--station-bg);
     overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 #stationCanvas {
@@ -2365,13 +2481,14 @@ body.light-mode #levelUpOverlay p {
     gap: 14px;
     align-content: start;
     overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 .station-action-btn {
     background: var(--btn-bg);
     border: 1px solid var(--border-color);
     border-left: 3px solid var(--border-color);
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
     padding: 14px;
     display: flex;
     align-items: center;
@@ -2697,6 +2814,7 @@ body.light-mode #spireInput::placeholder {
 
 .scan-data-box {
     overflow-y: auto;
+    overscroll-behavior: contain;
     flex-grow: 1;
     padding-right: 15px;
 }
@@ -2756,7 +2874,7 @@ body.light-mode .generic-list-item.active {
     box-shadow: 0 0 30px var(--accent-glow);
     display: flex;
     flex-direction: column;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     animation: modalEnter 0.18s ease-out;
 }
@@ -2792,6 +2910,7 @@ body.light-mode .generic-list-item.active {
     background: var(--surface-1);
     border-right: 1px solid var(--border-color);
     overflow-y: auto;
+    overscroll-behavior: contain;
     contain: layout style;
 }
 
@@ -2800,6 +2919,7 @@ body.light-mode .generic-list-item.active {
     background: var(--surface-2);
     border-right: 1px solid var(--border-color);
     overflow-y: auto;
+    overscroll-behavior: contain;
     contain: layout style;
 }
 
@@ -2807,6 +2927,7 @@ body.light-mode .generic-list-item.active {
     flex: 1;
     background: var(--panel-bg);
     overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 /* --- INTERACTIVE BUTTONS --- */
@@ -2934,7 +3055,7 @@ body.light-mode .generic-list-item.active {
     font-family: var(--title-font);
     font-size: 9px;
     padding: 2px 6px;
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
     letter-spacing: 1px;
     font-weight: bold;
     border: 1px solid var(--border-color);
@@ -2948,10 +3069,40 @@ body.light-mode .generic-list-item.active {
     gap: 5px;
     font-size: 10px;
     padding: 3px 8px;
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
     background: var(--surface-1);
     border: 1px solid var(--border-color);
     color: var(--text-color);
+}
+
+.pill-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 10px;
+}
+
+.pill-btn {
+    padding: 4px 8px;
+    font-size: 9px;
+    font-family: var(--title-font);
+    font-weight: bold;
+    letter-spacing: 1px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    background: var(--surface-1);
+    color: var(--item-desc-color);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.pill-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--item-name-color);
+}
+.pill-btn.active {
+    border-color: var(--accent-color);
+    background: var(--accent-soft);
+    color: var(--accent-color);
 }
 
 .progress-track {
@@ -2959,7 +3110,7 @@ body.light-mode .generic-list-item.active {
     height: 6px;
     background: var(--surface-2);
     border: 1px solid var(--border-color);
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
     overflow: hidden;
 }
 
@@ -2976,11 +3127,33 @@ body.light-mode .generic-list-item.active {
     padding: 12px;
 }
 
+.data-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 28px 16px;
+    color: var(--item-desc-color);
+    font-size: 12px;
+    font-style: italic;
+}
+
 .divider-dashed {
     border: 0;
     border-top: 1px dashed var(--border-color);
     margin: 12px 0;
 }
+
+/* Faction & Semantic Text Utilities */
+.faction-concord { color: var(--concord-color); border-color: var(--concord-color); }
+.faction-eclipse { color: var(--eclipse-color); border-color: var(--eclipse-color); }
+.faction-ktharr { color: var(--ktharr-color); border-color: var(--ktharr-color); }
+.faction-fuelrats { color: var(--fuelrats-color); border-color: var(--fuelrats-color); }
+.faction-independent { color: var(--independent-color); border-color: var(--independent-color); }
 
 .text-accent { color: var(--accent-color); }
 .text-gold { color: var(--gold-text); }
