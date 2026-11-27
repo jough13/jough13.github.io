@@ -39,6 +39,9 @@ const RUMORS = [
     "Way out northeast at [280, 240], an automated Precursor buoy called Silentium Relay Zero still broadcasts the Architects' final distress chord before the Great Silence. Bring a Wayfinder Core near it and it'll lock straight onto The First Nexus.",
     "Surveyors found an Obsidian Obelisk floating in empty space at [-20, -35]. Harmonizing with its trenches knits hull armor back together—just don't touch its singularity core unless you're a seasoned Void Diver.",
     "Decrypted Precursor Archives call the Ancients the 'Architects of the First Chord.' They didn't vanish by accident—they built monoliths across the galaxy to hold back an entropic phenomenon called The Silence.",
+    "Long-range probes spotted the pre-Concord 2144 CE sleeper ark CSS Hesperia drifting cold near [-145, 185]. Bring 2x Tech Parts to patch its distress beacon and Concord Historical Survey will wire a generous preservation bounty.",
+    "Deep in the eastern frontier at [310, -210], K'tharr clans welded scorched warship prows into an orbital shrine called the Blood-Cairn. Returning a lost K'tharr Ancestral Blade there earns huge Ascendancy honor and a full vessel overhaul.",
+    "South of the Core at [-85, -220], a kilometer-wide crystal octahedron called the Whispering Prism splits starlight into harmonic overtones. Align a NexStar-4SE optical array against its facets and it'll overcharge deflectors past 125%.",
 
     // ==========================================
     // --- COLONIES, OUTPOSTS, CREW & DRONES ---
@@ -55,6 +58,8 @@ const RUMORS = [
     "If you're governing a frontier colony, keep a close eye on your Warehouse capacity. Once your storage hits 100%, your mines and factories grind to a halt until you build Reinforced Silos or haul the surplus to market.",
     "Thinking of upgrading your colony to a Tier 4 Sector Capital? You'll need 30,000 citizens and an Orbital Space Elevator first, plus a stockpile of AI Cores. Once you hit Capital status, you can build an Interstellar Exchange that automatically liquidates excess goods for pure credits.",
     "Keep an eye on your captain augmentations when you level up. Picking three perks in the same discipline—like Combat, Science, Exploration, or Survival—unlocks a permanent Discipline Mastery Doctrine on top of the perks themselves.",
+    "Did you hear about the Concord bio-research platform Solitude out at [165, -175]? They synthesize dirt-cheap Medical Supplies from alien flora and pay steep grants for Sentient Mycelium and Magnetar telemetry.",
+    "Halfway out toward Station Umbra sits The Sunken Compass [-290, 95]—a whole shadow-market bazaar welded inside the cracked spine of an ancient ark. Best spot on the western rim for cheap Nano-Repair Kits and Sensor Decoys.",
 
     // ==========================================
     // --- STEALTH, NAVIGATION & SENSORS ---
@@ -66,7 +71,9 @@ const RUMORS = [
     "Have you calibrated your Deep Space Astrometric Observatory (O) yet? If you mount a NexStar-4SE Optical Array in your scanner slot, you can double your optical telemetry range and resolve free Planetary Data cartridges from long-exposure sector plates!",
     "Keep your eyes peeled for high-velocity icy comets streaking across the sector map. If you can plot an intercept vector and fly right through their tail, your scoops will harvest pure Hydrogen-3 and even Void Crystals.",
     "Don't let a micro-singularity catch you off guard. If you stray within 3 klicks of a Black Hole without a Precursor Nav-Core or the Void Diver perk, its gravity well will drag your ship toward the event horizon.",
-    "Bored on a long supercruise haul? Press [R] to cycle your Subspace Radio receiver, [Shift + R] to skip tracks, or [Alt + R] to open the full tuner. 1620 AM runs live Concord News, 91.2 FM spins procedural void synthwave, and 74.4 AM... well, nobody knows who runs that Precursor numbers station.",
+    "Bored on a long supercruise haul? Press [R] to cycle your Subspace Radio receiver, [Shift + R] to skip tracks, or [Alt + R] to open the full tuner. 1620 AM runs live Concord News, 91.2 FM spins procedural void synthwave, 94.8 FM broadcasts Pulsar Telemetry, 66.6 AM carries Eclipse Shadow Wire, and 74.4 AM... nobody knows who runs that Precursor numbers station.",
+    "Watch out for orange static shimmering across the map—those are Ionized Radiation Belts. Without a Lead-Lined Dosimetry Array or a Health Physicist background, the gamma flux will chew straight through your shields and foul your injectors.",
+    "If you pull a Cryo-Coolant Cartridge out of a derelict reactor manifold, hang onto it. Activating one from Cargo (I) flushes Silent Running heat straight back to zero and stabilizes thermal hull fractures.",
 
     // ==========================================
     // --- COMBAT, BOARDING & WARZONES ---
@@ -78,7 +85,9 @@ const RUMORS = [
     "When Concord and Cartel fleets clash in an Active Sector Warzone, don't just fly past. You can link comms with either commander to coordinate strikes, or drift into the wreckage field to scavenge Void Crystals and Tech Parts while they're busy shooting each other.",
     "Ever notice the Manufacturer tags on your ship components? If you equip at least three modules from the same faction—like Concord, K'tharr, Eclipse, or Frontier—your ship's computer unlocks a powerful Set Synergy bonus.",
     "When you wipe out the garrison at a hidden Cartel Outpost, you don't have to raze it. You can claim the stronghold for yourself and turn it into a personal Shadow Port—though Concord SEC-COM will slap a massive bounty on your head.",
-    "Reputation unlocks hardware credits alone can't buy. Earn 30+ Standing with Concord for an Aegis Gunship, 30+ with Eclipse for a stealth Night-Runner, or 30+ with the K'tharr for a 350-hull Blood-Barge.",
+    "Reputation unlocks hardware credits alone can't buy. Earn 30+ Standing with Concord for an Aegis Gunship, 50+ for an Aegis Dreadnought, 30+ with Eclipse for a stealth Night-Runner, or 30+ with the K'tharr for a 350-hull Blood-Barge.",
+    "Every hull frame carries its own built-in Chassis Trait on top of its special protocol. Check the Naval Registry Dossier at any Shipyard before commissioning a new vessel.",
+    "Veterans who install an Emergency Reserve Core swear it's saved their lives ten times over—if a hull hit drops you past the redline in combat, dead-man capacitors soak the blow and surge emergency shields.",
 
     // ==========================================
     // --- MINING, CRAFTING & PLANETARY EVA ---
@@ -89,9 +98,11 @@ const RUMORS = [
     "You don't need a starbase to patch your ship or refine ore. Press [U] anywhere in space to open your Engineering Workbench. You can smelt Minerals into Refined Alloy, synthesize Nano-Repair Kits, or permanently reinforce your hull plating and shield capacitors.",
     "If you ever find a legendary Machine World, don't bother with a standard mining laser. Interface directly with the planetary Core Network—especially if you have the Cyber Slicer perk—to siphon thousands of credits and intact AI Cores.",
     "Precursor Tomb Worlds and Archive Spheres are rare as hens' teeth, but excavating their subterranean sanctums can unseal intact Precursor Vaults or turn up Star Map Fragments and Datacubes.",
-    "Watch out for Death Worlds on the outer rim. The apex predators there will chew through a rover hull in seconds, though black-market brokers pay a fortune for the Illegal Organs and Genetic Samples you can harvest from the surface.",
+    "Watch out for Death Worlds on the outer rim. The apex predators there will chew through a rover hull in seconds, though black-market brokers pay a fortune for the Illegal Organs and Genetic Samples you can harvest from the surface—especially if you bring Marines for escort.",
     "Some derelicts—and the roughneck miners over at Valkyrie Drift [135, -120]—stock uncracked Crystalline Geodes. Activate them from your Cargo Manifest (I) and your mining laser will split them open for Gold, Platinum Ore, or even Void Crystals.",
-    "Got spare Tech Parts and Refined Alloy burning a hole in your hold? Take them to the R&D Calibration Bench inside any Engineering Bay. For 2,500c, the machinists will fabricate a custom-tuned prototype module with multi-stat bonuses.",
+    "Got spare Tech Parts and Refined Alloy burning a hole in your hold? Take them to the R&D Calibration Bench inside any Engineering Bay. For 2,500c (or 3,500c to target a specific slot), the machinists will fabricate a custom-tuned prototype module.",
+    "Every planet class hides its own surface specialty—melt sub-glacial deuterium pockets on Glacial worlds, deploy abyssal bathyscaphes on Oceanic worlds, or establish a field bio-camp on Terran and Bioluminescent worlds to boost crew loyalty.",
+    "If you ever find a tidally locked Terminator Twilight World, look closely at the colony ledger—perpetual dusk along the twilight belt boosts water output and trims building upkeep by a full quarter.",
 
     // ==========================================
     // --- CRYPTARCH, FORGER & BLACK MARKET ---
@@ -100,7 +111,7 @@ const RUMORS = [
     "Looking to fence 'Hot Cargo'? The moment you accept a smuggling run from the Shadow Broker, Aegis Pursuit Craft will lock onto its beacon. Engage Silent Running (Q) to mask your signature on the way to the drop-off.",
     "If you find yourself holding contraband when a Concord Patrol pulls you over, pray you have the 'Silver Tongue' perk or a Smuggler crewmate to cut the bribe in half—or pop a Sensor Decoy from your hold before you dock.",
     "Picked up too much Concord Notoriety? Find 'The Forger' at an outlaw port like Station Umbra or Port Erebus [-175, -80]. He can slice into SEC-COM relays to wipe your warrants for cheaper than official fines, plant forged diplomatic credentials for +15 Concord Rep, or scramble your transponder to shake pursuers.",
-    "Out in deep space, keep an eye out for automated Syndicate Wagering Relays ($), drifting Cryo-Escape Pods (P), Abandoned Fuel Barges (F), Research Satellites (¤), Time Capsules (T), and Precursor Monoliths (Ψ). Just watch your step around old Terran War Space Mines (M)—unless you have a Cyber Slicer to defuse them!",
+    "Out in deep space, keep an eye out for automated Syndicate Wagering Relays ($), Cryo-Escape Pods (P), Abandoned Fuel Barges (F), Research Satellites (¤), Time Capsules (T), Automated Repair Buoys (+), Syndicate Dead-Drops (!), Echo Beacons (E), and Precursor Monoliths (Ψ). Just watch your step around old Terran War Space Mines (M)—unless you have a Cyber Slicer to defuse them!",
     "If you collect three Precursor Star Map Fragments, don't sell them piecemeal! Activate them inside your Cargo Hold (I) and their holographic matrices will fuse into an intact Wayfinder Core.",
     "Decrypting engrams sometimes reveals coordinates to Sector [39, 17]. Word in the cantinas is that a ring of Precursor pylons called the 'Sanctuary of the Void' floats out there, waiting to synchronize with a ship's nav-computer.",
     "Astronomers at Frothy Moon Outpost [58, -8] brew the best dark synth-ale in the quadrant. Bring them Planetary Data or Nav-Charts from the deep black and they'll pay a 40% to 50% premium on the spot.",
@@ -117,7 +128,7 @@ if (typeof GameRegistry !== 'undefined') {
 
 // ==========================================
 // --- STATION-SPECIFIC LOCAL CHATTER ---
-// --- (100% Coverage of All Static Ports) ---
+// --- (100% Coverage of All 18 Static Ports) ---
 // ==========================================
 
 const STATION_RUMORS = {
@@ -148,7 +159,7 @@ const STATION_RUMORS = {
     ],
     "Fortress Drakon": [
         "Fortress Drakon guards the eastern approaches into K'tharr space. Return a lost K'tharr Ancestral Blade to the warlords here and they'll pay over double its base value.",
-        "The arena bookies in the Proving Grounds are taking wagers up to 500c per match. Just watch the odds on the Captured Xenomorph.",
+        "The arena bookies in the Proving Grounds are taking wagers up to 1,000c per match. Winning a high-roller bet even earns Hegemony respect.",
         "Fortress Drakon's armories smelt Rare Metals straight into heavy shipboard ordnance. If you've been mining the eastern rim, stop by the docks."
     ],
     "Station Umbra": [
@@ -181,10 +192,20 @@ const STATION_RUMORS = {
         "Because Helios is an industrial smelting platform, they have zero agricultural domes—bring them Water and Food Supplies for an easy 40% to 50% markup.",
         "Helios even fabricates Prefab Colony Cores on-site. Unpack one at an established settlement and you get an instant Hab Block, Condenser, alloys, and 100 colonists."
     ],
+    "Solitude Research Platform": [
+        "Solitude's cryo-domes synthesize Medical Supplies at 75% of core-world prices—haul a hold full of trauma kits over to K'tharr space or The Rusty Anchor for a fast profit.",
+        "The xeno-botanists here are always funding outer-rim sweeps for Sentient Mycelium, K'tharr Spices, and Magnetar or Supernova isotope telemetry.",
+        "Being out at [165, -175] keeps Solitude quiet, though passing couriers say K'tharr war-barges sometimes prowl the eastern lanes just beyond sensor range."
+    ],
     "Valkyrie Drift": [
         "Valkyrie Drift is welded straight onto a hollowed iron asteroid. The roughnecks here sell raw Minerals at 65% of market price and uncracked Crystalline Geodes right off the conveyor belts.",
         "Out here in the drift, fresh water, Frothy Moon Ale, and Droid Servos are worth their weight in gold. Haul a load of ale from Frothy Moon Outpost and watch the miners line up.",
         "If you're running an Automated Mining Drone or refining Platinum Ore into Refined Alloy, Valkyrie's smelting bays are the heart of the eastern independent belt."
+    ],
+    "The Sunken Compass": [
+        "Watch your boots on the deck plates—The Sunken Compass is welded straight into the broken spine of an ancient colony ark. Every bulkhead creaks when a heavy freighter docks.",
+        "This is the last neutral refueling and black-market salvage stop before Station Umbra. The workshops turn raw Minerals into cheap Nano-Repair Kits and sell Sensor Decoys no questions asked.",
+        "Got Precursor Artifacts, Xeno-Antiques, or Frothy Moon Ale aboard? The salvage brokers here pay top rim premiums—and never file Concord customs manifests."
     ],
     "Frothy Moon Outpost": [
         "Welcome to Frothy Moon Outpost! Grab a pint of dark synth-ale and check out the 8-inch and NexStar optical telescopes on the lunar observation ridge.",
@@ -193,7 +214,7 @@ const STATION_RUMORS = {
     ],
     "Port Nomad": [
         "Port Nomad's promethium cracking towers refine Hydrogen-3 into Fuel Cells at 50% of standard market price. Every long-range explorer tops off their tanks here.",
-        "If you build up 10 Reputation with the Fuel Rats Collective by tipping their rescue tugs, their shipwrights will let you commission a high-visibility Salvage & Refuel Tug.",
+        "If you build up 10 Reputation with the Fuel Rats Collective by tipping their rescue tugs or donating at Dispatch, their shipwrights will let you commission a high-visibility Salvage & Refuel Tug.",
         "Port Nomad even keeps a rare Wormhole Stabilizer in stock for deep-rim explorers looking to anchor a permanent Stargate out past the frontier."
     ],
     "The Archivist's Vault": [
@@ -231,100 +252,199 @@ function _rumorFormatCredits(num) {
     return String(Math.trunc(Number(num) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
+function _rumorDistAndBearing(tx, ty) {
+    if (typeof playerX === 'undefined' || typeof playerY === 'undefined') return "";
+    const dx = tx - playerX;
+    const dy = ty - playerY;
+    if (dx === 0 && dy === 0) return "right here";
+    const dist = Math.floor(Math.sqrt(dx * dx + dy * dy));
+    const dirs = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
+    const idx = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
+    return `${dist}u ${dirs[(idx + 8) % 8]}`;
+}
+
+function _rumorFindLocation(nameOrKey) {
+    if (!nameOrKey) return null;
+    if (typeof LocationUtils !== 'undefined' && typeof LocationUtils.getLocation === 'function') {
+        return LocationUtils.getLocation(nameOrKey);
+    }
+    if (typeof LOCATIONS_DATA === 'undefined') return null;
+    if (LOCATIONS_DATA[nameOrKey]) return LOCATIONS_DATA[nameOrKey];
+    for (const key in LOCATIONS_DATA) {
+        if (LOCATIONS_DATA[key] && LOCATIONS_DATA[key].name === nameOrKey) return LOCATIONS_DATA[key];
+    }
+    return null;
+}
+
 // ==========================================
 // --- SMART RUMOR DECK & LIVE INTEL ENGINE ---
 // ==========================================
 
+const _RAW_LORE_HOOKS = [
+    { match: "Voidfang", loreKey: "FACTION_ECLIPSE" },
+    { match: "Shadow Network", loreKey: "FACTION_SHADOW_NETWORK" },
+    { match: "smuggling", loreKey: "FACTION_ECLIPSE_SMUGGLING" },
+    { match: "Obsidian Directorate", loreKey: "FACTION_OBSIDIAN_DIRECTORATE" },
+    { match: "Children of the Void", loreKey: "FACTION_CHILDREN_OF_THE_VOID" },
+    { match: "Void Vultures", loreKey: "FACTION_PIRATES_VOID_VULTURES" },
+    { match: "Xy-Corp", loreKey: "FACTION_XYCORP" },
+    { match: "Fuel Rats", loreKey: "FACTION_FUEL_RATS" },
+    { match: "K'tharr", loreKey: "FACTION_KTHARR" },
+    { match: "Void Crystals", loreKey: "PHENOMENON_VOID_CRYSTALS" },
+    { match: "Sentient Mycelium", loreKey: "LEGEND_SENTIENT_MYCELIUM_NETWORK" },
+    { match: "Void Kraken", loreKey: "LEGEND_VOID_KRAKEN" },
+    { match: "Coronal Shepherds", loreKey: "LEGEND_CORONAL_SHEPHERDS" },
+    { match: "CSS Hesperia", loreKey: "LEGEND_DIASPORA_ARKS" },
+    { match: "Silencer", loreKey: "LEGEND_THE_SILENCERS" },
+    { match: "Great Silence", loreKey: "LEGEND_THE_SILENCERS" },
+    { match: "Phase-Shifted Alloy", loreKey: "TECH_PHASE_SHIFT_ALLOY" },
+    { match: "Wormhole Stabilizer", loreKey: "TECH_STARGATE_NETWORK" },
+    { match: "Stargate", loreKey: "TECH_STARGATE_NETWORK" },
+    { match: "Set Synergy", loreKey: "TECH_MANUFACTURER_SYNERGIES" },
+    { match: "Automated Mining Drone", loreKey: "TECH_AUTOMATED_DRONES" },
+    { match: "Wormholes", loreKey: "PHENOMENON_WORMHOLE" },
+    { match: "Black Hole", loreKey: "PHENOMENON_BLACK_HOLE" },
+    { match: "singularity", loreKey: "PHENOMENON_BLACK_HOLE" },
+    { match: "Radiation Belt", loreKey: "PHENOMENON_RADIATION_BELTS" },
+    { match: "icy comets", loreKey: "PHENOMENON_CRYO_COMETS" },
+    { match: "Irradiated Wasteland", loreKey: "PHENOMENON_IRRADIATED" },
+    { match: "Encrypted Engram", loreKey: "COMMODITY_ENCRYPTED_ENGRAM" },
+    { match: "Hydrogen-3", loreKey: "COMMODITY_HYDROGEN_3" },
+    { match: "Living Hull Tissue", loreKey: "COMMODITY_LIVING_HULL_TISSUE" },
+    { match: "Obsidian Tear Plating", loreKey: "COMMODITY_OBSIDIAN_TEAR_PLATING" },
+    { match: "Frothy Moon Ale", loreKey: "COMMODITY_FROTHY_MOON_ALE" },
+    { match: "Datacube", loreKey: "COMMODITY_PRECURSOR_DATACUBE" },
+    { match: "Settlement Charters", loreKey: "TECH_COLONY_CHARTER" },
+    { match: "Machine World", loreKey: "XENO_MACHINE_WORLD" },
+    { match: "Tomb World", loreKey: "XENO_TOMB_WORLDS" },
+    { match: "The Spire", loreKey: "XENO_THE_SPIRE" },
+    { match: "First Chord", loreKey: "PRECURSOR_ORIGINS" },
+    { match: "Architects", loreKey: "PRECURSOR_ORIGINS" },
+    { match: "Planet Xerxes", loreKey: "LOCATION_PLANET_XERXES" },
+    { match: "Wayfinder Core", loreKey: "COMMODITY_WAYFINDER_CORE" },
+    { match: "First Nexus", loreKey: "MYSTERY_FIRST_NEXUS" },
+    { match: "Star Map Fragment", loreKey: "COMMODITY_PRECURSOR_STAR_MAP_FRAGMENT" },
+    { match: "Ancestral Blade", loreKey: "COMMODITY_KTHARR_ANCESTRAL_BLADE" },
+    { match: "Stardust Exotica", loreKey: "COMMODITY_STARDUST_EXOTICA" },
+    { match: "Quantum Fluid", loreKey: "COMMODITY_QUANTUM_FLUID" },
+    { match: "Unshackled AI", loreKey: "TECH_UNSHACKLED_AI" },
+    { match: "Kepler Nebula", loreKey: "REGION_KEPLER_NEBULA" },
+    { match: "eastern frontier", loreKey: "REGION_EASTERN_FRONTIER" },
+    { match: "western rim", loreKey: "REGION_WESTERN_RIM" },
+    { match: "outer sectors", loreKey: "REGION_DEEP_FRONTIER" },
+    { match: "Silentium Expanse", loreKey: "REGION_SILENTIUM_EXPANSE" },
+    { match: "Cygnus Prime", loreKey: "LOCATION_CYGNUS_PRIME" },
+    { match: "Frothy Moon", loreKey: "LOCATION_FROTHY_MOON_OUTPOST" },
+    { match: "Port Nomad", loreKey: "LOCATION_PORT_NOMAD" },
+    { match: "The Archivist", loreKey: "LOCATION_THE_ARCHIVIST'S_VAULT" },
+    { match: "Karak-Tor", loreKey: "LOCATION_KARAK_TOR" },
+    { match: "Station Umbra", loreKey: "LOCATION_STATION_UMBRA" },
+    { match: "Rusty Anchor", loreKey: "LOCATION_THE_RUSTY_ANCHOR" },
+    { match: "Helios Refinery", loreKey: "LOCATION_HELIOS_REFINERY" },
+    { match: "Dyson Sphere", loreKey: "LOCATION_AEGIS_DYSON_SPHERE" },
+    { match: "Fortress Drakon", loreKey: "LOCATION_FORTRESS_DRAKON" },
+    { match: "Port Erebus", loreKey: "LOCATION_PORT_EREBUS" },
+    { match: "Ceti Alpha Shipyards", loreKey: "LOCATION_CETI_ALPHA_SHIPYARDS" },
+    { match: "Kepler Listening Post", loreKey: "LOCATION_KEPLER_LISTENING_POST" },
+    { match: "Solitude", loreKey: "LOCATION_SOLITUDE_RESEARCH_PLATFORM" },
+    { match: "Sunken Compass", loreKey: "LOCATION_THE_SUNKEN_COMPASS" },
+    { match: "Valkyrie Drift", loreKey: "LOCATION_VALKYRIE_DRIFT" },
+    { match: "Sanctuary of the Void", loreKey: "LOCATION_SANCTUARY_OF_THE_VOID" },
+    { match: "Obsidian Obelisk", loreKey: "LOCATION_OBSIDIAN_OBELISK" },
+    { match: "Choir Spire Alpha", loreKey: "LOCATION_CHOIR_SPIRE_ALPHA" },
+    { match: "Silentium Relay Zero", loreKey: "LOCATION_SILENTIUM_RELAY_ZERO" },
+    { match: "Silent Running", loreKey: "TACTIC_SILENT_RUNNING" },
+    { match: "Targeting Computer", loreKey: "TACTIC_SUBSYSTEM_TARGETING" },
+    { match: "Active Sector Warzone", loreKey: "TACTIC_WARZONE_SALVAGE" },
+    { match: "Orbital Bombardment", loreKey: "TACTIC_ORBITAL_BOMBARDMENT" },
+    { match: "board a live enemy", loreKey: "TACTIC_BOARDING" },
+    { match: "Concord Patrol pulls you over", loreKey: "TACTIC_CUSTOMS_EVASION" },
+    { match: "Blood-Barge", loreKey: "LORE_SHIP_BLOODBARGE" },
+    { match: "Night-Runner", loreKey: "LORE_SHIP_NIGHTRUNNER" },
+    { match: "Aegis Gunship", loreKey: "LORE_SHIP_AEGIS" },
+    { match: "Dreadnought", loreKey: "LORE_SHIP_DREADNOUGHT" }
+];
+
 const RumorManager = {
     _customRumors: [],
+    _liveProviders: [],
     _deck: [],
     _lastRumor: null,
     _recentHistory: [],
-    _maxHistory: 12,
+    _maxHistory: 15,
     _stationIntelAwarded: new Set(),
+    _metaCache: new Map(),
 
-    // Comprehensive keyword -> Codex Lore ID mapping (50+ hooks covering lore.js & locations.js)
-    _loreHooks: [
-        { match: "Voidfang", loreKey: "FACTION_ECLIPSE" },
-        { match: "Shadow Network", loreKey: "FACTION_SHADOW_NETWORK" },
-        { match: "smuggling", loreKey: "FACTION_ECLIPSE_SMUGGLING" },
-        { match: "Obsidian Directorate", loreKey: "FACTION_OBSIDIAN_DIRECTORATE" },
-        { match: "Children of the Void", loreKey: "FACTION_CHILDREN_OF_THE_VOID" },
-        { match: "Void Vultures", loreKey: "FACTION_PIRATES_VOID_VULTURES" },
-        { match: "Xy-Corp", loreKey: "FACTION_XYCORP" },
-        { match: "Fuel Rats", loreKey: "FACTION_FUEL_RATS" },
-        { match: "K'tharr", loreKey: "FACTION_KTHARR" },
-        { match: "Void Crystals", loreKey: "PHENOMENON_VOID_CRYSTALS" },
-        { match: "Sentient Mycelium", loreKey: "LEGEND_SENTIENT_MYCELIUM_NETWORK" },
-        { match: "Void Kraken", loreKey: "LEGEND_VOID_KRAKEN" },
-        { match: "Phase-Shifted Alloy", loreKey: "TECH_PHASE_SHIFT_ALLOY" },
-        { match: "Wormhole Stabilizer", loreKey: "TECH_STARGATE_NETWORK" },
-        { match: "Stargate", loreKey: "TECH_STARGATE_NETWORK" },
-        { match: "Wormholes", loreKey: "PHENOMENON_WORMHOLE" },
-        { match: "Black Hole", loreKey: "PHENOMENON_BLACK_HOLE" },
-        { match: "singularity", loreKey: "PHENOMENON_BLACK_HOLE" },
-        { match: "Irradiated Wasteland", loreKey: "PHENOMENON_IRRADIATED" },
-        { match: "Encrypted Engram", loreKey: "COMMODITY_ENCRYPTED_ENGRAM" },
-        { match: "Settlement Charters", loreKey: "TECH_COLONY_CHARTER" },
-        { match: "Machine World", loreKey: "XENO_MACHINE_WORLD" },
-        { match: "Tomb World", loreKey: "XENO_TOMB_WORLDS" },
-        { match: "The Spire", loreKey: "XENO_THE_SPIRE" },
-        { match: "First Chord", loreKey: "PRECURSOR_ORIGINS" },
-        { match: "Architects", loreKey: "PRECURSOR_ORIGINS" },
-        { match: "Planet Xerxes", loreKey: "LOCATION_PLANET_XERXES" },
-        { match: "Wayfinder Core", loreKey: "COMMODITY_WAYFINDER_CORE" },
-        { match: "First Nexus", loreKey: "MYSTERY_FIRST_NEXUS" },
-        { match: "Star Map Fragment", loreKey: "COMMODITY_PRECURSOR_STAR_MAP_FRAGMENT" },
-        { match: "Ancestral Blade", loreKey: "COMMODITY_KTHARR_ANCESTRAL_BLADE" },
-        { match: "Stardust Exotica", loreKey: "COMMODITY_STARDUST_EXOTICA" },
-        { match: "Quantum Fluid", loreKey: "COMMODITY_QUANTUM_FLUID" },
-        { match: "Unshackled AI", loreKey: "TECH_UNSHACKLED_AI" },
-        { match: "Kepler Nebula", loreKey: "REGION_KEPLER_NEBULA" },
-        { match: "Silentium Expanse", loreKey: "REGION_SILENTIUM_EXPANSE" },
-        { match: "Cygnus Prime", loreKey: "LOCATION_CYGNUS_PRIME" },
-        { match: "Frothy Moon", loreKey: "LOCATION_FROTHY_MOON_OUTPOST" },
-        { match: "Port Nomad", loreKey: "LOCATION_PORT_NOMAD" },
-        { match: "The Archivist", loreKey: "LOCATION_THE_ARCHIVIST'S_VAULT" },
-        { match: "Karak-Tor", loreKey: "LOCATION_KARAK_TOR" },
-        { match: "Station Umbra", loreKey: "LOCATION_STATION_UMBRA" },
-        { match: "Rusty Anchor", loreKey: "LOCATION_THE_RUSTY_ANCHOR" },
-        { match: "Helios Refinery", loreKey: "LOCATION_HELIOS_REFINERY" },
-        { match: "Dyson Sphere", loreKey: "LOCATION_AEGIS_DYSON_SPHERE" },
-        { match: "Fortress Drakon", loreKey: "LOCATION_FORTRESS_DRAKON" },
-        { match: "Port Erebus", loreKey: "LOCATION_PORT_EREBUS" },
-        { match: "Ceti Alpha Shipyards", loreKey: "LOCATION_CETI_ALPHA_SHIPYARDS" },
-        { match: "Kepler Listening Post", loreKey: "LOCATION_KEPLER_LISTENING_POST" },
-        { match: "Valkyrie Drift", loreKey: "LOCATION_VALKYRIE_DRIFT" },
-        { match: "Sanctuary of the Void", loreKey: "LOCATION_SANCTUARY_OF_THE_VOID" },
-        { match: "Obsidian Obelisk", loreKey: "LOCATION_OBSIDIAN_OBELISK" },
-        { match: "Choir Spire Alpha", loreKey: "LOCATION_CHOIR_SPIRE_ALPHA" },
-        { match: "Silentium Relay Zero", loreKey: "LOCATION_SILENTIUM_RELAY_ZERO" },
-        { match: "board a live enemy", loreKey: "TACTIC_BOARDING" },
-        { match: "Concord Patrol pulls you over", loreKey: "TACTIC_CUSTOMS_EVASION" },
-        { match: "Blood-Barge", loreKey: "LORE_SHIP_BLOODBARGE" },
-        { match: "Night-Runner", loreKey: "LORE_SHIP_NIGHTRUNNER" },
-        { match: "Aegis Gunship", loreKey: "LORE_SHIP_AEGIS" }
-    ],
+    // Pre-lowercased for fast matching during rumor draws
+    _loreHooks: _RAW_LORE_HOOKS.map(h => ({
+        match: h.match,
+        matchLower: h.match.toLowerCase(),
+        loreKey: h.loreKey
+    })),
 
     _getAllStaticRumors: function() {
         return this._customRumors.length > 0 ? RUMORS.concat(this._customRumors) : RUMORS;
     },
 
+    // --- EXPANDABILITY APIS ---
+
     registerRumor: function(text) {
         if (!text || typeof text !== 'string') return false;
-        this._customRumors.push(text.trim());
+        const clean = text.trim();
+        if (!clean) return false;
+        const newIdx = RUMORS.length + this._customRumors.length;
+        this._customRumors.push(clean);
+        // Splice directly into active deck at a random position so it enters rotation immediately
+        if (this._deck.length > 0) {
+            const pos = Math.floor(Math.random() * (this._deck.length + 1));
+            this._deck.splice(pos, 0, newIdx);
+        }
         return true;
     },
 
     registerStationRumor: function(stationName, text) {
         if (!stationName || !text || typeof text !== 'string') return false;
+        const clean = text.trim();
+        if (!clean) return false;
         if (!STATION_RUMORS[stationName]) STATION_RUMORS[stationName] = [];
-        STATION_RUMORS[stationName].push(text.trim());
+        STATION_RUMORS[stationName].push(clean);
+        return true;
+    },
+
+    registerLoreHook: function(matchText, loreKey) {
+        if (!matchText || !loreKey || typeof matchText !== 'string') return false;
+        const lower = matchText.toLowerCase();
+        if (this._loreHooks.some(h => h.matchLower === lower && h.loreKey === loreKey)) return false;
+        this._loreHooks.push({ match: matchText, matchLower: lower, loreKey });
+        return true;
+    },
+
+    registerLiveProvider: function(providerFn) {
+        if (typeof providerFn !== 'function') return false;
+        if (!this._liveProviders.includes(providerFn)) {
+            this._liveProviders.push(providerFn);
+        }
         return true;
     },
 
     getRecentHistory: function() {
         return this._recentHistory.slice();
+    },
+
+    searchRumors: function(query) {
+        const q = String(query || "").trim().toLowerCase();
+        if (!q) return [];
+        return this._getAllStaticRumors().filter(r => r.toLowerCase().includes(q));
+    },
+
+    getStats: function() {
+        return {
+            staticCount: this._getAllStaticRumors().length,
+            stationPortsCovered: Object.keys(STATION_RUMORS).length,
+            loreHooksCount: this._loreHooks.length,
+            deckRemaining: this._deck.length,
+            historyCount: this._recentHistory.length
+        };
     },
 
     _recordHistory: function(text) {
@@ -336,6 +456,7 @@ const RumorManager = {
             category: meta.category,
             icon: meta.icon,
             color: meta.color,
+            speaker: meta.speaker,
             stardate: (typeof currentGameDate !== 'undefined' && !isNaN(currentGameDate)) ? Number(currentGameDate).toFixed(1) : "0.0"
         });
         if (this._recentHistory.length > this._maxHistory) {
@@ -343,19 +464,23 @@ const RumorManager = {
         }
     },
 
-    // Classifies any rumor string into a thematic UI badge, icon, color, and speaker
+    // Classifies any rumor string into a thematic UI badge, icon, color, and speaker (cached)
     getRumorMeta: function(text) {
-        const lower = String(text || "").toLowerCase();
+        const key = String(text || "");
+        const cached = this._metaCache.get(key);
+        if (cached) return cached;
+
+        const lower = key.toLowerCase();
         let meta;
-        if (lower.includes("shortage") || lower.includes("surplus") || lower.includes("market") || lower.includes("price") || lower.includes("paying") || lower.includes("markup")) {
+        if (lower.includes("shortage") || lower.includes("surplus") || lower.includes("market") || lower.includes("price") || lower.includes("paying") || lower.includes("markup") || lower.includes("trade route")) {
             meta = { category: "MARKET INTEL", icon: "📈", color: "var(--gold-text)" };
         } else if (lower.includes("bounty") || lower.includes("hunting") || lower.includes("sec-com") || lower.includes("voss") || lower.includes("thorne") || lower.includes("warzone") || lower.includes("warrant")) {
             meta = { category: "BOUNTY TRACKER", icon: "🎯", color: "var(--danger)" };
         } else if (lower.includes("colony") || lower.includes("charter") || lower.includes("silos") || lower.includes("famine") || lower.includes("tax vault") || lower.includes("waystation")) {
             meta = { category: "COLONY DISPATCH", icon: "🏛️", color: "var(--success)" };
-        } else if (lower.includes("precursor") || lower.includes("wayfinder") || lower.includes("engram") || lower.includes("nexus") || lower.includes("monolith") || lower.includes("sanctuary") || lower.includes("choir spire") || lower.includes("obelisk")) {
+        } else if (lower.includes("precursor") || lower.includes("wayfinder") || lower.includes("engram") || lower.includes("nexus") || lower.includes("monolith") || lower.includes("sanctuary") || lower.includes("choir spire") || lower.includes("obelisk") || lower.includes("prism")) {
             meta = { category: "XENO-ARCHIVE", icon: "💠", color: "#DDA0DD" };
-        } else if (lower.includes("hit [") || lower.includes("press [") || lower.includes("targeting computer") || lower.includes("workbench") || lower.includes("synergy") || lower.includes("loyalty") || lower.includes("discipline mastery")) {
+        } else if (lower.includes("hit [") || lower.includes("press [") || lower.includes("targeting computer") || lower.includes("workbench") || lower.includes("synergy") || lower.includes("loyalty") || lower.includes("discipline mastery") || lower.includes("chassis trait")) {
             meta = { category: "PILOT TACTICS", icon: "🧭", color: "var(--accent-color)" };
         } else {
             meta = { category: "SECTOR CHATTER", icon: "🗣️", color: "var(--warning)" };
@@ -364,12 +489,31 @@ const RumorManager = {
         const speakers = _RUMOR_SPEAKERS[meta.category] || _RUMOR_SPEAKERS["SECTOR CHATTER"];
         const hash = lower.length + (lower.charCodeAt(0) || 0) + (lower.charCodeAt(Math.floor(lower.length / 2)) || 0);
         meta.speaker = speakers[hash % speakers.length];
+
+        if (this._metaCache.size > 300) this._metaCache.clear();
+        this._metaCache.set(key, meta);
         return meta;
     },
 
     getByCategory: function(categoryName) {
         const target = String(categoryName || "").toUpperCase();
         return this._getAllStaticRumors().filter(r => this.getRumorMeta(r).category === target);
+    },
+
+    // Picks a station-specific rumor for the current port (if available)
+    getLocalStationRumor: function() {
+        if (typeof chunkManager === 'undefined' || typeof playerX === 'undefined' || typeof playerY === 'undefined') return null;
+        const localTile = chunkManager.getTile(playerX, playerY);
+        if (!localTile || !localTile.name || !STATION_RUMORS[localTile.name]) return null;
+
+        const pool = STATION_RUMORS[localTile.name];
+        if (!pool || pool.length === 0) return null;
+
+        const recentTexts = new Set(this._recentHistory.map(h => h.text));
+        const fresh = pool.filter(r => !recentTexts.has(r));
+        const candidates = fresh.length > 0 ? fresh : pool.filter(r => r !== this._lastRumor);
+        const finalPool = candidates.length > 0 ? candidates : pool;
+        return finalPool[Math.floor(Math.random() * finalPool.length)];
     },
 
     // Generates a live, context-aware rumor from active game state
@@ -381,36 +525,53 @@ const RumorManager = {
             const itemObj = (typeof COMMODITIES !== 'undefined' && COMMODITIES[activeMarketTrend.item])
                 ? COMMODITIES[activeMarketTrend.item]
                 : { name: activeMarketTrend.item };
+            const trendLoc = _rumorFindLocation(activeMarketTrend.station);
+            const navNote = (trendLoc && trendLoc.coords) ? ` (${_rumorDistAndBearing(trendLoc.coords.x, trendLoc.coords.y)})` : "";
             if (activeMarketTrend.isBoom) {
-                dynamicPool.push(`Want a hot trade tip? ${activeMarketTrend.station} is suffering a critical shortage of ${itemObj.name} right now. They're paying 250% of standard market value if you can get a shipment there before Stardate ${activeMarketTrend.expiry.toFixed(1)}!`);
+                dynamicPool.push(`Want a hot trade tip? ${activeMarketTrend.station}${navNote} is suffering a critical shortage of ${itemObj.name} right now. They're paying 250% of standard market value if you can get a shipment there before Stardate ${activeMarketTrend.expiry.toFixed(1)}!`);
             } else {
-                dynamicPool.push(`Looking for cheap cargo? ${activeMarketTrend.station} has a massive surplus of ${itemObj.name}. They're practically giving it away at 40% of base price until Stardate ${activeMarketTrend.expiry.toFixed(1)}.`);
+                dynamicPool.push(`Looking for cheap cargo? ${activeMarketTrend.station}${navNote} has a massive surplus of ${itemObj.name}. They're practically giving it away at 40% of base price until Stardate ${activeMarketTrend.expiry.toFixed(1)}.`);
             }
         }
 
-        // 2. Active Bounty Target Sighting
-        if (typeof playerActiveBounty !== 'undefined' && playerActiveBounty && playerActiveBounty.targetName) {
-            dynamicPool.push(`You're hunting ${playerActiveBounty.targetName}, right? Long-range freighter telemetry just pinged their drive signature near coordinates [${playerActiveBounty.x}, ${-playerActiveBounty.y}]. Check your Nav-Computer (N) before they jump!`);
+        // 2. Live Charted Trade Route Tip (via LocationUtils)
+        if (typeof LocationUtils !== 'undefined' && typeof LocationUtils.findBestTradeRoutes === 'function') {
+            const routes = LocationUtils.findBestTradeRoutes({ limit: 3, onlyDiscovered: true, includeIllegal: true });
+            if (routes.length > 0) {
+                const r = routes[Math.floor(Math.random() * routes.length)];
+                dynamicPool.push(`Hot trade route on the wire: haul ${r.itemName} from ${r.from} [${r.fromCoords.x}, ${-r.fromCoords.y}] to ${r.to} [${r.toCoords.x}, ${-r.toCoords.y}] for roughly +${_rumorFormatCredits(r.profitPerUnit)}c per unit.`);
+            }
         }
 
-        // 3. Active Smuggling / Delivery Contract Hint
+        // 3. Active Bounty Target Sighting
+        if (typeof playerActiveBounty !== 'undefined' && playerActiveBounty && playerActiveBounty.targetName) {
+            const nav = _rumorDistAndBearing(playerActiveBounty.x, playerActiveBounty.y);
+            dynamicPool.push(`You're hunting ${playerActiveBounty.targetName}, right? Long-range freighter telemetry just pinged their drive signature near [${playerActiveBounty.x}, ${-playerActiveBounty.y}] (${nav}). Check your Nav-Computer (N) before they jump!`);
+        }
+
+        // 4. Active Smuggling / Delivery Contract Hint
         if (typeof playerActiveMission !== 'undefined' && playerActiveMission && !playerActiveMission.isComplete && playerActiveMission.objectives && playerActiveMission.objectives[0]) {
             const obj = playerActiveMission.objectives[0];
-            if (obj.destinationName && typeof LOCATIONS_DATA !== 'undefined' && LOCATIONS_DATA[obj.destinationName] && LOCATIONS_DATA[obj.destinationName].coords) {
-                const coords = LOCATIONS_DATA[obj.destinationName].coords;
-                dynamicPool.push(`Hauling a contract for ${obj.destinationName}? Set your helm for [${coords.x}, ${-coords.y}]. Keep your shields up on approach.`);
+            if (obj.destinationName) {
+                const destLoc = _rumorFindLocation(obj.destinationName);
+                if (destLoc && destLoc.coords) {
+                    const c = destLoc.coords;
+                    const nav = _rumorDistAndBearing(c.x, c.y);
+                    dynamicPool.push(`Hauling a contract for ${obj.destinationName}? Set your helm for [${c.x}, ${-c.y}] (${nav}). Keep your shields up on approach.`);
+                }
             }
         }
 
-        // 4. Active Sector Warzone Alert
+        // 5. Active Sector Warzone Alert
         if (typeof activeSkirmishes !== 'undefined' && Array.isArray(activeSkirmishes) && activeSkirmishes.length > 0) {
             const sk = activeSkirmishes[0];
             if (sk && sk.x !== undefined && sk.y !== undefined) {
-                dynamicPool.push(`Emergency fleet chatter just came over the wire—Concord and ${sk.factionB || 'hostile'} gunships are locked in an active warzone at [${sk.x}, ${-sk.y}]! Plenty of salvage if you can dodge the crossfire.`);
+                const nav = _rumorDistAndBearing(sk.x, sk.y);
+                dynamicPool.push(`Emergency fleet chatter just came over the wire—Concord and ${sk.factionB || 'hostile'} gunships are locked in an active warzone at [${sk.x}, ${-sk.y}] (${nav})! Plenty of salvage if you can dodge the crossfire.`);
             }
         }
 
-        // 5. Dynamic Faction War Front Update
+        // 6. Dynamic Faction War Front Update
         if (typeof GameState !== 'undefined' && GameState.world && GameState.world.factionOffsets) {
             const kFront = GameState.world.factionOffsets.KTHARR;
             const eFront = GameState.world.factionOffsets.ECLIPSE;
@@ -422,61 +583,74 @@ const RumorManager = {
             }
         }
 
-        // 6. Player Colony Status & Crisis Alerts (with safe storage guard & formatted credits)
+        // 7. Player Colony Status & Crisis Alerts
         if (typeof playerColonies !== 'undefined' && playerColonies) {
             const cols = Object.values(playerColonies).filter(c => c && c.established);
             cols.forEach(col => {
                 const foodAmt = (col.storage && col.storage['FOOD_SUPPLIES']) ? col.storage['FOOD_SUPPLIES'] : 0;
                 const safeColName = col.name || "Frontier Colony";
+                const nav = _rumorDistAndBearing(col.x, col.y);
                 if (foodAmt <= 0) {
-                    dynamicPool.push(`Heard a distress relay from your settlement at ${safeColName} [${col.x}, ${-col.y}]—their Food Supplies are completely depleted! Get a relief shipment or Hydroponics Farm online before famine sets in.`);
+                    dynamicPool.push(`Heard a distress relay from your settlement at ${safeColName} [${col.x}, ${-col.y}] (${nav})—their Food Supplies are completely depleted! Get a relief shipment or Hydroponics Farm online before famine sets in.`);
                 } else if ((col.treasury || 0) >= 2500) {
-                    dynamicPool.push(`Merchant captains say the tax vault at your ${safeColName} settlement [${col.x}, ${-col.y}] is sitting on ${_rumorFormatCredits(col.treasury)}c in collected tariffs. Might be worth a trip to withdraw your funds.`);
+                    dynamicPool.push(`Merchant captains say the tax vault at your ${safeColName} settlement [${col.x}, ${-col.y}] (${nav}) is sitting on ${_rumorFormatCredits(col.treasury)}c in collected tariffs. Might be worth a trip to withdraw your funds.`);
                 } else if ((col.defense || 0) < 20 && (col.population || 0) >= 150) {
-                    dynamicPool.push(`Word is Cartel raiders are eyeing your colony at ${safeColName} [${col.x}, ${-col.y}]. With a Defense Rating of only ${col.defense || 0}, you should build Automated Turrets or a Defense Battery soon.`);
+                    dynamicPool.push(`Word is Cartel raiders are eyeing your colony at ${safeColName} [${col.x}, ${-col.y}] (${nav}). With a Defense Rating of only ${col.defense || 0}, you should build Automated Turrets or a Defense Battery soon.`);
                 }
             });
         }
 
-        // 7. Player Waystation Toll Alerts
+        // 8. Player Waystation Toll Alerts
         if (typeof worldStateDeltas !== 'undefined' && worldStateDeltas) {
             for (const key in worldStateDeltas) {
                 const d = worldStateDeltas[key];
                 if (d && d.isPlayerOwned && d.isTinyOutpost && (d.treasury || 0) >= 500) {
                     const [wx, wy] = key.split('_')[0].split(',').map(Number);
                     if (!isNaN(wx) && !isNaN(wy)) {
-                        dynamicPool.push(`Independent haulers passing through [${wx}, ${-wy}] say your waystation, ${d.name || 'Outpost'}, has accumulated ${_rumorFormatCredits(d.treasury)}c in transit tolls ready for pickup.`);
+                        const nav = _rumorDistAndBearing(wx, wy);
+                        dynamicPool.push(`Independent haulers passing through [${wx}, ${-wy}] (${nav}) say your waystation, ${d.name || 'Outpost'}, has accumulated ${_rumorFormatCredits(d.treasury)}c in transit tolls ready for pickup.`);
                         break;
                     }
                 }
             }
         }
 
-        // 8. Deployed Telemetry Probe Harvest Alerts
+        // 9. Deployed Telemetry Probe Harvest Alerts
         if (typeof window.activeProbes !== 'undefined' && Array.isArray(window.activeProbes) && typeof currentGameDate !== 'undefined') {
             const readyProbe = window.activeProbes.find(p => p && Math.floor((currentGameDate - p.deployedAt) / 10) >= 2);
             if (readyProbe) {
                 const count = Math.floor((currentGameDate - readyProbe.deployedAt) / 10);
-                dynamicPool.push(`Your autonomous Telemetry Probe at [${readyProbe.x}, ${-readyProbe.y}] is pinging a full memory buffer—it's recorded ${count} astrometric data drives so far.`);
+                const nav = _rumorDistAndBearing(readyProbe.x, readyProbe.y);
+                dynamicPool.push(`Your autonomous Telemetry Probe at [${readyProbe.x}, ${-readyProbe.y}] (${nav}) is pinging a full memory buffer—it's recorded ${count} astrometric data drives so far.`);
             }
         }
 
-        // 9. Wayfinder Core / Star Map Fragment Quest Hints
+        // 10. Wayfinder Core / Star Map Fragment / Engram Hold Hints
         if (typeof playerCargo !== 'undefined') {
             if ((playerCargo['WAYFINDER_CORE'] || 0) > 0 && typeof mystery_first_nexus_location !== 'undefined' && mystery_first_nexus_location) {
-                dynamicPool.push(`My nav-sensors went haywire the moment you docked... are you carrying a Wayfinder Core? Whatever signal it's locked onto is coming straight from [${mystery_first_nexus_location.x}, ${-mystery_first_nexus_location.y}].`);
+                const nx = mystery_first_nexus_location.x;
+                const ny = mystery_first_nexus_location.y;
+                dynamicPool.push(`My nav-sensors went haywire the moment you docked... are you carrying a Wayfinder Core? Whatever signal it's locked onto is coming straight from [${nx}, ${-ny}] (${_rumorDistAndBearing(nx, ny)}).`);
             } else {
                 const frags = playerCargo['PRECURSOR_STAR_MAP_FRAGMENT'] || 0;
-                if (frags > 0 && frags < 3) {
+                if (frags >= 3) {
+                    dynamicPool.push(`You're carrying ${frags} Precursor Star Map Fragments right now! Open your Cargo Manifest (I) and activate them—their holographic matrices fuse into an intact Wayfinder Core.`);
+                } else if (frags > 0) {
                     dynamicPool.push(`Saw a Precursor Star Map Fragment logged in your hold. Find ${3 - frags} more shard(s) and activate them in Cargo (I)—they fuse into a full Wayfinder Core.`);
                 }
             }
+            if ((playerCargo['ENCRYPTED_ENGRAM'] || 0) > 0 || (playerCargo['ANCIENT_ARCHIVE'] || 0) > 0) {
+                dynamicPool.push(`Spotted encrypted Precursor hardware on your manifest. If you want double XP from decrypting it, haul it over to Planet Xerxes [35, -3]—the Spire's resonance supercharges every decryption.`);
+            }
         }
 
-        // 10. High Notoriety / Crew Loyalty Situational Whispers
+        // 11. High Notoriety, Hull Damage & Crew Loyalty Situational Whispers
         if (typeof playerNotoriety !== 'undefined' && playerNotoriety >= 15) {
             const capName = typeof playerName !== 'undefined' ? playerName : "Captain";
             dynamicPool.push(`Keep your collar up, ${capName}—your Concord warrant count is at ${playerNotoriety}. Pay off the Security Office or visit The Forger at Port Erebus [-175, -80] before an Aegis wing corners you.`);
+        }
+        if (typeof playerHull !== 'undefined' && typeof MAX_PLAYER_HULL !== 'undefined' && playerHull < MAX_PLAYER_HULL * 0.45) {
+            dynamicPool.push(`Dockhands were staring at those plasma burns along your hull—better patch up at the concourse or synthesize a Nano-Repair Kit (U) before heading back into the dark.`);
         }
         if (typeof playerCrew !== 'undefined' && Array.isArray(playerCrew) && playerCrew.length > 0) {
             const restless = playerCrew.find(c => c && typeof c.loyalty === 'number' && c.loyalty < 45);
@@ -485,7 +659,7 @@ const RumorManager = {
             }
         }
 
-        // 11. Local Station Specific Chatter
+        // 12. Local Station Specific Chatter
         if (typeof chunkManager !== 'undefined' && typeof playerX !== 'undefined' && typeof playerY !== 'undefined') {
             const localTile = chunkManager.getTile(playerX, playerY);
             if (localTile && localTile.name && STATION_RUMORS[localTile.name]) {
@@ -493,7 +667,7 @@ const RumorManager = {
             }
         }
 
-        // 12. Undiscovered Static Landmark Breadcrumb (uses display name & skips procedural outposts)
+        // 13. Undiscovered Static Landmark / Port Breadcrumb (with bearing & distance)
         if (typeof LOCATIONS_DATA !== 'undefined' && typeof discoveredLocations !== 'undefined' && discoveredLocations.has) {
             const undiscovered = Object.keys(LOCATIONS_DATA).filter(key => {
                 const loc = LOCATIONS_DATA[key];
@@ -506,14 +680,30 @@ const RumorManager = {
                 const loc = LOCATIONS_DATA[pickKey];
                 const displayName = loc.name || pickKey;
                 const c = loc.coords;
-                dynamicPool.push(`Looking for uncharted ports? Long-range couriers talk about '${displayName}' out at coordinates [${c.x}, ${-c.y}]. Might be worth plotting a course.`);
+                const nav = _rumorDistAndBearing(c.x, c.y);
+                const kind = loc.isLandmark ? "strange deep-space landmark" : "uncharted port";
+                dynamicPool.push(`Looking for an ${kind}? Long-range couriers talk about '${displayName}' out at [${c.x}, ${-c.y}] (${nav}). Might be worth plotting a course.`);
             }
         }
 
+        // 14. Custom Registered Live Providers (Expandability Hook)
+        for (let i = 0; i < this._liveProviders.length; i++) {
+            try {
+                const extra = this._liveProviders[i]();
+                if (typeof extra === 'string' && extra.trim()) dynamicPool.push(extra.trim());
+                else if (Array.isArray(extra)) {
+                    extra.forEach(item => {
+                        if (typeof item === 'string' && item.trim()) dynamicPool.push(item.trim());
+                    });
+                }
+            } catch (e) {}
+        }
+
+        if (dynamicPool.length === 0) return null;
         const recentTexts = new Set(this._recentHistory.map(h => h.text));
         const freshPool = dynamicPool.filter(r => !recentTexts.has(r));
-        const poolToUse = freshPool.length > 0 ? freshPool : dynamicPool;
-        if (poolToUse.length === 0) return null;
+        const nonRepeatPool = freshPool.length > 0 ? freshPool : dynamicPool.filter(r => r !== this._lastRumor);
+        const poolToUse = nonRepeatPool.length > 0 ? nonRepeatPool : dynamicPool;
         return poolToUse[Math.floor(Math.random() * poolToUse.length)];
     },
 
@@ -524,7 +714,7 @@ const RumorManager = {
 
         for (let i = 0; i < this._loreHooks.length; i++) {
             const hook = this._loreHooks[i];
-            if (lowerText.includes(hook.match.toLowerCase())) {
+            if (lowerText.includes(hook.matchLower)) {
                 const loreObj = (typeof LORE_DATABASE !== 'undefined') ? LORE_DATABASE[hook.loreKey] : null;
                 if (loreObj && !loreObj.unlocked) {
                     unlockLoreEntry(hook.loreKey);
@@ -537,14 +727,24 @@ const RumorManager = {
         return null;
     },
 
-    // Draws a non-repeating rumor (options: { unlockLore, preferLive })
+    // Draws a non-repeating rumor (options: { unlockLore, preferLive, preferLocal })
     getNextRumorDetailed: function(options = {}) {
         const unlockLore = options.unlockLore !== false;
         const preferLive = Boolean(options.preferLive);
+        const preferLocal = Boolean(options.preferLocal);
         let chosen = null;
         let isLive = false;
+        let isLocal = false;
 
-        if (preferLive || Math.random() < 0.38) {
+        if (preferLocal) {
+            const localRumor = this.getLocalStationRumor();
+            if (localRumor) {
+                chosen = localRumor;
+                isLocal = true;
+            }
+        }
+
+        if (!chosen && (preferLive || Math.random() < 0.38)) {
             const liveRumor = this.getLiveStateRumor();
             if (liveRumor && (preferLive || liveRumor !== this._lastRumor)) {
                 chosen = liveRumor;
@@ -582,6 +782,7 @@ const RumorManager = {
             text: chosen,
             meta: meta,
             isLive: isLive,
+            isLocal: isLocal,
             unlockedTitle: unlockedTitle
         };
     },
@@ -604,11 +805,30 @@ window.getSmartRumor = () => RumorManager.getNextRumor(true);
         // Detect if perks.js already wrapped stations.js's listenToRumors before rumors.js ran
         const replacedPerksCantinaWrapper = Boolean(window._perksRumorsHooked);
 
-        function renderOverheardLogPane() {
+        function renderOverheardLogPane(filterCat = 'ALL') {
             const detailEl = document.getElementById('genericDetailContent');
             if (!detailEl) return;
 
-            const history = RumorManager.getRecentHistory();
+            const allHistory = RumorManager.getRecentHistory();
+            const history = filterCat === 'ALL'
+                ? allHistory
+                : allHistory.filter(e => e.category === filterCat);
+
+            const categories = ['ALL', 'MARKET INTEL', 'BOUNTY TRACKER', 'XENO-ARCHIVE', 'PILOT TACTICS'];
+            const filterBarHtml = `
+                <div style="display:flex; flex-wrap:wrap; gap:4px; justify-content:center; margin-bottom:10px;">
+                    ${categories.map(cat => {
+                        const sel = filterCat === cat;
+                        const shortLabel = cat === 'MARKET INTEL' ? 'MARKET'
+                            : cat === 'BOUNTY TRACKER' ? 'BOUNTY'
+                            : cat === 'XENO-ARCHIVE' ? 'XENO'
+                            : cat === 'PILOT TACTICS' ? 'TACTICS'
+                            : 'ALL';
+                        return `<button type="button" onclick="viewRumorHistory('${cat}')" style="padding:3px 6px; font-size:9px; font-family:var(--title-font); cursor:pointer; border-radius:3px; font-weight:bold; background:${sel ? 'rgba(0,224,224,0.16)' : 'rgba(0,0,0,0.35)'}; border:1px solid ${sel ? 'var(--accent-color)' : '#444'}; color:${sel ? 'var(--accent-color)' : 'var(--item-desc-color)'};">${shortLabel}</button>`;
+                    }).join('')}
+                </div>
+            `;
+
             const entriesHtml = history.length > 0
                 ? history.map(entry => `
                     <div style="background:rgba(0,0,0,0.3); border-left:3px solid ${entry.color}; padding:10px; border-radius:0 4px 4px 0; margin-bottom:8px; text-align:left;">
@@ -621,12 +841,13 @@ window.getSmartRumor = () => RumorManager.getNextRumor(true);
                         </div>
                     </div>
                 `).join('')
-                : `<div style="padding:20px; color:var(--item-desc-color); font-size:12px; font-style:italic;">No rumors logged during this session yet.</div>`;
+                : `<div style="padding:20px; color:var(--item-desc-color); font-size:12px; font-style:italic;">${allHistory.length === 0 ? 'No rumors logged during this session yet.' : 'No logged intercepts match this filter.'}</div>`;
 
             detailEl.innerHTML = `
                 <div style="text-align:center; padding: 12px 8px; animation: fadeIn 0.25s ease-out;">
-                    <div style="font-size:10px; color:var(--accent-color); letter-spacing:2px; margin-bottom:6px; font-weight:bold;">RECENT CANTINA INTERCEPTS (${history.length})</div>
-                    <div style="max-height:250px; overflow-y:auto; padding-right:4px;">
+                    <div style="font-size:10px; color:var(--accent-color); letter-spacing:2px; margin-bottom:8px; font-weight:bold;">RECENT CANTINA INTERCEPTS (${history.length}/${allHistory.length})</div>
+                    ${filterBarHtml}
+                    <div style="max-height:230px; overflow-y:auto; padding-right:4px;">
                         ${entriesHtml}
                     </div>
                     <button class="action-button" style="margin-top:12px; padding:8px 12px; font-size:11px; border-color:var(--accent-color); color:var(--accent-color);" onclick="listenToRumors()">
@@ -638,14 +859,21 @@ window.getSmartRumor = () => RumorManager.getNextRumor(true);
 
         window.viewRumorHistory = renderOverheardLogPane;
 
-        // 1. Upgrade listenToRumors() in stations.js with Smart Deck, Live Intel mode & History
-        window.listenToRumors = function(preferLive = false) {
+        // 1. Upgrade listenToRumors() in stations.js with Smart Deck, Local Port Gossip, Live Intel & History
+        window.listenToRumors = function(mode = false) {
             const detailEl = document.getElementById('genericDetailContent');
             if (typeof soundManager !== 'undefined' && typeof soundManager.playUIHover === 'function') {
                 soundManager.playUIHover();
             }
 
-            const result = RumorManager.getNextRumorDetailed({ unlockLore: true, preferLive: Boolean(preferLive) });
+            const preferLocal = mode === 'local';
+            const preferLive = mode === true || mode === 'live';
+
+            const result = RumorManager.getNextRumorDetailed({
+                unlockLore: true,
+                preferLive: preferLive,
+                preferLocal: preferLocal
+            });
             const rumorText = result.text;
             const meta = result.meta;
 
@@ -654,7 +882,9 @@ window.getSmartRumor = () => RumorManager.getNextRumor(true);
             let gainedXP = false;
             const loc = (typeof chunkManager !== 'undefined' && typeof playerX !== 'undefined') ? chunkManager.getTile(playerX, playerY) : null;
             const campId = (typeof currentCampaignId !== 'undefined' && currentCampaignId) ? currentCampaignId : 'SESSION';
-            const visitKey = `${campId}_${loc && loc.name ? loc.name : 'PORT'}_${Math.floor(typeof currentGameDate !== 'undefined' ? currentGameDate : 0)}`;
+            const portName = loc && loc.name ? loc.name : 'PORT';
+            const visitKey = `${campId}_${portName}_${Math.floor(typeof currentGameDate !== 'undefined' ? currentGameDate : 0)}`;
+            const hasLocalRumors = Boolean(loc && loc.name && STATION_RUMORS[loc.name] && STATION_RUMORS[loc.name].length > 0);
 
             if (!RumorManager._stationIntelAwarded.has(visitKey) && typeof playerXP !== 'undefined') {
                 if (RumorManager._stationIntelAwarded.size > 200) {
@@ -684,8 +914,14 @@ window.getSmartRumor = () => RumorManager.getNextRumor(true);
                 ? `<div style="margin-top:8px; padding:6px 10px; background:rgba(0,224,224,0.1); border:1px solid var(--accent-color); border-radius:4px; font-size:11px; color:var(--accent-color); font-weight:bold;">📘 CODEX DECRYPTED: ${_rumorEscapeHtml(result.unlockedTitle)}</div>`
                 : '';
 
-            const liveTag = result.isLive
-                ? `<span style="margin-left:6px; font-size:9px; background:rgba(0,255,100,0.15); color:var(--success); border:1px solid var(--success); padding:2px 6px; border-radius:3px; letter-spacing:1px;">LIVE WIRE</span>`
+            const sourceTag = result.isLocal
+                ? `<span style="margin-left:6px; font-size:9px; background:rgba(255,215,0,0.14); color:var(--gold-text); border:1px solid var(--gold-text); padding:2px 6px; border-radius:3px; letter-spacing:1px;">LOCAL PORT</span>`
+                : (result.isLive
+                    ? `<span style="margin-left:6px; font-size:9px; background:rgba(0,255,100,0.15); color:var(--success); border:1px solid var(--success); padding:2px 6px; border-radius:3px; letter-spacing:1px;">LIVE WIRE</span>`
+                    : '');
+
+            const localBtnHtml = hasLocalRumors
+                ? `<button class="action-button" style="flex:1; margin:0; padding:8px 5px; font-size:10px; border-color:var(--gold-text); color:var(--gold-text);" onclick="listenToRumors('local')">📍 LOCAL</button>`
                 : '';
 
             if (detailEl) {
@@ -696,7 +932,7 @@ window.getSmartRumor = () => RumorManager.getNextRumor(true);
                             <span style="display:inline-block; font-size:10px; color:${meta.color}; border:1px solid ${meta.color}; padding:2px 8px; border-radius:3px; letter-spacing:2px; font-weight:bold;">
                                 ${meta.category}
                             </span>
-                            ${liveTag}
+                            ${sourceTag}
                         </div>
                         <h3 style="color:var(--accent-color); margin: 0 0 10px 0; font-size:17px;">OVERHEARD IN THE BOOTH</h3>
                         
@@ -711,14 +947,15 @@ window.getSmartRumor = () => RumorManager.getNextRumor(true);
                         ${loreUnlockBadgeHtml}
                         ${xpBadgeHtml}
                         <div style="display:flex; gap:6px; margin-top:12px;">
-                            <button class="action-button" style="flex:1; margin:0; padding:8px 6px; font-size:10px; border-color:${meta.color}; color:${meta.color};" onclick="listenToRumors(false)">
-                                👂 ANOTHER TABLE
+                            <button class="action-button" style="flex:1; margin:0; padding:8px 5px; font-size:10px; border-color:${meta.color}; color:${meta.color};" onclick="listenToRumors(false)">
+                                👂 BOOTH
                             </button>
-                            <button class="action-button" style="flex:1; margin:0; padding:8px 6px; font-size:10px; border-color:var(--success); color:var(--success);" onclick="listenToRumors(true)">
-                                📡 LIVE INTEL
+                            ${localBtnHtml}
+                            <button class="action-button" style="flex:1; margin:0; padding:8px 5px; font-size:10px; border-color:var(--success); color:var(--success);" onclick="listenToRumors('live')">
+                                📡 LIVE
                             </button>
                         </div>
-                        <button class="action-button" style="margin-top:6px; padding:6px 10px; font-size:10px; border-color:#666; color:var(--item-desc-color);" onclick="viewRumorHistory()">
+                        <button class="action-button" style="margin-top:6px; padding:6px 10px; font-size:10px; border-color:#666; color:var(--item-desc-color);" onclick="viewRumorHistory('ALL')">
                             📜 OVERHEARD LOG (${RumorManager.getRecentHistory().length})
                         </button>
                     </div>
@@ -737,19 +974,23 @@ window.getSmartRumor = () => RumorManager.getNextRumor(true);
                 "Heard Frothy Moon Outpost [58, -8] just tapped a new batch of dark synth-ale.",
                 "Stay clear of the western rim unless you enjoy paying tolls to the Eclipse Cartel.",
                 "Port Nomad [15, 210] is selling Fuel Cells at half price if your tanks are running low.",
-                "Ceti Alpha Shipyards [-90, 130] is paying top credit for raw Platinum Ore right now."
+                "Ceti Alpha Shipyards [-90, 130] is paying top credit for raw Platinum Ore right now.",
+                "Solitude Research Platform [165, -175] is buying Sentient Mycelium and selling cheap Medical Supplies.",
+                "Need repairs out west? Try The Sunken Compass [-290, 95]—just keep your hand on your blaster."
             ];
             const extraMinerHails = [
                 "Wait for the mining laser to hit the green fault line, or the rock will blow back in your face!",
                 "Pulled a Crystalline Geode out of an asteroid today—cracked it open in my hold for pure Platinum Ore.",
                 "Helios Refinery [-55, -110] is buying up raw ore and selling cheap Refined Alloy.",
-                "Heading back to Valkyrie Drift [135, -120] before my ore hopper bursts."
+                "Heading back to Valkyrie Drift [135, -120] before my ore hopper bursts.",
+                "Gas Giants aren't useless—skim their upper cloud decks for free Hydrogen-3!"
             ];
             const extraConcordHails = [
                 "SEC-COM reminder: Dread Pirate Voss and Renegade Commander Thorne are wanted dead or alive.",
                 "All vessels: report any sightings of Precursor anomalies to the University of Cygnus Prime [85, 65].",
                 "Kepler Listening Post [-68, 42] is offering bounties for recovered Cartel ledgers.",
-                "Keep your transponder unspoofed and your hold clean of contraband, Captain."
+                "Keep your transponder unspoofed and your hold clean of contraband, Captain.",
+                "Concord Historical Survey is offering a bounty for anyone who patches CSS Hesperia's beacon near [-145, 185]."
             ];
 
             NPC_SHIP_TYPES.forEach(t => {
