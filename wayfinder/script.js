@@ -1917,11 +1917,16 @@ function checkCodexCompletion(categoryToCheck, isSilent = false) {
     unlockLoreEntry("MYSTERY_WAYFINDER_QUEST", true);
     unlockLoreEntry("REGION_SOL_SECTOR", true);
 
-    Object.keys(COMPONENTS_DATABASE).forEach(key => {
-        if (COMPONENTS_DATABASE[key].loreKey) unlockLoreEntry(COMPONENTS_DATABASE[key].loreKey, true);
-    });
-    Object.keys(SHIP_CLASSES).forEach(key => {
-        if (SHIP_CLASSES[key].loreKey) unlockLoreEntry(SHIP_CLASSES[key].loreKey, true);
+    // Only unlock Codex entries for the player's starting hull & equipped starting modules
+    const startingShipDef = SHIP_CLASSES[playerShip.shipClass];
+    if (startingShipDef && startingShipDef.loreKey) {
+        unlockLoreEntry(startingShipDef.loreKey, true);
+    }
+    Object.values(playerShip.components).forEach(compId => {
+        const compDef = COMPONENTS_DATABASE[compId];
+        if (compDef && compDef.loreKey) {
+            unlockLoreEntry(compDef.loreKey, true);
+        }
     });
 
     // 5. Reset Mystery / Quest State
@@ -4728,11 +4733,29 @@ function handleCombatInput(key) {
         case 'z': 
             activateDistressBeacon();
             return true;
-        case 'x':
-            confirmSelfDestruct();
+        case 'x': {
+            const tileForX = chunkManager.getTile(playerX, playerY);
+            if (getTileChar(tileForX) === NEXUS_CHAR_VAL && typeof handleNexusEncounter === 'function') {
+                handleNexusEncounter();
+            } else {
+                confirmSelfDestruct();
+            }
             return true;
+        }
+        case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': {
+            const starTile = chunkManager.getTile(playerX, playerY);
+            if (getTileChar(starTile) === STAR_CHAR_VAL && typeof playerColonies !== 'undefined') {
+                const localCols = Object.values(playerColonies).filter(c => c && c.x === playerX && c.y === playerY);
+                const targetCol = localCols[parseInt(key, 10) - 1];
+                if (targetCol && typeof openColonyManagement === 'function') {
+                    openColonyManagement(targetCol.id);
+                    return true;
+                }
+            }
+            return false;
+        }
             
-        // 👇 BUG FIX: Bind Spacebar correctly to match the UI Command Reference!
+        // Bind Spacebar correctly to match the UI Command Reference!
         case ' ':
         case '.': 
             if (typeof playerWaitTurn === 'function') playerWaitTurn();
@@ -4889,35 +4912,71 @@ document.addEventListener('keydown', function(event) {
     const isModalOpen = typeof UI !== 'undefined' && typeof UI.isAnyModalOpen === 'function' && UI.isAnyModalOpen();
 
     if (isModalOpen) {
-        if (typeof codexOverlayElement !== 'undefined' && codexOverlayElement.style.display === 'flex') {
+        const isOpen = (id) => {
+            const el = document.getElementById(id);
+            return Boolean(el && el.style.display && el.style.display !== 'none');
+        };
+
+        // 1. Non-dismissible full-screen overlays (Level-Up / Game Over)
+        if (isOpen('levelUpOverlay') || isOpen('gameOverOverlay')) {
+            event.preventDefault();
+            return;
+        }
+
+        // 2. Confirmation Dialog (topmost dismissible layer)
+        if (isOpen('confirmationOverlay')) {
+            if (key === 'escape') document.getElementById('confirmationOverlay').style.display = 'none';
+            event.preventDefault();
+            return;
+        }
+
+        // 3. Galactic Codex
+        if (isOpen('codexOverlay')) {
             handleCodexInput(key);
-        } else if (key === 'escape') {
-            const generic = document.getElementById('genericModalOverlay');
-            if (generic && generic.style.display === 'flex') closeGenericModal();
-            const station = document.getElementById('stationOverlay');
-            if (station && station.style.display === 'flex') { if (typeof closeStationView === 'function') closeStationView(); }
-            const xerxes = document.getElementById('xerxesOverlay');
-            if (xerxes && xerxes.style.display === 'flex') { if (typeof closeXerxesView === 'function') closeXerxesView(); }
-            const codex = document.getElementById('codexOverlay');
-            if (codex && codex.style.display === 'flex') { if (typeof toggleCodex === 'function') toggleCodex(false); }
-            const confirm = document.getElementById('confirmationOverlay');
-            if (confirm && confirm.style.display === 'flex') confirm.style.display = 'none';
-            const cargo = document.getElementById('cargoOverlay');
-            if (cargo && cargo.style.display === 'flex') { if (typeof closeCargoModal === 'function') closeCargoModal(); }
+            event.preventDefault();
+            return;
         }
 
-        const station = document.getElementById('stationOverlay');
-        if (station && station.style.display === 'flex') {
-            if (key === 'b') { if (typeof openTradeModal === 'function') openTradeModal('buy'); }
-            else if (key === 's') { if (typeof openTradeModal === 'function') openTradeModal('sell'); }
-            else if (key === 'r') { if (typeof repairShip === 'function') { repairShip(); openStationView(); } }
-            else if (key === 'k') { if (typeof displayMissionBoard === 'function') displayMissionBoard(); }
-            else if (key === 'y') { if (typeof displayShipyard === 'function') displayShipyard(); }
-            else if (key === 'v') { if (typeof visitCantina === 'function') visitCantina(); }
+        // 4. Generic Sub-Modal (Trade, Missions, Cantina, Outfitting, Cargo, etc.)
+        // Returning here prevents Escape from also closing Station Concourse AND prevents station hotkeys from bleeding through!
+        if (isOpen('genericModalOverlay')) {
+            if (key === 'escape') closeGenericModal();
+            event.preventDefault();
+            return;
         }
 
-        event.preventDefault(); // Stop standard browser behaviors
-        return; // Halt all game input!
+        if (isOpen('cargoOverlay')) {
+            if (key === 'escape' && typeof closeCargoModal === 'function') closeCargoModal();
+            event.preventDefault();
+            return;
+        }
+
+        // 5. Xerxes Concourse
+        if (isOpen('xerxesOverlay')) {
+            if (key === 'escape' && typeof closeXerxesView === 'function') closeXerxesView();
+            event.preventDefault();
+            return;
+        }
+
+        // 6. Station Concourse (only runs when no sub-modal is on top of it)
+        if (isOpen('stationOverlay')) {
+            if (key === 'escape') {
+                if (typeof closeStationView === 'function') closeStationView();
+            } else {
+                const loc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+                if (key === 'b') { if (typeof openTradeModal === 'function') openTradeModal('buy'); }
+                else if (key === 's') { if (typeof openTradeModal === 'function') openTradeModal('sell'); }
+                else if (key === 'r') { if (typeof repairShip === 'function') { repairShip(); openStationView(); } }
+                else if (key === 'k') { if (typeof displayMissionBoard === 'function') displayMissionBoard(); }
+                else if (key === 'y' && loc && loc.isMajorHub) { if (typeof displayShipyard === 'function') displayShipyard(); }
+                else if (key === 'v') { if (typeof visitCantina === 'function') visitCantina(); }
+            }
+            event.preventDefault();
+            return;
+        }
+
+        event.preventDefault();
+        return;
     }
 
     // --- 3. Game State Contexts ---
@@ -5230,6 +5289,7 @@ function initializeDOMElements() {
 
     // 5. Save on Window Close
     window.addEventListener('beforeunload', () => {
+        if (window._skipSaveOnUnload) return;
         if (typeof currentGameState !== 'undefined' && 
             currentGameState !== GAME_STATES.TITLE_SCREEN && 
             currentGameState !== GAME_STATES.GAME_OVER &&
