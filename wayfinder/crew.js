@@ -21,6 +21,11 @@ function _crewEscapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
+function _crewFormat(num) {
+    if (typeof formatNumber === 'function') return formatNumber(num);
+    return String(Math.trunc(Number(num) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
 // Global helper for combat/trade engines (safe against lexical let shadowing in script.js)
 window.hasCrewPerk = function(perkId) {
     const list = _getCrewList();
@@ -41,7 +46,7 @@ const CREW_PERK_SUMMARIES = {
     SCAVENGER_PROTOCOL: "Double Salvage & Credits on Derelicts, Anomalies & Raids"
 };
 
-// Rich lore profiles for all Legendary crew & Eclipse mercenaries (zero asset paths touched)
+// Rich lore profiles for all Legendary crew & Eclipse mercenaries (zero new asset paths)
 const LEGENDARY_LORE_PROFILES = {
     LEGEND_ELARA: {
         origin: "Station Umbra (Western Rim)",
@@ -57,6 +62,7 @@ const LEGENDARY_LORE_PROFILES = {
     LEGEND_KAELEN: {
         origin: "Karak-Tor Proving Grounds",
         trait: "Blood-Sworn",
+        isKtharr: true,
         bio: "A scarred veteran of seven K'tharr border campaigns who survived the Karak-Tor arenas before taking an outlander's coin. Respects crisp gunnery, thick armor, and captains who do not flinch when shields fail.",
         quotes: [
             "Your targeting capacitors were aligned like a civilian cargo barge's. I fixed them. You may thank me in fire.",
@@ -90,6 +96,7 @@ const LEGENDARY_LORE_PROFILES = {
     KORG_MAH: {
         origin: "Fortress Drakon Drydocks",
         trait: "Stoic",
+        isKtharr: true,
         bio: "An old-caste K'tharr hull-smith who treats starship engineering as sacred metallurgy. Speaks little, welds through radiation storms without complaining, and insists on inspecting every bulkhead seam by hand.",
         quotes: [
             "Micro-fractures along port bulkhead sealed. A ship with weak ribs has no honor.",
@@ -129,6 +136,28 @@ const LEGENDARY_LORE_PROFILES = {
             "Diagnostic reminder: O-Class and B-Class stars yield glorious hydrogen—and lethal ionizing gamma flux! Please pack dosimetry!",
             "Port Nomad taught me the First Axiom of the Void: 'Never fly dry when a yellow dwarf is two clicks port.'",
             "BZZT! Tank pressure nominal! Shall we chase a cryogenic comet today, Captain?"
+        ]
+    },
+    LEGEND_LYRA: {
+        origin: "University of Cygnus Prime",
+        trait: "Obsessive",
+        bio: "Former Senior Fellow expelled from Cygnus Prime after bypassing an Obsidian Directorate seal on a Precursor Archive Sphere. Knows every false bulkhead, dead-drop, and vault seam across the outer rim.",
+        quotes: [
+            "The Directorate calls Precursor relics 'containment hazards.' I call them the oldest history books in the galaxy.",
+            "Never rush an airlock breach, Captain. Salvage twice, shoot once, and check behind the cryo-risers.",
+            "If we ever find three intact Star Map Fragments, promise me you'll let me watch them fuse.",
+            "They say Silentium Relay Zero out at [280, 240] still repeats the Architects' final warning."
+        ]
+    },
+    LEGEND_CALLAGHAN: {
+        origin: "Port Nomad Collective",
+        trait: "Generous",
+        bio: "Grandson of 'Rusty' Callaghan, who drafted the Fuel Rats Founding Charter in 2341 CE. Can nurse a half-empty deuterium tank across three macro-sectors using pure orbital mechanics and grit.",
+        quotes: [
+            "My granddad always said: 'Burn smart in the Core so you've got hydrogen left when the stars thin out.'",
+            "Trimmed the ion throttle curve by 25%. You'll barely hear the injectors sip fuel now.",
+            "Ever stop by Port Nomad up at [15, 210]? Best coffee and cheapest Fuel Cells in the quadrant.",
+            "Keep an eye on drifting cryo-pods and fuel barges—out here, everybody needs a hand sooner or later."
         ]
     },
     MERC_VOIDFANG: {
@@ -219,6 +248,34 @@ const CREW_PAIR_BANTER = [
             "Korg'Mah reinforced my turret mounts with scrap alloy. Recoil's down to zero. Guy's a wizard with a torch.",
             "Jax shoots too fast, wastes heat. Still—his hits land where it hurts. Acceptable."
         ]
+    },
+    {
+        ids: ["LEGEND_LYRA", "LEGEND_CORTEX"],
+        lines: [
+            "Cortex still has half the old Cygnus Prime spectroscopy catalog cached in cold storage. We've been arguing about Precursor syntax all shift!",
+            "Dr. Korr's archaeological hypotheses exhibit a 68.4% correlation with my anomalous drift models. Most stimulating."
+        ]
+    },
+    {
+        ids: ["LEGEND_CALLAGHAN", "T3_SPARK"],
+        lines: [
+            "Ha! I remember welding the intake cowling on T3-Spark back in Port Nomad Bay 2. Little bot still flies straighter than half the rookies.",
+            "CHIRP-SALUTE! Navigator Callaghan aboard! Collective fuel conservation efficiency now exceeding 140%!"
+        ]
+    },
+    {
+        ids: ["LEGEND_ELARA", "MERC_GHOST"],
+        lines: [
+            "You hired The Ghost? Good pilot—just bolt down the luxury crates and keep a biometric lock on the safe.",
+            "...Elara still remembers Umbra's docking codes. Keeps things simple when we run dark."
+        ]
+    },
+    {
+        ids: ["LEGEND_KAELEN", "KORG_MAH"],
+        lines: [
+            "Korg'Mah's welds hold like Karak-Tor basalt. With a true smith in engineering, we can ram an Aegis frigate and laugh!",
+            "Kaelen seeks glory in fire; I make sure the hull survives to tell the tale. A fair division of labor."
+        ]
     }
 ];
 
@@ -260,6 +317,9 @@ function _hydrateCrewMember(crew) {
     if (!crew.bio && profile) {
         crew.bio = profile.bio;
     }
+    if (profile && profile.isKtharr) {
+        crew.isKtharr = true;
+    }
     return crew;
 }
 
@@ -273,7 +333,6 @@ function openRecruitmentBoard() {
     const crewList = _getCrewList();
     const maxCrew = typeof MAX_CREW !== 'undefined' ? MAX_CREW : 3;
 
-    // Generate new recruits if the station pool is empty/uninitialized
     if (typeof currentStationRecruits === 'undefined' || currentStationRecruits === null) {
         currentStationRecruits = generateStationRecruits();
     }
@@ -282,14 +341,13 @@ function openRecruitmentBoard() {
     const portName = (loc && loc.name) ? loc.name.toUpperCase() : "LOCAL PORT";
     const portFaction = (loc && loc.faction) ? loc.faction : "INDEPENDENT";
 
-    // --- THE IRONCLAD FLEXBOX LAYOUT ---
     const container = document.getElementById('genericModalContent');
     if (!container) return;
     container.style.cssText = "display: flex; flex-direction: column; height: 100%; overflow: hidden;";
 
     const headerImageHTML = `
         <div style="width: 100%; height: 180px; border-radius: 4px; border: 1px solid var(--accent-color); margin-bottom: 15px; box-shadow: 0 0 25px rgba(0, 224, 224, 0.2); flex-shrink: 0; overflow: hidden; background: rgba(0,0,0,0.5);">
-            <img src="assets/crew_banner.png" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.9;" onerror="this.onerror=null; this.src='assets/crew_banner.png';">
+            <img src="assets/crew_banner.png" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.9;" onerror="if(this.parentElement) this.parentElement.style.display='none';">
         </div>
     `;
 
@@ -309,7 +367,7 @@ function openRecruitmentBoard() {
                         <h3 style="color:var(--accent-color); margin-top:0; margin-bottom:6px; letter-spacing: 2px;">LOCAL DOSSIERS</h3>
                         <div style="font-size:10px; color:var(--item-desc-color); letter-spacing:1px; margin-bottom:12px;">JURISDICTION: ${_crewEscapeHtml(portFaction)}</div>
                         <p style="color:var(--text-color); font-size:13px; line-height:1.5; font-style:italic; background: rgba(0,0,0,0.3); padding: 10px; border-left: 2px solid var(--accent-color); text-align: left;">
-                            "Review the files of spacers looking for a bunk. They charge an upfront signing bonus and draw a salary every 30 Stardates. Build their loyalty to unlock extra field bonuses."
+                            "Review the files of spacers looking for a bunk. They charge an upfront signing bonus and draw a salary every 30 Stardates. Build their loyalty to 80%+ to unlock off-shift field bonuses."
                         </p>
                         <div style="margin-top: 16px; font-size: 13px; font-weight: bold; color: var(--gold-text); background: rgba(255,215,0,0.05); border: 1px solid #886600; padding: 10px; border-radius: 4px;">
                             Current Crew Size: ${crewList.length} / ${maxCrew}
@@ -352,7 +410,7 @@ function openRecruitmentBoard() {
                     <div style="color:var(--item-desc-color); font-size: 10px; margin-top: 4px;">${_crewEscapeHtml(recruit.role)} · ${_crewEscapeHtml(recruit.origin)}</div>
                 </div>
                 <div style="text-align:right;">
-                    <span style="color:var(--success); font-weight:bold;">${formatNumber(recruit.cost)}c</span>
+                    <span style="color:var(--success); font-weight:bold;">${_crewFormat(recruit.cost)}c</span>
                 </div>
             `;
             row.onclick = () => showRecruitDetails(index);
@@ -370,6 +428,7 @@ function showRecruitDetails(index) {
 
     const crewList = _getCrewList();
     const maxCrew = typeof MAX_CREW !== 'undefined' ? MAX_CREW : 3;
+    const salaryPerCrew = typeof COST_PER_CREW !== 'undefined' ? COST_PER_CREW : 250;
     const nameColor = recruit.isLegendary ? 'var(--gold-text)' : 'var(--accent-color)';
     const stacks = STACKING_CREW_PERKS.has(recruit.perk);
     const alreadyCovered = !stacks && window.hasCrewPerk(recruit.perk);
@@ -384,14 +443,14 @@ function showRecruitDetails(index) {
 
     const duplicateWarning = alreadyCovered
         ? `<div style="background:rgba(255,170,0,0.12); border:1px solid var(--warning); padding:8px 10px; border-radius:4px; margin-bottom:12px; text-align:left; font-size:11px; color:var(--warning);">
-               ⚠️ <b>OVERLAP NOTICE:</b> Another crew member already provides <b>${recruit.perk.replace(/_/g, ' ')}</b>. This perk does not stack.
+               ⚠️ <b>OVERLAP NOTICE:</b> Another crew member already provides <b>${_crewEscapeHtml(recruit.perk.replace(/_/g, ' '))}</b>. This perk does not stack.
            </div>`
         : '';
 
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 10px 0;">
             <div style="position: relative; display: inline-block; margin-bottom: 12px;">
-                <img src="${recruit.image || 'assets/default_npc.png'}" alt="Portrait" style="width:100px; height:100px; border-radius:4px; border:2px solid ${nameColor}; object-fit:cover; box-shadow: 0 0 15px ${recruit.isLegendary ? 'rgba(255,215,0,0.3)' : 'rgba(0,224,224,0.3)'};">
+                <img src="${recruit.image || 'assets/default_npc.png'}" onerror="this.onerror=null; this.src='assets/default_npc.png';" alt="Portrait" style="width:100px; height:100px; border-radius:4px; border:2px solid ${nameColor}; object-fit:cover; box-shadow: 0 0 15px ${recruit.isLegendary ? 'rgba(255,215,0,0.3)' : 'rgba(0,224,224,0.3)'};">
                 ${recruit.isLegendary ? '<div style="position: absolute; top: -10px; right: -10px; font-size: 24px; filter: drop-shadow(0 0 5px var(--gold-text));">⭐</div>' : ''}
             </div>
             
@@ -410,8 +469,8 @@ function showRecruitDetails(index) {
             
             <div class="trade-math-area" style="text-align:left;">
                 <div class="trade-stat-row"><span>Origin:</span> <span style="color:var(--text-color);">${_crewEscapeHtml(recruit.origin)}</span></div>
-                <div class="trade-stat-row"><span>Signing Bonus:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(recruit.cost)}c</span></div>
-                <div class="trade-stat-row"><span>Ongoing Salary:</span> <span style="color:var(--item-desc-color);">${typeof COST_PER_CREW !== 'undefined' ? COST_PER_CREW : 250}c / 30 SD</span></div>
+                <div class="trade-stat-row"><span>Signing Bonus:</span> <span style="color:var(--gold-text); font-weight:bold;">${_crewFormat(recruit.cost)}c</span></div>
+                <div class="trade-stat-row"><span>Ongoing Salary:</span> <span style="color:var(--item-desc-color);">${salaryPerCrew}c / 30 SD (New Total: ${_crewFormat((crewList.length + 1) * salaryPerCrew)}c)</span></div>
                 <div class="trade-stat-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-color);">
                     <span>Granted Perk:</span> <span style="color:var(--success); font-weight:bold;">${_crewEscapeHtml(recruit.perk.replace(/_/g, ' '))}</span>
                 </div>
@@ -429,11 +488,11 @@ function showRecruitDetails(index) {
     if (!hasSpace) {
         btnHtml = `<button class="action-button danger-btn" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" disabled>CREW QUARTERS FULL (${crewList.length}/${maxCrew})</button>`;
     } else if (!canAfford) {
-        btnHtml = `<button class="action-button danger-btn" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" disabled>INSUFFICIENT FUNDS (${formatNumber(recruit.cost)}c)</button>`;
+        btnHtml = `<button class="action-button danger-btn" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" disabled>INSUFFICIENT FUNDS (${_crewFormat(recruit.cost)}c)</button>`;
     } else {
         btnHtml = `
             <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px; border-color:var(--success); color:var(--success); box-shadow: 0 0 10px rgba(0,255,0,0.2);" onclick="hireRecruit(${index})">
-                AUTHORIZE HIRE (${formatNumber(recruit.cost)}c)
+                AUTHORIZE HIRE (${_crewFormat(recruit.cost)}c)
             </button>
         `;
     }
@@ -488,7 +547,9 @@ function generateStationRecruits() {
         { id: "KORG_MAH", name: "Korg'Mah", role: "Mechanic", perk: "PASSIVE_REPAIR", desc: "A rugged K'tharr engineer. Passively repairs hull damage while you travel.", baseCost: 1800, image: "assets/engineer.png", isLegendary: true, factionBias: "KTHARR" },
         { id: "LEGEND_ELIM", name: "Elim 'The Tailor' Darok", role: "Simple Tailor", perk: "TRADE_BONUS", desc: "Claims to be a humble clothier, yet possesses extreme bargaining leverage.", baseCost: 8500, image: "assets/legend_elim.png", isLegendary: true, factionBias: "CONCORD" },
         { id: "LEGEND_MILES", name: "Chief Miles O'Tarek", role: "Miracle Worker", perk: "PASSIVE_REPAIR", desc: "A disgruntled but brilliant engineer. Can fix a warp core breach with a spanner and a piece of tape.", baseCost: 6000, image: "assets/legend_miles.png", isLegendary: true, factionBias: "CONCORD" },
-        { id: "T3_SPARK", name: "T3-Spark", role: "Science Bot", perk: "SCOOP_BONUS", desc: "Advanced automated logic core. Increases fuel scooping yields by 20%.", baseCost: 2500, image: "assets/legend_spark.png", isLegendary: true, factionBias: "INDEPENDENT" }
+        { id: "T3_SPARK", name: "T3-Spark", role: "Science Bot", perk: "SCOOP_BONUS", desc: "Advanced automated logic core. Increases fuel scooping yields by 20%.", baseCost: 2500, image: "assets/legend_spark.png", isLegendary: true, factionBias: "INDEPENDENT" },
+        { id: "LEGEND_LYRA", name: "Dr. Lyra Korr", role: "Xeno-Archaeologist", perk: "SCAVENGER_PROTOCOL", desc: "Renegade Cygnus scholar. Doubles salvage and credits from derelicts, anomalies, and raids.", baseCost: 4800, image: "assets/scientist.png", isLegendary: true, factionBias: "CONCORD" },
+        { id: "LEGEND_CALLAGHAN", name: "'Rusty' Callaghan Jr.", role: "Fuel Rats Navigator", perk: "FUEL_EFFICIENCY", desc: "Deep-rim Collective pilot. Reduces sublight fuel burn by 25% across every jump.", baseCost: 3200, image: "assets/engineer.png", isLegendary: true, factionBias: "INDEPENDENT" }
     ];
 
     const standardRoles = [
@@ -527,7 +588,6 @@ function generateStationRecruits() {
     };
 
     const pickRoleForPort = () => {
-        // 45% chance to prefer a role aligned with the station's faction/black-market vibe
         if (Math.random() < 0.45) {
             const targetFac = isBlackMarket ? "ECLIPSE" : portFaction;
             const localMatches = standardRoles.filter(r => r.factionBias === targetFac);
@@ -539,7 +599,6 @@ function generateStationRecruits() {
     };
 
     for (let i = 0; i < count; i++) {
-        // 28% chance for a Legendary specialist (slightly favoring local faction legends)
         if (Math.random() < 0.28) {
             const availableLegends = legendaryRecruits.filter(
                 l => !crewList.some(c => c.id === l.id) && !recruits.some(r => r.id === l.id)
@@ -603,7 +662,6 @@ function displayCrewRoster(selectedIndex = 0) {
         </div>
     `;
 
-    // Calculate next payday countdown if GameState.player.lastPayday is tracked
     let nextPaydayNote = "* Paid automatically every 30 Stardates";
     if (typeof currentGameDate !== 'undefined' && typeof GameState !== 'undefined' && GameState.player && typeof GameState.player.lastPayday === 'number') {
         const interval = typeof PAYDAY_INTERVAL !== 'undefined' ? PAYDAY_INTERVAL : 30.0;
@@ -622,7 +680,7 @@ function displayCrewRoster(selectedIndex = 0) {
                 <div class="trade-math-area" style="text-align:left; border-color: #555; margin-top: 12px; margin-bottom: 5px;">
                     <div style="font-size:10px; color:#888; letter-spacing:2px; margin-bottom:5px;">PAYROLL / UPKEEP</div>
                     <div class="trade-stat-row"><span>Total Crew:</span> <span style="color:var(--text-color); font-weight:bold;">${crewList.length} / ${maxCrew}</span></div>
-                    <div class="trade-stat-row"><span>Salary Cost:</span> <span style="color:var(--warning); font-weight:bold;">-${formatNumber(crewList.length * salaryPerCrew)}c</span></div>
+                    <div class="trade-stat-row"><span>Salary Cost:</span> <span style="color:var(--warning); font-weight:bold;">-${_crewFormat(crewList.length * salaryPerCrew)}c</span></div>
                     <div class="trade-stat-row" style="margin-top:5px; border-top:1px dashed #333; padding-top:5px;"><span style="font-size:10px; color:var(--item-desc-color);">${nextPaydayNote}</span></div>
                 </div>
             </div>
@@ -694,7 +752,6 @@ function _renderCrewDetailPane(index) {
     const actionsEl = document.getElementById('genericModalActions');
     if (!detailEl || !actionsEl) return;
 
-    // Highlight active row in left pane
     if (listEl) {
         listEl.querySelectorAll('.trade-item-row').forEach(r => {
             const isSel = Number(r.dataset.crewIdx) === index;
@@ -738,7 +795,7 @@ function _renderCrewDetailPane(index) {
 
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 10px 0;">
-            <img src="${crew.image || 'assets/default_npc.png'}" style="width:96px; height:96px; object-fit: cover; border-radius:4px; margin-bottom:12px; border: 2px solid ${nameColor}; box-shadow: 0 0 15px ${crew.isLegendary ? 'rgba(255,215,0,0.2)' : 'rgba(0,170,170,0.2)'};">
+            <img src="${crew.image || 'assets/default_npc.png'}" onerror="this.onerror=null; this.src='assets/default_npc.png';" style="width:96px; height:96px; object-fit: cover; border-radius:4px; margin-bottom:12px; border: 2px solid ${nameColor}; box-shadow: 0 0 15px ${crew.isLegendary ? 'rgba(255,215,0,0.2)' : 'rgba(0,170,170,0.2)'};">
             <h3 style="color:${nameColor}; margin:0 0 5px 0;">${_crewEscapeHtml(crew.name.toUpperCase())}</h3>
             
             <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); display: inline-block; padding: 4px 8px; border-radius: 2px; font-size: 10px; color: ${nameColor}; margin-bottom: 12px; letter-spacing: 1px;">
@@ -766,14 +823,17 @@ function _renderCrewDetailPane(index) {
         </div>
     `;
 
-    // Check Shore Leave / Treat options
+    // Check Shore Leave / Cargo Treat options
+    const hasSpices = crew.isKtharr && typeof playerCargo !== 'undefined' && (playerCargo['KTHARR_SPICES'] || 0) > 0;
     const hasAle = typeof playerCargo !== 'undefined' && (playerCargo['FROTHY_MOON_ALE'] || 0) > 0;
     const hasWine = typeof playerCargo !== 'undefined' && (playerCargo['ANCIENT_WINE'] || 0) > 0;
     const isMaxLoyalty = crew.loyalty >= 100;
 
     let treatBtnHtml = '';
     if (!isMaxLoyalty) {
-        if (hasWine) {
+        if (hasSpices) {
+            treatBtnHtml = `<button class="action-button" style="width:100%; padding:8px; font-size:11px; margin-bottom:8px; border-color:var(--danger); color:var(--danger);" onclick="rewardCrewMember(${index}, 'SPICES')">🌶️ SHARE K'THARR SPICES (+20 Loyalty)</button>`;
+        } else if (hasWine) {
             treatBtnHtml = `<button class="action-button" style="width:100%; padding:8px; font-size:11px; margin-bottom:8px; border-color:var(--gold-text); color:var(--gold-text);" onclick="rewardCrewMember(${index}, 'WINE')">🍷 SHARE ANCIENT WINE (+25 Loyalty)</button>`;
         } else if (hasAle) {
             treatBtnHtml = `<button class="action-button" style="width:100%; padding:8px; font-size:11px; margin-bottom:8px; border-color:var(--gold-text); color:var(--gold-text);" onclick="rewardCrewMember(${index}, 'ALE')">🍺 SHARE FROTHY MOON ALE (+15 Loyalty)</button>`;
@@ -808,7 +868,6 @@ function rewardCrewMember(index, mode = 'CREDITS') {
         return;
     }
 
-    // Cooldown gate: once per 1.0 Stardate per crew member for credit bonuses
     const nowDate = typeof currentGameDate !== 'undefined' ? currentGameDate : 0;
     if (mode === 'CREDITS' && crew.lastGiftDate !== undefined && (nowDate - crew.lastGiftDate) < 1.0) {
         if (typeof showToast === 'function') showToast("ALREADY REWARDED THIS CYCLE", "warning");
@@ -819,17 +878,33 @@ function rewardCrewMember(index, mode = 'CREDITS') {
     let gain = 15;
     let flavor = "";
 
-    if (mode === 'WINE') {
+    if (mode === 'SPICES') {
+        if (typeof playerCargo === 'undefined' || (playerCargo['KTHARR_SPICES'] || 0) < 1) return;
+        playerCargo['KTHARR_SPICES'] -= 1;
+        if (playerCargo['KTHARR_SPICES'] <= 0) {
+            delete playerCargo['KTHARR_SPICES'];
+            if (window.playerCargoCostBasis) delete window.playerCargoCostBasis['KTHARR_SPICES'];
+        }
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        gain = 20;
+        flavor = `${_crewEscapeHtml(crew.name)} inhales the fiery K'tharr spices with a deep warrior's nod of respect!`;
+    } else if (mode === 'WINE') {
         if (typeof playerCargo === 'undefined' || (playerCargo['ANCIENT_WINE'] || 0) < 1) return;
         playerCargo['ANCIENT_WINE'] -= 1;
-        if (playerCargo['ANCIENT_WINE'] <= 0) delete playerCargo['ANCIENT_WINE'];
+        if (playerCargo['ANCIENT_WINE'] <= 0) {
+            delete playerCargo['ANCIENT_WINE'];
+            if (window.playerCargoCostBasis) delete window.playerCargoCostBasis['ANCIENT_WINE'];
+        }
         if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
         gain = 25;
         flavor = `You uncork a pre-warp vintage with ${_crewEscapeHtml(crew.name)} in the mess hall. Morale soars!`;
     } else if (mode === 'ALE') {
         if (typeof playerCargo === 'undefined' || (playerCargo['FROTHY_MOON_ALE'] || 0) < 1) return;
         playerCargo['FROTHY_MOON_ALE'] -= 1;
-        if (playerCargo['FROTHY_MOON_ALE'] <= 0) delete playerCargo['FROTHY_MOON_ALE'];
+        if (playerCargo['FROTHY_MOON_ALE'] <= 0) {
+            delete playerCargo['FROTHY_MOON_ALE'];
+            if (window.playerCargoCostBasis) delete window.playerCargoCostBasis['FROTHY_MOON_ALE'];
+        }
         if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
         gain = 15;
         flavor = `You split a cold mug of Frothy Moon Ale with ${_crewEscapeHtml(crew.name)}.`;
@@ -871,21 +946,23 @@ function requestCrewAdvice(index) {
     if (!detailEl || !actionsEl) return;
 
     const nameColor = crew.isMercenary ? 'var(--danger)' : (crew.isLegendary ? 'var(--gold-text)' : 'var(--accent-color)');
-    let briefingLines = [];
+    const briefingLines = [];
 
     // 1. Trade / Smuggler Intel
     if (crew.perk === 'TRADE_BONUS' || crew.isMercenary) {
-        if (typeof activeMarketTrend !== 'undefined' && activeMarketTrend && typeof COMMODITIES !== 'undefined') {
+        const trendValid = typeof activeMarketTrend !== 'undefined' && activeMarketTrend &&
+            (typeof currentGameDate === 'undefined' || currentGameDate < activeMarketTrend.expiry);
+        if (trendValid && typeof COMMODITIES !== 'undefined') {
             const itemName = COMMODITIES[activeMarketTrend.item] ? COMMODITIES[activeMarketTrend.item].name : activeMarketTrend.item;
             const status = activeMarketTrend.isBoom ? "CRITICAL SHORTAGE (250% payout)" : "MARKET SURPLUS (40% buy-in)";
             briefingLines.push(`Subspace trade wires show a <b>${status}</b> on <b>${_crewEscapeHtml(itemName)}</b> at <b>${_crewEscapeHtml(activeMarketTrend.station)}</b>.`);
         } else {
-            briefingLines.push("Markets look flat right now. Hauling raw Minerals to Starbase Alpha or Refined Alloy to Karak-Tor is always reliable coin.");
+            briefingLines.push("Markets look flat right now. Hauling raw Minerals to Starbase Alpha, Ale to Valkyrie Drift, or Refined Alloy to Karak-Tor is always reliable coin.");
         }
         if (typeof playerCargo !== 'undefined') {
             const contrabandCount = Object.keys(playerCargo).filter(id => playerCargo[id] > 0 && typeof COMMODITIES !== 'undefined' && COMMODITIES[id] && COMMODITIES[id].illegal).length;
             if (contrabandCount > 0) {
-                briefingLines.push(`We're carrying <b>${contrabandCount} type(s) of contraband</b>. Fence it at a Shadow Broker or use Silent Running (Q) around Concord hubs.`);
+                briefingLines.push(`We're carrying <b>${contrabandCount} type(s) of contraband</b>. Fence foreign stock at a Shadow Broker or engage Silent Running (Q) around Concord hubs.`);
             }
         }
     }
@@ -927,6 +1004,17 @@ function requestCrewAdvice(index) {
         }
     }
 
+    // 5. Cross-cutting Colony / Contract Reminders
+    if (typeof playerColonies !== 'undefined' && playerColonies) {
+        const starvingCol = Object.values(playerColonies).find(c => c && c.established && (!c.storage || (c.storage['FOOD_SUPPLIES'] || 0) <= 0));
+        if (starvingCol) {
+            briefingLines.push(`<span style="color:var(--danger);"><b>COLONY ALERT:</b> ${_crewEscapeHtml(starvingCol.name)} [${starvingCol.x}, ${-starvingCol.y}] is out of Food Supplies!</span>`);
+        }
+    }
+    if (typeof playerActiveMission !== 'undefined' && playerActiveMission && playerActiveMission.isComplete) {
+        briefingLines.push(`<span style="color:var(--success);">Contract <b>${_crewEscapeHtml(playerActiveMission.title)}</b> is ready for turn-in at <b>${_crewEscapeHtml(playerActiveMission.giver)}</b>.</span>`);
+    }
+
     if (typeof soundManager !== 'undefined' && typeof soundManager.playScan === 'function') {
         soundManager.playScan();
     }
@@ -957,12 +1045,10 @@ function _buildCrewQuotes(crew, crewList) {
     const quotes = [];
     const profile = LEGENDARY_LORE_PROFILES[crew.id];
 
-    // 1. Legendary signature dialogue
     if (profile && Array.isArray(profile.quotes)) {
         quotes.push(...profile.quotes);
     }
 
-    // 2. Live situational reactions (hull, fuel, stealth, wanted, Wayfinder Core, faction space)
     if (typeof playerHull !== 'undefined' && typeof MAX_PLAYER_HULL !== 'undefined' && playerHull < MAX_PLAYER_HULL * 0.4) {
         quotes.push("Captain, the bulkheads are groaning and sparks are coming out of Deck 2. Please find a repair bay soon.");
         quotes.push("Hull integrity is critical! One stray micrometeoroid and we're breathing vacuum.");
@@ -986,7 +1072,6 @@ function _buildCrewQuotes(crew, crewList) {
         else if (fac === 'CONCORD') quotes.push("Concord Core space. Clean lanes, strict customs scans, and plenty of contracts.");
     }
 
-    // 3. Cross-crew banter if another paired specialist is aboard
     if (crewList.length > 1) {
         for (let i = 0; i < CREW_PAIR_BANTER.length; i++) {
             const pair = CREW_PAIR_BANTER[i];
@@ -1000,7 +1085,6 @@ function _buildCrewQuotes(crew, crewList) {
         }
     }
 
-    // 4. Role-based fallback lines
     const role = (crew.role || "").toLowerCase();
     if (role.includes('engineer') || role.includes('mechanic') || role.includes('worker') || role.includes('scrapper') || role.includes('condenser')) {
         quotes.push(
@@ -1008,7 +1092,7 @@ function _buildCrewQuotes(crew, crewList) {
             "If you push the engines any harder, I'm not responsible for what happens.",
             "I bypassed the secondary coupling. We should get slightly cleaner flow now."
         );
-    } else if (role.includes('scientist') || role.includes('medical') || role.includes('trauma') || role.includes('bot') || role.includes('navigator')) {
+    } else if (role.includes('scientist') || role.includes('medical') || role.includes('trauma') || role.includes('bot') || role.includes('navigator') || role.includes('archaeologist')) {
         quotes.push(
             "The background radiation in this sector is fascinating.",
             "Please remember to check your dosimetry badges before scooping hot blue stars.",
@@ -1048,7 +1132,6 @@ function openCrewComm(index) {
     if (!detailEl || !actionsEl) return;
 
     const quotes = _buildCrewQuotes(crew, crewList);
-    // Avoid immediate back-to-back repeat
     const filtered = quotes.length > 1 ? quotes.filter(q => q !== crew._lastQuote) : quotes;
     const randomQuote = filtered[Math.floor(Math.random() * filtered.length)] || quotes[0];
     crew._lastQuote = randomQuote;
@@ -1096,8 +1179,8 @@ function fireCrew(index) {
     const canPaySeverance = typeof playerCredits !== 'undefined' && playerCredits >= severanceFee;
 
     const confirmText = canPaySeverance
-        ? `Dismiss ${crew.name} (${crew.role}) from service? Standard 10% severance pay of ${formatNumber(severanceFee)}c will be deducted.`
-        : `You lack the ${formatNumber(severanceFee)}c severance pay for ${crew.name}. Discharge them without severance? (They won't be pleased.)`;
+        ? `Dismiss ${crew.name} (${crew.role}) from service? Standard 10% severance pay of ${_crewFormat(severanceFee)}c will be deducted.`
+        : `You lack the ${_crewFormat(severanceFee)}c severance pay for ${crew.name}. Discharge them without severance? (They won't be pleased.)`;
 
     if (typeof showConfirmationModal === 'function') {
         showConfirmationModal(confirmText, () => executeCrewDismissal(index, !canPaySeverance));
@@ -1114,7 +1197,7 @@ function executeCrewDismissal(index, unpaid = false) {
 
     if (!unpaid && playerCredits >= severanceFee) {
         playerCredits -= severanceFee;
-        logMessage(`You dismissed <span style="color:var(--warning);">${_crewEscapeHtml(crew.name)}</span> with ${formatNumber(severanceFee)}c in severance pay.`);
+        logMessage(`You dismissed <span style="color:var(--warning);">${_crewEscapeHtml(crew.name)}</span> with ${_crewFormat(severanceFee)}c in severance pay.`);
     } else {
         logMessage(`<span style="color:var(--danger)">[ UNPAID DISCHARGE ]</span> You cut <span style="color:var(--warning);">${_crewEscapeHtml(crew.name)}</span> loose without severance. Word of your stinginess spreads through the docks.`);
         if ((crew.isLegendary || crew.isMercenary) && typeof updatePlayerNotoriety === 'function') {
@@ -1124,7 +1207,6 @@ function executeCrewDismissal(index, unpaid = false) {
 
     crewList.splice(index, 1);
 
-    // Properly recalculate Eclipse Mercenary flag in case another mercenary is still aboard
     window.hasEclipseMerc = crewList.some(c => c && c.isMercenary);
 
     if (typeof applyPlayerShipStats === 'function') applyPlayerShipStats();
@@ -1206,18 +1288,23 @@ const MERC_PROTECTED_ITEMS = new Set([
     'STATION_CORE',
     'WORMHOLE_STABILIZER',
     'PREFAB_COLONY_CORE',
-    'PRECURSOR_NAV_CORE'
+    'PRECURSOR_NAV_CORE',
+    'PRECURSOR_STAR_MAP_FRAGMENT'
 ]);
 
 function processMercenaryDrawbacks() {
     const crewList = _getCrewList();
     if (crewList.length === 0) return;
 
+    const activeMissionItem = (typeof playerActiveMission !== 'undefined' && playerActiveMission && !playerActiveMission.isComplete &&
+        playerActiveMission.objectives && playerActiveMission.objectives[0] && playerActiveMission.objectives[0].itemID)
+        ? playerActiveMission.objectives[0].itemID
+        : null;
+
     crewList.forEach(rawMember => {
         const crewMember = _hydrateCrewMember(rawMember);
         if (!crewMember.isMercenary || !crewMember.drawback) return;
 
-        // Loyalty scales theft probability: 75+ halves risk, <25 increases risk by 25%
         let effectiveChance = crewMember.drawback.chance;
         if (crewMember.loyalty >= 75) effectiveChance *= 0.5;
         else if (crewMember.loyalty < 25) effectiveChance *= 1.25;
@@ -1227,7 +1314,7 @@ function processMercenaryDrawbacks() {
         if (crewMember.drawback.type === "STEAL_CARGO") {
             if (typeof playerCargo !== 'undefined') {
                 const cargoIds = Object.keys(playerCargo).filter(id => {
-                    if (playerCargo[id] <= 0 || MERC_PROTECTED_ITEMS.has(id)) return false;
+                    if (playerCargo[id] <= 0 || MERC_PROTECTED_ITEMS.has(id) || id === activeMissionItem) return false;
                     const def = typeof COMMODITIES !== 'undefined' ? COMMODITIES[id] : null;
                     if (def && (def.weight === 0 || def.isComponent || def.isTroop || def.category === 'QUEST')) return false;
                     return true;
@@ -1237,7 +1324,10 @@ function processMercenaryDrawbacks() {
                     const stolenId = cargoIds[Math.floor(Math.random() * cargoIds.length)];
                     const stealAmount = Math.min(crewMember.drawback.amount, playerCargo[stolenId]);
                     playerCargo[stolenId] -= stealAmount;
-                    if (playerCargo[stolenId] <= 0) delete playerCargo[stolenId];
+                    if (playerCargo[stolenId] <= 0) {
+                        delete playerCargo[stolenId];
+                        if (window.playerCargoCostBasis) delete window.playerCargoCostBasis[stolenId];
+                    }
 
                     const itemName = (typeof COMMODITIES !== 'undefined' && COMMODITIES[stolenId]) ? COMMODITIES[stolenId].name : "Cargo";
                     if (typeof showToast === 'function') showToast(`MISSING: ${itemName}`, "warning");
@@ -1325,6 +1415,31 @@ if (typeof GameBus !== 'undefined' && !window._crewTickRegistered) {
                     if (typeof checkLevelUp === 'function') checkLevelUp();
                     triggered = true;
                 }
+            } else if (crew.perk === 'COMBAT_DAMAGE' || crew.isMercenary) {
+                let rearmed = false;
+                if (typeof playerShip !== 'undefined' && playerShip.components && typeof COMPONENTS_DATABASE !== 'undefined') {
+                    const wepId = playerShip.components.weapon;
+                    const wepDef = wepId ? COMPONENTS_DATABASE[wepId] : null;
+                    if (wepDef && wepDef.stats && wepDef.stats.maxAmmo) {
+                        if (!playerShip.ammo) playerShip.ammo = {};
+                        const cur = playerShip.ammo[wepId] !== undefined ? playerShip.ammo[wepId] : wepDef.stats.maxAmmo;
+                        if (cur < wepDef.stats.maxAmmo) {
+                            playerShip.ammo[wepId] = cur + 1;
+                            logMessage(`<span style="color:var(--gold-text)">[ DEVOTED CREW ]</span> ${_crewEscapeHtml(crew.name)} hand-loaded +1 ordnance round during off-shift (${playerShip.ammo[wepId]}/${wepDef.stats.maxAmmo}).`);
+                            rearmed = true;
+                            triggered = true;
+                        }
+                    }
+                }
+                if (!rearmed && typeof playerXP !== 'undefined') {
+                    playerXP += 15;
+                    if (typeof playerShields !== 'undefined' && typeof MAX_SHIELDS !== 'undefined') {
+                        playerShields = Math.min(MAX_SHIELDS, playerShields + 6);
+                    }
+                    logMessage(`<span style="color:var(--gold-text)">[ DEVOTED CREW ]</span> ${_crewEscapeHtml(crew.name)} ran live fire-control calibration drills (+15 XP, +6 Shields).`);
+                    if (typeof checkLevelUp === 'function') checkLevelUp();
+                    triggered = true;
+                }
             }
 
             if (triggered) {
@@ -1334,5 +1449,24 @@ if (typeof GameBus !== 'undefined' && !window._crewTickRegistered) {
         });
     });
 }
+
+// ==========================================
+// --- PUBLIC CREW UTILITY API ---
+// ==========================================
+
+window.CrewUtils = {
+    getRoster: () => _getCrewList().map(c => _hydrateCrewMember(c)),
+    getPayrollCost: () => _getCrewList().length * (typeof COST_PER_CREW !== 'undefined' ? COST_PER_CREW : 250),
+    getAverageLoyalty() {
+        const list = _getCrewList();
+        if (list.length === 0) return 0;
+        const sum = list.reduce((acc, c) => acc + (_hydrateCrewMember(c).loyalty || 50), 0);
+        return Math.round(sum / list.length);
+    },
+    getActivePerks() {
+        return Array.from(new Set(_getCrewList().map(c => c && c.perk).filter(Boolean)));
+    },
+    getLoyaltyRank: _getLoyaltyRank
+};
 
 // --- END OF FILE crew.js ---
