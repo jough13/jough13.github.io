@@ -939,9 +939,6 @@ function attemptExtraction() {
             lootMessage += `Extracted ${formatNumber(actualYield)} Minerals.<br>`;
             toastHTML += `+${formatNumber(actualYield)} Minerals<br>`;
             if (isCritical) toastHTML += `<span style="color:var(--accent-color); font-weight:900;">CRITICAL VEIN STRUCK!</span><br>`;
-            
-            // Increment local tracker so rare drops know how much space is left
-            currentCargoLoad += actualYield; 
         } else {
             lootMessage += `<span style="color:var(--danger)">Cargo full. Minerals discarded.</span><br>`;
         }
