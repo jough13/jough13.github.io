@@ -2,6 +2,13 @@
 
 window.playerTargeting = 'HULL';
 
+function _combatEscapeHtml(value) {
+    if (typeof UI !== 'undefined' && typeof UI.escapeHtml === 'function') return UI.escapeHtml(value);
+    return String(value === undefined || value === null ? "" : value)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function startCombat(specificEnemyEntity = null) {
     // Always reset targeting to Hull at the start of a new fight!
     window.playerTargeting = 'HULL';
@@ -541,7 +548,7 @@ function handleCombatAction(action) {
         
         // 2. The Bribe Mechanic!
         // If your rep isn't high enough, but you have cash, try to buy them off!
-        const bribeCost = (currentCombatContext.difficultyMultiplier || 1) * 500;
+        const bribeCost = Math.floor((currentCombatContext.difficultyMultiplier || 1) * 500);
         
         if (playerCredits >= bribeCost) {
             // 75% chance the bribe works!
@@ -933,7 +940,7 @@ function renderCombatView() {
 
                 <h3 style="margin: 0 0 5px 0; color: var(--item-name-color); font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
                     <img src="${playerPfp}" alt="Player" style="width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--accent-color);">
-                    ${playerName}
+                    ${_combatEscapeHtml(playerName)}
                 </h3>
                 <div style="font-size: 11px; color: var(--item-desc-color); margin-bottom: 15px; text-transform: uppercase;">${shipClass.name}</div>
                 
@@ -1004,21 +1011,21 @@ function renderCombatView() {
                 <div style="color: var(--item-desc-color); font-size: 11px; font-weight: bold; letter-spacing: 1px; margin-right: 10px;">TARGETING COMPUTER:</div>
                 
                 <button onclick="setTargeting('HULL')" style="flex: 1; min-width: 120px; padding: 10px; font-family: var(--title-font); font-weight: bold; font-size: 12px; cursor: pointer; transition: 0.2s; border-radius: 4px;
-                    background: ${window.playerTargeting === 'HULL' ? 'var(--danger)' : '#222'}; 
+                    background: ${window.playerTargeting === 'HULL' ? 'var(--danger)' : 'var(--btn-bg)'};
                     color: ${window.playerTargeting === 'HULL' ? '#000' : 'var(--text-color)'}; 
                     border: 1px solid var(--danger); box-shadow: ${window.playerTargeting === 'HULL' ? '0 0 10px rgba(255,0,0,0.4)' : 'none'};">
                     HULL (Standard)
                 </button>
                 
                 <button onclick="setTargeting('WEAPONS')" style="flex: 1; min-width: 120px; padding: 10px; font-family: var(--title-font); font-weight: bold; font-size: 12px; cursor: pointer; transition: 0.2s; border-radius: 4px;
-                    background: ${window.playerTargeting === 'WEAPONS' ? 'var(--warning)' : '#222'}; 
+                    background: ${window.playerTargeting === 'WEAPONS' ? 'var(--warning)' : 'var(--btn-bg)'}; 
                     color: ${window.playerTargeting === 'WEAPONS' ? '#000' : 'var(--text-color)'}; 
                     border: 1px solid var(--warning); box-shadow: ${window.playerTargeting === 'WEAPONS' ? '0 0 10px rgba(255,170,0,0.4)' : 'none'};">
                     WEAPONS (-15% Hit)
                 </button>
                 
                 <button onclick="setTargeting('ENGINES')" style="flex: 1; min-width: 120px; padding: 10px; font-family: var(--title-font); font-weight: bold; font-size: 12px; cursor: pointer; transition: 0.2s; border-radius: 4px;
-                    background: ${window.playerTargeting === 'ENGINES' ? 'var(--accent-color)' : '#222'}; 
+                    background: ${window.playerTargeting === 'ENGINES' ? 'var(--accent-color)' : 'var(--btn-bg)'}; 
                     color: ${window.playerTargeting === 'ENGINES' ? '#000' : 'var(--text-color)'}; 
                     border: 1px solid var(--accent-color); box-shadow: ${window.playerTargeting === 'ENGINES' ? '0 0 10px rgba(0,224,224,0.4)' : 'none'};">
                     ENGINES (-15% Hit)
@@ -1307,8 +1314,10 @@ function executeBoardingAction(action) {
         return;
     } else if (ctx.enemyHp <= 0) {
         // VICTORY!
-        let credits = 300 + Math.floor(Math.random() * 500);
-        let xp = 75;
+        const hasScavenger = (typeof hasPlayerPerk === 'function' && hasPlayerPerk('SCAVENGER_PROTOCOL')) ||
+                             (typeof hasCrewPerk === 'function' && hasCrewPerk('SCAVENGER_PROTOCOL'));
+        const credits = (300 + Math.floor(Math.random() * 500)) * (hasScavenger ? 2 : 1);
+        const xp = 75;
         
         playerCredits += credits;
         playerXP += xp;
@@ -1316,9 +1325,12 @@ function executeBoardingAction(action) {
         closeGenericModal();
         boardingContext = null;
 
-        showToast("FIREFIGHT WON", "success");
+        logMessage(`<span style="color:var(--success); font-weight:bold;">[ AIRLOCK CLEARED ]</span> Neutralized the scavengers and cracked the derelict's safe! Recovered <span style="color:var(--gold-text)">+${formatNumber(credits)}c</span>${hasScavenger ? ' (2x Scavenger)' : ''} and +${xp} XP.`);
+        if (typeof soundManager !== 'undefined') soundManager.playGain();
+        showToast(`FIREFIGHT WON (+${formatNumber(credits)}c)`, "success");
         checkLevelUp();
         renderUIStats();
+        if (typeof autoSaveGame === 'function') autoSaveGame();
         return;
     }
 
@@ -1998,7 +2010,7 @@ function handleSkirmishAction(index, action) {
 
     // A. Concord Paths
     if (action === 'CONCORD_TACTICAL_STRIKE') {
-        const reward = (1500 + Math.floor(Math.random() * 500)) * (1 + (sk.chaosLevel / 10)); // chaotic mult
+        const reward = Math.floor((1500 + Math.floor(Math.random() * 500)) * (1 + (sk.chaosLevel / 10)));
         playerCredits += reward;
         playerFactionStanding['CONCORD'] = (playerFactionStanding['CONCORD'] || 0) + 5;
         sk.advantage += 2; // build up advantage
@@ -2039,7 +2051,7 @@ function handleSkirmishAction(index, action) {
 
     // B. Enemy/Eclipse/K'Tharr Paths
     else if (action === 'ECLIPSE_HACK_NAV') {
-        const reward = (2000 + Math.floor(Math.random() * 1000)) * (1 + (sk.chaosLevel / 10)); // chaotic mult
+        const reward = Math.floor((2000 + Math.floor(Math.random() * 1000)) * (1 + (sk.chaosLevel / 10)));
         playerCredits += reward;
         if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(10); // Small notoriety per hack
         sk.chaosLevel += 2; // expedited chaos
@@ -2077,7 +2089,7 @@ function handleSkirmishAction(index, action) {
         // Failure chance is based on accumulated risk
         const successChance = 0.60 - (sk.investedRisk / 100);
         if (Math.random() < successChance) { 
-            const reward = (3500 + Math.floor(Math.random() * 2000)) * (1 + (sk.chaosLevel / 10)); // chaotic mult
+            const reward = Math.floor((3500 + Math.floor(Math.random() * 2000)) * (1 + (sk.chaosLevel / 10)));
             playerCredits += reward;
             
             // Set base message first, then append cargo result
