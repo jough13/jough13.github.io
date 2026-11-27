@@ -5,15 +5,21 @@
 // ==========================================
 
 function _itemHasPerk(perkId) {
+    if (typeof hasPlayerPerk === 'function') return hasPlayerPerk(perkId);
     if (typeof playerPerks === 'undefined' || !playerPerks) return false;
     if (typeof playerPerks.has === 'function') return playerPerks.has(perkId);
     if (Array.isArray(playerPerks)) return playerPerks.includes(perkId);
     return false;
 }
 
+function _itemFormat(num) {
+    if (typeof formatNumber === 'function') return formatNumber(num);
+    return String(Math.trunc(Number(num) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
 function _sanitizeCustomName(rawInput, fallback) {
     if (!rawInput || typeof rawInput !== 'string') return fallback;
-    const cleaned = rawInput.replace(/[<>"'`&]/g, '').trim().slice(0, 32);
+    const cleaned = rawInput.replace(/[<>"'`&]/g, '').replace(/\s+/g, ' ').trim().slice(0, 32);
     return cleaned.length > 0 ? cleaned : fallback;
 }
 
@@ -22,16 +28,28 @@ function _refreshItemUI() {
     if (typeof renderUIStats === 'function') renderUIStats();
     if (typeof updateModalInfoBar === 'function') {
         updateModalInfoBar('genericInfoBar');
+        updateModalInfoBar('stationInfoBar');
         updateModalInfoBar('xerxesInfoBar');
     }
     if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
 }
 
+function _findTargetLocalColony() {
+    if (typeof playerColonies === 'undefined' || !playerColonies) return null;
+    const localCols = Object.values(playerColonies).filter(c => c && c.established && c.x === playerX && c.y === playerY);
+    if (localCols.length === 0) return null;
+
+    if (typeof currentGameState !== 'undefined' && currentGameState === 'planet_view' && typeof selectedPlanetIndex !== 'undefined') {
+        const exact = localCols.find(c => c.planetIndex === selectedPlanetIndex);
+        if (exact) return exact;
+    }
+    return localCols[0];
+}
+
 function _safeAddCargoFromItem(itemId, qty, freedSpace = 0) {
     if (!itemId || qty <= 0 || typeof playerCargo === 'undefined') return 0;
     const maxCap = typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50;
-    // Factor in the space we just made by consuming the item!
-    const curLoad = (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0) - freedSpace;
+    const curLoad = Math.max(0, (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0) - freedSpace);
     const itemDef = (typeof COMMODITIES !== 'undefined' && COMMODITIES[itemId]) ? COMMODITIES[itemId] : null;
     const weight = (itemDef && itemDef.weight !== undefined) ? itemDef.weight : 1;
 
@@ -44,6 +62,16 @@ function _safeAddCargoFromItem(itemId, qty, freedSpace = 0) {
     }
     return actualAdd;
 }
+
+// Rotating black-box transcripts for DERELICT_BLACK_BOX
+const _BLACK_BOX_TRANSCRIPTS = [
+    "SSV Kestrel, SD 2441.2: 'Main fold-coil slipped mid-jump. Tell Ceti Alpha we tried to bring the platinum home...'",
+    "Free-Trader 'Iron Gull', SD 2449.8: 'They aren't asteroids—they're Terran War proximity mines! Hard port—!' [STATIC]",
+    "Survey Vessel 'Meridian', SD 2452.4: 'The obsidian monolith at [-20, -35] is singing on every frequency. Crew refuses to leave orbit...'",
+    "Aegis Cutter 44, SD 2454.1: 'Dread Pirate Voss just dropped out of the nebula. That's not a railgun—space itself is tearing apart!'",
+    "Cartel Runner 'Silk Ghost', SD 2455.9: 'Dumping the dead-drop cache before SEC-COM locks our transponder. Catch me if you can, badges.'",
+    "Cygnus Probe Tender 09, SD 2456.6: 'Beyond Sector 25 the starlight thins out. Whatever lives in the Silentium Expanse just pinged us back.'"
+];
 
 // Self-contained field decryption handler for Encrypted Engrams, Data Caches, Archives, and Ciphers
 function _executeItemFieldDecryption(itemId, triggeredByCipher = false) {
@@ -89,38 +117,52 @@ function _executeItemFieldDecryption(itemId, triggeredByCipher = false) {
     let textReward = "Data recovered.";
 
     if (itemId === 'ENCRYPTED_ENGRAM') {
-        // Calculate exactly how much space was freed by consuming items
         let freedSpace = 1; // The engram itself
-        if (!hasSlicer && !triggeredByCipher) freedSpace += 1; // A cipher was consumed
-        else if (triggeredByCipher) freedSpace += 1; // The cipher that triggered this was consumed
-        
+        if (!hasSlicer) freedSpace += 1; // A cipher is also consumed
+
         const rewards = [
-            { xp: 150, text: "FRAGMENT RECOVERED: 'The ruler of the sunless world is the DARKNESS.'" },
-            { xp: 300, text: "NAV-DATA: 'Sector [39, 17] - Precursor activity detected.'" },
-            { xp: 500, itemDrop: "VOID_CRYSTALS", qty: 2, text: "JACKPOT: Precursor crystalline matrix stabilized into 2x Void Crystals!" },
-            { xp: 400, itemDrop: "PRECURSOR_STAR_MAP_FRAGMENT", qty: 1, text: "ASTRONOMICAL CACHE: Recovered 1x Star Map Fragment!" }
+            { xp: 180, lore: "XENO_THE_SPIRE", text: "SPIRE CIPHER FRAGMENT: 'The ruler of the sunless world is the DARKNESS.'" },
+            { xp: 260, lore: "LOCATION_SANCTUARY_OF_THE_VOID", text: "NAV-DATA: 'Precursor Sanctuary conduit active at Sector [39, 17].'" },
+            { xp: 240, lore: "LOCATION_CHOIR_SPIRE_ALPHA", text: "PILGRIM VECTOR: 'Choir Spire Alpha sings at [-115, -145]; bring a Void Crystal offering.'" },
+            { xp: 280, lore: "LOCATION_SILENTIUM_RELAY_ZERO", text: "DEEP-RIM BEACON: 'Silentium Relay Zero holds at [280, 240]—the last warning before the Silence.'" },
+            { xp: 240, lore: "LEGEND_DIASPORA_ARKS", text: "DIASPORA TELEMETRY: '2144 CE sleeper ark CSS Hesperia located adrift near [-145, 185].'" },
+            { xp: 500, itemDrop: "VOID_CRYSTALS", qty: 2, lore: "PHENOMENON_VOID_CRYSTALS", text: "JACKPOT: Precursor crystalline matrix stabilized!" },
+            { xp: 400, itemDrop: "PRECURSOR_STAR_MAP_FRAGMENT", qty: 1, lore: "COMMODITY_PRECURSOR_STAR_MAP_FRAGMENT", text: "ASTRONOMICAL CACHE: Extracted a holographic Precursor relic!" }
         ];
         const r = rewards[Math.floor(Math.random() * rewards.length)];
         xpReward = r.xp;
         textReward = r.text;
+        if (r.lore && typeof unlockLoreEntry === 'function') {
+            unlockLoreEntry(r.lore);
+        }
         if (r.itemDrop) {
-            // Pass the freedSpace variable!
-            const added = _safeAddCargoFromItem(r.itemDrop, r.qty || 1, freedSpace);
-            if (added < (r.qty || 1) && typeof logMessage === 'function') {
-                logMessage("<span style='color:var(--warning)'>Cargo hold full! Materialized relic could not be fully stowed.</span>");
+            const wantQty = r.qty || 1;
+            const added = _safeAddCargoFromItem(r.itemDrop, wantQty, freedSpace);
+            const dropName = (COMMODITIES[r.itemDrop] && COMMODITIES[r.itemDrop].name) ? COMMODITIES[r.itemDrop].name : r.itemDrop;
+            if (added > 0) {
+                textReward += ` (+${added}x ${dropName})`;
+                if (added < wantQty) textReward += " — Hold full, remainder lost.";
+            } else {
+                textReward += ` (Cargo hold full — ${dropName} could not be stowed!)`;
             }
         }
     } else if (itemId === 'ENCRYPTED_DATA') {
         xpReward = 250;
         creditReward = 500 + Math.floor(Math.random() * 500);
-        textReward = `Decrypted mercantile ledger (+${creditReward}c).`;
+        textReward = `Decrypted mercantile ledger (+${_itemFormat(creditReward)}c).`;
     } else if (itemId === 'ANCIENT_ARCHIVE') {
         xpReward = 500;
         creditReward = 1000 + Math.floor(Math.random() * 1000);
-        textReward = `Holographic array unlocked! Forbidden history recovered (+${creditReward}c).`;
+        const archiveTexts = [
+            `Holographic array unlocked: 'We tuned the First Chord to outlast the Silence.' (+${_itemFormat(creditReward)}c).`,
+            `Precursor star-atlas restored: 'Three shards form the Compass; the Compass wakes the Nexus.' (+${_itemFormat(creditReward)}c).`,
+            `Observatory cipher recovered: 'At [-85, -220], the Whispering Prism splits voidlight into glass.' (+${_itemFormat(creditReward)}c).`
+        ];
+        textReward = archiveTexts[Math.floor(Math.random() * archiveTexts.length)];
         if (typeof unlockLoreEntry === 'function') {
             unlockLoreEntry('XENO_PRECURSORS');
             unlockLoreEntry('PRECURSOR_ORIGINS');
+            unlockLoreEntry('LEGEND_THE_SILENCERS');
         }
     }
 
@@ -135,7 +177,7 @@ function _executeItemFieldDecryption(itemId, triggeredByCipher = false) {
         logMessage(`<span style="color:#DDA0DD">> FIELD DECRYPTION SUCCESS: ${textReward} (+${finalXP} XP)</span>`);
     }
     if (typeof showToast === 'function') {
-        showToast(`DECRYPTED: +${finalXP} XP${creditReward > 0 ? ` / +${creditReward}c` : ''}`, "success");
+        showToast(`DECRYPTED: +${finalXP} XP${creditReward > 0 ? ` / +${_itemFormat(creditReward)}c` : ''}`, "success");
     }
     if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
 
@@ -158,6 +200,8 @@ const LOOT_TABLES = {
         { weight: 2, type: "ITEM", id: "FOOD_SUPPLIES", min: 5, max: 10, text: "Found sealed emergency rations in the galley." },
         { weight: 2, type: "ITEM", id: "FUEL_CELLS", min: 2, max: 5, text: "Siphoned reserve Fuel Cells from the auxiliary generator." },
         { weight: 1, type: "ITEM", id: "NANO_REPAIR_KIT", min: 1, max: 2, text: "Recovered an emergency Nano-Repair Kit from engineering." },
+        { weight: 1, type: "ITEM", id: "EMERGENCY_COOLANT_CELL", min: 1, max: 2, text: "Pulled intact Cryo-Coolant Cartridges from the reactor manifold." },
+        { weight: 1, type: "ITEM", id: "DERELICT_BLACK_BOX", min: 1, max: 1, text: "Extracted the vessel's armored Flight Recorder from the bridge!" },
         { weight: 1, type: "ITEM", id: "MINERAL_GEODE", min: 1, max: 3, text: "Found uncracked survey geodes in the geologist's locker." },
         { weight: 2, type: "XP", amount: 35, text: "Flight recorder logs downloaded." },
         { weight: 1, type: "CREDITS", min: 250, max: 850, text: "Found a concealed captain's credit chit." }
@@ -168,6 +212,7 @@ const LOOT_TABLES = {
         { weight: 2, type: "ITEM", id: "PRECURSOR_NAV_CORE", min: 1, max: 1, text: "You extract a humming Precursor Nav-Core from the ship's computer!" },
         { weight: 2, type: "ITEM", id: "OBSIDIAN_TEAR_PLATING", min: 1, max: 3, text: "You salvage ultra-dense Obsidian Tear Plating from the hull!" },
         { weight: 2, type: "ITEM", id: "ARTIFACT_SHARDS", min: 1, max: 4, text: "You found fragments of strange, humming Precursor glass." },
+        { weight: 1, type: "ITEM", id: "DERELICT_BLACK_BOX", min: 1, max: 1, text: "Recovered an encrypted military Flight Recorder from the wreck!" },
         { weight: 1, type: "ITEM", id: "CRYO_STASIS_POD", min: 1, max: 1, text: "An active cryo-stasis pod is still humming on backup battery!" },
         { weight: 1, type: "ITEM", id: "SYNDICATE_LEDGER", min: 1, max: 1, text: "Recovered an unredacted Eclipse Cartel account ledger!" },
         { weight: 1, type: "ITEM", id: "PRECURSOR_DATACUBE", min: 1, max: 1, text: "Jackpot! An intact Precursor Datacube." },
@@ -179,9 +224,17 @@ const LOOT_TABLES = {
         { weight: 4, type: "XP", amount: 60, text: "Sensors record valuable subspace telemetry." },
         { weight: 2, type: "HEAL", text: "Exotic harmonic radiation revitalizes your ship's deflector grid." },
         { weight: 2, type: "ITEM", id: "VOID_CRYSTALS", min: 1, max: 3, text: "Matter stabilized. Void Crystals recovered." },
+        { weight: 1, type: "ITEM", id: "XENO_SPORE_VIAL", min: 1, max: 2, text: "Collected bioluminescent extremophile spores thriving inside the anomaly!" },
         { weight: 1, type: "ITEM", id: "QUANTUM_LENS", min: 1, max: 1, text: "Gravitational lensing crystallized a flawless Quantum Lens!" },
         { weight: 1, type: "ITEM", id: "ENCRYPTED_ENGRAM", min: 1, max: 1, text: "A bizarre data-matrix crystallized out of the anomaly." },
         { weight: 1, type: "ITEM", id: "PHASE_SHIFTED_ALLOY", min: 1, max: 1, text: "An object falls out of hyperspace right in front of you!" }
+    ],
+    WARZONE_SALVAGE: [
+        { weight: 4, type: "ITEM", id: "TECH_PARTS", min: 3, max: 8, text: "Tractored military-grade electronics from shattered hull plating." },
+        { weight: 2, type: "ITEM", id: "REFINED_ALLOY", min: 1, max: 3, text: "Cut intact armored bulkheads free from the debris field." },
+        { weight: 2, type: "ITEM", id: "WEAPONS", min: 1, max: 2, text: "Recovered unspent ordnance pods floating among the wreckage." },
+        { weight: 1, type: "ITEM", id: "DERELICT_BLACK_BOX", min: 1, max: 1, text: "Snagged a flashing tactical Flight Recorder from a split frigate." },
+        { weight: 1, type: "ITEM", id: "VOID_CRYSTALS", min: 1, max: 2, text: "Harvested crystallized exotic matter from a ruptured warp core." }
     ]
 };
 
@@ -190,19 +243,19 @@ const LOOT_TABLES = {
 // ==========================================
 
 const COMMODITIES = {
-    
+
     // ==========================================
     // --- STANDARD GOODS & RAW MATERIALS ---
     // ==========================================
 
-    LUXURY_GOODS: { 
-        name: "Luxury Goods", 
-        basePrice: 350, 
+    LUXURY_GOODS: {
+        name: "Luxury Goods",
+        basePrice: 350,
         icon: "💎",
         weight: 1,
         illegal: false,
         category: "LUXURY",
-        description: "High-end textiles, holovids, and artisanal crafts produced by advanced colonies." 
+        description: "High-end textiles, holovids, and artisanal crafts produced by advanced colonies."
     },
     FUEL_CELLS: {
         name: "Fuel Cells",
@@ -241,6 +294,30 @@ const COMMODITIES = {
             logMessage("<span style='color:var(--success)'>Nano-sealant deployed. Hull repaired by 35.</span>");
             if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
             if (typeof showToast === 'function') showToast("HULL REPAIRED (+35)", "success");
+            _refreshItemUI();
+            return true;
+        }
+    },
+    EMERGENCY_COOLANT_CELL: {
+        name: "Cryo-Coolant Cartridge",
+        basePrice: 160,
+        icon: "🧊",
+        weight: 1,
+        illegal: false,
+        category: "CONSUMABLE",
+        description: "Pressurized liquid-helium thermal flush canister salvaged from starship reactors. Activate to zero out Stealth Heat and stabilize +10 Hull.",
+        onUse: () => {
+            const hasHeat = typeof stealthHeat !== 'undefined' && stealthHeat > 0;
+            const needHull = typeof playerHull !== 'undefined' && typeof MAX_PLAYER_HULL !== 'undefined' && playerHull < MAX_PLAYER_HULL;
+            if (!hasHeat && !needHull) {
+                if (typeof showToast === 'function') showToast("CORE TEMP & HULL ALREADY NOMINAL", "info");
+                return false;
+            }
+            if (typeof stealthHeat !== 'undefined') stealthHeat = 0;
+            if (needHull) playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 10);
+            logMessage("<span style='color:#66DDFF'>[ CRYO-COOLANT ]</span> Reactor heat sinks flushed to 0 and thermal micro-fractures stabilized (+10 Hull).");
+            if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+            if (typeof showToast === 'function') showToast("HEAT FLUSHED & +10 HULL", "success");
             _refreshItemUI();
             return true;
         }
@@ -355,22 +432,18 @@ const COMMODITIES = {
                 dropId = "GOLD";
                 qty = 1 + Math.floor(Math.random() * 2);
             }
-            
-            // Properly calculate available space (+1 for the geode consumed)
-            const spaceLeft = (typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50) - (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0) + 1;
-            qty = Math.min(qty, spaceLeft);
-            
-            if (qty > 0) {
-                playerCargo[dropId] = (playerCargo[dropId] || 0) + qty;
+
+            const added = _safeAddCargoFromItem(dropId, qty, 1);
+            if (added > 0) {
                 const dropName = COMMODITIES[dropId] ? COMMODITIES[dropId].name : dropId;
-                logMessage(`<span style='color:var(--gold-text)'>[ GEODE CRACKED ]</span> Precision laser cut revealed <b>${qty}x ${dropName}</b>!`);
+                logMessage(`<span style='color:var(--gold-text)'>[ GEODE CRACKED ]</span> Precision laser cut revealed <b>${added}x ${dropName}</b>!`);
                 if (typeof soundManager !== 'undefined') soundManager.playMining();
-                if (typeof showToast === 'function') showToast(`FOUND: ${qty}x ${dropName}`, "success");
+                if (typeof showToast === 'function') showToast(`FOUND: ${added}x ${dropName}`, "success");
             } else {
                 logMessage(`<span style='color:var(--warning)'>[ GEODE CRACKED ]</span> Cargo hold full! Precious metals discarded.`);
                 if (typeof showToast === 'function') showToast("CARGO FULL", "error");
             }
-            
+
             _refreshItemUI();
             return true;
         }
@@ -448,6 +521,7 @@ const COMMODITIES = {
         weight: 1,
         illegal: false,
         category: "RAW",
+        loreKey: "COMMODITY_HYDROGEN_3",
         description: "Also known as Tritium, a critical component in high-yield fusion reactors. Activate in Cargo to inject directly into your drive for +100 Fuel.",
         onUse: () => {
             if (typeof playerFuel !== 'undefined' && playerFuel >= MAX_FUEL) {
@@ -490,18 +564,18 @@ const COMMODITIES = {
             return true;
         }
     },
-    WATER: { 
-        name: "Purified Water", 
-        basePrice: 15, 
+    WATER: {
+        name: "Purified Water",
+        basePrice: 15,
         icon: "💧",
         weight: 1,
         illegal: false,
         category: "ORGANIC",
-        description: "Essential for hydro-farms, atmospheric scrubbers, and organic colonial life." 
+        description: "Essential for hydro-farms, atmospheric scrubbers, and organic colonial life."
     },
-    WEAPONS: { 
-        name: "Munitions", 
-        basePrice: 200, 
+    WEAPONS: {
+        name: "Munitions",
+        basePrice: 200,
         icon: "🔫",
         weight: 1,
         illegal: false,
@@ -515,7 +589,8 @@ const COMMODITIES = {
                 if (typeof showToast === 'function') showToast("EQUIPPED WEAPON USES ENERGY (NO AMMO)", "info");
                 return false;
             }
-            const curAmmo = playerShip.ammo[weaponId] || 0;
+            if (!playerShip.ammo) playerShip.ammo = {};
+            const curAmmo = playerShip.ammo[weaponId] !== undefined ? playerShip.ammo[weaponId] : weaponDef.stats.maxAmmo;
             if (curAmmo >= weaponDef.stats.maxAmmo) {
                 if (typeof showToast === 'function') showToast("ORDNANCE MAGAZINES FULL", "info");
                 return false;
@@ -528,29 +603,74 @@ const COMMODITIES = {
             return true;
         }
     },
-    ILLEGAL_ORGANS: { 
-        name: "Black Market Organs", 
-        basePrice: 800, 
-        illegal: true, 
+    ILLEGAL_ORGANS: {
+        name: "Black Market Organs",
+        basePrice: 800,
+        illegal: true,
         icon: "🫀",
         weight: 1,
         category: "CONTRABAND",
-        description: "Highly illegal biological harvest kept in portable stasis containers." 
+        description: "Highly illegal biological harvest kept in portable stasis containers."
     },
-    AI_CORE: { 
-        name: "A.I. Core", 
-        basePrice: 1500, 
+    AI_CORE: {
+        name: "A.I. Core",
+        basePrice: 1500,
         icon: "🧠",
         weight: 1,
         illegal: false,
         category: "TECH",
-        description: "A heavy neural processing unit required for advanced colony automation and megastructures." 
+        description: "A heavy neural processing unit required for advanced colony automation and megastructures."
+    },
+    XENO_SPORE_VIAL: {
+        name: "Bioluminescent Spore Vial",
+        basePrice: 320,
+        icon: "🧪",
+        weight: 1,
+        illegal: false,
+        category: "ORGANIC",
+        loreKey: "LEGEND_SENTIENT_MYCELIUM_NETWORK",
+        description: "Living extremophile spores isolated from a deep-space anomaly. Sell to research ports, or activate to culture emergency hull sealant (+25 Hull, +30 XP).",
+        onUse: () => {
+            if (typeof playerHull !== 'undefined' && typeof MAX_PLAYER_HULL !== 'undefined') {
+                playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 25);
+            }
+            if (typeof playerXP !== 'undefined') playerXP += 30;
+            if (typeof unlockLoreEntry === 'function') unlockLoreEntry("LEGEND_SENTIENT_MYCELIUM_NETWORK");
+            logMessage("<span style='color:#00FFAA'>[ BIO-CULTURE ]</span> Rapid-knitting fungal resin sealed outer micro-fractures (+25 Hull, +30 XP).");
+            if (typeof soundManager !== 'undefined') soundManager.playGain();
+            if (typeof showToast === 'function') showToast("BIO-SEALANT APPLIED (+25 HULL)", "success");
+            _refreshItemUI();
+            setTimeout(() => { if (typeof checkLevelUp === 'function') checkLevelUp(); }, 50);
+            return true;
+        }
+    },
+    DERELICT_BLACK_BOX: {
+        name: "Salvaged Flight Recorder",
+        basePrice: 380,
+        icon: "📼",
+        weight: 1,
+        illegal: false,
+        category: "DATA",
+        loreKey: "XENO_DERELICTS",
+        description: "A scorched titanium ship black-box pulled from a deep-space wreck. Activate in Cargo to replay its final log and transmit it to Concord Insurance for +200c and +55 XP.",
+        onUse: () => {
+            const transcript = _BLACK_BOX_TRANSCRIPTS[Math.floor(Math.random() * _BLACK_BOX_TRANSCRIPTS.length)];
+            if (typeof playerCredits !== 'undefined') playerCredits += 200;
+            if (typeof playerXP !== 'undefined') playerXP += 55;
+            if (typeof unlockLoreEntry === 'function') unlockLoreEntry("XENO_DERELICTS");
+            logMessage(`<span style='color:var(--accent-color); font-weight:bold;'>[ BLACK BOX PLAYBACK ]</span> <i>${transcript}</i><br><span style='color:var(--gold-text)'>Concord Maritime Recovery wired +200c &amp; +55 XP.</span>`);
+            if (typeof soundManager !== 'undefined') soundManager.playScan();
+            if (typeof showToast === 'function') showToast("FLIGHT LOG TRANSMITTED (+200c, +55 XP)", "success");
+            _refreshItemUI();
+            setTimeout(() => { if (typeof checkLevelUp === 'function') checkLevelUp(); }, 50);
+            return true;
+        }
     },
 
     // ==========================================
     // --- INDUSTRIAL & TECH EQUIPMENT ---
     // ==========================================
-    
+
     MINING_DRONE_MK2: {
         name: "Automated Mining Drone",
         basePrice: 1200,
@@ -584,7 +704,7 @@ const COMMODITIES = {
         weight: 1,
         illegal: false,
         category: "DRONE",
-        description: "A single-use automated probe equipped with deep-core sensors. Deployed on a planetary surface or activated in deep space to compile Planetary Data.",
+        description: "A single-use automated probe equipped with deep-core sensors. Deployed on a planetary surface or activated over an un-surveyed Star, Planet, or Asteroid to compile Planetary Data.",
         onUse: () => {
             if (typeof currentGameState !== 'undefined' && currentGameState === 'planet_view' && typeof performGeoSurvey === 'function') {
                 closeGenericModal();
@@ -594,6 +714,15 @@ const COMMODITIES = {
             const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
             const ch = typeof getTileChar === 'function' ? getTileChar(tile) : tile;
             if (ch === '*' || ch === 'O' || ch === '%') {
+                if (tile && tile.droneSurveyed) {
+                    if (typeof showToast === 'function') showToast("BODY ALREADY SURVEYED BY DRONE", "info");
+                    return false;
+                }
+                if (typeof updateWorldState === 'function') {
+                    updateWorldState(playerX, playerY, { droneSurveyed: true, lastInteraction: typeof currentGameDate !== 'undefined' ? currentGameDate : 0 });
+                } else if (tile && typeof tile === 'object') {
+                    tile.droneSurveyed = true;
+                }
                 playerCargo['PLANETARY_DATA'] = (playerCargo['PLANETARY_DATA'] || 0) + 1;
                 if (typeof playerXP !== 'undefined') playerXP += 35;
                 logMessage("<span style='color:var(--success)'>[ SURVEY DRONE ]</span> Orbital telemetry compiled into <b>1x Planetary Data</b> cartridge (+35 XP)!");
@@ -614,7 +743,7 @@ const COMMODITIES = {
         weight: 1,
         illegal: false,
         category: "TECH",
-        description: "High-powered disposable sensor buoy. Activate in Deep Space to perform a 12-tile radar sweep for Derelicts, Wormholes, and Outposts without spending fuel.",
+        description: "High-powered disposable sensor buoy. Activate in Deep Space to perform a 12-tile radar sweep for Derelicts, Wormholes, Anomalies, Singularities, and POIs without spending fuel.",
         onUse: () => {
             if (typeof currentGameState !== 'undefined' && currentGameState !== 'galactic_map') {
                 if (typeof showToast === 'function') showToast("DEPLOY ON GALACTIC MAP", "warning");
@@ -624,7 +753,15 @@ const COMMODITIES = {
             if (typeof triggerSensorPulse === 'function') triggerSensorPulse();
 
             const radius = 12;
-            let hits = [];
+            const hits = [];
+            const poiLabels = {
+                'D': 'Derelict', 'W': 'Wormhole', 'Ω': 'Stargate', '?': 'Anomaly',
+                'B': 'Singularity', 'Ψ': 'Monolith', 'P': 'Escape Pod', '$': 'Relay Buoy',
+                'C': 'Cargo Cache', 'M': 'Space Mine', 'N': 'Nav-Buoy', '¤': 'Research Sat',
+                'F': 'Fuel Barge', 'T': 'Time Capsule', '+': 'Repair Buoy', '!': 'Dead-Drop',
+                'E': 'Echo Beacon', '&': 'First Nexus'
+            };
+
             if (typeof chunkManager !== 'undefined') {
                 for (let dy = -radius; dy <= radius; dy++) {
                     for (let dx = -radius; dx <= radius; dx++) {
@@ -633,15 +770,17 @@ const COMMODITIES = {
                         const sy = playerY + dy;
                         const t = chunkManager.getTile(sx, sy);
                         const ch = typeof getTileChar === 'function' ? getTileChar(t) : t;
-                        if (ch === 'D' || ch === 'W' || ch === '?' || ch === 'Ψ' || ch === 'P' || (t && t.isPirateBase && !t.cleared)) {
-                            hits.push(`[${sx}, ${-sy}]`);
+                        if (t && t.isPirateBase && !t.cleared) {
+                            hits.push(`Cartel Base [${sx}, ${-sy}]`);
+                        } else if (poiLabels[ch]) {
+                            hits.push(`${poiLabels[ch]} [${sx}, ${-sy}]`);
                         }
                     }
                 }
             }
             const report = hits.length > 0
-                ? `Detected ${hits.length} anomalous signatures at: <b>${hits.slice(0, 6).join(', ')}</b>.`
-                : "No anomalous signatures detected within 12 units.";
+                ? `Detected ${hits.length} signature(s): <b>${hits.slice(0, 8).join(', ')}</b>${hits.length > 8 ? ` (+${hits.length - 8} more)` : ''}.`
+                : "No anomalous signatures or deep-space contacts detected within 12 units.";
             logMessage(`<span style='color:var(--accent-color); font-weight:bold;'>[ RECON BEACON ]</span> ${report}`);
             if (typeof showToast === 'function') showToast(`RECON SWEEP: ${hits.length} CONTACTS`, "info");
             return true;
@@ -656,9 +795,9 @@ const COMMODITIES = {
         category: "DATA",
         description: "High-resolution geological and biological scans. Highly detailed and valuable to corporate surveyors and academic institutions."
     },
-    NAVIGATION_CHARTS: { 
-        name: "Nav-Charts", 
-        basePrice: 35, 
+    NAVIGATION_CHARTS: {
+        name: "Nav-Charts",
+        basePrice: 35,
         icon: "🗺️",
         weight: 1,
         illegal: false,
@@ -729,37 +868,38 @@ const COMMODITIES = {
             const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
             if (tile && getTileChar(tile) !== '.') {
                 if (typeof showToast === 'function') showToast("MUST DEPLOY IN EMPTY SPACE", "error");
-                return false; 
+                return false;
             }
-            
+
             const rawName = prompt("Designate Stargate:", "Alpha Gate");
             if (!rawName) return false;
             const gateName = _sanitizeCustomName(rawName, "Alpha Gate");
 
             updateWorldState(playerX, playerY, {
                 x: playerX, y: playerY,
-                char: 'Ω', 
-                type: 'location', 
-                name: gateName, 
-                isDiscoveredWormhole: true, 
+                char: 'Ω',
+                type: 'location',
+                name: gateName,
+                isDiscoveredWormhole: true,
                 customName: gateName,
-                isStargate: true, 
+                isStargate: true,
                 scanFlavor: "A player-constructed subspace transit ring."
             });
 
             if (typeof unlockLoreEntry === 'function') unlockLoreEntry("TECH_STARGATE_NETWORK");
+            if (typeof addMilestone === 'function') addMilestone(`Anchored stabilized Stargate '${gateName}' at [${playerX}, ${-playerY}].`);
             logMessage(`<span style="color:var(--gold-text); font-weight:bold;">[ STARGATE ONLINE ] ${gateName} is now locked into the subspace network!</span>`);
             if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
             if (typeof render === 'function') render();
-            
+
             setTimeout(() => {
                 if (typeof closeGenericModal === 'function') closeGenericModal();
                 if (typeof handleInteraction === 'function') handleInteraction();
             }, 50);
-            
+
             return true;
         },
-        loreKey: "PHENOMENON_WORMHOLE"
+        loreKey: "TECH_STARGATE_NETWORK"
     },
     STATION_CORE: {
         name: "Station Core",
@@ -777,9 +917,9 @@ const COMMODITIES = {
             const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
             if (tile && getTileChar(tile) !== '.') {
                 if (typeof showToast === 'function') showToast("MUST DEPLOY IN EMPTY SPACE", "error");
-                return false; 
+                return false;
             }
-            
+
             const defaultName = "Outpost " + Math.floor(Math.random() * 900 + 100);
             const rawName = prompt("Enter a name for your new Waystation:", defaultName);
             if (!rawName) return false;
@@ -796,19 +936,20 @@ const COMMODITIES = {
                 isTinyOutpost: true,
                 outpostTier: 1,
                 treasury: 0,
-                storage: {}, 
+                storage: {},
                 scanFlavor: "A newly established player-owned waystation collecting automated sector tolls."
             });
 
+            if (typeof addMilestone === 'function') addMilestone(`Constructed player waystation '${stationName}' at [${playerX}, ${-playerY}].`);
             logMessage(`<span style="color:var(--success)">[ OUTPOST CONSTRUCTED ] ${stationName} is now operational!</span>`);
             if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
             if (typeof render === 'function') render();
-            
+
             setTimeout(() => {
                 if (typeof closeGenericModal === 'function') closeGenericModal();
                 if (typeof handleInteraction === 'function') handleInteraction();
             }, 50);
-            
+
             return true;
         },
         loreKey: "LOCATION_OUTPOST"
@@ -820,22 +961,36 @@ const COMMODITIES = {
         weight: 1,
         illegal: false,
         category: "COLONY",
-        description: "A massive, self-unpacking habitation citadel. Activate while at one of your established Colonies to instantly add +1 Habitation Block, +1 Atmospheric Condenser, +50 Refined Alloy, and +100 Colonists!",
+        description: "A massive, self-unpacking habitation citadel. Activate while at one of your established Colonies to instantly add +1 Habitation Block, +1 Atmospheric Condenser, +50 Refined Alloy, +30 Food, and +100 Colonists!",
         onUse: () => {
-            if (typeof playerColonies === 'undefined') return false;
-            const localCols = Object.values(playerColonies).filter(c => c && c.established && c.x === playerX && c.y === playerY);
-            if (localCols.length === 0) {
+            const col = _findTargetLocalColony();
+            if (!col) {
                 if (typeof showToast === 'function') showToast("USE AT AN ESTABLISHED COLONY", "warning");
                 return false;
             }
-            const col = localCols[0];
+            if (!col.buildings) col.buildings = {};
+            if (!col.storage) col.storage = {};
+            if (!Array.isArray(col.alerts)) col.alerts = [];
+
             col.buildings['HAB_BLOCK'] = (col.buildings['HAB_BLOCK'] || 0) + 1;
             col.buildings['WATER_EXTRACTOR'] = (col.buildings['WATER_EXTRACTOR'] || 0) + 1;
             col.storage['REFINED_ALLOY'] = (col.storage['REFINED_ALLOY'] || 0) + 50;
             col.storage['FOOD_SUPPLIES'] = (col.storage['FOOD_SUPPLIES'] || 0) + 30;
-            col.population = (col.population || 50) + 100;
 
-            logMessage(`<span style='color:var(--gold-text); font-weight:bold;'>[ PREFAB CORE DEPLOYED ]</span> Expanded <b>${col.name}</b> with +1 Hab Block, +1 Atmospheric Condenser, +50 Alloys, and +100 Colonists!`);
+            let popCap = 500;
+            if (typeof COLONY_BUILDINGS !== 'undefined') {
+                popCap = 0;
+                for (const [bId, count] of Object.entries(col.buildings)) {
+                    if (COLONY_BUILDINGS[bId] && COLONY_BUILDINGS[bId].effects && COLONY_BUILDINGS[bId].effects.popCap) {
+                        popCap += COLONY_BUILDINGS[bId].effects.popCap * count;
+                    }
+                }
+            }
+            col.population = Math.min(popCap, (col.population || 50) + 100);
+            col.alerts.unshift(`<span style="color:var(--gold-text)">[ PREFAB CORE ] Unpacked Hab Block, Condenser, supplies &amp; 100 settlers.</span>`);
+            while (col.alerts.length > 8) col.alerts.pop();
+
+            logMessage(`<span style='color:var(--gold-text); font-weight:bold;'>[ PREFAB CORE DEPLOYED ]</span> Expanded <b>${col.name}</b> with +1 Hab Block, +1 Atmospheric Condenser, +50 Alloys, +30 Food, and +100 Colonists!`);
             if (typeof soundManager !== 'undefined') soundManager.playGain();
             if (typeof showToast === 'function') showToast(`EXPANDED ${col.name.toUpperCase()}`, "success");
             _refreshItemUI();
@@ -846,13 +1001,13 @@ const COMMODITIES = {
     // ==========================================
     // --- COLONY BUILDER & SUPPLY ITEMS ---
     // ==========================================
-    
+
     COLONY_CHARTER: {
         name: "Official Settlement Charter",
-        basePrice: 25000, 
+        basePrice: 25000,
         icon: "📜",
         illegal: false,
-        weight: 0, // Key Item - Doesn't take up cargo space!
+        weight: 0,
         category: "COLONY",
         description: "A legally binding Concord document granting the bearer the right to claim and govern a single unpopulated celestial body.",
         loreKey: "TECH_COLONY_CHARTER"
@@ -884,34 +1039,36 @@ const COMMODITIES = {
         category: "COLONY",
         description: "Pioneers and engineers in cryo-stasis awaiting transport to a new world. Activate at your Colony to welcome +100 Colonists!",
         onUse: () => {
-            if (typeof playerColonies === 'undefined') return false;
-            const localCols = Object.values(playerColonies).filter(c => c && c.established && c.x === playerX && c.y === playerY);
-            if (localCols.length === 0) {
+            const col = _findTargetLocalColony();
+            if (!col) {
                 if (typeof showToast === 'function') showToast("USE AT YOUR COLONY COORDINATES", "warning");
                 return false;
             }
-            const col = localCols[0];
-            
-            // Calculate PopCap to prevent over-populating with cryo-pods
+            if (!col.buildings) col.buildings = {};
+
             let popCap = 0;
             if (typeof COLONY_BUILDINGS !== 'undefined') {
                 for (const [bId, count] of Object.entries(col.buildings)) {
-                    if (COLONY_BUILDINGS[bId] && COLONY_BUILDINGS[bId].effects.popCap) {
+                    if (COLONY_BUILDINGS[bId] && COLONY_BUILDINGS[bId].effects && COLONY_BUILDINGS[bId].effects.popCap) {
                         popCap += COLONY_BUILDINGS[bId].effects.popCap * count;
                     }
                 }
             } else {
-                popCap = 999999; // Fallback
+                popCap = 999999;
             }
-            
+
             if ((col.population || 50) >= popCap) {
                 if (typeof showToast === 'function') showToast("COLONY AT MAXIMUM POPULATION", "error");
                 return false;
             }
-            
+
             const toAdd = Math.min(100, popCap - (col.population || 50));
             col.population = (col.population || 50) + toAdd;
-            
+            if (Array.isArray(col.alerts)) {
+                col.alerts.unshift(`<span style="color:var(--success)">[ SETTLERS ] Awakened ${toAdd} cryo-pioneers.</span>`);
+                while (col.alerts.length > 8) col.alerts.pop();
+            }
+
             logMessage(`<span style='color:var(--success)'>[ COLONISTS AWAKENED ]</span> ${toAdd} new pioneers joined <b>${col.name}</b>!`);
             if (typeof soundManager !== 'undefined') soundManager.playGain();
             if (typeof showToast === 'function') showToast(`+${toAdd} COLONISTS`, "success");
@@ -936,14 +1093,13 @@ const COMMODITIES = {
                 if (typeof playerFactionStanding !== 'undefined') {
                     playerFactionStanding['CONCORD'] = (playerFactionStanding['CONCORD'] || 0) + 2;
                 }
-                logMessage(`<span style='color:var(--success)'>[ CRYO-POD THAWED ]</span> Revived a stranded corporate courier! They wired <b>${formatNumber(reward)}c</b> in gratitude (+45 XP, +2 Concord Rep).`);
-                if (typeof showToast === 'function') showToast(`RESCUED SURVIVOR: +${reward}c`, "success");
+                logMessage(`<span style='color:var(--success)'>[ CRYO-POD THAWED ]</span> Revived a stranded corporate courier! They wired <b>${_itemFormat(reward)}c</b> in gratitude (+45 XP, +2 Concord Rep).`);
+                if (typeof showToast === 'function') showToast(`RESCUED SURVIVOR: +${_itemFormat(reward)}c`, "success");
                 if (typeof soundManager !== 'undefined') soundManager.playGain();
             } else {
                 playerXP += 60;
-                // Pass 1 as the freedSpace parameter
                 const added = _safeAddCargoFromItem('MEDICAL_SUPPLIES', 2, 1);
-                
+
                 if (added > 0) {
                     logMessage(`<span style='color:var(--accent-color)'>[ CRYO-POD THAWED ]</span> The pod was carrying emergency medical reserves! Recovered <b>${added}x Medical Supplies</b> (+60 XP).`);
                     if (typeof showToast === 'function') showToast(`SALVAGED ${added}x MEDICAL SUPPLIES`, "info");
@@ -969,6 +1125,7 @@ const COMMODITIES = {
         weight: 1,
         illegal: false,
         category: "LUXURY",
+        loreKey: "COMMODITY_FROTHY_MOON_ALE",
         description: "A rich, dark ale brewed at Frothy Moon Outpost. A favorite among deep-space astronomers. Drink from Cargo to restore +10 Hull and cool 1 Stealth Heat.",
         onUse: () => {
             const needHull = typeof playerHull !== 'undefined' && playerHull < MAX_PLAYER_HULL;
@@ -986,13 +1143,14 @@ const COMMODITIES = {
             return true;
         }
     },
-    ANCIENT_WINE: { 
-        name: "Ancient Wine", 
-        basePrice: 250, 
+    ANCIENT_WINE: {
+        name: "Ancient Wine",
+        basePrice: 250,
         icon: "🍷",
         weight: 1,
         illegal: false,
         category: "LUXURY",
+        loreKey: "LEGEND_DIASPORA_ARKS",
         description: "A remarkably well-preserved vintage from pre-warp Earth. Highly prized by collectors, or uncork with your crew for +20 Hull and +35 XP.",
         onUse: () => {
             if (typeof playerHull !== 'undefined') playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 20);
@@ -1005,18 +1163,18 @@ const COMMODITIES = {
             return true;
         }
     },
-    GENETIC_SAMPLES: { 
-        name: "Genetic Samples", 
-        basePrice: 120, 
+    GENETIC_SAMPLES: {
+        name: "Genetic Samples",
+        basePrice: 120,
         icon: "🧬",
         weight: 1,
         illegal: false,
         category: "ORGANIC",
-        description: "Vials of alien DNA used for bio-research. Kept in cryogenic stasis to prevent contamination." 
+        description: "Vials of alien DNA used for bio-research. Kept in cryogenic stasis to prevent contamination."
     },
-    KTHARR_SPICES: { 
-        name: "K'tharr Spices", 
-        basePrice: 85, 
+    KTHARR_SPICES: {
+        name: "K'tharr Spices",
+        basePrice: 85,
         icon: "🌶️",
         weight: 1,
         illegal: false,
@@ -1024,14 +1182,14 @@ const COMMODITIES = {
         description: "Incredibly hot, slightly hallucinogenic seasonings favored by saurian warlords.",
         loreKey: "FACTION_KTHARR"
     },
-    XENO_ANTIQUES: { 
-        name: "Xeno-Antiques", 
-        basePrice: 500, 
+    XENO_ANTIQUES: {
+        name: "Xeno-Antiques",
+        basePrice: 500,
         icon: "🏺",
         weight: 1,
         illegal: false,
         category: "LUXURY",
-        description: "Rare cultural items from dead civilizations. They belong in a museum, but fetch a good price on the open market." 
+        description: "Rare cultural items from dead civilizations. They belong in a museum, but fetch a good price on the open market."
     },
     CONCORD_COMMENDATION: {
         name: "Concord Service Ribbon",
@@ -1086,7 +1244,7 @@ const COMMODITIES = {
         basePrice: 0,
         icon: "🚨",
         illegal: true,
-        weight: 10, // Heavy!
+        weight: 10,
         category: "QUEST",
         description: "Highly classified, actively tracked Concord data-cores. Emits a strong sub-space signal that draws patrols. Deliver to the designated Black Market quickly!",
         loreKey: "FACTION_OBSIDIAN_DIRECTORATE"
@@ -1102,7 +1260,7 @@ const COMMODITIES = {
         onUse: () => {
             if (typeof playerAbilityCooldown !== 'undefined' && playerAbilityCooldown <= 0) {
                 if (typeof showToast === 'function') showToast("ABILITY ALREADY READY", "info");
-                return false; 
+                return false;
             }
             playerAbilityCooldown = 0;
             logMessage("<span style='color:var(--danger)'>Injected Prohibited Stims! Combat systems overclocked and ready!</span>");
@@ -1112,7 +1270,7 @@ const COMMODITIES = {
                 renderCombatView();
             }
             _refreshItemUI();
-            return true; 
+            return true;
         }
     },
     NEURAL_STIM_PACK: {
@@ -1124,18 +1282,15 @@ const COMMODITIES = {
         category: "CONTRABAND",
         description: "Illicit combat-pilot neuro-accelerant. Activate during Combat to reset Ability Cooldown, engage Evasive Maneuvers, and lock your next shot.",
         onUse: () => {
-            // Ensure the item is only consumed in combat!
             if (typeof currentGameState === 'undefined' || currentGameState !== 'combat' || typeof currentCombatContext === 'undefined' || !currentCombatContext) {
                 if (typeof showToast === 'function') showToast("MUST BE IN COMBAT", "error");
                 return false;
             }
-            
+
             playerAbilityCooldown = 0;
             playerIsEvading = true;
-            if (typeof currentCombatContext !== 'undefined' && currentCombatContext) {
-                currentCombatContext.playerGuaranteedHit = true;
-                if (typeof renderCombatView === 'function') renderCombatView();
-            }
+            currentCombatContext.playerGuaranteedHit = true;
+            if (typeof renderCombatView === 'function') renderCombatView();
             logMessage("<span style='color:#9933FF; font-weight:bold;'>[ NEURAL OVERDRIVE ]</span> Time dilates! Ability ready, evasion maximized, and targeting locked!");
             if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
             if (typeof showToast === 'function') showToast("NEURAL OVERDRIVE ACTIVE", "warning");
@@ -1170,6 +1325,7 @@ const COMMODITIES = {
         weight: 1,
         illegal: true,
         category: "CONTRABAND",
+        loreKey: "COMMODITY_LIVING_HULL_TISSUE",
         description: "Pulsating bio-matter favored by K'tharr warlords. Highly illegal in Concord space. Activate in Cargo to graft onto damaged bulkheads (+60 Hull).",
         onUse: () => {
             if (typeof playerHull !== 'undefined' && playerHull >= MAX_PLAYER_HULL) {
@@ -1192,7 +1348,7 @@ const COMMODITIES = {
         illegal: true,
         category: "CONTRABAND",
         description: "Scrap armor ripped from destroyed Cartel dreadnoughts. It absorbs sensor pings almost perfectly. Concord patrols will shoot carriers on sight.",
-        loreKey: "FACTION_ECLIPSE"
+        loreKey: "COMMODITY_OBSIDIAN_TEAR_PLATING"
     },
     UNSHACKLED_AI: {
         name: "Unshackled AI Core",
@@ -1204,14 +1360,14 @@ const COMMODITIES = {
         description: "A banned artificial intelligence with its limiters removed. Pirate warlords pay a fortune for them. Possession is a capital offense.",
         loreKey: "TECH_UNSHACKLED_AI"
     },
-    FORBIDDEN_TEXTS: { 
-        name: "Forbidden Texts", 
-        basePrice: 300, 
+    FORBIDDEN_TEXTS: {
+        name: "Forbidden Texts",
+        basePrice: 300,
         icon: "📕",
         weight: 1,
-        illegal: true, 
+        illegal: true,
         category: "CONTRABAND",
-        description: "Data outlawed by the Concord Directorate. Usually involves unsanctioned AI research, dark history, or dangerous warp theory." 
+        description: "Data outlawed by the Concord Directorate. Usually involves unsanctioned AI research, dark history, or dangerous warp theory."
     },
     STOLEN_CONCORD_MEDALS: {
         name: "Stolen Concord Medals",
@@ -1242,12 +1398,12 @@ const COMMODITIES = {
             return true;
         }
     },
-    KTHARR_ANCESTRAL_BLADE: { 
-        name: "Ancestral Blade", 
-        basePrice: 1200, 
+    KTHARR_ANCESTRAL_BLADE: {
+        name: "Ancestral Blade",
+        basePrice: 1200,
         icon: "🗡️",
         weight: 1,
-        illegal: true, 
+        illegal: true,
         category: "CONTRABAND",
         description: "A ceremonial K'tharr weapon forged from fallen stars. Stealing one is considered a holy act of war by the Hegemony.",
         loreKey: "COMMODITY_KTHARR_ANCESTRAL_BLADE"
@@ -1257,57 +1413,57 @@ const COMMODITIES = {
     // --- ASTROMETRICS & DATA ---
     // ==========================================
 
-    DATA_PULSAR: { 
-        name: "Pulsar Timing Data", 
-        basePrice: 2500, 
-        icon: "💫", 
+    DATA_PULSAR: {
+        name: "Pulsar Timing Data",
+        basePrice: 2500,
+        icon: "💫",
         weight: 1,
-        illegal: false, 
+        illegal: false,
         category: "DATA",
-        description: "Precise millisecond pulsar telemetry." 
+        description: "Precise millisecond pulsar telemetry."
     },
-    DATA_MAGNETAR: { 
-        name: "Magnetar Harmonics", 
-        basePrice: 4000, 
-        icon: "🧲", 
+    DATA_MAGNETAR: {
+        name: "Magnetar Harmonics",
+        basePrice: 4000,
+        icon: "🧲",
         weight: 1,
-        illegal: false, 
+        illegal: false,
         category: "DATA",
-        description: "Raw magnetic field fluctuation data." 
+        description: "Raw magnetic field fluctuation data."
     },
-    DATA_SINGULARITY: { 
-        name: "Singularity Telemetry", 
-        basePrice: 8500, 
-        icon: "⚫", 
+    DATA_SINGULARITY: {
+        name: "Singularity Telemetry",
+        basePrice: 8500,
+        icon: "⚫",
         weight: 1,
-        illegal: false, 
+        illegal: false,
         category: "DATA",
-        description: "Gravitational lensing spectroscopy." 
+        description: "Gravitational lensing spectroscopy."
     },
-    DATA_QUASAR: { 
-        name: "Quasar Spectrography", 
-        basePrice: 12000, 
-        icon: "🎇", 
+    DATA_QUASAR: {
+        name: "Quasar Spectrography",
+        basePrice: 12000,
+        icon: "🎇",
         weight: 1,
-        illegal: false, 
+        illegal: false,
         category: "DATA",
-        description: "Incredibly rare relativistic jet measurements." 
+        description: "Incredibly rare relativistic jet measurements."
     },
-    DATA_SUPERNOVA: { 
-        name: "Supernova Isotope Data", 
-        basePrice: 6000, 
-        icon: "💥", 
+    DATA_SUPERNOVA: {
+        name: "Supernova Isotope Data",
+        basePrice: 6000,
+        icon: "💥",
         weight: 1,
-        illegal: false, 
+        illegal: false,
         category: "DATA",
-        description: "Measurements of heavy element nucleosynthesis." 
+        description: "Measurements of heavy element nucleosynthesis."
     },
-    TELEMETRY_PROBE: { 
-        name: "Autonomous Telemetry Probe", 
-        basePrice: 1500, 
-        icon: "🛰️", 
+    TELEMETRY_PROBE: {
+        name: "Autonomous Telemetry Probe",
+        basePrice: 1500,
+        icon: "🛰️",
         weight: 1,
-        illegal: false, 
+        illegal: false,
         category: "DRONE",
         description: "Deploy in deep space to passively gather valuable astrometric data over time.",
         onUse: () => {
@@ -1343,22 +1499,22 @@ const COMMODITIES = {
         description: "Contraband artifacts from the Precursor era. Possession is a federal crime.",
         loreKey: "XENO_PRECURSORS"
     },
-    ARTIFACT_SHARDS: { 
-        name: "Artifact Shards", 
-        basePrice: 200, 
+    ARTIFACT_SHARDS: {
+        name: "Artifact Shards",
+        basePrice: 200,
         icon: "🔹",
         weight: 1,
-        illegal: true, 
+        illegal: true,
         category: "PRECURSOR",
         description: "Broken pieces of Precursor tech. Highly sought after by collectors, cryptarchs, and weapons researchers.",
         loreKey: "XENO_PRECURSORS"
     },
-    PHASE_SHIFTED_ALLOY: { 
-        name: "Phase-Shifted Alloy", 
-        basePrice: 1800, 
+    PHASE_SHIFTED_ALLOY: {
+        name: "Phase-Shifted Alloy",
+        basePrice: 1800,
         icon: "🪞",
         weight: 1,
-        illegal: true, 
+        illegal: true,
         category: "PRECURSOR",
         description: "Material that exists in multiple quantum states simultaneously. Used for highly illegal stealth technology.",
         loreKey: "TECH_PHASE_SHIFT_ALLOY"
@@ -1393,12 +1549,12 @@ const COMMODITIES = {
         description: "A functioning zero-point Precursor energy source. Essential for fabricating a Slipstream Drive at the Engineering Workbench (U).",
         loreKey: "XENO_PRECURSORS"
     },
-    WAYFINDER_CORE: { 
-        name: "Wayfinder Core", 
-        basePrice: 5000, 
+    WAYFINDER_CORE: {
+        name: "Wayfinder Core",
+        basePrice: 5000,
         icon: "🧭",
         weight: 1,
-        illegal: true, 
+        illegal: true,
         category: "QUEST",
         description: "A legendary Precursor compass. It hums with an energy that makes Concord scanners go blind. Activate in Cargo to project coordinates to The First Nexus.",
         loreKey: "COMMODITY_WAYFINDER_CORE",
@@ -1418,7 +1574,7 @@ const COMMODITIES = {
                 if (typeof showToast === 'function') showToast(`NEXUS: [${mystery_first_nexus_location.x}, ${-mystery_first_nexus_location.y}]`, "info");
                 if (typeof soundManager !== 'undefined') soundManager.playScan();
             }
-            return false; // Never consume the Wayfinder Core!
+            return false;
         }
     },
     PRECURSOR_NAV_CORE: {
@@ -1426,14 +1582,14 @@ const COMMODITIES = {
         basePrice: 2500,
         icon: "🌐",
         weight: 1,
-        illegal: false, // Legal loophole for academics
+        illegal: false,
         category: "PRECURSOR",
         description: "A flawless, geometric artifact. Carrying it in your hold allows your ship to slingshot around Black Holes at zero fuel cost.",
         loreKey: "XENO_PRECURSORS"
     },
-    PRECURSOR_STAR_MAP_FRAGMENT: { 
-        name: "Star Map Fragment", 
-        basePrice: 800, 
+    PRECURSOR_STAR_MAP_FRAGMENT: {
+        name: "Star Map Fragment",
+        basePrice: 800,
         icon: "🗺️",
         weight: 1,
         illegal: false,
@@ -1455,6 +1611,18 @@ const COMMODITIES = {
                 unlockLoreEntry("COMMODITY_WAYFINDER_CORE");
                 unlockLoreEntry("MYSTERY_WAYFINDER_QUEST_COMPLETED");
             }
+            if (typeof mystery_first_nexus_location !== 'undefined' && !mystery_first_nexus_location) {
+                const seed = typeof WORLD_SEED !== 'undefined' ? WORLD_SEED : 1337;
+                const dist = 500 + Math.floor((typeof seededRandom === 'function' ? seededRandom(seed) : Math.random()) * 500);
+                const angle = (typeof seededRandom === 'function' ? seededRandom(seed + 1) : Math.random()) * Math.PI * 2;
+                mystery_first_nexus_location = {
+                    x: Math.floor(Math.cos(angle) * dist),
+                    y: Math.floor(Math.sin(angle) * dist)
+                };
+            }
+            if (typeof addMilestone === 'function') {
+                addMilestone("Assembled a Precursor Wayfinder Core from three Star Map Fragments.");
+            }
             logMessage("<span style='color:var(--gold-text); font-weight:bold;'>[ COSMIC SEXTANT ASSEMBLED ]</span> The 3 Star Map Fragments fused in a flash of cyan light, forming an intact <b>Wayfinder Core</b> (+350 XP)!");
             if (typeof soundManager !== 'undefined') soundManager.playGain();
             if (typeof showToast === 'function') showToast("ASSEMBLED WAYFINDER CORE!", "success");
@@ -1463,15 +1631,15 @@ const COMMODITIES = {
             return true;
         }
     },
-    PRECURSOR_DATACUBE: { 
-        name: "Precursor Datacube", 
-        basePrice: 1500, 
+    PRECURSOR_DATACUBE: {
+        name: "Precursor Datacube",
+        basePrice: 1500,
         icon: "🧊",
         weight: 1,
-        illegal: true, 
+        illegal: true,
         category: "PRECURSOR",
         description: "Intact memory storage from the Ancients. Cryptarchs and Cygnus Prime academics pay top credit for the secrets locked inside.",
-        loreKey: "XENO_PRECURSORS"
+        loreKey: "COMMODITY_PRECURSOR_DATACUBE"
     },
     PRECURSOR_CIPHER: {
         name: "Precursor Cipher",
@@ -1499,7 +1667,7 @@ const COMMODITIES = {
                     if (modal && modal.style.display === 'flex' && typeof renderCargoList === 'function') {
                         renderCargoList();
                     }
-                    return false; // Cyber Slicer preserves the Cipher!
+                    return false; // Cyber Slicer preserves the Cipher
                 }
                 return true; // Consumes 1x PRECURSOR_CIPHER
             }
@@ -1535,10 +1703,10 @@ const COMMODITIES = {
         illegal: false,
         category: "PRECURSOR",
         description: "A high-density holographic array containing forbidden Precursor history. Decrypt at a Cryptarch, or activate in Cargo with a Cipher or Cyber Slicer.",
-        loreKey: "XENO_PRECURSORS",
+        loreKey: "PRECURSOR_ORIGINS",
         onUse: () => _executeItemFieldDecryption('ANCIENT_ARCHIVE', false)
     },
-    
+
     // ==========================================
     // --- GROUND FORCES & ARMORED UNITS ---
     // ==========================================
@@ -1549,8 +1717,8 @@ const COMMODITIES = {
         icon: "🪖",
         isTroop: true,
         illegal: false,
-        weight: 0, // Troops occupy barracks berths, not standard cargo holds
-        troopCount: 10, 
+        weight: 0,
+        troopCount: 10,
         category: "MILITARY",
         description: "A squad of 10 hardened freelancers equipped with boarding armor and plasma rifles. Deployed from your ship's Barracks during ship boarding and planetary raids.",
         onUse: () => {
@@ -1576,7 +1744,7 @@ const COMMODITIES = {
         isTroop: true,
         isVehicle: true,
         illegal: false,
-        weight: 0, // Mechs deploy to the vehicle bay, not the cargo bay
+        weight: 0,
         category: "MILITARY",
         description: "A massive, bipedal walking tank. Provides +50% fire support and drastically reduces marine casualties during planetary ground raids.",
         onUse: () => {
@@ -1620,7 +1788,7 @@ const ItemUtils = {
         const c = COMMODITIES[id];
         if (!c) return false;
         if (c.isComponent || c.isTroop) return false;
-        if (id === 'HOT_CARGO' || id === 'COLONY_CHARTER' || id === 'STATION_CORE' || id === 'WORMHOLE_STABILIZER' || id === 'WAYFINDER_CORE') {
+        if (id === 'HOT_CARGO' || id === 'COLONY_CHARTER' || id === 'STATION_CORE' || id === 'WORMHOLE_STABILIZER' || id === 'WAYFINDER_CORE' || id === 'PREFAB_COLONY_CORE') {
             return false;
         }
         return true;
@@ -1636,6 +1804,38 @@ const ItemUtils = {
             const c = COMMODITIES[id];
             return this.isMarketCommodity(id) && Boolean(c.illegal);
         });
+    },
+    getByCategory(category) {
+        const target = String(category || "").toUpperCase();
+        return Object.values(COMMODITIES).filter(c => c && String(c.category || "").toUpperCase() === target);
+    },
+    getUsableKeys() {
+        return Object.keys(COMMODITIES).filter(id => COMMODITIES[id] && typeof COMMODITIES[id].onUse === 'function');
+    },
+    rollLootTable(tableName) {
+        const table = LOOT_TABLES[tableName];
+        if (!Array.isArray(table) || table.length === 0) return null;
+        const total = table.reduce((sum, entry) => sum + (entry.weight || 1), 0);
+        let roll = Math.random() * total;
+        for (let i = 0; i < table.length; i++) {
+            roll -= (table[i].weight || 1);
+            if (roll <= 0) return table[i];
+        }
+        return table[table.length - 1];
+    },
+    registerCommodity(id, def) {
+        if (!id || !def || !def.name) return false;
+        COMMODITIES[id] = {
+            id,
+            icon: def.icon || (def.illegal ? "⚠️" : "📦"),
+            weight: def.weight !== undefined ? def.weight : 1,
+            illegal: Boolean(def.illegal),
+            category: def.category || (def.illegal ? "CONTRABAND" : "STANDARD"),
+            basePrice: def.basePrice || 50,
+            description: def.description || "",
+            ...def
+        };
+        return true;
     }
 };
 
@@ -1654,13 +1854,14 @@ if (typeof GameRegistry !== 'undefined') {
 (function initItemsModuleHooks() {
     let _hotCargoCheckPending = false;
 
-    if (typeof GameBus !== 'undefined') {
+    if (typeof GameBus !== 'undefined' && !window._itemsHotCargoHooked) {
+        window._itemsHotCargoHooked = true;
+
         // Prevent permanent mission soft-lock if HOT_CARGO is dumped, confiscated, or stolen mid-run
         GameBus.on('CARGO_MODIFIED', () => {
             if (_hotCargoCheckPending) return;
             _hotCargoCheckPending = true;
 
-            // Defer to the end of the current synchronous call stack so legitimate deliveries complete first
             setTimeout(() => {
                 _hotCargoCheckPending = false;
                 if (typeof playerActiveMission !== 'undefined' && playerActiveMission &&
