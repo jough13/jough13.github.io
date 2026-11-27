@@ -357,7 +357,7 @@ function renderPlanetView() {
         openPlanetView(location);
     }
     
-    if (typeof saveGame === 'function') saveGame(); // Lock in the loot!
+    if (typeof autoSaveGame === 'function') autoSaveGame(); // Lock in the loot!
 }
 
  /**
