@@ -5466,12 +5466,28 @@ function performSave(saveType) {
 
 // --- GAME OVER LOGIC ---
 
+function _clearActiveModalsAndEncounters() {
+    window.activeHostileEncounter = false;
+    currentEncounterContext = null;
+    anomalyContext = null;
+    boardingContext = null;
+    if (typeof raidContext !== 'undefined') raidContext = null;
+    if (typeof pendingExtortionEnemy !== 'undefined') pendingExtortionEnemy = null;
+
+    if (typeof closeGenericModal === 'function') closeGenericModal();
+    if (typeof closeStationView === 'function') closeStationView();
+    if (typeof closeXerxesView === 'function') closeXerxesView();
+
+    const confirmOverlay = document.getElementById('confirmationOverlay');
+    if (confirmOverlay) confirmOverlay.style.display = 'none';
+}
+
 function triggerGameOver(reason) {
-    // 1. Stop the game loop / interaction
+    // 1. Force-close any locked encounter/modal overlays before showing Game Over
+    _clearActiveModalsAndEncounters();
+
+    // 2. Stop the game loop / interaction
     changeGameState(GAME_STATES.GAME_OVER);
-    
-    // 2. Calculate Penalty (10% XP and 25% Credits)
-    const creditPenalty = Math.floor(playerCredits * 0.25);
     
     // 3. Update UI
     document.getElementById('deathReason').innerHTML = `Cause of Death: <span style="color:#ff5555">${reason}</span>`;
@@ -5483,6 +5499,9 @@ function triggerGameOver(reason) {
 }
 
 function respawnPlayer() {
+    // 0. Guarantee no locked encounter or stale modal survives respawn
+    _clearActiveModalsAndEncounters();
+
     // 1. Apply Penalty
     playerCredits = Math.floor(playerCredits * 0.75);
     playerXP = Math.max(0, playerXP - 100); 
@@ -5728,26 +5747,26 @@ function loadGameData(jsonString) {
 
         // --- 7. RE-INJECT ACTIVE BOUNTY SHIP ---
         if (playerActiveBounty) {
-            if (typeof activeEnemies !== 'undefined') {
+            if (typeof spawnBountyEntityOnMap === 'function') {
+                spawnBountyEntityOnMap(playerActiveBounty);
+            } else if (typeof activeEnemies !== 'undefined') {
+                const diff = playerActiveBounty.difficulty || 1;
                 activeEnemies = activeEnemies.filter(e => e.id !== playerActiveBounty.id);
                 activeEnemies.push({
                     id: playerActiveBounty.id,
                     x: playerActiveBounty.x,
                     y: playerActiveBounty.y,
                     name: playerActiveBounty.targetName,
-                    
-                    // Assign the shipClassKey correctly so startCombat can read it
                     shipClassKey: playerActiveBounty.shipClassKey || playerActiveBounty.shipClass || "STRIKER",
                     shipClass: playerActiveBounty.shipClassKey || playerActiveBounty.shipClass || "STRIKER",
-                    
-                    faction: playerActiveBounty.faction,
+                    faction: playerActiveBounty.faction || "ECLIPSE",
                     isBountyTarget: true,
-                    level: playerActiveBounty.difficulty,
-                    hp: playerActiveBounty.difficulty * 50,
-                    maxHp: playerActiveBounty.difficulty * 50,
-                    shields: playerActiveBounty.difficulty * 25,
-                    maxShields: playerActiveBounty.difficulty * 25,
-                    char: 'V', 
+                    level: diff,
+                    hp: diff * 50,
+                    maxHp: diff * 50,
+                    shields: diff * 25,
+                    maxShields: diff * 25,
+                    char: 'V',
                     color: getThemeColor('--danger', '#FF5555')
                 });
             }
@@ -6942,10 +6961,23 @@ function trackLegendaryTarget(bossId) {
         reward: boss.reward 
     });
     
-    // 👇 BUG FIX: Bind the boss to the Nav-Computer and Compass!
-    playerActiveBounty = { x: bx, y: by, targetName: boss.title, id: uniqueId };
+    // Bind full boss metadata to Nav-Computer, Compass, and Save State!
+    playerActiveBounty = {
+        id: uniqueId,
+        bossId: boss.id,
+        x: bx,
+        y: by,
+        targetName: boss.title,
+        shipClass: boss.shipClassKey,
+        shipClassKey: boss.shipClassKey,
+        isLegendary: true,
+        isBoss: true,
+        exclusiveDrop: boss.exclusiveDrop,
+        reward: boss.reward,
+        color: boss.color
+    };
     
-    // 👇 BUG FIX: Invert the Y-axis output so it matches the HUD coordinates!
+    // Invert the Y-axis output so it matches the HUD coordinates!
     logMessage(`<span style='color:${boss.color}; font-weight:bold;'>[ SEC-COM ALERT ]</span> ${boss.title} located at local coordinates [${bx}, ${-by}]. Updating Nav-Computer.`);
     if (typeof showToast === 'function') showToast("TARGET LOCATED ON MAP", "warning");
     
