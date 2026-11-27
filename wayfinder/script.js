@@ -7510,10 +7510,14 @@ function executeCrafting(tab, idx) {
 // --- PRECURSOR PUZZLE VAULTS ---
 // ==========================================
 
-// 1. High-Tier Vault Loot
+// 1. High-Tier Vault Loot (Fallback only; full definitions live in items.js)
 if (typeof COMMODITIES !== 'undefined') {
-    COMMODITIES['PRECURSOR_ARTIFACT'] = { name: "Precursor Artifact", basePrice: 15000, illegal: false, description: "A humming, geometric shape defying local physics." };
-    COMMODITIES['VOID_ENGINE_CORE'] = { name: "Void Engine Core", basePrice: 25000, illegal: true, description: "A functioning zero-point energy source." };
+    if (!COMMODITIES['PRECURSOR_ARTIFACT']) {
+        COMMODITIES['PRECURSOR_ARTIFACT'] = { id: "PRECURSOR_ARTIFACT", name: "Precursor Artifact", basePrice: 15000, icon: "💠", weight: 1, illegal: false, category: "PRECURSOR", description: "A humming, geometric shape defying local physics." };
+    }
+    if (!COMMODITIES['VOID_ENGINE_CORE']) {
+        COMMODITIES['VOID_ENGINE_CORE'] = { id: "VOID_ENGINE_CORE", name: "Void Engine Core", basePrice: 25000, icon: "⚛️", weight: 1, illegal: true, category: "PRECURSOR", description: "A functioning zero-point energy source." };
+    }
 }
 
 // 2. The Vault Database (You can add as many of these as you want!)
