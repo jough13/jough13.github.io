@@ -1,6 +1,20 @@
 // --- START OF FILE ships.js ---
 
 // ==========================================
+// --- INTERNAL SHIP HELPERS ---
+// ==========================================
+
+function _shipEscapeHtml(value) {
+    if (typeof UI !== 'undefined' && typeof UI.escapeHtml === 'function') return UI.escapeHtml(value);
+    return String(value === undefined || value === null ? "" : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// ==========================================
 // --- MANUFACTURER DOCTRINE PROFILES ---
 // ==========================================
 
@@ -9,6 +23,7 @@ const MANUFACTURER_PROFILES = {
         id: "CONCORD",
         name: "Concord Fleet Yards",
         headquarters: "Starbase Alpha & Ceti Alpha Shipyards",
+        motto: "Order Through Precision.",
         doctrine: "Balanced defense, precision optics, and high-capacity shield harmonics.",
         synergySummary: "3-Piece Set: Concord Authority (+20 Max Shields)"
     },
@@ -16,6 +31,7 @@ const MANUFACTURER_PROFILES = {
         id: "KTHARR",
         name: "Karak-Tor Blood-Forges",
         headquarters: "Karak-Tor & Fortress Drakon",
+        motto: "Iron Tempered in Fire.",
         doctrine: "Heavy kinetic impact, reinforced ablative armor, and bio-regenerative plating.",
         synergySummary: "3-Piece Set: K'tharr Blood-Iron (+5 Weapon Damage)"
     },
@@ -23,6 +39,7 @@ const MANUFACTURER_PROFILES = {
         id: "ECLIPSE",
         name: "Eclipse Shadow-Works",
         headquarters: "Station Umbra & Port Erebus",
+        motto: "Unseen. Untracked. Untouched.",
         doctrine: "Low-emission smuggling baffles, high-evasion thrusters, and sensor-slicing ECM.",
         synergySummary: "3-Piece Set: Eclipse Shadow (+15% Evasion)"
     },
@@ -30,6 +47,7 @@ const MANUFACTURER_PROFILES = {
         id: "FRONTIER",
         name: "Independent Frontier Guilds",
         headquarters: "Valkyrie Drift, Helios Refinery & Port Nomad",
+        motto: "Built to Patch in the Dark.",
         doctrine: "Rugged, field-serviceable industrial hardware built for cargo hauls and deep-rim range.",
         synergySummary: "3-Piece Set: Scrapper's Luck (+50 Max Fuel)"
     },
@@ -37,6 +55,7 @@ const MANUFACTURER_PROFILES = {
         id: "INDEPENDENT",
         name: "Custom Artisan Workshops",
         headquarters: "Frothy Moon Outpost & Free Systems",
+        motto: "Crafted Beyond the Core.",
         doctrine: "Bespoke civilian instruments and restored pre-Concord precision optics.",
         synergySummary: "Standalone Specialist Hardware"
     },
@@ -44,6 +63,7 @@ const MANUFACTURER_PROFILES = {
         id: "UNKNOWN",
         name: "Precursor / Reverse-Engineered",
         headquarters: "Classified (Silentium Expanse / Xerxes Spire)",
+        motto: "Echoes of the First Chord.",
         doctrine: "Experimental prototypes incorporating exotic spacetime alloys and zero-point cores.",
         synergySummary: "Exotic Prototype Hardware"
     }
@@ -507,12 +527,14 @@ const SHIP_CLASSES = {
         minRep: 30,
         ability: {
             name: "Sensor Ghost",
-            desc: "Engages phase-shifter evasion against incoming fire.",
+            desc: "Vanishes into phase-evasion, strips 25 enemy Shields, and locks your next ambush shot.",
             id: "DODGE",
-            cooldown: 8,
+            cooldown: 5,
             execute: (combatCtx, playerStats) => {
                 playerStats.isEvading = true;
-                return `Phase-shifters activated. You vanish from enemy targeting scanners!`;
+                playerStats.guaranteedHit = true;
+                combatCtx.pirateShields = Math.max(0, (combatCtx.pirateShields || 0) - 25);
+                return `Phase-shifters online! Evasion engaged, target shields disrupted (-25), and ambush strike locked!`;
             }
         }
     },
@@ -602,22 +624,25 @@ const SHIP_CLASSES = {
 // ==========================================
 
 const PIRATE_SHIP_CLASSES = {
-    // --- STANDARD PIRATES & CARTEL ---
+    // --- STANDARD PIRATES, CARTEL & CORPORATE ---
     RAIDER:               { id: "RAIDER",               name: "Pirate Raider",             baseHull: 60,  baseShields: 20,  weight: 5 },
     STRIKER:              { id: "STRIKER",              name: "Pirate Striker",            baseHull: 45,  baseShields: 35,  weight: 3 },
     PIRATE_INTERCEPTOR:   { id: "PIRATE_INTERCEPTOR",   name: "Void Vulture Interceptor",  baseHull: 55,  baseShields: 45,  weight: 2.2 },
     BRUISER:              { id: "BRUISER",              name: "Pirate Bruiser",            baseHull: 80,  baseShields: 15,  weight: 2 },
     VOID_VULTURE_CORSAIR: { id: "VOID_VULTURE_CORSAIR", name: "Void Vulture Corsair",      baseHull: 95,  baseShields: 50,  weight: 1.4 },
     PIRATE_GUNSHIP:       { id: "PIRATE_GUNSHIP",       name: "Void Vulture Gunship",      baseHull: 110, baseShields: 45,  weight: 1 },
+    VOID_VULTURE_FRIGATE: { id: "VOID_VULTURE_FRIGATE", name: "Void Vulture Heavy Frigate",baseHull: 135, baseShields: 55,  weight: 0.7 },
     ECLIPSE_ASSASSIN:     { id: "ECLIPSE_ASSASSIN",     name: "Cartel Shadow-Interceptor", baseHull: 70,  baseShields: 70,  weight: 1 },
     ECLIPSE_PHANTOM:      { id: "ECLIPSE_PHANTOM",      name: "Eclipse Phantom Raider",    baseHull: 85,  baseShields: 85,  weight: 0.9 },
     ECLIPSE_GUNSHIP:      { id: "ECLIPSE_GUNSHIP",      name: "Cartel Enforcer Gunship",   baseHull: 125, baseShields: 65,  weight: 0.8 },
+    XYCORP_ENFORCER:      { id: "XYCORP_ENFORCER",      name: "Xy-Corp Private Cutter",    baseHull: 85,  baseShields: 65,  weight: 0.5 },
     PIRATE_DREADNOUGHT:   { id: "PIRATE_DREADNOUGHT",   name: "Cartel Pocket-Dreadnought", baseHull: 175, baseShields: 60,  weight: 0.4 },
 
     // --- K'THARR HEGEMONY ---
     KTHARR_SCOUT:         { id: "KTHARR_SCOUT",         name: "K'tharr Vanguard",          baseHull: 90,  baseShields: 10,  weight: 3 },
     KTHARR_RAIDER:        { id: "KTHARR_RAIDER",        name: "K'tharr Blood-Cutter",      baseHull: 110, baseShields: 15,  weight: 2.2 },
     KTHARR_GUNSHIP:       { id: "KTHARR_GUNSHIP",       name: "K'tharr Siege Gunship",     baseHull: 125, baseShields: 20,  weight: 1.5 },
+    KTHARR_BERSERKER:     { id: "KTHARR_BERSERKER",     name: "K'tharr Ash-Berserker",     baseHull: 140, baseShields: 10,  weight: 1.1 },
     KTHARR_DESTROYER:     { id: "KTHARR_DESTROYER",     name: "K'tharr War-Hulk",          baseHull: 150, baseShields: 20,  weight: 1 },
     KTHARR_CRUISER:       { id: "KTHARR_CRUISER",       name: "K'tharr Siege Cruiser",     baseHull: 185, baseShields: 35,  weight: 0.7 },
 
@@ -625,7 +650,8 @@ const PIRATE_SHIP_CLASSES = {
     CONCORD_PATROL:       { id: "CONCORD_PATROL",       name: "Concord Patrol",            baseHull: 60,  baseShields: 60,  weight: 3 },
     CONCORD_INTERCEPTOR:  { id: "CONCORD_INTERCEPTOR",  name: "Aegis Pursuit Interceptor", baseHull: 65,  baseShields: 85,  weight: 1.8 },
     CONCORD_ENFORCER:     { id: "CONCORD_ENFORCER",     name: "Concord Enforcer",          baseHull: 80,  baseShields: 100, weight: 1 },
-    CONCORD_CORVETTE:     { id: "CONCORD_CORVETTE",     name: "Concord Aegis Corvette",    baseHull: 95,  baseShields: 120, weight: 0.8 }
+    CONCORD_CORVETTE:     { id: "CONCORD_CORVETTE",     name: "Concord Aegis Corvette",    baseHull: 95,  baseShields: 120, weight: 0.8 },
+    CONCORD_FRIGATE:      { id: "CONCORD_FRIGATE",      name: "Concord Aegis Frigate",     baseHull: 115, baseShields: 135, weight: 0.6 }
 };
 
 // Define Boss ships as non-enumerable properties so random patrol/pirate pools never roll an un-escapable Boss
@@ -679,6 +705,11 @@ const COMPONENTS_DATABASE = {
     },
 
     // --- CONCORD MILITARY GEAR (AEGIS ARMORY) ---
+    "WEAPON_CONCORD_FLAK_ARRAY": {
+        name: "Aegis Point-Defense Flak", type: "weapon", slot: "weapon", cost: 6400, manufacturer: "CONCORD",
+        description: "Dual-purpose Concord escort autocannon with tracking flak shells. Pinpoint accuracy and defensive screening (+5% Evasion).",
+        stats: { damage: 24, hitChance: 0.92, critChance: 0.10, evasionBonus: 0.05 }, loreKey: "LORE_COMP_KINETIC_WEAPON"
+    },
     "WEAPON_CONCORD_PLASMA": {
         name: "Aegis Plasma Cannon", type: "weapon", slot: "weapon", cost: 8500, manufacturer: "CONCORD", reqFaction: "CONCORD", minRep: 20,
         description: "Military-grade plasma projector. Melts pirate armor into slag.",
@@ -708,6 +739,11 @@ const COMPONENTS_DATABASE = {
         name: "Deep-Space Tactical Sensors", type: "scanner", slot: "scanner", cost: 6000, manufacturer: "CONCORD", reqFaction: "CONCORD", minRep: 30,
         description: "Pierces through nebulae and stealth fields with ease. Highly classified tech.",
         stats: { scanBonus: 0.8, accuracyBonus: 0.08 }, loreKey: "LORE_COMP_SCANNER"
+    },
+    "UTIL_CONCORD_NAV_BEACON": {
+        name: "Concord Subspace Telemetry Core", type: "utility", slot: "utility", cost: 4400, manufacturer: "CONCORD",
+        description: "Integrated fleet navigation and capacitor bus. (+35 Max Fuel, +15 Max Shields, +8% Accuracy)",
+        stats: { fuelBonus: 35, shieldBonus: 15, accuracyBonus: 0.08 }, loreKey: "LORE_COMP_SCANNER"
     },
     "UTIL_CONCORD_REACTIVE": {
         name: "Aegis Reactive Plating", type: "utility", slot: "utility", cost: 11000, manufacturer: "CONCORD", reqFaction: "CONCORD", minRep: 50,
@@ -780,6 +816,11 @@ const COMPONENTS_DATABASE = {
         description: "Master-grade Cartel smuggling bay paired with active chaff dispensers. (+15 Cargo, Conceals Contraband, -35% Signature, +12% Evasion)",
         cost: 7800, stats: { cargoBonus: 15, isSmuggler: true, evasionBonus: 0.12, signatureMod: -0.35 }, loreKey: "FACTION_ECLIPSE_SMUGGLING"
     },
+    UTIL_KTHARR_RAM_PROW: {
+        name: "Reinforced Basalt Ram-Prow", type: "utility", slot: "utility", manufacturer: "KTHARR", reqFaction: "KTHARR", minRep: 10,
+        description: "Volcanic-forged forward armor beak bolted across the bow. (+55 Max Hull, +6 Base Weapon Damage)",
+        cost: 5800, stats: { hullBonus: 55, damageBonus: 6 }, loreKey: "FACTION_KTHARR"
+    },
     UTIL_MARINE_BARRACKS: {
         name: "Drop-Troop Barracks Pod", type: "utility", slot: "utility", manufacturer: "KTHARR",
         description: "Pressurized armored troop berths and breaching pods. Increases Max Troop & Mech capacity by +20 and reinforces hull (+20 Hull).",
@@ -807,6 +848,11 @@ const COMPONENTS_DATABASE = {
         description: "Heavy twin-linked slug thrower bolted together on rim shipyards. No ammo limits, brutal kinetic punch.",
         cost: 4200, stats: { damage: 20, hitChance: 0.74, critChance: 0.14 }, loreKey: "LORE_COMP_KINETIC_WEAPON"
     },
+    WEAPON_FRONTIER_SCRAP_CANNON: {
+        name: "Valkyrie Rail-Scrapper", type: "weapon", slot: "weapon", manufacturer: "FRONTIER",
+        description: "Belt-fed magnetic slug projector favored by outer-rim miners. Compact hull framing frees +10 Cargo space.",
+        cost: 5200, stats: { damage: 24, hitChance: 0.76, critChance: 0.15, cargoBonus: 10 }, loreKey: "LOCATION_VALKYRIE_DRIFT"
+    },
     WEAPON_FUELRAT_ARC_DISCHARGER: {
         name: "Fuel Rats Static Discharger", type: "weapon", slot: "weapon", manufacturer: "FRONTIER", reqFaction: "FUEL_RATS", minRep: 5,
         description: "High-precision arc projector used by Port Nomad rescue crews to strip pirate deflectors without blowing the hull.",
@@ -821,6 +867,11 @@ const COMPONENTS_DATABASE = {
         name: "Gatling Laser Mk1", type: "weapon", slot: "weapon", manufacturer: "ECLIPSE",
         description: "Rapidly fires low-power beams. Very high accuracy and critical hit chance, but low base damage.",
         cost: 3200, stats: { damage: 6, hitChance: 0.95, critChance: 0.20 }, loreKey: "LORE_COMP_BEAM_LASER"
+    },
+    WEAPON_ECLIPSE_DISRUPTOR_SMG: {
+        name: "Eclipse Phase-Needle Array", type: "weapon", slot: "weapon", manufacturer: "ECLIPSE",
+        description: "Low-signature Cartel ambush battery firing focused thermal darts with surgical precision (-10% Signature).",
+        cost: 4900, stats: { damage: 19, hitChance: 0.90, critChance: 0.18, signatureMod: -0.10 }, loreKey: "FACTION_ECLIPSE"
     },
     WEAPON_KINETIC_IMPULSOR_MK1: {
         name: "Kinetic Impulsor Mk1", type: "weapon", slot: "weapon", manufacturer: "KTHARR",
@@ -846,6 +897,11 @@ const COMPONENTS_DATABASE = {
         name: "Mass Driver Mk1", type: "weapon", slot: "weapon", manufacturer: "KTHARR",
         description: "Accelerates a dense projectile to devastating speeds. High hull damage, slow fire rate.",
         cost: 3800, stats: { damage: 25, hitChance: 0.60, critChance: 0.25 }, loreKey: "LORE_COMP_MASS_DRIVER"
+    },
+    WEAPON_KTHARR_FLAK_MORTAR: {
+        name: "Karak-Tor Shrapnel Cannon", type: "weapon", slot: "weapon", manufacturer: "KTHARR",
+        description: "Forged in K'tharr border foundries, launching molten slag clusters that shred unshielded armor.",
+        cost: 5600, stats: { damage: 28, hitChance: 0.72, critChance: 0.20 }, loreKey: "LOCATION_KARAK_TOR"
     },
     WEAPON_MISSILE_LAUNCHER_MK1: {
         name: "Missile Launcher Mk1", type: "weapon", slot: "weapon", manufacturer: "CONCORD",
@@ -971,6 +1027,11 @@ const COMPONENTS_DATABASE = {
         description: "Powerful combat thruster. Trades fuel economy for +12% combat evasion.",
         cost: 3500, stats: { maxFuel: 210, fuelEfficiency: 1.15, evasionBonus: 0.12 }, loreKey: "LORE_COMP_ENGINE"
     },
+    ENGINE_ECLIPSE_GHOST_BURNER: {
+        name: "Erebus Cold-Vector Thrusters", type: "engine", slot: "engine", manufacturer: "ECLIPSE", reqFaction: "ECLIPSE", minRep: 10,
+        description: "Port Erebus runner thrusters tuned for quiet approach vectors and responsive dodging (+270 Max Fuel, +10% Evasion, -20% Signature).",
+        cost: 5800, stats: { maxFuel: 270, fuelEfficiency: 0.82, evasionBonus: 0.10, signatureMod: -0.20 }, loreKey: "LOCATION_PORT_EREBUS"
+    },
     ENGINE_SMUGGLER_DRIVE: {
         name: "Night-Runner Injectors", type: "engine", slot: "engine", manufacturer: "ECLIPSE",
         description: "Runs cold to evade thermal tracking. Modest fuel capacity, but heavily reduces ship signature.",
@@ -1002,6 +1063,11 @@ const COMPONENTS_DATABASE = {
         name: "Frontier Prospector Array", type: "scanner", slot: "scanner", manufacturer: "FRONTIER",
         description: "Deep-core gravimetric scanner designed to pinpoint mineral seams and salvage debris.",
         cost: 2400, stats: { scanBonus: 0.15, cargoBonus: 5, accuracyBonus: 0.04 }, loreKey: "LORE_COMP_SCANNER"
+    },
+    SCANNER_FUELRAT_BEACON: {
+        name: "Fuel Rats Homing Array", type: "scanner", slot: "scanner", manufacturer: "FRONTIER", reqFaction: "FUEL_RATS", minRep: 5,
+        description: "Wide-band emergency telemetry dish built at Port Nomad to lock onto distress beacons across entire sectors (+40 Max Fuel, +25% Scan, +6% Hit).",
+        cost: 3800, stats: { scanBonus: 0.25, fuelBonus: 40, accuracyBonus: 0.06 }, loreKey: "FACTION_FUEL_RATS"
     },
     SCANNER_DEEP_RANGE_A: {
         name: "Deep-Range Array A", type: "scanner", slot: "scanner", manufacturer: "CONCORD",
@@ -1101,26 +1167,45 @@ const LOOT_PREFIXES = [
     { name: "Cygnus-Calibrated", stat: "accuracyBonus", val: 0.12,  costMod: 1.45 },
     { name: "Drakon-Forged",     stat: "hullBonus",     val: 25,    costMod: 1.45 },
     { name: "Nomad-Tuned",       stat: "fuelBonus",     val: 65,    costMod: 1.35 },
-    { name: "Umbra-Coated",      stat: "signatureMod",  val: -0.22, costMod: 1.50 }
+    { name: "Umbra-Coated",      stat: "signatureMod",  val: -0.22, costMod: 1.50 },
+    { name: "Solitude-Tuned",    stat: "shieldBonus",   val: 22,    costMod: 1.35 },
+    { name: "Valkyrie-Cut",      stat: "cargoBonus",    val: 15,    costMod: 1.40 },
+    { name: "Sunken-Forged",     stat: "hullBonus",     val: 20,    costMod: 1.35 }
 ];
 Object.freeze(LOOT_PREFIXES);
 
 const LOOT_SUFFIXES = [
-    { name: "of the Cartel",      stat: "signatureMod",   val: -0.20, costMod: 1.40 },
-    { name: "from the Core",      stat: "scanBonus",      val: 0.12,  costMod: 1.25 },
-    { name: "of the Vanguard",    stat: "hullBonus",      val: 25,    costMod: 1.50 },
-    { name: "of the Void",        stat: "fuelEfficiency", val: -0.15, costMod: 1.60 },
-    { name: "of Karak-Tor",       stat: "damageBonus",    val: 6,     costMod: 1.55 },
-    { name: "of Xerxes",          stat: "evasionBonus",   val: 0.08,  costMod: 1.50 },
-    { name: "of the Expanse",     stat: "fuelBonus",      val: 60,    costMod: 1.40 },
-    { name: "of the Fuel Rats",   stat: "fuelEfficiency", val: -0.12, costMod: 1.45 },
-    { name: "of Cygnus",          stat: "accuracyBonus",  val: 0.08,  costMod: 1.40 },
-    { name: "of Starbase Alpha",  stat: "shieldBonus",    val: 25,    costMod: 1.40 },
-    { name: "of Port Nomad",      stat: "fuelBonus",      val: 75,    costMod: 1.45 },
-    { name: "of Fortress Drakon", stat: "damageBonus",    val: 7,     costMod: 1.60 },
-    { name: "of the First Chord", stat: "shieldBonus",    val: 35,    costMod: 1.65 }
+    { name: "of the Cartel",         stat: "signatureMod",   val: -0.20, costMod: 1.40 },
+    { name: "from the Core",         stat: "scanBonus",      val: 0.12,  costMod: 1.25 },
+    { name: "of the Vanguard",       stat: "hullBonus",      val: 25,    costMod: 1.50 },
+    { name: "of the Void",           stat: "fuelEfficiency", val: -0.15, costMod: 1.60 },
+    { name: "of Karak-Tor",          stat: "damageBonus",    val: 6,     costMod: 1.55 },
+    { name: "of Xerxes",             stat: "evasionBonus",   val: 0.08,  costMod: 1.50 },
+    { name: "of the Expanse",        stat: "fuelBonus",      val: 60,    costMod: 1.40 },
+    { name: "of the Fuel Rats",      stat: "fuelEfficiency", val: -0.12, costMod: 1.45 },
+    { name: "of Cygnus",             stat: "accuracyBonus",  val: 0.08,  costMod: 1.40 },
+    { name: "of Starbase Alpha",     stat: "shieldBonus",    val: 25,    costMod: 1.40 },
+    { name: "of Port Nomad",         stat: "fuelBonus",      val: 75,    costMod: 1.45 },
+    { name: "of Fortress Drakon",    stat: "damageBonus",    val: 7,     costMod: 1.60 },
+    { name: "of the First Chord",    stat: "shieldBonus",    val: 35,    costMod: 1.65 },
+    { name: "of Solitude",           stat: "scanBonus",      val: 0.16,  costMod: 1.35 },
+    { name: "of the Sunken Compass", stat: "cargoBonus",     val: 12,    costMod: 1.40 },
+    { name: "of the Sleeping Ark",   stat: "fuelBonus",      val: 80,    costMod: 1.50 }
 ];
 Object.freeze(LOOT_SUFFIXES);
+
+const _customLootPrefixes = [];
+const _customLootSuffixes = [];
+let _cachedEligibleProcKeys = null;
+
+function _getEligibleProceduralKeys() {
+    if (_cachedEligibleProcKeys) return _cachedEligibleProcKeys;
+    _cachedEligibleProcKeys = Object.keys(COMPONENTS_DATABASE).filter(k => {
+        const c = COMPONENTS_DATABASE[k];
+        return c && c.cost > 0 && c.cost < 999999 && !k.match(/_\d+$/);
+    });
+    return _cachedEligibleProcKeys;
+}
 
 function _applyProceduralModifier(itemObj, mod) {
     if (!itemObj || !mod) return;
@@ -1156,10 +1241,7 @@ function generateProceduralModule(baseModuleKey) {
 
     let resolvedKey = baseModuleKey;
     if (!resolvedKey || resolvedKey === "RANDOM" || !COMPONENTS_DATABASE[resolvedKey]) {
-        const eligibleKeys = Object.keys(COMPONENTS_DATABASE).filter(k => {
-            const c = COMPONENTS_DATABASE[k];
-            return c && c.cost > 0 && c.cost < 999999 && !k.match(/_\d+$/);
-        });
+        const eligibleKeys = _getEligibleProceduralKeys();
         resolvedKey = eligibleKeys[Math.floor(Math.random() * eligibleKeys.length)] || "MILITARY_SHIELD_MOD";
     }
 
@@ -1168,11 +1250,18 @@ function generateProceduralModule(baseModuleKey) {
 
     const newItem = JSON.parse(JSON.stringify(baseItem));
     if (!newItem.stats) newItem.stats = {};
+    // Remove faction store restrictions from custom-crafted / salvaged R&D modules
+    delete newItem.reqFaction;
+    delete newItem.minRep;
+
     const targetSlot = newItem.slot || newItem.type || 'utility';
 
-    // Filter prefixes so slot-specific stats (like critChance) never roll as dead stats on non-weapons
-    const validPrefixes = LOOT_PREFIXES.filter(p => !p.slots || p.slots.includes(targetSlot));
-    const validSuffixes = LOOT_SUFFIXES.filter(s => !s.slots || s.slots.includes(targetSlot));
+    const allPrefixes = _customLootPrefixes.length > 0 ? LOOT_PREFIXES.concat(_customLootPrefixes) : LOOT_PREFIXES;
+    const allSuffixes = _customLootSuffixes.length > 0 ? LOOT_SUFFIXES.concat(_customLootSuffixes) : LOOT_SUFFIXES;
+
+    // Filter affixes so slot-specific stats (like critChance) never roll as dead stats on non-weapons
+    const validPrefixes = allPrefixes.filter(p => !p.slots || p.slots.includes(targetSlot));
+    const validSuffixes = allSuffixes.filter(s => !s.slots || s.slots.includes(targetSlot));
 
     let rolledPrefix = Math.random() < 0.70;
     let rolledSuffix = Math.random() < 0.45;
@@ -1232,6 +1321,17 @@ const ShipUtils = {
     getManufacturerProfile(mfg) {
         return MANUFACTURER_PROFILES[mfg] || MANUFACTURER_PROFILES.INDEPENDENT;
     },
+    getComponentTier(compOrId) {
+        const comp = typeof compOrId === 'string' ? COMPONENTS_DATABASE[compOrId] : compOrId;
+        if (!comp) return "STANDARD";
+        if (comp.cost >= 999999) return "EXOTIC BOSS";
+        if (comp.rarity) return comp.rarity;
+        if (comp.cost === 0 && comp.manufacturer === 'UNKNOWN') return "PROTOTYPE";
+        if (comp.cost === 0) return "STARTER";
+        if (comp.reqFaction) return `${comp.reqFaction} MIL-SPEC`;
+        if (comp.cost >= 5500) return "HEAVY";
+        return "STANDARD";
+    },
     getHullSpecs(id) {
         const s = SHIP_CLASSES[id];
         if (!s) return null;
@@ -1261,6 +1361,26 @@ const ShipUtils = {
             if (!s.reqFaction) return true;
             return (standing[s.reqFaction] || 0) >= (s.minRep || 0);
         });
+    },
+    getFactionUnlockRoadmap(faction) {
+        const target = String(faction || "").toUpperCase();
+        const ships = Object.values(SHIP_CLASSES)
+            .filter(s => s && s.reqFaction === target)
+            .map(s => ({ kind: 'SHIP', id: s.id, name: s.name, minRep: s.minRep || 0, cost: s.baseCost || 0 }));
+        const components = Object.values(COMPONENTS_DATABASE)
+            .filter(c => c && c.reqFaction === target && c.cost < 999999)
+            .map(c => ({ kind: 'MODULE', slot: c.slot, id: c.id, name: c.name, minRep: c.minRep || 0, cost: c.cost || 0 }));
+        return ships.concat(components).sort((a, b) => a.minRep - b.minRep || a.cost - b.cost);
+    },
+    getCombatRating(shipObj) {
+        const targetShip = shipObj || (typeof playerShip !== 'undefined' ? playerShip : null);
+        if (!targetShip) return 0;
+        const hull = typeof MAX_PLAYER_HULL !== 'undefined' ? MAX_PLAYER_HULL : 100;
+        const shields = typeof MAX_SHIELDS !== 'undefined' ? MAX_SHIELDS : 50;
+        const dmg = typeof PLAYER_ATTACK_DAMAGE !== 'undefined' ? PLAYER_ATTACK_DAMAGE : 8;
+        const hit = typeof PLAYER_HIT_CHANCE !== 'undefined' ? PLAYER_HIT_CHANCE : 0.7;
+        const eva = typeof PLAYER_EVASION !== 'undefined' ? PLAYER_EVASION : 0;
+        return Math.round((hull * 0.6) + (shields * 0.75) + (dmg * hit * 8) + (eva * 120));
     },
     compareShips(idA, idB) {
         const a = SHIP_CLASSES[idA];
@@ -1312,6 +1432,13 @@ const ShipUtils = {
             _attachComponentCargoUseHandler(compId);
         }
     },
+    registerLootAffix(kind, def) {
+        if (!def || !def.name || !def.stat || typeof def.val !== 'number') return false;
+        const normalized = Object.freeze({ costMod: 1.30, ...def });
+        if (String(kind).toLowerCase() === 'suffix') _customLootSuffixes.push(normalized);
+        else _customLootPrefixes.push(normalized);
+        return true;
+    },
     registerShipClass(id, def) {
         if (!id || !def) return false;
         def.id = id;
@@ -1325,6 +1452,7 @@ const ShipUtils = {
         if (!def.type) def.type = def.slot;
         if (!def.stats) def.stats = {};
         COMPONENTS_DATABASE[id] = def;
+        _cachedEligibleProcKeys = null;
         return true;
     },
     registerEnemyClass(id, def, isBoss = false) {
@@ -1433,7 +1561,9 @@ window.ShipUtils = ShipUtils;
                         if (ts.accuracyBonus && typeof PLAYER_HIT_CHANCE !== 'undefined') {
                             PLAYER_HIT_CHANCE = Math.min(1.0, PLAYER_HIT_CHANCE + ts.accuracyBonus);
                         }
-                        if (ts.evasionBonus && typeof PLAYER_EVASION !== 'undefined') PLAYER_EVASION += ts.evasionBonus;
+                        if (ts.evasionBonus && typeof PLAYER_EVASION !== 'undefined') {
+                            PLAYER_EVASION = Math.min(0.85, Math.max(0, PLAYER_EVASION + ts.evasionBonus));
+                        }
                         if (ts.signatureMod) {
                             window.PLAYER_SIGNATURE = Math.max(0.1, (window.PLAYER_SIGNATURE || 1.0) + ts.signatureMod);
                         }
@@ -1477,7 +1607,17 @@ window.ShipUtils = ShipUtils;
             }
         }
 
-        // 3. Re-attach onUse handlers for PROC_ modules whenever Cargo Manifest opens (survives JSON save loads)
+        // 3. Re-attach onUse handlers for PROC_ modules on save load & whenever Cargo Manifest opens
+        if (typeof window.loadGameData === 'function' && !window._shipsLoadSyncHooked) {
+            const origLoadGameData = window.loadGameData;
+            window.loadGameData = function() {
+                const res = origLoadGameData.apply(this, arguments);
+                ShipUtils.syncProceduralCommodities();
+                return res;
+            };
+            window._shipsLoadSyncHooked = true;
+        }
+
         if (typeof window.openCargoModal === 'function' && !window._shipsCargoSyncHooked) {
             const origOpenCargo = window.openCargoModal;
             window.openCargoModal = function() {
@@ -1500,7 +1640,7 @@ window.ShipUtils = ShipUtils;
                 const traitHtml = ship.chassisTrait
                     ? `<div class="trade-stat-row" style="margin-top:6px; border-top:1px dashed #333; padding-top:6px;">
                            <span>Chassis Trait:</span>
-                           <span style="color:var(--gold-text); font-weight:bold;">${ship.chassisTrait.name} (${ship.chassisTrait.desc})</span>
+                           <span style="color:var(--gold-text); font-weight:bold;">${_shipEscapeHtml(ship.chassisTrait.name)} (${_shipEscapeHtml(ship.chassisTrait.desc)})</span>
                        </div>`
                     : '';
 
@@ -1509,12 +1649,13 @@ window.ShipUtils = ShipUtils;
                 specBlock.style.cssText = 'margin: 0 20px 15px 20px; text-align:left; background:rgba(0,0,0,0.35);';
                 specBlock.innerHTML = `
                     <div style="font-size:10px; color:var(--accent-color); letter-spacing:1px; margin-bottom:8px; border-bottom:1px solid #333; padding-bottom:4px;">NAVAL REGISTRY DOSSIER</div>
-                    <div class="trade-stat-row"><span>Role / Builder:</span> <span style="color:var(--text-color); font-weight:bold;">${ship.role || 'Utility'} · ${ship.builder || mfg.name}</span></div>
-                    <div class="trade-stat-row"><span>Manufacturer:</span> <span style="color:var(--accent-color);">${mfg.name}</span></div>
-                    <div class="trade-stat-row"><span>Dimensions / Crew:</span> <span style="color:var(--item-desc-color);">${ship.length || '40m'} · ${ship.crewSpec || '1–4 Personnel'}</span></div>
+                    <div class="trade-stat-row"><span>Role / Builder:</span> <span style="color:var(--text-color); font-weight:bold;">${_shipEscapeHtml(ship.role || 'Utility')} · ${_shipEscapeHtml(ship.builder || mfg.name)}</span></div>
+                    <div class="trade-stat-row"><span>Manufacturer:</span> <span style="color:var(--accent-color);">${_shipEscapeHtml(mfg.name)}</span></div>
+                    <div class="trade-stat-row"><span>Dimensions / Crew:</span> <span style="color:var(--item-desc-color);">${_shipEscapeHtml(ship.length || '40m')} · ${_shipEscapeHtml(ship.crewSpec || '1–4 Personnel')}</span></div>
                     <div class="trade-stat-row"><span>Troop Barracks Cap:</span> <span style="color:var(--success); font-weight:bold;">${ship.baseTroops || 20} Berths</span></div>
                     ${traitHtml}
-                    ${ship.chassisLore ? `<div style="margin-top:8px; padding-top:8px; border-top:1px dashed #333; font-size:11px; color:var(--item-desc-color); font-style:italic; line-height:1.45;">"${ship.chassisLore}"</div>` : ''}
+                    ${mfg.motto ? `<div style="margin-top:6px; font-size:10px; color:var(--accent-color); opacity:0.85;">"${_shipEscapeHtml(mfg.motto)}" — ${_shipEscapeHtml(mfg.synergySummary)}</div>` : ''}
+                    ${ship.chassisLore ? `<div style="margin-top:8px; padding-top:8px; border-top:1px dashed #333; font-size:11px; color:var(--item-desc-color); font-style:italic; line-height:1.45;">"${_shipEscapeHtml(ship.chassisLore)}"</div>` : ''}
                 `;
 
                 detailEl.appendChild(specBlock);
