@@ -1564,6 +1564,12 @@ function generateHRDiagram(starClass, displayColor, isLight) {
  // --- ANOMALY SCANNING MINIGAME ---
 
 function handleAnomalyEncounter(anomalyObject) {
+    // Safety net: ensure anomalyObject is always a mutable tile object, never a '.' string
+    if (!anomalyObject || typeof anomalyObject !== 'object') {
+        updateWorldState(playerX, playerY, { char: '?', type: 'anomaly', studied: false });
+        anomalyObject = chunkManager.getTile(playerX, playerY);
+    }
+
     // 1. Initialize persistent puzzle data on the tile if it's new
     if (!anomalyObject.anomalyTargets) {
         anomalyObject.anomalyTargets = [
@@ -1572,18 +1578,32 @@ function handleAnomalyEncounter(anomalyObject) {
             Math.floor(Math.random() * 100)
         ];
         anomalyObject.stability = 4; // You get 4 test attempts before it explodes!
-        
+        anomalyObject.lastResonance = 0;
+        anomalyObject.savedVals = [50, 50, 50];
+
         // Push the brand new puzzle to the world memory immediately
-        updateWorldState(playerX, playerY, { anomalyTargets: anomalyObject.anomalyTargets, stability: 4 });
+        updateWorldState(playerX, playerY, {
+            anomalyTargets: anomalyObject.anomalyTargets,
+            stability: 4,
+            lastResonance: 0,
+            savedVals: [50, 50, 50]
+        });
         autoSaveGame(); // Force a hard save so they can't reroll the puzzle!
     }
 
-    // 2. Set up the local session context
+    // 2. Set up the local session context (restoring prior resonance/sliders if reopened)
+    const savedResonance = typeof anomalyObject.lastResonance === 'number' ? anomalyObject.lastResonance : 0;
     anomalyContext = {
         tile: anomalyObject,
-        currentVals: [50, 50, 50], // Sliders start at 50
-        lastResonance: 0
+        currentVals: Array.isArray(anomalyObject.savedVals) ? anomalyObject.savedVals.slice() : [50, 50, 50],
+        lastResonance: savedResonance
     };
+
+    // Unstick any legacy save where stability hit 0 without reaching extraction threshold
+    if (anomalyObject.stability <= 0 && savedResonance < 85) {
+        anomalyDetonates();
+        return;
+    }
 
     openGenericModal("ANOMALY CONTAINMENT FIELD");
     renderAnomalyUI();
@@ -1681,12 +1701,16 @@ function testAnomalyAlignment() {
     if (resonance < 0) resonance = 0;
 
     anomalyContext.lastResonance = resonance;
+    tile.lastResonance = resonance;
+    tile.savedVals = [v0, v1, v2];
     tile.stability--;
     
-    // Save state persistently so they can't exploit by closing and reopening!
+    // Save state persistently so they can't exploit OR softlock by closing and reopening!
     updateWorldState(playerX, playerY, { 
         anomalyTargets: tile.anomalyTargets, 
-        stability: tile.stability 
+        stability: tile.stability,
+        lastResonance: resonance,
+        savedVals: [v0, v1, v2]
     });
 
     if (typeof soundManager !== 'undefined') soundManager.playUIHover(); 
@@ -2333,9 +2357,12 @@ function resolveUSSEncounter() {
         // 25% Deep Space Anomaly
         logMessage("<span style='color:#9933FF; font-weight:bold;'>[ USS CLASSIFIED ] An uncharted stellar anomaly.</span>");
         
-        // Call the correct function, pass the tile, and let the minigame handle the state saving
+        // Convert the empty-space string '.' into a persistent anomaly tile object first
+        updateWorldState(playerX, playerY, { char: '?', type: 'anomaly', studied: false });
+        const anomalyTile = chunkManager.getTile(playerX, playerY);
+
         if (typeof handleAnomalyEncounter === 'function') {
-            handleAnomalyEncounter(tile);
+            handleAnomalyEncounter(anomalyTile);
         }
     }
 }
