@@ -1,13 +1,13 @@
 // --- START OF FILE perks.js ---
 
 // ==========================================
-// --- CAPTAIN PERKS DATABASE (35 PERKS) ---
-// --- 5 PERKS ACROSS EACH OF 7 DISCIPLINES ---
+// --- CAPTAIN PERKS DATABASE (42 PERKS) ---
+// --- 6 PERKS ACROSS EACH OF 7 DISCIPLINES ---
 // ==========================================
 
 const PERKS_DATABASE = {
     // ==========================================
-    // --- INDUSTRIAL (5) ---
+    // --- INDUSTRIAL (6) ---
     // ==========================================
     DEEP_CORE_MINING: {
         id: "DEEP_CORE_MINING",
@@ -49,9 +49,17 @@ const PERKS_DATABASE = {
         icon: "♻️",
         category: "Industrial"
     },
+    SALVAGE_ENGINEER: {
+        id: "SALVAGE_ENGINEER",
+        name: "Hull Stripper",
+        description: "Space combat victories grant +15% bonus salvage credits and automatically recover +2 Tech Parts or +1 Refined Alloy if hold space permits.",
+        lore: "Cut along the dorsal power-bus while the wreckage is still warm and you'll pull intact military relays before they oxidize into junk.",
+        icon: "🧲",
+        category: "Industrial"
+    },
 
     // ==========================================
-    // --- COMBAT (5) ---
+    // --- COMBAT (6) ---
     // ==========================================
     WEAPON_OVERCLOCK: {
         id: "WEAPON_OVERCLOCK",
@@ -93,9 +101,17 @@ const PERKS_DATABASE = {
         icon: "🧨",
         category: "Combat"
     },
+    CRITICAL_OPTICS: {
+        id: "CRITICAL_OPTICS",
+        name: "Pinpoint Convergence",
+        description: "Refines weapon convergence for +10% Ship Weapon Damage and siphons +12 Deflector Shields whenever you destroy a hostile hull.",
+        lore: "Syncing turret convergence to the enemy's magnetic bloom lets your shield emitters drink the discharge when their core goes up.",
+        icon: "🔥",
+        category: "Combat"
+    },
 
     // ==========================================
-    // --- TRADE (5) ---
+    // --- TRADE (6) ---
     // ==========================================
     SILVER_TONGUE: {
         id: "SILVER_TONGUE",
@@ -137,9 +153,17 @@ const PERKS_DATABASE = {
         icon: "📑",
         category: "Trade"
     },
+    BULK_ARBITRAGE: {
+        id: "BULK_ARBITRAGE",
+        name: "Free-Trader Charter",
+        description: "Selling cargo at any market or convoy awards +5% bonus settlement credits and +25% additional Trade XP.",
+        lore: "Holding an independent Free-Trader tariff waiver cuts dock-clearing brokerage fees across every legal and frontier exchange.",
+        icon: "📈",
+        category: "Trade"
+    },
 
     // ==========================================
-    // --- SOCIAL (5) ---
+    // --- SOCIAL (6) ---
     // ==========================================
     SMOOTH_TALKER: {
         id: "SMOOTH_TALKER",
@@ -181,9 +205,17 @@ const PERKS_DATABASE = {
         icon: "🍻",
         category: "Social"
     },
+    FACTION_ENVOY: {
+        id: "FACTION_ENVOY",
+        name: "Concord Liaison",
+        description: "Contracts, Bounties, and Fuel Rats rescues grant +2 extra faction reputation, and Concord Security Office warrant payments are 25% cheaper.",
+        lore: "Carrying diplomatic seal-codes lets you smooth over border incidents and climb faction registries faster than standard freelancers.",
+        icon: "🤝",
+        category: "Social"
+    },
 
     // ==========================================
-    // --- SCIENCE (5) ---
+    // --- SCIENCE (6) ---
     // ==========================================
     XENO_BIOLOGIST: {
         id: "XENO_BIOLOGIST",
@@ -225,9 +257,17 @@ const PERKS_DATABASE = {
         icon: "🌟",
         category: "Science"
     },
+    ANOMALY_TUNER: {
+        id: "ANOMALY_TUNER",
+        name: "Harmonic Resonator",
+        description: "Successfully extracting Spatial Anomalies awards +100 bonus XP, and all anomaly/astrometric observations restore +25 Shields.",
+        lore: "By phase-locking your containment coils to the ambient subspace metric, you turn volatile anomalies into clean shield-charging wells.",
+        icon: "🌀",
+        category: "Science"
+    },
 
     // ==========================================
-    // --- EXPLORATION (5) ---
+    // --- EXPLORATION (6) ---
     // ==========================================
     CYBER_SLICER: {
         id: "CYBER_SLICER",
@@ -256,7 +296,7 @@ const PERKS_DATABASE = {
     HYPER_LANE_MAPPER: {
         id: "HYPER_LANE_MAPPER",
         name: "Hyper-Lane Mapper",
-        description: "Wormhole jumps cost 50% less fuel and never cause structural hull damage.",
+        description: "Wormhole and Wild Jumps cost 50% less fuel and never cause structural hull damage.",
         lore: "By plotting gravimetric shear vectors before entering a fracture, you slip cleanly along the Precursor throat without buckling a single hull plate.",
         icon: "🌀",
         category: "Exploration"
@@ -269,9 +309,17 @@ const PERKS_DATABASE = {
         icon: "☀️",
         category: "Exploration"
     },
+    WAYFARER_INSTINCT: {
+        id: "WAYFARER_INSTINCT",
+        name: "Star-Reader's Instinct",
+        description: "Active Sensor Pings (P) consume 0 Fuel, and Planetary Surface Expeditions award +35% bonus XP.",
+        lore: "Experienced frontier pathfinders bounce passive harmonic sweeps off ambient pulsar noise instead of burning deuterium on raw radar bursts.",
+        icon: "🧭",
+        category: "Exploration"
+    },
 
     // ==========================================
-    // --- SURVIVAL (5) ---
+    // --- SURVIVAL (6) ---
     // ==========================================
     HEALTH_PHYSICIST: {
         id: "HEALTH_PHYSICIST",
@@ -311,6 +359,14 @@ const PERKS_DATABASE = {
         description: "Once per combat, if an incoming hull hit would drop you below 25% Hull, emergency capacitors absorb 15 damage and surge +30 Shields.",
         lore: "A dead-man's supercapacitor wired behind the captain's chair—silent until the red hull alarms scream, then it buys you one more turn to live.",
         icon: "🔋",
+        category: "Survival"
+    },
+    CRYO_ADAPTATION: {
+        id: "CRYO_ADAPTATION",
+        name: "Void-Hardened Core",
+        description: "Grants +15 Max Hull, +15 Max Shields, and automatically patches +10 Hull Integrity for free on port arrival.",
+        lore: "Thermal-cycled outer ribs and quick-seal docking patches keep your vessel flight-worthy through the harshest outer-rim stretches.",
+        icon: "❄️",
         category: "Survival"
     }
 };
@@ -378,15 +434,15 @@ const PERK_MASTERY_DOCTRINES = {
     }
 };
 
-// Freeze perk records and dictionaries for V8 lookup optimization
+// Fast O(1) name lookup index + frozen individual records (outer dictionaries remain extensible)
+const _perksByName = new Map();
 for (const pKey in PERKS_DATABASE) {
     Object.freeze(PERKS_DATABASE[pKey]);
+    _perksByName.set(PERKS_DATABASE[pKey].name, PERKS_DATABASE[pKey]);
 }
-Object.freeze(PERKS_DATABASE);
 for (const mKey in PERK_MASTERY_DOCTRINES) {
     Object.freeze(PERK_MASTERY_DOCTRINES[mKey]);
 }
-Object.freeze(PERK_MASTERY_DOCTRINES);
 
 window.PERKS_DATABASE = PERKS_DATABASE;
 window.PERK_MASTERY_DOCTRINES = PERK_MASTERY_DOCTRINES;
@@ -406,14 +462,35 @@ function hasPlayerPerk(perkId) {
 }
 window.hasPlayerPerk = hasPlayerPerk;
 
+let _cachedCountsSig = "";
+let _cachedCountsObj = null;
+
+function _getPerksSignature() {
+    if (typeof playerPerks === 'undefined' || !playerPerks) return "";
+    if (typeof playerPerks.forEach === 'function') {
+        const arr = [];
+        playerPerks.forEach(p => arr.push(p));
+        return arr.join('|');
+    }
+    if (Array.isArray(playerPerks)) return playerPerks.join('|');
+    return "";
+}
+
 const PerkUtils = {
     getPerk(perkId) {
         return PERKS_DATABASE[perkId] || null;
+    },
+    getByCategory(category) {
+        return Object.values(PERKS_DATABASE).filter(p => p && p.category === category);
     },
     getAcquiredPerks() {
         return Object.keys(PERKS_DATABASE).filter(id => hasPlayerPerk(id));
     },
     getCategoryCounts() {
+        const sig = _getPerksSignature();
+        if (_cachedCountsObj && sig === _cachedCountsSig) {
+            return { ..._cachedCountsObj };
+        }
         const counts = {
             Industrial: 0, Combat: 0, Trade: 0,
             Social: 0, Science: 0, Exploration: 0, Survival: 0
@@ -422,9 +499,12 @@ const PerkUtils = {
             if (hasPlayerPerk(id)) {
                 const cat = PERKS_DATABASE[id].category;
                 if (counts[cat] !== undefined) counts[cat]++;
+                else counts[cat] = 1;
             }
         }
-        return counts;
+        _cachedCountsSig = sig;
+        _cachedCountsObj = counts;
+        return { ...counts };
     },
     hasDisciplineMastery(category) {
         const doc = PERK_MASTERY_DOCTRINES[category];
@@ -435,6 +515,30 @@ const PerkUtils = {
     getActiveMasteries() {
         const counts = this.getCategoryCounts();
         return Object.values(PERK_MASTERY_DOCTRINES).filter(doc => (counts[doc.category] || 0) >= doc.req);
+    },
+    getMasteryProgress() {
+        const counts = this.getCategoryCounts();
+        return Object.values(PERK_MASTERY_DOCTRINES).map(doc => {
+            const owned = counts[doc.category] || 0;
+            return {
+                ...doc,
+                owned,
+                active: owned >= doc.req
+            };
+        });
+    },
+    registerPerk(perkDef) {
+        if (!perkDef || !perkDef.id || !perkDef.name || !perkDef.category) return false;
+        const entry = Object.freeze({
+            icon: "⭐",
+            description: "",
+            lore: "",
+            ...perkDef
+        });
+        PERKS_DATABASE[entry.id] = entry;
+        _perksByName.set(entry.name, entry);
+        _cachedCountsSig = "";
+        return true;
     }
 };
 window.PerkUtils = PerkUtils;
@@ -447,6 +551,7 @@ window.PerkUtils = PerkUtils;
     let _lastColonyArchitectTick = {};
     let _ordnanceMoveCounter = 0;
     let _reserveCapacitorUsedThisFight = false;
+    const _cryoDockHealedPorts = new Set();
 
     function _escapeHtml(str) {
         return String(str === undefined || str === null ? "" : str)
@@ -455,6 +560,40 @@ window.PerkUtils = PerkUtils;
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
+    }
+
+    // Accurately computes XP gained even if the inner call triggered a level-up
+    function _calcActualXpGained(prevXP, prevLevel, prevXpReq) {
+        const curXP = typeof playerXP !== 'undefined' ? playerXP : 0;
+        const curLevel = typeof playerLevel !== 'undefined' ? playerLevel : 1;
+        if (curLevel > prevLevel) {
+            return Math.max(0, (Math.max(1, prevXpReq) - prevXP) + curXP);
+        }
+        return Math.max(0, curXP - prevXP);
+    }
+
+    function _refreshPerkModalBars() {
+        if (typeof renderUIStats === 'function') renderUIStats();
+        if (typeof updateModalInfoBar === 'function') {
+            updateModalInfoBar('genericInfoBar');
+            updateModalInfoBar('stationInfoBar');
+            updateModalInfoBar('xerxesInfoBar');
+        }
+    }
+
+    function _perkSafeAddCargo(itemId, qty) {
+        if (!itemId || qty <= 0 || typeof playerCargo === 'undefined') return 0;
+        const maxCap = typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50;
+        const curLoad = typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0;
+        const def = (typeof COMMODITIES !== 'undefined' && COMMODITIES[itemId]) ? COMMODITIES[itemId] : null;
+        const wt = (def && def.weight !== undefined) ? def.weight : 1;
+        const maxFit = wt > 0 ? Math.floor((maxCap - curLoad) / wt) : qty;
+        const actual = Math.max(0, Math.min(qty, maxFit));
+        if (actual > 0) {
+            playerCargo[itemId] = (playerCargo[itemId] || 0) + actual;
+            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        }
+        return actual;
     }
 
     // Build HTML for the Commander Datapad "Captain Perks" Tab (Zero Assets)
@@ -491,7 +630,7 @@ window.PerkUtils = PerkUtils;
         // Mastery Doctrine Summary Strip
         const masterySummaryHtml = activeMasteries.length > 0
             ? `<div style="background:rgba(255,215,0,0.06); border:1px solid var(--gold-text); padding:8px 10px; border-radius:4px; margin-bottom:12px;">
-                   <div style="font-size:9px; color:var(--gold-text); letter-spacing:1.5px; font-weight:bold; margin-bottom:6px;">★ ACTIVE DISCIPLINE MASTERIES (${activeMasteries.length})</div>
+                   <div style="font-size:9px; color:var(--gold-text); letter-spacing:1.5px; font-weight:bold; margin-bottom:6px;">★ ACTIVE DISCIPLINE MASTERIES (${activeMasteries.length}/7)</div>
                    ${activeMasteries.map(m => `
                        <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:3px;">
                            <span style="color:${m.color}; font-weight:bold;">${m.icon} ${m.title} (${m.category})</span>
@@ -530,9 +669,8 @@ window.PerkUtils = PerkUtils;
 
         let cardsHtml = '';
         if (displayIds.length === 0) {
-            cardsHtml = `<div style="text-align:center; padding: 28px 15px; color:#666; font-style:italic; font-size:12px;">No specialized captain perks acquired yet. Gain XP and level up to install neural augmentations—or switch filter to <b>ALL</b> to preview the 35-perk catalog.</div>`;
+            cardsHtml = `<div style="text-align:center; padding: 28px 15px; color:#666; font-style:italic; font-size:12px;">No specialized captain perks acquired yet. Gain XP and level up to install neural augmentations—or switch filter to <b>ALL</b> to preview the ${totalPerks}-perk catalog.</div>`;
         } else {
-            // Sort acquired perks first when browsing ALL or a specific category
             const sortedIds = displayIds.slice().sort((a, b) => {
                 const aOwned = hasPlayerPerk(a) ? 1 : 0;
                 const bOwned = hasPlayerPerk(b) ? 1 : 0;
@@ -699,6 +837,10 @@ window.PerkUtils = PerkUtils;
                 if (hasPlayerPerk('EMERGENCY_BULKHEADS') && typeof MAX_PLAYER_HULL !== 'undefined') {
                     MAX_PLAYER_HULL += 20;
                 }
+                if (hasPlayerPerk('CRYO_ADAPTATION')) {
+                    if (typeof MAX_PLAYER_HULL !== 'undefined') MAX_PLAYER_HULL += 15;
+                    if (typeof MAX_SHIELDS !== 'undefined') MAX_SHIELDS += 15;
+                }
                 if (hasPlayerPerk('OVERCHARGED_CAPACITORS')) {
                     if (typeof MAX_SHIELDS !== 'undefined') MAX_SHIELDS += 30;
                     if (typeof PLAYER_EVASION !== 'undefined') PLAYER_EVASION += 0.08;
@@ -712,6 +854,9 @@ window.PerkUtils = PerkUtils;
                 }
                 if (hasPlayerPerk('ORDNANCE_FABRICATOR') && typeof PLAYER_ATTACK_DAMAGE !== 'undefined') {
                     PLAYER_ATTACK_DAMAGE += 4;
+                }
+                if (hasPlayerPerk('CRITICAL_OPTICS') && typeof PLAYER_ATTACK_DAMAGE !== 'undefined') {
+                    PLAYER_ATTACK_DAMAGE = Math.floor(PLAYER_ATTACK_DAMAGE * 1.10);
                 }
                 if (hasPlayerPerk('SHADOW_TRANSPONDER')) {
                     window.PLAYER_SIGNATURE = Math.max(0.1, (window.PLAYER_SIGNATURE || 1.0) * 0.65);
@@ -807,6 +952,54 @@ window.PerkUtils = PerkUtils;
             window._perksStartCombatHooked = true;
         }
 
+        // B.75 Wrap handleVictory for SALVAGE_ENGINEER & CRITICAL_OPTICS
+        if (typeof window.handleVictory === 'function' && !window._perksVictoryHooked) {
+            const origHandleVictory = window.handleVictory;
+            window.handleVictory = function() {
+                const prevCredits = typeof playerCredits !== 'undefined' ? playerCredits : 0;
+                origHandleVictory.apply(this, arguments);
+
+                // Only trigger if combat actually ended
+                if (typeof currentCombatContext !== 'undefined' && currentCombatContext !== null) return;
+
+                let triggeredBonus = false;
+                if (hasPlayerPerk('SALVAGE_ENGINEER')) {
+                    const earned = Math.max(0, (typeof playerCredits !== 'undefined' ? playerCredits : 0) - prevCredits);
+                    const bonusCreds = Math.floor(earned * 0.15);
+                    if (bonusCreds > 0 && typeof playerCredits !== 'undefined') playerCredits += bonusCreds;
+
+                    const dropId = Math.random() < 0.7 ? 'TECH_PARTS' : 'REFINED_ALLOY';
+                    const dropQty = dropId === 'TECH_PARTS' ? 2 : 1;
+                    const added = _perkSafeAddCargo(dropId, dropQty);
+                    const dropName = (typeof COMMODITIES !== 'undefined' && COMMODITIES[dropId]) ? COMMODITIES[dropId].name : dropId;
+
+                    if ((bonusCreds > 0 || added > 0) && typeof logMessage === 'function') {
+                        const parts = [];
+                        if (bonusCreds > 0) parts.push(`+${formatNumber(bonusCreds)}c`);
+                        if (added > 0) parts.push(`+${added}x ${dropName}`);
+                        logMessage(`<span style='color:var(--warning)'>[ HULL STRIPPER ] Stripped intact dorsal relays (${parts.join(', ')})!</span>`);
+                    }
+                    triggeredBonus = true;
+                }
+
+                if (hasPlayerPerk('CRITICAL_OPTICS')) {
+                    if (typeof playerShields !== 'undefined' && typeof MAX_SHIELDS !== 'undefined' && playerShields < MAX_SHIELDS) {
+                        playerShields = Math.min(MAX_SHIELDS, playerShields + 12);
+                        if (typeof logMessage === 'function') {
+                            logMessage("<span style='color:var(--accent-color)'>[ PINPOINT CONVERGENCE ] Siphoned enemy core bloom (+12 Shields).</span>");
+                        }
+                        triggeredBonus = true;
+                    }
+                }
+
+                if (triggeredBonus) {
+                    _refreshPerkModalBars();
+                    if (typeof autoSaveGame === 'function') autoSaveGame();
+                }
+            };
+            window._perksVictoryHooked = true;
+        }
+
         // C. Wrap selectPerk so picking a stat-boosting perk or unlocking a Discipline Mastery tops off & persists
         if (typeof window.selectPerk === 'function' && !window._perksSelectHooked) {
             const originalSelectPerk = window.selectPerk;
@@ -814,12 +1007,16 @@ window.PerkUtils = PerkUtils;
                 const prevMasteries = new Set(PerkUtils.getActiveMasteries().map(m => m.category));
 
                 originalSelectPerk.apply(this, arguments);
+                _cachedCountsSig = ""; // Invalidate counts cache immediately
                 if (typeof applyPlayerShipStats === 'function') applyPlayerShipStats();
 
                 if (perkId === 'NANO_HULL_WEAVE' && typeof playerHull !== 'undefined') {
                     playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 35);
                 } else if (perkId === 'EMERGENCY_BULKHEADS' && typeof playerHull !== 'undefined') {
                     playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 20);
+                } else if (perkId === 'CRYO_ADAPTATION') {
+                    if (typeof playerHull !== 'undefined') playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 15);
+                    if (typeof playerShields !== 'undefined') playerShields = Math.min(MAX_SHIELDS, playerShields + 15);
                 } else if (perkId === 'OVERCHARGED_CAPACITORS' && typeof playerShields !== 'undefined') {
                     playerShields = Math.min(MAX_SHIELDS, playerShields + 30);
                 } else if (perkId === 'DIMENSIONAL_POCKETS' && typeof playerFuel !== 'undefined') {
@@ -852,7 +1049,7 @@ window.PerkUtils = PerkUtils;
             window._perksSelectHooked = true;
         }
 
-        // C.5 Enhance renderLevelUpScreen cards with Discipline Mastery progress & lore excerpt
+        // C.5 Enhance renderLevelUpScreen cards with Discipline Mastery progress & lore excerpt (O(1) Map lookup)
         if (typeof window.renderLevelUpScreen === 'function' && !window._perksLevelUpUIHooked) {
             const origRenderLevelUp = window.renderLevelUpScreen;
             window.renderLevelUpScreen = function() {
@@ -866,7 +1063,7 @@ window.PerkUtils = PerkUtils;
                     const titleEl = card.querySelector('.perk-title');
                     const catEl = card.querySelector('.perk-category');
                     if (!titleEl) return;
-                    const perk = Object.values(PERKS_DATABASE).find(p => p.name === titleEl.textContent.trim());
+                    const perk = _perksByName.get(titleEl.textContent.trim());
                     if (!perk) return;
 
                     const doc = PERK_MASTERY_DOCTRINES[perk.category];
@@ -930,7 +1127,7 @@ window.PerkUtils = PerkUtils;
             window._perksSectorHooked = true;
         }
 
-        // E. Wrap showWormholeDetails AND executeWormholeJump for HYPER_LANE_MAPPER
+        // E. Wrap Wormhole UI, Jump & Wild Jump for HYPER_LANE_MAPPER
         if (typeof window.showWormholeDetails === 'function' && !window._perksWormholeUIHooked) {
             const originalShowWormholeDetails = window.showWormholeDetails;
             window.showWormholeDetails = function(targetWh, distance) {
@@ -980,6 +1177,24 @@ window.PerkUtils = PerkUtils;
             window._perksWormholeHooked = true;
         }
 
+        if (typeof window.traverseRandomWormhole === 'function' && !window._perksWildWormholeHooked) {
+            const origWildJump = window.traverseRandomWormhole;
+            window.traverseRandomWormhole = function() {
+                const prevFuel = typeof playerFuel !== 'undefined' ? playerFuel : 0;
+                origWildJump.apply(this, arguments);
+                const spent = prevFuel - (typeof playerFuel !== 'undefined' ? playerFuel : 0);
+                if (spent > 0 && hasPlayerPerk('HYPER_LANE_MAPPER')) {
+                    const refund = Math.round((spent * 0.5) * 10) / 10;
+                    playerFuel = Math.min(MAX_FUEL, Math.round((playerFuel + refund) * 10) / 10);
+                    if (typeof logMessage === 'function') {
+                        logMessage(`<span style='color:var(--success)'>[ HYPER-LANE MAPPER ] Optimized gravimetric slip—saved ${refund.toFixed(1)} Fuel.</span>`);
+                    }
+                    if (typeof renderUIStats === 'function') renderUIStats();
+                }
+            };
+            window._perksWildWormholeHooked = true;
+        }
+
         // F. Wrap performCustomsScan to apply SMUGGLERS_LUCK bypass chance
         if (typeof window.performCustomsScan === 'function' && !window._perksCustomsHooked) {
             const originalPerformCustomsScan = window.performCustomsScan;
@@ -1014,35 +1229,36 @@ window.PerkUtils = PerkUtils;
                     if (hasPlayerPerk('ASTROMETRIC_SAVANT')) {
                         extraXP += baseXP;
                         let extraMsg = `<span style="color:var(--accent-color)">[ ASTROMETRIC SAVANT ]</span> High-resolution interferometry yielded +${baseXP} bonus XP!`;
-                        if (Math.random() < 0.50 && (typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0) + 1 <= PLAYER_CARGO_CAPACITY) {
-                            playerCargo['PLANETARY_DATA'] = (playerCargo['PLANETARY_DATA'] || 0) + 1;
-                            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                        if (Math.random() < 0.50 && _perkSafeAddCargo('PLANETARY_DATA', 1) > 0) {
                             extraMsg += ` <span style="color:var(--gold-text)">Resolved +1x bonus Planetary Data cartridge!</span>`;
                         }
                         if (typeof logMessage === 'function') logMessage(extraMsg);
                     }
 
                     if (PerkUtils.hasDisciplineMastery('Science')) {
-                        const sciBonus = Math.floor((baseXP + extraXP) * 0.15);
-                        extraXP += sciBonus;
+                        extraXP += Math.floor((baseXP + extraXP) * 0.15);
                     }
 
                     if (extraXP > 0 && typeof playerXP !== 'undefined') {
                         playerXP += extraXP;
                         if (typeof checkLevelUp === 'function') checkLevelUp();
+                        if (typeof autoSaveGame === 'function') autoSaveGame();
                     }
                 }
             };
             window._perksAstroHooked = true;
         }
 
-        // G.5 Wrap evaluateStar (exploration.js) for SPECTRAL_ANALYST & Science Mastery
+        // G.5 Wrap evaluateStar (exploration.js) for SPECTRAL_ANALYST & Science Mastery (Level-Up Safe)
         if (typeof window.evaluateStar === 'function' && !window._perksSpectralHooked) {
             const origEvalStar = window.evaluateStar;
             window.evaluateStar = function(starData, starId) {
                 const prevXP = typeof playerXP !== 'undefined' ? playerXP : 0;
+                const prevLvl = typeof playerLevel !== 'undefined' ? playerLevel : 1;
+                const prevReq = typeof xpToNextLevel !== 'undefined' ? xpToNextLevel : 75;
+
                 origEvalStar.apply(this, arguments);
-                const gained = (typeof playerXP !== 'undefined' ? playerXP : 0) - prevXP;
+                const gained = _calcActualXpGained(prevXP, prevLvl, prevReq);
 
                 if (gained > 0) {
                     let bonusXP = 0;
@@ -1062,11 +1278,52 @@ window.PerkUtils = PerkUtils;
                     if (bonusXP > 0 && typeof playerXP !== 'undefined') {
                         playerXP += bonusXP;
                         if (typeof checkLevelUp === 'function') checkLevelUp();
-                        if (typeof renderUIStats === 'function') renderUIStats();
+                        _refreshPerkModalBars();
+                        if (typeof autoSaveGame === 'function') autoSaveGame();
                     }
                 }
             };
             window._perksSpectralHooked = true;
+        }
+
+        // G.75 Wrap extractAnomalyData & resolvePhenomenon for ANOMALY_TUNER
+        if (typeof window.extractAnomalyData === 'function' && !window._perksAnomalyTunerHooked) {
+            const origExtractAnomaly = window.extractAnomalyData;
+            window.extractAnomalyData = function() {
+                const hadContext = typeof anomalyContext !== 'undefined' && anomalyContext && anomalyContext.lastResonance >= 85;
+                origExtractAnomaly.apply(this, arguments);
+
+                if (hadContext && hasPlayerPerk('ANOMALY_TUNER')) {
+                    if (typeof playerXP !== 'undefined') playerXP += 100;
+                    if (typeof playerShields !== 'undefined' && typeof MAX_SHIELDS !== 'undefined') {
+                        playerShields = Math.min(MAX_SHIELDS, playerShields + 25);
+                    }
+                    if (typeof logMessage === 'function') {
+                        logMessage("<span style='color:#DDA0DD'>[ HARMONIC RESONATOR ] Containment coils captured ambient harmonic energy (+100 XP, +25 Shields)!</span>");
+                    }
+                    if (typeof checkLevelUp === 'function') checkLevelUp();
+                    _refreshPerkModalBars();
+                    if (typeof autoSaveGame === 'function') autoSaveGame();
+                }
+            };
+            window._perksAnomalyTunerHooked = true;
+        }
+
+        if (typeof window.resolvePhenomenon === 'function' && !window._perksPhenomTunerHooked) {
+            const origResolvePhenom = window.resolvePhenomenon;
+            window.resolvePhenomenon = function() {
+                origResolvePhenom.apply(this, arguments);
+                if (hasPlayerPerk('ANOMALY_TUNER') && typeof playerHull !== 'undefined' && playerHull > 0) {
+                    if (typeof playerShields !== 'undefined' && typeof MAX_SHIELDS !== 'undefined') {
+                        playerShields = Math.min(MAX_SHIELDS, playerShields + 25);
+                    }
+                    if (typeof logMessage === 'function') {
+                        logMessage("<span style='color:#DDA0DD'>[ HARMONIC RESONATOR ] Subspace observation charged deflectors (+25 Shields).</span>");
+                    }
+                    _refreshPerkModalBars();
+                }
+            };
+            window._perksPhenomTunerHooked = true;
         }
 
         // H. Wrap deployMiningDrone & deployCombatDrone for DRONE_COMMANDER (50% chance to preserve drone)
@@ -1098,6 +1355,49 @@ window.PerkUtils = PerkUtils;
                 return deployed;
             };
             window._perksCombatDroneHooked = true;
+        }
+
+        // H.5 Wrap fireSensorPing & startSurfaceExpedition for WAYFARER_INSTINCT
+        if (typeof window.fireSensorPing === 'function' && !window._perksPingHooked) {
+            const origPing = window.fireSensorPing;
+            window.fireSensorPing = function() {
+                const prevFuel = typeof playerFuel !== 'undefined' ? playerFuel : 0;
+                origPing.apply(this, arguments);
+                const spent = prevFuel - (typeof playerFuel !== 'undefined' ? playerFuel : 0);
+                if (spent > 0 && hasPlayerPerk('WAYFARER_INSTINCT')) {
+                    playerFuel = Math.min(MAX_FUEL, Math.round((playerFuel + spent) * 10) / 10);
+                    if (typeof logMessage === 'function') {
+                        logMessage("<span style='color:var(--accent-color)'>[ STAR-READER'S INSTINCT ] Passive pulsar-bounce sweep used 0 Fuel.</span>");
+                    }
+                    if (typeof renderUIStats === 'function') renderUIStats();
+                }
+            };
+            window._perksPingHooked = true;
+        }
+
+        if (typeof window.startSurfaceExpedition === 'function' && !window._perksExpeditionHooked) {
+            const origExp = window.startSurfaceExpedition;
+            window.startSurfaceExpedition = function() {
+                const prevXP = typeof playerXP !== 'undefined' ? playerXP : 0;
+                const prevLvl = typeof playerLevel !== 'undefined' ? playerLevel : 1;
+                const prevReq = typeof xpToNextLevel !== 'undefined' ? xpToNextLevel : 75;
+                origExp.apply(this, arguments);
+
+                if (hasPlayerPerk('WAYFARER_INSTINCT')) {
+                    const gained = _calcActualXpGained(prevXP, prevLvl, prevReq);
+                    if (gained > 0 && typeof playerXP !== 'undefined') {
+                        const bonusXP = Math.max(15, Math.floor(gained * 0.35));
+                        playerXP += bonusXP;
+                        if (typeof logMessage === 'function') {
+                            logMessage(`<span style='color:var(--accent-color)'>[ STAR-READER'S INSTINCT ] Field route-mapping earned +${bonusXP} bonus expedition XP!</span>`);
+                        }
+                        if (typeof checkLevelUp === 'function') checkLevelUp();
+                        if (typeof renderUIStats === 'function') renderUIStats();
+                        if (typeof autoSaveGame === 'function') autoSaveGame();
+                    }
+                }
+            };
+            window._perksExpeditionHooked = true;
         }
 
         // I. Wrap scoopHydrogen for QUANTUM_NAVIGATOR (+25% scoop yield & -2 stealth heat)
@@ -1160,9 +1460,56 @@ window.PerkUtils = PerkUtils;
                     if (typeof logMessage === 'function') {
                         logMessage("<span style='color:#9933FF'>[ SYNDICATE KINGPIN ] +25% Black Market bonus applied (+2 Eclipse Cartel Rep).</span>");
                     }
+                    if (typeof autoSaveGame === 'function') autoSaveGame();
                 }
             };
             window._perksBrokerTradeHooked = true;
+        }
+
+        // J.5 Wrap executeTrade & sellAllBulkCargo for BULK_ARBITRAGE (+5% credits & +25% Trade XP)
+        if (typeof window.executeTrade === 'function' && !window._perksTradeArbHooked) {
+            const origExecTrade = window.executeTrade;
+            window.executeTrade = function(itemId, isBuy) {
+                const prevCredits = typeof playerCredits !== 'undefined' ? playerCredits : 0;
+                origExecTrade.apply(this, arguments);
+                if (!isBuy && hasPlayerPerk('BULK_ARBITRAGE')) {
+                    const earned = (typeof playerCredits !== 'undefined' ? playerCredits : 0) - prevCredits;
+                    if (earned > 0) {
+                        const bonusCredits = Math.max(1, Math.floor(earned * 0.05));
+                        const bonusXP = Math.max(1, Math.floor(earned * 0.02));
+                        playerCredits += bonusCredits;
+                        if (typeof playerXP !== 'undefined') playerXP += bonusXP;
+                        if (typeof checkLevelUp === 'function') checkLevelUp();
+                        _refreshPerkModalBars();
+                        if (typeof autoSaveGame === 'function') autoSaveGame();
+                    }
+                }
+            };
+            window._perksTradeArbHooked = true;
+        }
+
+        if (typeof window.sellAllBulkCargo === 'function' && !window._perksBulkArbHooked) {
+            const origBulkSell = window.sellAllBulkCargo;
+            window.sellAllBulkCargo = function() {
+                const prevCredits = typeof playerCredits !== 'undefined' ? playerCredits : 0;
+                origBulkSell.apply(this, arguments);
+                if (hasPlayerPerk('BULK_ARBITRAGE')) {
+                    const earned = (typeof playerCredits !== 'undefined' ? playerCredits : 0) - prevCredits;
+                    if (earned > 0) {
+                        const bonusCredits = Math.max(1, Math.floor(earned * 0.05));
+                        const bonusXP = Math.max(1, Math.floor(earned * 0.02));
+                        playerCredits += bonusCredits;
+                        if (typeof playerXP !== 'undefined') playerXP += bonusXP;
+                        if (typeof logMessage === 'function') {
+                            logMessage(`<span style='color:var(--gold-text)'>[ FREE-TRADER CHARTER ] Dock tariff waiver netted +${formatNumber(bonusCredits)}c & +${bonusXP} XP!</span>`);
+                        }
+                        if (typeof checkLevelUp === 'function') checkLevelUp();
+                        _refreshPerkModalBars();
+                        if (typeof autoSaveGame === 'function') autoSaveGame();
+                    }
+                }
+            };
+            window._perksBulkArbHooked = true;
         }
 
         // K. Wrap repairShip & executeCrafting for REFINERY_EFFICIENCY (Molecular Recycler)
@@ -1179,7 +1526,8 @@ window.PerkUtils = PerkUtils;
                     if (typeof logMessage === 'function') {
                         logMessage(`<span style='color:var(--success)'>[ MOLECULAR RECYCLER ] Salvaged scrap plating offset hull overhaul cost (+${formatNumber(rebate)}c rebated).</span>`);
                     }
-                    if (typeof renderUIStats === 'function') renderUIStats();
+                    _refreshPerkModalBars();
+                    if (typeof autoSaveGame === 'function') autoSaveGame();
                 }
             };
             window._perksRepairHooked = true;
@@ -1199,14 +1547,9 @@ window.PerkUtils = PerkUtils;
                     const consumedSomething = reqKeys.some(k => ((playerCargo[k] || 0) < beforeCounts[k]));
                     if (consumedSomething && Math.random() < 0.25) {
                         const refundKey = reqKeys[Math.floor(Math.random() * reqKeys.length)];
-                        const itemDef = typeof COMMODITIES !== 'undefined' ? COMMODITIES[refundKey] : null;
-                        const weight = (itemDef && itemDef.weight !== undefined) ? itemDef.weight : 1;
-                        if ((typeof currentCargoLoad !== 'undefined' ? currentCargoLoad : 0) + weight <= PLAYER_CARGO_CAPACITY) {
-                            playerCargo[refundKey] = (playerCargo[refundKey] || 0) + 1;
-                            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                            if (typeof logMessage === 'function') {
-                                logMessage(`<span style='color:var(--success)'>[ MOLECULAR RECYCLER ] Closed-loop trap recovered 1x ${itemDef ? itemDef.name : refundKey}!</span>`);
-                            }
+                        if (_perkSafeAddCargo(refundKey, 1) > 0 && typeof logMessage === 'function') {
+                            const itemDef = typeof COMMODITIES !== 'undefined' ? COMMODITIES[refundKey] : null;
+                            logMessage(`<span style='color:var(--success)'>[ MOLECULAR RECYCLER ] Closed-loop trap recovered 1x ${itemDef ? itemDef.name : refundKey}!</span>`);
                         }
                     }
                 }
@@ -1214,33 +1557,68 @@ window.PerkUtils = PerkUtils;
             window._perksCraftingHooked = true;
         }
 
-        // L. Wrap grantMissionRewards & processBountyVictory for CONTRACT_NEGOTIATOR, CHARISMATIC_CAPTAIN & Trade Mastery
+        // K.5 Wrap openStationView for CRYO_ADAPTATION (+10 free port-arrival hull patch, once per port per stardate)
+        if (typeof window.openStationView === 'function' && !window._perksCryoDockHooked) {
+            const origOpenStation = window.openStationView;
+            window.openStationView = function() {
+                if (hasPlayerPerk('CRYO_ADAPTATION') && typeof playerHull !== 'undefined' && typeof MAX_PLAYER_HULL !== 'undefined' && playerHull < MAX_PLAYER_HULL) {
+                    const loc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+                    const portKey = `${typeof currentCampaignId !== 'undefined' ? currentCampaignId : 'S'}_${loc && loc.name ? loc.name : `${playerX},${playerY}`}_${Math.floor(typeof currentGameDate !== 'undefined' ? currentGameDate : 0)}`;
+                    if (!_cryoDockHealedPorts.has(portKey)) {
+                        if (_cryoDockHealedPorts.size > 150) _cryoDockHealedPorts.clear();
+                        _cryoDockHealedPorts.add(portKey);
+                        playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 10);
+                        if (typeof logMessage === 'function') {
+                            logMessage("<span style='color:var(--success)'>[ VOID-HARDENED CORE ] Self-sealing dock patches mended +10 Hull Integrity on arrival.</span>");
+                        }
+                    }
+                }
+                return origOpenStation.apply(this, arguments);
+            };
+            window._perksCryoDockHooked = true;
+        }
+
+        // L. Wrap grantMissionRewards, processBountyVictory, processBountyPayment & executeFuelRatRescue
+        // for CONTRACT_NEGOTIATOR, CHARISMATIC_CAPTAIN, FACTION_ENVOY & Trade Mastery
         if (typeof window.grantMissionRewards === 'function' && !window._perksMissionRewardHooked) {
             const origGrantMission = window.grantMissionRewards;
             window.grantMissionRewards = function() {
+                const loc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
                 const missionSnapshot = (typeof playerActiveMission !== 'undefined' && playerActiveMission) ? {
                     rewards: playerActiveMission.rewards ? { ...playerActiveMission.rewards } : {},
-                    faction: playerActiveMission.faction
+                    faction: (playerActiveMission.faction && playerActiveMission.faction !== 'INDEPENDENT')
+                        ? playerActiveMission.faction
+                        : (loc && loc.faction && loc.faction !== 'INDEPENDENT' ? loc.faction : null)
                 } : null;
 
                 origGrantMission.apply(this, arguments);
 
                 if (missionSnapshot && (typeof playerActiveMission === 'undefined' || playerActiveMission === null)) {
                     let bonusCredits = 0;
+                    let extraRep = 0;
+
                     if (hasPlayerPerk('CONTRACT_NEGOTIATOR') && missionSnapshot.rewards.credits) {
                         const negBonus = Math.floor(missionSnapshot.rewards.credits * 0.20);
                         bonusCredits += negBonus;
-                        if (missionSnapshot.faction && missionSnapshot.faction !== 'INDEPENDENT' && typeof playerFactionStanding !== 'undefined') {
-                            playerFactionStanding[missionSnapshot.faction] = (playerFactionStanding[missionSnapshot.faction] || 0) + 2;
-                        }
+                        if (missionSnapshot.faction) extraRep += 2;
                         if (typeof logMessage === 'function') {
-                            logMessage(`<span style='color:var(--gold-text)'>[ BROKER'S RETAINER ] Rider clause triggered: +${formatNumber(negBonus)}c${missionSnapshot.faction && missionSnapshot.faction !== 'INDEPENDENT' ? ` & +2 ${missionSnapshot.faction} Rep` : ''}!</span>`);
+                            logMessage(`<span style='color:var(--gold-text)'>[ BROKER'S RETAINER ] Rider clause triggered: +${formatNumber(negBonus)}c${missionSnapshot.faction ? ` & +2 ${missionSnapshot.faction} Rep` : ''}!</span>`);
                         }
                     }
 
+                    if (hasPlayerPerk('FACTION_ENVOY') && missionSnapshot.faction) {
+                        extraRep += 2;
+                        if (typeof logMessage === 'function') {
+                            logMessage(`<span style='color:var(--accent-color)'>[ CONCORD LIAISON ] Diplomatic seal boosted standing (+2 ${missionSnapshot.faction} Rep).</span>`);
+                        }
+                    }
+
+                    if (extraRep > 0 && missionSnapshot.faction && typeof playerFactionStanding !== 'undefined') {
+                        playerFactionStanding[missionSnapshot.faction] = (playerFactionStanding[missionSnapshot.faction] || 0) + extraRep;
+                    }
+
                     if (PerkUtils.hasDisciplineMastery('Trade') && missionSnapshot.rewards.credits) {
-                        const masteryBonus = Math.floor(missionSnapshot.rewards.credits * 0.10);
-                        bonusCredits += masteryBonus;
+                        bonusCredits += Math.floor(missionSnapshot.rewards.credits * 0.10);
                     }
 
                     if (bonusCredits > 0 && typeof playerCredits !== 'undefined') {
@@ -1256,7 +1634,8 @@ window.PerkUtils = PerkUtils;
                         if (typeof checkLevelUp === 'function') checkLevelUp();
                     }
 
-                    if (typeof renderUIStats === 'function') renderUIStats();
+                    _refreshPerkModalBars();
+                    if (typeof autoSaveGame === 'function') autoSaveGame();
                 }
             };
             window._perksMissionRewardHooked = true;
@@ -1266,22 +1645,74 @@ window.PerkUtils = PerkUtils;
             const origBountyWin = window.processBountyVictory;
             window.processBountyVictory = function(defeatedEnemy) {
                 const prevCredits = typeof playerCredits !== 'undefined' ? playerCredits : 0;
-                const hadBounty = typeof playerActiveBounty !== 'undefined' && playerActiveBounty !== null;
+                const bountySnap = (typeof playerActiveBounty !== 'undefined' && playerActiveBounty) ? { ...playerActiveBounty } : null;
                 origBountyWin.apply(this, arguments);
 
-                if (hadBounty && !playerActiveBounty && hasPlayerPerk('CONTRACT_NEGOTIATOR')) {
-                    const earned = (typeof playerCredits !== 'undefined' ? playerCredits : 0) - prevCredits;
-                    if (earned > 0) {
-                        const bonus = Math.floor(earned * 0.20);
-                        playerCredits += bonus;
-                        if (typeof logMessage === 'function') {
-                            logMessage(`<span style='color:var(--gold-text)'>[ BROKER'S RETAINER ] Collected +${formatNumber(bonus)}c hazard bounty surcharge!</span>`);
+                if (bountySnap && !playerActiveBounty) {
+                    let changed = false;
+                    if (hasPlayerPerk('CONTRACT_NEGOTIATOR')) {
+                        const earned = (typeof playerCredits !== 'undefined' ? playerCredits : 0) - prevCredits;
+                        if (earned > 0) {
+                            const bonus = Math.floor(earned * 0.20);
+                            playerCredits += bonus;
+                            if (typeof logMessage === 'function') {
+                                logMessage(`<span style='color:var(--gold-text)'>[ BROKER'S RETAINER ] Collected +${formatNumber(bonus)}c hazard bounty surcharge!</span>`);
+                            }
+                            changed = true;
                         }
-                        if (typeof renderUIStats === 'function') renderUIStats();
+                    }
+                    if (hasPlayerPerk('FACTION_ENVOY') && typeof playerFactionStanding !== 'undefined') {
+                        const issuer = bountySnap.issuerFaction || 'CONCORD';
+                        if (issuer !== 'INDEPENDENT') {
+                            playerFactionStanding[issuer] = (playerFactionStanding[issuer] || 0) + 2;
+                            if (typeof logMessage === 'function') {
+                                logMessage(`<span style='color:var(--accent-color)'>[ CONCORD LIAISON ] Warrant commendation earned +2 extra ${issuer} Rep.</span>`);
+                            }
+                            changed = true;
+                        }
+                    }
+                    if (changed) {
+                        _refreshPerkModalBars();
+                        if (typeof autoSaveGame === 'function') autoSaveGame();
                     }
                 }
             };
             window._perksBountyRewardHooked = true;
+        }
+
+        if (typeof window.processBountyPayment === 'function' && !window._perksSecurityEnvoyHooked) {
+            const origBountyPay = window.processBountyPayment;
+            window.processBountyPayment = function(isBribe, amount) {
+                const prevCredits = typeof playerCredits !== 'undefined' ? playerCredits : 0;
+                origBountyPay.apply(this, arguments);
+                const paid = prevCredits - (typeof playerCredits !== 'undefined' ? playerCredits : 0);
+
+                if (paid > 0 && hasPlayerPerk('FACTION_ENVOY')) {
+                    const rebate = Math.floor(paid * 0.25);
+                    playerCredits += rebate;
+                    if (typeof logMessage === 'function') {
+                        logMessage(`<span style='color:var(--accent-color)'>[ CONCORD LIAISON ] Diplomatic clearance reduced Security Office fee by ${formatNumber(rebate)}c.</span>`);
+                    }
+                    _refreshPerkModalBars();
+                    if (typeof autoSaveGame === 'function') autoSaveGame();
+                }
+            };
+            window._perksSecurityEnvoyHooked = true;
+        }
+
+        if (typeof window.executeFuelRatRescue === 'function' && !window._perksFuelRatEnvoyHooked) {
+            const origRatRescue = window.executeFuelRatRescue;
+            window.executeFuelRatRescue = function(tipAmount) {
+                origRatRescue.apply(this, arguments);
+                if (tipAmount > 0 && hasPlayerPerk('FACTION_ENVOY') && typeof playerFactionStanding !== 'undefined') {
+                    playerFactionStanding['FUEL_RATS'] = (playerFactionStanding['FUEL_RATS'] || 0) + 2;
+                    if (typeof logMessage === 'function') {
+                        logMessage("<span style='color:var(--accent-color)'>[ CONCORD LIAISON ] Dispatch praised your generosity (+2 extra Fuel Rats Rep).</span>");
+                    }
+                    if (typeof autoSaveGame === 'function') autoSaveGame();
+                }
+            };
+            window._perksFuelRatEnvoyHooked = true;
         }
 
         // M. Wrap rewardCrewMember & executeCrewDismissal for CHARISMATIC_CAPTAIN
@@ -1295,6 +1726,7 @@ window.PerkUtils = PerkUtils;
                 if (crewObj && hasPlayerPerk('CHARISMATIC_CAPTAIN') && (crewObj.loyalty || 0) > prevLoyalty && crewObj.loyalty < 100) {
                     crewObj.loyalty = Math.min(100, crewObj.loyalty + 5);
                     if (typeof displayCrewRoster === 'function') displayCrewRoster(index);
+                    if (typeof autoSaveGame === 'function') autoSaveGame();
                 }
             };
             window._perksCrewRewardHooked = true;
@@ -1313,7 +1745,8 @@ window.PerkUtils = PerkUtils;
                     if (typeof logMessage === 'function') {
                         logMessage(`<span style='color:var(--success)'>[ OFFICER'S BEARING ] Amicable parting saved ${formatNumber(saved)}c in severance pay.</span>`);
                     }
-                    if (typeof renderUIStats === 'function') renderUIStats();
+                    _refreshPerkModalBars();
+                    if (typeof autoSaveGame === 'function') autoSaveGame();
                 }
             };
             window._perksCrewFireHooked = true;
@@ -1335,7 +1768,20 @@ window.PerkUtils = PerkUtils;
                             logMessage("<span style='color:var(--success)'>[ CANTINA REGULAR ] Bartender slides a top-shelf Synth-Ale on the house! +20 Hull restored.</span>");
                         }
                         if (typeof showToast === 'function') showToast("ON THE HOUSE! (+20 HULL)", "success");
-                        if (typeof renderUIStats === 'function') renderUIStats();
+                        const detailEl = document.getElementById('genericDetailContent');
+                        if (detailEl) {
+                            detailEl.innerHTML = `
+                                <div style="text-align:center; padding:24px 12px; animation: fadeIn 0.25s;">
+                                    <div style="font-size:48px; margin-bottom:10px;">🍻</div>
+                                    <h3 style="color:var(--success); margin:0 0 10px 0;">ON THE HOUSE!</h3>
+                                    <p style="font-size:12px; color:var(--text-color); line-height:1.5;">
+                                        The bartender grins, waves away your credit chit, and pours top-shelf Synth-Ale while dockhands patch your outer hull.
+                                    </p>
+                                    <div style="color:var(--success); font-weight:bold; margin-top:12px;">+20 Hull (${Math.floor(playerHull)}/${MAX_PLAYER_HULL}) · FREE</div>
+                                </div>
+                            `;
+                        }
+                        _refreshPerkModalBars();
                         return;
                     }
                 }
@@ -1348,7 +1794,8 @@ window.PerkUtils = PerkUtils;
                     if (typeof logMessage === 'function') {
                         logMessage("<span style='color:var(--gold-text)'>[ CANTINA REGULAR ] Side-bets paid off! +100c extra Pazaak bonus!</span>");
                     }
-                    if (typeof renderUIStats === 'function') renderUIStats();
+                    _refreshPerkModalBars();
+                    if (typeof autoSaveGame === 'function') autoSaveGame();
                 }
             };
             window._perksCantinaHooked = true;
@@ -1358,8 +1805,10 @@ window.PerkUtils = PerkUtils;
             const origListenRumors = window.listenToRumors;
             window.listenToRumors = function() {
                 const prevXP = typeof playerXP !== 'undefined' ? playerXP : 0;
+                const prevLvl = typeof playerLevel !== 'undefined' ? playerLevel : 1;
+                const prevReq = typeof xpToNextLevel !== 'undefined' ? xpToNextLevel : 75;
                 origListenRumors.apply(this, arguments);
-                const gained = (typeof playerXP !== 'undefined' ? playerXP : 0) - prevXP;
+                const gained = _calcActualXpGained(prevXP, prevLvl, prevReq);
 
                 if (gained > 0 && hasPlayerPerk('CANTINA_FIXER') && typeof playerXP !== 'undefined') {
                     playerXP += 15;
@@ -1367,19 +1816,21 @@ window.PerkUtils = PerkUtils;
                         logMessage("<span style='color:var(--gold-text)'>[ CANTINA REGULAR ] Locals shared deeper backroom intel (+15 bonus XP).</span>");
                     }
                     if (typeof checkLevelUp === 'function') checkLevelUp();
-                    if (typeof renderUIStats === 'function') renderUIStats();
+                    _refreshPerkModalBars();
                 }
             };
             window._perksRumorsHooked = true;
         }
 
-        // O. Wrap Cryptarch & Field Decryption for XENO_ARCHAEOLOGIST
+        // O. Wrap Cryptarch & Field Decryption for XENO_ARCHAEOLOGIST (Level-Up Safe)
         if (typeof window.processDecryption === 'function' && !window._perksDecryptHooked) {
             const origDecrypt = window.processDecryption;
             window.processDecryption = function() {
                 const prevXP = typeof playerXP !== 'undefined' ? playerXP : 0;
+                const prevLvl = typeof playerLevel !== 'undefined' ? playerLevel : 1;
+                const prevReq = typeof xpToNextLevel !== 'undefined' ? xpToNextLevel : 75;
                 origDecrypt.apply(this, arguments);
-                const gained = (typeof playerXP !== 'undefined' ? playerXP : 0) - prevXP;
+                const gained = _calcActualXpGained(prevXP, prevLvl, prevReq);
 
                 if (gained > 0 && hasPlayerPerk('XENO_ARCHAEOLOGIST') && typeof playerXP !== 'undefined') {
                     const bonusXP = Math.floor(gained * 0.35);
@@ -1388,6 +1839,8 @@ window.PerkUtils = PerkUtils;
                         logMessage(`<span style='color:#DDA0DD'>[ PRECURSOR SCHOLAR ] Translated embedded sub-glyphs (+${bonusXP} bonus XP)!</span>`);
                     }
                     if (typeof checkLevelUp === 'function') checkLevelUp();
+                    _refreshPerkModalBars();
+                    if (typeof autoSaveGame === 'function') autoSaveGame();
                 }
             };
             window._perksDecryptHooked = true;
@@ -1406,7 +1859,8 @@ window.PerkUtils = PerkUtils;
                     if (typeof logMessage === 'function') {
                         logMessage(`<span style='color:var(--gold-text)'>[ PRECURSOR SCHOLAR ] Academic provenance documentation earned +${formatNumber(bonus)}c extra endowment!</span>`);
                     }
-                    if (typeof renderUIStats === 'function') renderUIStats();
+                    _refreshPerkModalBars();
+                    if (typeof autoSaveGame === 'function') autoSaveGame();
                 }
             };
             window._perksRelicHooked = true;
@@ -1417,9 +1871,12 @@ window.PerkUtils = PerkUtils;
             const decryptItems = new Set(['ENCRYPTED_ENGRAM', 'ENCRYPTED_DATA', 'ANCIENT_ARCHIVE', 'PRECURSOR_CIPHER']);
             window.useCargoItem = function(key) {
                 const prevXP = typeof playerXP !== 'undefined' ? playerXP : 0;
+                const prevLvl = typeof playerLevel !== 'undefined' ? playerLevel : 1;
+                const prevReq = typeof xpToNextLevel !== 'undefined' ? xpToNextLevel : 75;
                 origUseCargo.apply(this, arguments);
+
                 if (decryptItems.has(key) && hasPlayerPerk('XENO_ARCHAEOLOGIST')) {
-                    const gained = (typeof playerXP !== 'undefined' ? playerXP : 0) - prevXP;
+                    const gained = _calcActualXpGained(prevXP, prevLvl, prevReq);
                     if (gained > 0 && typeof playerXP !== 'undefined') {
                         const bonusXP = Math.floor(gained * 0.35);
                         playerXP += bonusXP;
@@ -1427,6 +1884,8 @@ window.PerkUtils = PerkUtils;
                             logMessage(`<span style='color:#DDA0DD'>[ PRECURSOR SCHOLAR ] Field translation unlocked +${bonusXP} bonus XP!</span>`);
                         }
                         if (typeof checkLevelUp === 'function') checkLevelUp();
+                        _refreshPerkModalBars();
+                        if (typeof autoSaveGame === 'function') autoSaveGame();
                     }
                 }
             };
