@@ -7,7 +7,14 @@ let visitedSectors;
 let playerActiveBounty = null;
 let currentStationBounties = []; // Temporarily holds the bounties available at the current station
 
-let currentStationRecruits = [];
+let currentStationRecruits = null;
+
+function _scriptEscapeHtml(value) {
+    if (typeof UI !== 'undefined' && typeof UI.escapeHtml === 'function') return UI.escapeHtml(value);
+    return String(value === undefined || value === null ? "" : value)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 
 let miningInterval = null;
 let miningPos = 0;
@@ -1532,9 +1539,9 @@ function renderUIStats() {
         threatColor = getThemeColor('--warning', '#FFAA00');
     }
 
-    if (sectorNameStatElement) {
+        if (sectorNameStatElement) {
         sectorNameStatElement.innerHTML = `${currentSectorName} <span style="color:${fColor}; opacity:0.9;">[${factionName}]</span> <span style="font-family: monospace; letter-spacing: 2px; margin-left: 10px;">${mapString}</span> <span style="color:${threatColor}; font-size: 0.8em; margin-left: 8px;">[${threat}]</span>`;
-        sectorNameStatElement.style.color = "#00E0E0"; 
+        sectorNameStatElement.style.color = ""; // Let style.css theme variables control sector title color
     }
      
     if (sectorCoordsStatElement) sectorCoordsStatElement.textContent = `[${playerX}, ${-playerY}]`;
@@ -1816,6 +1823,39 @@ function checkCodexCompletion(categoryToCheck, isSilent = false) {
     playerPerks = new Set();
 
     playerCrew = [];
+
+    // Reset campaign-level globals cleanly
+    playerColonies = {};
+    playerHasColonyCharter = false;
+    playerActiveMission = null;
+    playerActiveBounty = null;
+    activeMarketTrend = null;
+    window.defeatedLegendaries = [];
+    window.hasEclipseMerc = false;
+    window.concordEscortJumps = 0;
+    window.playerCargoCostBasis = {};
+    window.MISSIONS_DATABASE = {};
+    window._stationMissionLastRefresh = {};
+    isAwaitingRescue = false;
+    rescueTargetStation = null;
+    rescueFeePaid = 0;
+    freebieUsed = false;
+    isSilentRunning = false;
+    stealthHeat = 0;
+    messageLog = [];
+    xerxesVaultCleared = false;
+    GameState.player.milestones = [];
+    GameState.world.factionOffsets = { ECLIPSE: -22, KTHARR: 22 };
+
+    // Re-lock all Codex entries before applying starting unlocks
+    if (typeof LORE_DATABASE !== 'undefined') {
+        Object.keys(LORE_DATABASE).forEach(k => {
+            if (LORE_DATABASE[k]) LORE_DATABASE[k].unlocked = false;
+        });
+    }
+
+    currentStationRecruits = null;
+    currentStationBounties = [];
     
     // Clean up all active entities and contextual encounters
     if (typeof EntityManager !== 'undefined') EntityManager.clear();
@@ -3729,19 +3769,17 @@ function handleInteraction() {
                 if (tileObject.studied) {
                     bM = "Scanners show this phenomenon has already dissipated.";
                 } else {
-                    bM = ""; 
-                    // 50% chance to trigger the Hacking Minigame, 50% chance for Astrometrics!
+                    bM = "";
                     if (Math.random() > 0.5 && typeof handleAnomalyEncounter === 'function') {
                         handleAnomalyEncounter(tileObject);
                     } else if (typeof handleAnomaly === 'function') {
                         handleAnomaly();
-                        updateWorldState(playerX, playerY, { studied: true });
                     }
                 }
                 unlockLoreEntry("XENO_ANOMALIES");
                 break;
             case DERELICT_CHAR_VAL:
-                // 👇 BUG FIX: Changed .studied to .looted so scanning the databanks doesn't prematurely kill the wreck!
+                // Changed .studied to .looted so scanning the databanks doesn't prematurely kill the wreck!
                 if (tileObject && tileObject.looted) {
                     bM = "Scanners show this derelict has already been stripped of useful salvage.";
                     availableActions.push({ label: 'Inspect Wreckage', key: 'e', onclick: openDerelictView });
@@ -3986,7 +4024,7 @@ function renderLevelUpScreen() {
         // Resume Game Without Menu
         changeGameState(GAME_STATES.GALACTIC_MAP);
         renderUIStats();
-        saveGame();
+        autoSaveGame();
         
         // Break the synchronous stack to prevent infinite recursion crashes!
         setTimeout(() => {
@@ -4038,7 +4076,7 @@ function selectPerk(perkId) {
     }
     
     renderUIStats();
-    saveGame(); // Auto-save on level up
+    autoSaveGame(); // Auto-save on level up
     
     // --- UI BREATHING ROOM ---
     // Give the modal time to fade away before checking if we need to pop it up again
@@ -4477,7 +4515,17 @@ function handleCombatInput(key) {
             if (isDockable) {
                 if (key === 'b') { if (typeof openTradeModal === 'function') openTradeModal('buy'); return true; }
                 if (key === 's') { if (typeof openTradeModal === 'function') openTradeModal('sell'); return true; }
-                if (key === 'r') { if (typeof repairShip === 'function') { repairShip(); openStationView(); } return true; }
+                if (key === 'r') {
+                    const curWep = (typeof COMPONENTS_DATABASE !== 'undefined' && playerShip && playerShip.components)
+                        ? COMPONENTS_DATABASE[playerShip.components.weapon]
+                        : null;
+                    const needsAmmo = Boolean(curWep && curWep.stats && curWep.stats.maxAmmo && (playerShip.ammo[playerShip.components.weapon] || 0) < curWep.stats.maxAmmo);
+                    if (playerHull < MAX_PLAYER_HULL || needsAmmo) {
+                        if (typeof repairShip === 'function') { repairShip(); openStationView(); }
+                        return true;
+                    }
+                    return false; // Allow audio.js to cycle Subspace Radio when hull & ordnance are already full
+                }
                 if (key === 'k') { if (typeof displayMissionBoard === 'function') displayMissionBoard(); return true; }
                 if (key === 'y' && currentLocation.isMajorHub) { if (typeof displayShipyard === 'function') displayShipyard(); return true; }
                 if (key === 'v') { if (typeof visitCantina === 'function') visitCantina(); return true; }
@@ -4795,9 +4843,9 @@ function handleCombatInput(key) {
  }
 
  function handlePlanetViewInput(key) {
-     if (key === 'l') {
-         returnToOrbit();
-     }
+     if (key === 'l' || key === 'escape') {
+    returnToOrbit();
+    }
      // We always "handle" input in the planet view
      return true;
  }
@@ -5389,6 +5437,9 @@ function startGame(seedString) {
 
      currentGameState = GAME_STATES.GALACTIC_MAP;
 
+    visitedSectors.add(`${currentSectorX},${currentSectorY}`);
+    if (typeof handleInteraction === 'function') handleInteraction();
+
      logMessage(`World Seed: ${WORLD_SEED}`);
      logMessage('Welcome, Wayfinder! Use WASD to move.');
 
@@ -5451,7 +5502,7 @@ function performSave(saveType) {
         playerColonies: typeof playerColonies !== 'undefined' ? playerColonies : {},
         playerActiveMission, playerActiveBounty, currentStationBounties, activeMarketTrend, 
         mystery_wayfinder_progress, mystery_wayfinder_finalLocation,
-        mystery_first_nexus_location, mystery_nexus_activated, xerxesPuzzleLevel,
+        mystery_first_nexus_location, mystery_nexus_activated, xerxesPuzzleLevel, xerxesVaultCleared,
         worldStateDeltas: worldStateDeltas || {},
         activeProbes: window.activeProbes || [],
         
@@ -5543,18 +5594,24 @@ function _clearActiveModalsAndEncounters() {
 }
 
 function triggerGameOver(reason) {
+    if (currentGameState === GAME_STATES.GAME_OVER) return;
+
     // 1. Force-close any locked encounter/modal overlays before showing Game Over
     _clearActiveModalsAndEncounters();
 
-    // 2. Stop the game loop / interaction
+    // 2. Calculate exact 25% clone penalty (matching respawnPlayer)
+    const safeCredits = Math.max(0, Math.floor(typeof playerCredits !== 'undefined' ? playerCredits : 0));
+    const creditPenalty = safeCredits - Math.floor(safeCredits * 0.75);
+
+    // 3. Stop the game loop / interaction
     changeGameState(GAME_STATES.GAME_OVER);
     
-    // 3. Update UI
-    document.getElementById('deathReason').innerHTML = `Cause of Death: <span style="color:#ff5555">${reason}</span>`;
+    // 4. Update UI
+    document.getElementById('deathReason').innerHTML = `Cause of Death: <span style="color:#ff5555">${_scriptEscapeHtml(reason || "Unknown")}</span>`;
     document.getElementById('deathLevel').textContent = playerLevel;
-    document.getElementById('deathCreditPenalty').textContent = `-${creditPenalty}c`;
+    document.getElementById('deathCreditPenalty').textContent = `-${typeof formatNumber === 'function' ? formatNumber(creditPenalty) : creditPenalty}c`;
     
-    // 4. Show Screen
+    // 5. Show Screen
     document.getElementById('gameOverOverlay').style.display = 'flex';
 }
 
@@ -5599,6 +5656,9 @@ function respawnPlayer() {
 
     playerActiveBounty = null; 
 
+    currentStationRecruits = null;
+    currentStationBounties = [];
+
     // 5. Reset UI and State
     document.getElementById('gameOverOverlay').style.display = 'none';
     
@@ -5611,7 +5671,7 @@ function respawnPlayer() {
     handleInteraction(); 
     render();
     
-    saveGame(); // Auto-save on respawn
+     autoSaveGame();
 
     // Stumble Protection: Prevent accidental movement for 500ms after transition
     lastInputTime = Date.now() + 500;
@@ -5653,6 +5713,17 @@ function loadGameData(jsonString) {
     try {
         const savedState = JSON.parse(jsonString);
 
+        // Close any active modals/overlays from the current session before loading
+        _clearActiveModalsAndEncounters();
+        ['codexOverlay', 'levelUpOverlay', 'gameOverOverlay'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+
+        // Reset static hubs, cached star systems, & scrub procedural outposts from the previous session
+        chunkManager.initializeStaticLocations();
+        systemCache = {};
+
         // Purge current session memory before unpacking the save file!
         // This prevents entities and lore from the aborted session leaking into the loaded game.
         if (typeof activeEnemies !== 'undefined') activeEnemies = [];
@@ -5660,20 +5731,20 @@ function loadGameData(jsonString) {
         if (typeof activePlayerDrones !== 'undefined') activePlayerDrones = [];
         if (typeof activeDistressCalls !== 'undefined') activeDistressCalls = [];
         if (typeof window.activeSkirmishes !== 'undefined') window.activeSkirmishes = [];
-        
+
         // Reset stealth and heat
         isSilentRunning = false;
         stealthHeat = 0;
-        
+
         // Lock all lore entries (the save file will re-unlock them below)
         if (typeof LORE_DATABASE !== 'undefined') {
             Object.keys(LORE_DATABASE).forEach(k => {
                 if (LORE_DATABASE[k]) LORE_DATABASE[k].unlocked = false;
             });
         }
-        
-        currentCampaignId = savedState.campaignId || ("cmp_" + Date.now()); 
-        
+
+        currentCampaignId = savedState.campaignId || ("cmp_" + Date.now());
+
         if (savedState.version !== GAME_VERSION) {
             console.warn(`Version mismatch: ${savedState.version} vs ${GAME_VERSION}`);
         }
@@ -5691,7 +5762,7 @@ function loadGameData(jsonString) {
             // If this is an OLD legacy save, manually map the loose variables to the new state
             if (savedState.playerShip) playerShip = savedState.playerShip;
             if (savedState.playerCargo) playerCargo = savedState.playerCargo;
-            
+
             playerX = savedState.playerX || 0;
             playerY = savedState.playerY || 0;
             playerFuel = savedState.playerFuel || 220;
@@ -5714,20 +5785,21 @@ function loadGameData(jsonString) {
         playerPerks = new Set(savedState.playerPerks || []);
         window.concordEscortJumps = savedState.concordEscortJumps || 0;
 
-        GameState.player.milestones = savedState.coreState?.player?.milestones || []; 
-        
-        isAwaitingRescue = savedState.isAwaitingRescue || false; 
-        rescueTargetStation = savedState.rescueTargetStation || null; 
-        rescueFeePaid = savedState.rescueFeePaid || 0; 
-        freebieUsed = savedState.freebieUsed || false; 
-        
+        GameState.player.milestones = savedState.coreState?.player?.milestones || [];
+        GameState.world.factionOffsets = savedState.coreState?.world?.factionOffsets || { ECLIPSE: -22, KTHARR: 22 };
+
+        isAwaitingRescue = savedState.isAwaitingRescue || false;
+        rescueTargetStation = savedState.rescueTargetStation || null;
+        rescueFeePaid = savedState.rescueFeePaid || 0;
+        freebieUsed = savedState.freebieUsed || false;
+
         // Restore progression flags and inject procedural items back into databases
         window.defeatedLegendaries = savedState.defeatedLegendaries || [];
         window.hasEclipseMerc = savedState.hasEclipseMerc || false;
 
-        // 👇 BUG FIX: Load Trade and Mission session globals!
+        // Load Trade and Mission session globals (reset cleanly if missing from older saves)
         window.playerCargoCostBasis = savedState.playerCargoCostBasis || {};
-        if (savedState.MISSIONS_DATABASE) window.MISSIONS_DATABASE = savedState.MISSIONS_DATABASE;
+        window.MISSIONS_DATABASE = savedState.MISSIONS_DATABASE || {};
         window._stationMissionLastRefresh = savedState._stationMissionLastRefresh || {};
 
         if (savedState.customComponents && typeof COMPONENTS_DATABASE !== 'undefined') {
@@ -5736,13 +5808,14 @@ function loadGameData(jsonString) {
         if (savedState.customCommodities && typeof COMMODITIES !== 'undefined') {
             Object.assign(COMMODITIES, savedState.customCommodities);
         }
-        
+
         xerxesPuzzleLevel = savedState.xerxesPuzzleLevel || 0;
+        xerxesVaultCleared = Boolean(savedState.xerxesVaultCleared);
         mystery_wayfinder_progress = savedState.mystery_wayfinder_progress || 0;
         mystery_wayfinder_finalLocation = savedState.mystery_wayfinder_finalLocation || null;
         mystery_first_nexus_location = savedState.mystery_first_nexus_location || null;
         mystery_nexus_activated = savedState.mystery_nexus_activated || false;
-        
+
         playerActiveMission = savedState.playerActiveMission || null;
         playerActiveBounty = savedState.playerActiveBounty || null;
         currentStationBounties = savedState.currentStationBounties || [];
@@ -5767,16 +5840,16 @@ function loadGameData(jsonString) {
         discoveredLocations = new Set(savedState.discoveredLocations || []);
         playerCompletedMissions = new Set(savedState.playerCompletedMissions || []);
         discoveredLoreEntries = new Set(savedState.discoveredLoreEntries || []);
-        
-        // Restore the internal database switches        
+
+        // Restore the internal database switches
         discoveredLoreEntries.forEach(loreId => {
             if (LORE_DATABASE[loreId]) {
                 LORE_DATABASE[loreId].unlocked = true;
             }
         });
-        
+
         worldStateDeltas = savedState.worldStateDeltas || {};
-        
+
         // --- 5. ACTIVE PROBES ---
         window.activeProbes = savedState.activeProbes || [];
         if (typeof activeEnemies !== 'undefined') {
@@ -5788,9 +5861,9 @@ function loadGameData(jsonString) {
                 });
             });
         }
-        
+
         // --- 6. RESET LOGIC & RECALCULATION ---
-        chunkManager.loadedChunks = {}; 
+        chunkManager.loadedChunks = {};
         chunkManager.lastChunkKey = null;
         chunkManager.lastChunkRef = null;
 
@@ -5836,7 +5909,7 @@ function loadGameData(jsonString) {
         if (isAwaitingRescue && rescueTargetStation) {
             if (typeof EntityManager !== 'undefined') {
                 EntityManager.add({
-                    x: playerX + 10, 
+                    x: playerX + 10,
                     y: playerY + 10,
                     name: "Fuel Rats Rescue Tug",
                     char: "R",
@@ -5851,7 +5924,7 @@ function loadGameData(jsonString) {
         }
 
         // --- 9. RESUME GAME ---
-        
+
         // Clear ALL contexts to prevent soft-locks on auto-login
         currentTradeContext = null;
         currentCombatContext = null;
@@ -5860,17 +5933,17 @@ function loadGameData(jsonString) {
         currentEncounterContext = null;
         currentShipyardContext = null;
         window.activeHostileEncounter = false;
-        
+
         changeGameState(GAME_STATES.GALACTIC_MAP);
         handleInteraction();
         if (typeof renderMissionTracker === 'function') renderMissionTracker();
         render();
-        
+
         // START AUTOSAVE TIMER
         if (typeof autoSaveInterval !== 'undefined' && autoSaveInterval) clearInterval(autoSaveInterval);
         window.autoSaveInterval = setInterval(autoSaveGame, typeof AUTOSAVE_DELAY !== 'undefined' ? AUTOSAVE_DELAY : 60000);
 
-     } catch (error) {
+    } catch (error) {
         console.warn("Load failed:", error);
         logMessage("Error loading save file.");
     }
@@ -6128,7 +6201,7 @@ function factionAction(faction) {
     if (faction === 'CONCORD') {
         clearConcordBounty();
     } else if (faction === 'KTHARR') {
-        openKtharrProvingGrounds();
+        if (typeof openProvingGrounds === 'function') openProvingGrounds();
     } else if (faction === 'ECLIPSE') {
         fenceEclipseContraband();
     } else {
@@ -6237,6 +6310,8 @@ function processBountyPayment(isBribe, amount) {
 // --- XERXES ROGUE PLANET LOGIC ---
 
 let xerxesPuzzleLevel = 0; // 0 = Locked, 1 = Gate Open, 2 = Level 2, etc.
+let xerxesVaultCleared = false;
+let _vaultIsXerxesCore = false;
 
 function openXerxesView() {
     updateModalInfoBar('xerxesInfoBar');
@@ -6788,17 +6863,15 @@ function devGiveCredits() {
 }
 
 function devGiveColonyItems() {
-    // Add items directly to cargo
     playerCargo["COLONY_CHARTER"] = (playerCargo["COLONY_CHARTER"] || 0) + 1;
-    playerCargo["HAB_MODULE"] = (playerCargo["HAB_MODULE"] || 0) + 5;
-    playerCargo["ATMOS_PROCESSOR"] = (playerCargo["ATMOS_PROCESSOR"] || 0) + 2;
-    playerCargo["SETTLER_MANIFEST"] = (playerCargo["SETTLER_MANIFEST"] || 0) + 10;
-    
-    // Force a cargo recalculation so the event bus fires the quest hook!
+    playerCargo["REFINED_ALLOY"] = (playerCargo["REFINED_ALLOY"] || 0) + 100;
+    playerCargo["TECH_PARTS"] = (playerCargo["TECH_PARTS"] || 0) + 30;
+    playerCargo["FOOD_SUPPLIES"] = (playerCargo["FOOD_SUPPLIES"] || 0) + 40;
+    playerCargo["WATER"] = (playerCargo["WATER"] || 0) + 40;
+    playerCargo["SETTLER_MANIFEST"] = (playerCargo["SETTLER_MANIFEST"] || 0) + 5;
     if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-    
     if (typeof soundManager !== 'undefined' && soundManager.playBuy) soundManager.playBuy();
-    if (typeof showToast === 'function') showToast("DEV: Colony Gear Spawns", "success");
+    if (typeof showToast === 'function') showToast("DEV: Colony Gear Spawned", "success");
 }
 
 function devMaxStats() {
@@ -7231,7 +7304,13 @@ function resolvePhenomenon(type) {
     }
 
     if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-    
+
+    // Mark anomaly studied ONLY upon actual observation (not on retreat)
+    const curTile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+    if (curTile && getTileChar(curTile) === ANOMALY_CHAR_VAL) {
+        updateWorldState(playerX, playerY, { studied: true, lastInteraction: currentGameDate });
+    }
+
     // --- MISSION TRACKING HOOK ---
     if (playerActiveMission && playerActiveMission.type === "SURVEY" && !playerActiveMission.isComplete) {
         const progress = playerActiveMission.progress.survey_0;
@@ -7243,16 +7322,21 @@ function resolvePhenomenon(type) {
         }
     }
 
-    // Just exit silently. GameBus took care of the Game Over UI.
     if (playerHull <= 0) {
         closeGenericModal();
         return;
     }
 
-    detailEl.innerHTML = `<div style="text-align:center; padding: 40px 20px;"><h3 style="color:var(--text-color); margin-bottom:20px;">OBSERVATION COMPLETE</h3><p style="font-size:14px; line-height:1.6; background:rgba(0,0,0,0.3); padding:15px; border-radius:4px;">${resultHtml}</p></div>`;
-    actionsEl.innerHTML = `<button class="action-button full-width-btn" onclick="closeGenericModal(); changeGameState(GAME_STATES.GALACTIC_MAP); render();">RESUME COURSE</button>`;
-    
+    if (typeof soundManager !== 'undefined') soundManager.playGain();
+
+    const leveledUp = typeof checkLevelUp === 'function' ? checkLevelUp() : false;
+    if (!leveledUp) {
+        detailEl.innerHTML = `<div style="text-align:center; padding: 40px 20px;"><h3 style="color:var(--text-color); margin-bottom:20px;">OBSERVATION COMPLETE</h3><p style="font-size:14px; line-height:1.6; background:rgba(0,0,0,0.3); padding:15px; border-radius:4px;">${resultHtml}</p></div>`;
+        actionsEl.innerHTML = `<button class="action-button full-width-btn" onclick="closeGenericModal(); changeGameState(GAME_STATES.GALACTIC_MAP); render();">RESUME COURSE</button>`;
+    }
+
     if (typeof renderUIStats === 'function') renderUIStats();
+    if (typeof autoSaveGame === 'function') autoSaveGame();
 }
 
 function evadeAnomaly() {
@@ -7771,7 +7855,19 @@ function traverseWormhole() {
         </div>
     `;
 
-    actionsEl.innerHTML = `<button class="action-button full-width-btn" onclick="closeGenericModal()">ABORT JUMP</button>`;
+    const isNaturalWormhole = getTileChar(tile) === WORMHOLE_CHAR_VAL;
+    const wildFuelCost = typeof WORMHOLE_TRAVEL_FUEL_COST !== 'undefined' ? WORMHOLE_TRAVEL_FUEL_COST : 20;
+    const canWildJump = playerFuel >= wildFuelCost;
+    const wildJumpBtn = isNaturalWormhole
+        ? `<button class="action-button" ${!canWildJump ? 'disabled' : ''} style="border-color:#9933FF; color:#DDA0DD;" onclick="closeGenericModal(); if(typeof traverseRandomWormhole === 'function') traverseRandomWormhole();">
+               🌀 WILD JUMP — UNCHARTED EXIT (${wildFuelCost} Fuel)
+           </button>`
+        : '';
+
+    actionsEl.innerHTML = `
+        ${wildJumpBtn}
+        <button class="action-button full-width-btn" onclick="closeGenericModal()">ABORT JUMP</button>
+    `;
 }
 
 function showWormholeDetails(targetWh, distance) {
@@ -7827,16 +7923,21 @@ function showWormholeDetails(targetWh, distance) {
 }
 
 function executeWormholeJump(targetX, targetY, fuelCost, damageRisk) {
-    playerFuel -= fuelCost;
-    
-    // 1. Resolve structural damage before moving
+    playerFuel = Math.max(0, playerFuel - fuelCost);
+
+    // 1. Close the wormhole modal BEFORE damage/tick so any Death/Combat/Encounter UI stays intact
+    closeGenericModal();
+
+    // 2. Resolve structural damage before moving
     let damageLog = "";
     if (Math.random() * 100 < damageRisk) {
         const dmg = Math.floor(Math.random() * 25) + 10; // 10 to 35 damage
         damageLog = `<br><span style="color:var(--danger)">Subspace turbulence caused ${dmg} hull damage!</span>`;
-        
-        // This will deduct health and trigger screen shake perfectly
         if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Wormhole Collapse" });
+        else playerHull -= dmg;
+
+        // Abort immediately if the hull collapsed during transit
+        if (playerHull <= 0) return;
     } else {
         damageLog = `<br><span style="color:var(--success)">Transit completed with zero structural anomalies.</span>`;
     }
@@ -7845,35 +7946,39 @@ function executeWormholeJump(targetX, targetY, fuelCost, damageRisk) {
     const canvas = document.getElementById('gameCanvas');
     if (canvas) {
         canvas.classList.remove('warp-effect');
-        void canvas.offsetWidth; // Magic trick to restart CSS animation instantly
+        void canvas.offsetWidth;
         canvas.classList.add('warp-effect');
     }
 
-    // 2. Move Player
+    // 3. Move Player & purge stale local traffic from departure sector
     playerX = targetX;
     playerY = targetY;
 
-    // 3. Force map chunk cache clear so the destination renders instantly!
-    chunkManager.loadedChunks = {}; 
+    currentStationRecruits = null;
+    currentStationBounties = [];
+    if (typeof activeNPCs !== 'undefined') activeNPCs = [];
+    if (typeof EntityManager !== 'undefined') EntityManager.clear();
+
+    // 4. Force map chunk cache clear so destination renders instantly
+    chunkManager.loadedChunks = {};
     chunkManager.lastChunkKey = null;
     chunkManager.lastChunkRef = null;
     updateSectorState();
-    
-    // 4. Progress Time (Fast travel still takes some time!)
-    if (typeof processGameTick === 'function') processGameTick(0.5, true); 
 
-    // 5. UI Updates
     if (typeof soundManager !== 'undefined') soundManager.playWarp();
     if (typeof showToast === 'function') showToast("SUBSPACE JUMP COMPLETE", "warning");
-    
     logMessage(`<span style="color:#FFB800">[ SUBSPACE TRANSIT ] Arrived at destination coordinates.</span>${damageLog}`);
 
-    closeGenericModal();
+    // 5. Progress Time — abort map takeover if tick triggered Death, Combat, or an Encounter
+    const interrupted = typeof processGameTick === 'function' ? processGameTick(0.5, true) : false;
+    if (playerHull <= 0 || interrupted) {
+        if (typeof renderUIStats === 'function') renderUIStats();
+        return;
+    }
+
     if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
     if (typeof render === 'function') render();
     if (typeof renderUIStats === 'function') renderUIStats();
-    
-    // Always auto-save after a massive jump!
     if (typeof autoSaveGame === 'function') autoSaveGame();
 }
 
